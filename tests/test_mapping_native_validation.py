@@ -74,6 +74,59 @@ class NativeMappingValidationTests(unittest.TestCase):
         evidence = verify_override_logs(candidate, log_for(candidate, output=False))
         self.assertFalse(evidence["verified"])
 
+    def test_tied_embedding_requires_two_native_logs(self):
+        candidate = next(
+            c for c in self.report["candidates"]
+            if c.get("output_weight_target") == "host"
+        )
+        self.assertEqual(candidate["kind"], "tied_input_output")
+        native = (
+            "llama_model_load_tensors: offloading output layer to GPU\n"
+            "llama_model_loader: tensor token_embd.weight (100 MiB Q4) "
+            "buffer type overridden to CUDA_Host\n"
+            "llama_model_loader: tensor token_embd.weight (100 MiB Q4) "
+            "buffer type overridden to CPU"
+        )
+        evidence = verify_override_logs(candidate, native)
+        self.assertTrue(evidence["verified"])
+        self.assertFalse(evidence["output_gpu_verified_by_log"])
+        self.assertTrue(evidence["default_output_layer_gpu_log"])
+        self.assertEqual(evidence["native_logged_occurrence_count"], 2)
+        self.assertEqual(evidence["tensors"][0]["native_occurrences"], 2)
+
+        missing_one = native.splitlines()[:-1]
+        self.assertFalse(
+            verify_override_logs(candidate, "\n".join(missing_one))["verified"]
+        )
+
+    def test_tied_embedding_rejects_wrong_second_buffer(self):
+        candidate = next(
+            c for c in self.report["candidates"]
+            if c.get("output_weight_target") == "host"
+        )
+        native = (
+            "tensor token_embd.weight (1 MiB Q4) buffer type overridden to CUDA_Host\n"
+            "tensor token_embd.weight (1 MiB Q4) buffer type overridden to CUDA0\n"
+            "llama_model_load_tensors: offloading output layer to GPU"
+        )
+        result = verify_override_logs(candidate, native)
+        self.assertFalse(result["verified"])
+        self.assertFalse(result["output_placement_verified"])
+
+    def test_tied_embedding_gpu_both_required(self):
+        candidate = next(
+            c for c in self.report["candidates"]
+            if c.get("output_weight_target") == "gpu"
+        )
+        native = (
+            "tensor token_embd.weight (1 MiB Q4) buffer type overridden to CUDA0\n"
+            "tensor token_embd.weight (1 MiB Q4) buffer type overridden to CUDA0\n"
+            "llama_model_load_tensors: offloading output layer to GPU"
+        )
+        result = verify_override_logs(candidate, native)
+        self.assertTrue(result["verified"])
+        self.assertTrue(result["output_gpu_verified_by_log"])
+
     def test_missing_or_extra_native_log_fails(self):
         candidate = self.selection[2]
         evidence = verify_override_logs(candidate, log_for(candidate) + (

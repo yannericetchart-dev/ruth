@@ -89,14 +89,16 @@ class LlamaCppPythonMappingAdapter:
             "placements": ["cpu", "gpu"],
             "granularity": ["contiguous_blocks", "regex_tensors"],
             "requires_isolated_process": True,
+            "tied_embedding_output": "same_regex_both_uses",
+            "output_gpu_required": False,
         }
 
     def load(self, path: Path, *, n_gpu_layers: int, rules: list[dict], n_ctx: int = 512):
         """Load a model with native per-tensor placement rules.
 
         Rules are {"pattern": regex, "device": "cpu"|"gpu"}. A pattern
-        must match a real GGUF tensor. The shared Gemma 2 input/output tensor
-        cannot be overridden independently by name in this native version.
+        must match a real GGUF tensor. Gemma 2's tied token_embd.weight can be placed only as a coupled
+        input/output mapping, never independently with a name regex.
         """
         from llama_cpp import Llama
         from llama_cpp import _internals
@@ -107,7 +109,8 @@ class LlamaCppPythonMappingAdapter:
                 f"Adapter validato solo per llama-cpp-python 0.3.36; installato {caps['version']}."
             )
         if n_gpu_layers < 1:
-            raise ValueError("Output GPU obbligatorio: n_gpu_layers deve essere positivo.")
+            raise ValueError("n_gpu_layers deve essere positivo in questo esperimento; "
+                                 "l'output puo' essere collocato su host tramite override.")
         if not rules:
             raise ValueError("Nessun override richiesto.")
         if not _PATCH_LOCK.acquire(blocking=False):
@@ -134,12 +137,20 @@ class LlamaCppPythonMappingAdapter:
                 matching = [n for n in all_names if regex.search(n)]
                 if not matching:
                     raise ValueError(f"Override senza tensori corrispondenti: {pattern}")
-                if "token_embd.weight" in matching:
-                    raise ValueError(
-                        "token_embd.weight e' condiviso da input/output in Gemma 2: "
-                        "non e' possibile garantire l'output GPU con questo override."
-                    )
-                targets.append({"pattern": pattern, "device": rule["device"], "tensors": matching})
+                tied = "token_embd.weight" in matching
+                if tied:
+                    if (layout["metadata"].get("general.architecture") != "gemma2"
+                        or matching != ["token_embd.weight"]
+                        or pattern not in (r"^(token_embd\.weight)$",
+                                           r"^token_embd\.weight$")):
+                        raise ValueError(
+                            "Embedding/output condivisi: e' consentito solo "
+                            "l'override esatto e accoppiato di token_embd.weight."
+                        )
+                targets.append({
+                    "pattern": pattern, "device": rule["device"],
+                    "tensors": matching, "tied_input_output": tied,
+                })
 
             # Llama() calls llama_backend_init() before constructing
             # internals.LlamaModel. Resolve GGML devices at that point.

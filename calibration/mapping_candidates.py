@@ -12,8 +12,8 @@ import re
 from model import ModelManager
 
 
-# Output / tied embedding are intentionally excluded: they cannot safely
-# be treated as independent weights by the current Gemma 2 native adapter.
+# These are classification labels, not an allowlist of tensor types.
+# Any repeating-layer tensor is eligible, irrespective of its suffix.
 BLOCK_GROUPS = frozenset({
     "attention", "feed_forward", "normalization", "other_block",
 })
@@ -82,18 +82,33 @@ def propose_mapping_candidates(layout: dict, n_gpu_layers: int) -> dict:
         raise ValueError("Inventario GGUF: nomi duplicati o non validi.")
 
     eligible = {"host": [], "gpu": []}
+    coupled = []
+    unknown = []
+    assignment = {}
     for t in inventory:
         name, block = t.get("name"), t.get("block")
-        if (not isinstance(block, int) or block < 0 or block >= block_count
-            or t.get("group") not in BLOCK_GROUPS
-            or not isinstance(t.get("bytes"), int) or t["bytes"] <= 0
-            or not re.fullmatch(r"blk\." + str(block) + r"\..+\.weight", name)):
-            continue
+        if not isinstance(t.get("bytes"), int) or t["bytes"] <= 0:
+            raise ValueError(f"Dimensione GGUF non valida: {name!r}")
 
-        # 'host' means already CPU in the *estimated baseline*, not an
-        # explicit native verification of that tensor's current buffer.
-        baseline_domain = "gpu" if block >= first_gpu_block else "host"
-        eligible[baseline_domain].append(t)
+        # In Gemma 2 the input embedding is copied logically for the output.
+        # The same native tensor name is used twice by the loader.
+        if arch == "gemma2" and name == "token_embd.weight":
+            coupled.append(t)
+            assignment[name] = "coupled_input_host_output_gpu_default"
+            continue
+        if isinstance(block, int) and 0 <= block < block_count and name.startswith(f"blk.{block}."):
+            domain = "gpu" if block >= first_gpu_block else "host"
+        elif name.startswith("token_embd."):
+            domain = "host"
+        elif name.startswith(("output.", "output_norm.")):
+            domain = "gpu"  # output layer, n_gpu_layers >= 1
+        else:
+            domain = "unknown"
+        assignment[name] = domain
+        if domain == "unknown":
+            unknown.append(t)
+        else:
+            eligible[domain].append(t)
 
     for items in eligible.values():
         items.sort(key=lambda t: t["name"])
@@ -113,7 +128,8 @@ def propose_mapping_candidates(layout: dict, n_gpu_layers: int) -> dict:
                 [tensor] if target == "gpu" else [],
                 f"single:{direction}:{tensor['name']}",
             ))
-            by_domain_group[domain][(tensor["block"], tensor["group"])].append(tensor)
+            if isinstance(tensor.get("block"), int):
+                by_domain_group[domain][(tensor["block"], tensor["group"])].append(tensor)
 
     for domain in ("gpu", "host"):
         direction = "gpu_to_host" if domain == "gpu" else "host_to_gpu"
@@ -149,11 +165,42 @@ def propose_mapping_candidates(layout: dict, n_gpu_layers: int) -> dict:
             f"swap:{evict['name']}->{promote['name']}",
         ))
 
-    # Check that *every* emitted native regex matches exactly the expected
-    # GGUF tensor names, and protects ALL output / embedding tensors.
-    protected = {name for name in names if (
-        name.startswith("token_embd.") or name.startswith("output.")
-    )}
+    # Unknown placement must remain explicitly visible rather than be silently
+    # ignored. Both directions are hypotheses, not measured deltas.
+    for tensor in unknown:
+        for dest, direction in (("cpu", "explicit_host"), ("gpu", "explicit_gpu")):
+            candidate = _candidate(
+                "unknown_baseline_tensor", direction, tensor.get("group") or "unknown",
+                [tensor] if dest == "cpu" else [],
+                [tensor] if dest == "gpu" else [],
+                f"unknown:{dest}:{tensor['name']}",
+            )
+            candidate["estimated_vram_weight_delta_bytes"] = None
+            candidates.append(candidate)
+
+    # Gemma 2 tied input/output: native loader uses the same GGUF name for
+    # two logical objects. A regex cannot address them independently.
+    # The output location is a searchable hypothesis, NOT a GPU invariant.
+    if coupled:
+        if len(coupled) != 1:
+            raise ValueError("Unexpected tied embedding inventory.")
+        tensor = coupled[0]
+        for device, direction in (("cpu", "coupled_to_host"), ("gpu", "coupled_to_gpu")):
+            candidate = _candidate(
+                "tied_input_output", direction, "embedding_output",
+                [tensor] if device == "cpu" else [],
+                [tensor] if device == "gpu" else [],
+                f"tied:{device}:{tensor['name']}",
+            )
+            candidate["output_weight_target"] = "host" if device == "cpu" else "gpu"
+            candidate["expected_native_log_occurrences"] = {tensor["name"]: 2}
+            # GGUF has one physical tensor, but native may duplicate it.
+            candidate["estimated_vram_weight_delta_bytes"] = None
+            candidates.append(candidate)
+
+    # Validate *every* native regex against all actual GGUF names.
+    # Tied tensors are allowed only with an explicit coupled candidate.
+    protected = set()
     for c in candidates:
         seen = set()
         for rule in c["rules"]:
@@ -171,17 +218,29 @@ def propose_mapping_candidates(layout: dict, n_gpu_layers: int) -> dict:
     counts = Counter(c["direction"] for c in candidates)
     families = Counter(c["family"] for c in candidates if c["direction"] != "unchanged")
 
+    # Every tensor must have a classified baseline location or explicit
+    # coupled/unknown capability; the inventory is never filtered by suffix.
+    if set(assignment) != set(names):
+        raise RuntimeError("Inventario dei tensori incompleto.")
+
     # Show diverse candidates first without pretending that this is a
     # performance ranking or making a static GGUF size a quality metric.
     by_direction = defaultdict(list)
     for c in candidates[1:]:
         by_direction[c["direction"]].append(c)
     preview = [candidates[0]]
-    for family in ("attention", "feed_forward", "normalization", "other_block"):
+    for direction in ("coupled_to_host", "coupled_to_gpu"):
+        if by_direction[direction]:
+            preview.append(by_direction[direction][0])
+    for family in ("output", "embedding", "attention", "feed_forward",
+                   "normalization", "other_block"):
         for direction in ("gpu_to_host", "host_to_gpu", "swap"):
             found = next((c for c in by_direction[direction] if c["family"] == family), None)
             if found is not None:
                 preview.append(found)
+    for direction in ("explicit_host", "explicit_gpu"):
+        if by_direction[direction]:
+            preview.append(by_direction[direction][0])
 
     return {
         "phase": "granular_mapping_candidate_generation",
@@ -189,18 +248,32 @@ def propose_mapping_candidates(layout: dict, n_gpu_layers: int) -> dict:
         "block_count": block_count,
         "n_gpu_layers": n_gpu_layers,
         "baseline_mapping": {
-            "output": "gpu_required",
+            "output": "gpu_by_default_not_required",
             "repeating_blocks_gpu": gpu_blocks,
             "repeating_blocks_cpu": cpu_blocks,
             "assumption": "verified_llama_cpp_default_output_first_then_last_blocks",
         },
         "output_rule": {
-            "require_gpu": True,
-            "protected_names": sorted(protected),
-            "validation": "native_load_log_required",
+            "require_gpu": False,
+            "tied_input_output": [t["name"] for t in coupled],
+            "tied_override": "both_logical_uses_same_native_regex",
+            "validation": "native_per_tensor_log_required",
         },
-        "supported_families": sorted(BLOCK_GROUPS),
-        "directions": ["gpu_to_host", "host_to_gpu", "swap"],
+        "tensor_inventory": [
+            {
+                "name": t["name"],
+                "group": t.get("group"),
+                "block": t.get("block"),
+                "bytes": t["bytes"],
+                "baseline_domain": assignment[t["name"]],
+            } for t in inventory
+        ],
+        "inventory_tensor_count": len(inventory),
+        "inventory_coverage_complete": set(assignment) == set(names),
+        "baseline_domain_counts": dict(sorted(Counter(assignment.values()).items())),
+        "unknown_baseline_tensor_count": len(unknown),
+        "supported_families": sorted(set(t.get("group") or "unknown" for t in inventory)),
+        "directions": sorted(set(c["direction"] for c in candidates if c["direction"] != "unchanged")),
         "candidate_count": len(candidates),
         "counts_by_direction": dict(sorted(counts.items())),
         "counts_by_family": dict(sorted(families.items())),
@@ -212,9 +285,11 @@ def propose_mapping_candidates(layout: dict, n_gpu_layers: int) -> dict:
             "Contesto operativo non selezionato. Posizioni di partenza stimate dalla "
             "regola di offload standard del runtime: occorre verificarle su hardware. "
             "Byte GGUF non equivalgono a VRAM usata o liberata. Scambi limitati "
-            "al singolo tensore per famiglia e a delta pesi non positivo, "
-            "senza garanzie su allocazioni temporanee o stabilita'. "
-            "Nessuna ottimizzazione, qualita' o velocita' e' stata validata."
+            "al singolo tensore per famiglia e a delta pesi non positivo. "
+            "Embedding/output Gemma 2 sono accoppiati: entrambi su host oppure "
+            "entrambi su GPU con lo stesso override; occorre verificare due log "
+            "nativi dello stesso nome. Tensori non classificabili vengono "
+            "dichiarati separatamente. Nessuna velocita' e' stata validata."
         ),
     }
 
@@ -224,10 +299,12 @@ def main() -> None:
         description="Proposte statiche bidirezionali di mapping, senza utilizzare CUDA"
     )
     parser.add_argument("--gpu-layers", type=int, default=32)
-    parser.add_argument("--show", type=int, default=8,
+    parser.add_argument("--show", type=int, default=10,
                         help="Quanti esempi diversi mostrare (baseline inclusa)")
     parser.add_argument("--all", action="store_true",
                         help="Stampa l'intero elenco, non soltanto l'anteprima")
+    parser.add_argument("--inventory", action="store_true",
+                        help="Stampa anche l'inventario di tutti i tensori")
     args = parser.parse_args()
     if args.show < 1:
         parser.error("--show deve essere positivo.")
@@ -241,6 +318,8 @@ def main() -> None:
         result["preview"] = result["preview"][:args.show]
         result["displayed_candidates"] = len(result["preview"])
         result.pop("candidates")
+    if not args.inventory:
+        result.pop("tensor_inventory")
     print(json.dumps(result, indent=2, ensure_ascii=False))
 
 

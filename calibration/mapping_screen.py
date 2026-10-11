@@ -31,8 +31,14 @@ def choose_exploration_cohort(proposals: dict, candidate_count: int = 6) -> list
     if baseline is None:
         raise ValueError("Baseline assente.")
     family_bytes = defaultdict(int)
+    # Keep the first, already validated screening cohort restricted to
+    # repeating-block tensors. Output/embedding are a distinct high-impact
+    # calibration phase and require an explicit native placement probe.
+    pilot_families = {"attention", "feed_forward", "normalization", "other_block"}
     for c in items:
-        if c["direction"] == "gpu_to_host" and c["kind"] == "single_tensor":
+        if (c["family"] in pilot_families
+            and c["direction"] == "gpu_to_host"
+            and c["kind"] == "single_tensor"):
             family_bytes[c["family"]] += c["gguf_bytes_to_host"]
     families = sorted(family_bytes, key=lambda f: (-family_bytes[f], f))
     chosen = [baseline]
@@ -42,6 +48,7 @@ def choose_exploration_cohort(proposals: dict, candidate_count: int = 6) -> list
             available = [
                 c for c in items
                 if c["family"] == family and c["direction"] == direction
+                and c["kind"] not in ("tied_input_output", "unknown_baseline_tensor")
                 and c["id"] not in used
             ]
             if not available:

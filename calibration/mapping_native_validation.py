@@ -63,52 +63,92 @@ def choose_native_trials(report: dict) -> list[dict]:
 
 
 def verify_override_logs(candidate: dict, logs: str) -> dict:
-    """Require a native log for every requested placement, no extras."""
+    """Verify native buffer assignment for every requested *logical* tensor.
+
+    Gemma 2's tied token embedding has two logical uses under the same name,
+    so it requires TWO native log occurrences, both on the target device.
+    """
+    from collections import defaultdict
+
     expected = {
         **{name: "host" for name in candidate["host_tensor_names"]},
         **{name: "gpu" for name in candidate["gpu_tensor_names"]},
     }
-    found = {}
-    duplicates = []
+    occurrences = candidate.get("expected_native_log_occurrences") or {}
+    found = defaultdict(list)
     for match in _OVERRIDE_LINE.finditer(logs):
         name, buffer_name = match.group("name", "buffer")
-        if name in found:
-            duplicates.append(name)
-        found[name] = buffer_name
+        found[name].append(buffer_name)
 
     per_tensor = []
     for name, wanted in sorted(expected.items()):
-        buffer_name = found.get(name)
-        domain = _buffer_domain(buffer_name) if buffer_name is not None else "not_logged"
-        matched = (
-            domain in ("host_cpu", "host_cuda_pinned") if wanted == "host"
-            else domain == "gpu_vram"
+        buffer_names = found.get(name, [])
+        domains = [_buffer_domain(buffer) for buffer in buffer_names]
+        expected_count = occurrences.get(name, 1)
+        matched = len(domains) == expected_count and all(
+            domain in ("host_cpu", "host_cuda_pinned")
+            if wanted == "host" else domain == "gpu_vram"
+            for domain in domains
         )
         per_tensor.append({
             "name": name,
             "requested": wanted,
-            "native_buffer": buffer_name,
-            "native_domain": domain,
+            "native_buffer": buffer_names[0] if buffer_names else None,
+            "native_buffers": buffer_names,
+            "native_domain": domains[0] if domains else "not_logged",
+            "native_domains": domains,
+            "native_occurrences": len(buffer_names),
+            "expected_native_occurrences": expected_count,
             "verified_by_log": matched,
         })
 
-    output_gpu = "offloading output layer to GPU" in logs
-    exact_names = set(found) == set(expected) and not duplicates
-    verified = bool(per_tensor) and exact_names and output_gpu and all(
-        item["verified_by_log"] for item in per_tensor
+    output_layer_gpu_default_log = "offloading output layer to GPU" in logs
+    count_exact = set(found) == set(expected) and all(
+        len(found[name]) == occurrences.get(name, 1) for name in expected
+    )
+    duplicate_logged_names = [
+        name for name, buffers in found.items()
+        if len(buffers) > occurrences.get(name, 1)
+    ]
+    target = candidate.get("output_weight_target")
+    # For a tied output, the native *default* offload log is not proof of
+    # physical output placement. Trust only the matching override lines.
+    if target in ("host", "gpu"):
+        output_placement_verified = (
+            count_exact and bool(per_tensor) and all(
+                item["verified_by_log"] for item in per_tensor
+            )
+        )
+        output_placement_source = "tied_weight_native_override_logs"
+    else:
+        output_placement_verified = output_layer_gpu_default_log
+        output_placement_source = "default_offload_log"
+    verified = (
+        bool(per_tensor) and count_exact and output_placement_verified
+        and all(item["verified_by_log"] for item in per_tensor)
     )
     return {
-        "output_gpu_verified_by_log": output_gpu,
+        "output_gpu_verified_by_log": (
+            output_layer_gpu_default_log if target not in ("host", "gpu") else
+            (verified if target == "gpu" else False)
+        ),
+        "default_output_layer_gpu_log": output_layer_gpu_default_log,
+        "output_weight_target": target or "default",
+        "output_placement_verified": output_placement_verified,
+        "output_placement_source": output_placement_source,
         "requested_tensor_count": len(expected),
         "native_logged_tensor_count": len(found),
-        "native_logged_names_exact": exact_names,
-        "duplicate_logged_names": duplicates,
+        "native_logged_occurrence_count": sum(map(len, found.values())),
+        "native_logged_names_exact": count_exact,
+        "duplicate_logged_names": duplicate_logged_names,
         "tensors": per_tensor,
         "verified": verified,
         "evidence_note": (
-            "I log DEBUG confermano i tipi di buffer selezionati dal loader. "
-            "CUDA_Host e' RAM host CUDA, non VRAM; non dimostrano "
-            "i byte fisicamente allocati ne' l'assenza di fallback."
+            "Buffer verificati nei log DEBUG, non byte effettivamente allocati. "
+            "CUDA_Host indica RAM host. Per token_embd.weight su Gemma 2 "
+            "servono due occorrenze native: input e output sono accoppiati. "
+            "La stringa 'offloading output layer to GPU' non prova il "
+            "placement dell'output quando il peso condiviso e' sovrascritto."
         ),
     }
 
@@ -172,12 +212,36 @@ def _worker(layers: int, candidate_id: str) -> dict:
             llm.close()
 
 
-def validate_native(layers: int = 32, timeout: int = 180) -> dict:
+def validate_native(layers: int = 32, timeout: int = 180,
+                    tied_output: str | None = None,
+                    output_norm_host: bool = False) -> dict:
     if not isinstance(layers, int) or layers < 1 or timeout < 1:
         raise ValueError("Layer e timeout devono essere positivi.")
     layout = ModelManager().inspect("gemma-2-9b-it", n_ctx=512)
     proposals = propose_mapping_candidates(layout, layers)
-    selected = choose_native_trials(proposals)
+    if tied_output is not None and output_norm_host:
+        raise ValueError("Seleziona una sola modalita' di prova output.")
+    if output_norm_host:
+        selected = [
+            c for c in proposals["candidates"]
+            if c["kind"] == "single_tensor"
+            and c["host_tensor_names"] == ["output_norm.weight"]
+        ]
+        if len(selected) != 1:
+            raise RuntimeError("Candidato output_norm.weight host assente/ambiguo.")
+    elif tied_output is None:
+        selected = choose_native_trials(proposals)
+    else:
+        if tied_output not in ("host", "gpu"):
+            raise ValueError("tied_output deve essere host oppure gpu.")
+        selected = [
+            c for c in proposals["candidates"]
+            if c.get("output_weight_target") == tied_output
+        ]
+        if len(selected) != 1:
+            raise RuntimeError(
+                f"Candidato output condiviso {tied_output} assente/ambiguo."
+            )
 
     report = {
         "phase": "bidirectional_native_mapping_validation",
@@ -188,11 +252,15 @@ def validate_native(layers: int = 32, timeout: int = 180) -> dict:
         "selected_n_ctx": None,
         "gpu_layers": layers,
         "candidate_count_available": proposals["candidate_count"],
+        "output_placement_trial": (
+            tied_output if tied_output is not None
+            else "norm_host" if output_norm_host else None
+        ),
         "trials": [],
         "success": False,
         "profile_generated": False,
         "note": (
-            "Tre prove diagnostiche isolate: host, GPU, swap. "
+            "Prove diagnostiche isolate, opzionalmente su output condiviso. "
             "Verifica placement da log nativi + generazione; "
             "nessuna misura di velocita' o selezione di profilo."
         ),
@@ -286,6 +354,10 @@ def main() -> None:
     )
     parser.add_argument("--gpu-layers", type=int, default=32)
     parser.add_argument("--timeout", type=int, default=180)
+    parser.add_argument("--tied-output", choices=("host", "gpu"), default=None,
+                        help="Verifica separatamente il peso condiviso input/output Gemma 2")
+    parser.add_argument("--output-norm-host", action="store_true",
+                        help="Sposta solo output_norm.weight sulla RAM per verifica")
     parser.add_argument("--worker", action="store_true", help=argparse.SUPPRESS)
     parser.add_argument("--candidate-id", default=None, help=argparse.SUPPRESS)
     args = parser.parse_args()
@@ -297,7 +369,9 @@ def main() -> None:
                 raise ValueError("ID del candidato mancante.")
             result = _worker(args.gpu_layers, args.candidate_id)
         else:
-            result = validate_native(args.gpu_layers, args.timeout)
+            result = validate_native(args.gpu_layers, args.timeout,
+                                     tied_output=args.tied_output,
+                                     output_norm_host=args.output_norm_host)
     except Exception as exc:
         result = {
             "worker_ok": False, "success": False,

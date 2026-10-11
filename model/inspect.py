@@ -10,7 +10,7 @@ from pathlib import Path
 def _kind(name: str) -> tuple[str, int | None]:
     if name.startswith("token_embd."):
         return "embedding", None
-    if name.startswith("output."):
+    if name.startswith(("output.", "output_norm.")):
         return "output", None
     match = re.match(r"^blk\.(\d+)\.(.+)$", name)
     if not match:
