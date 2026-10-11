@@ -19,12 +19,42 @@ from hardware import GPUManager
 from model import ModelManager
 
 
+def probe_prompt(repeat: int = 1) -> str:
+    """One Gemma-2 chat turn with a configurable deterministic prompt length."""
+    if not isinstance(repeat, int) or isinstance(repeat, bool) or not 1 <= repeat <= 16:
+        raise ValueError("prompt_repeat deve essere compreso fra 1 e 16.")
+    body = (
+        "Spiega dettagliatamente come funziona un motore elettrico, "
+        "dalla conversione dell'energia alle forze magnetiche, "
+        "con esempi pratici. Scrivi almeno 350 parole in italiano "
+        "in un testo continuo, senza riassumere e senza elenchi."
+    )
+    # Keep the previous exact prompt for repeat=1, so historical
+    # 512-context measurements remain comparable.
+    return (
+        "<start_of_turn>user\n"
+        + " ".join([body] * repeat)
+        + "<end_of_turn>\n<start_of_turn>model\n"
+    )
+
+
+def validate_probe(n_ctx: int, prompt_repeat: int, max_tokens: int) -> None:
+    if (not isinstance(n_ctx, int) or isinstance(n_ctx, bool)
+        or n_ctx < 512 or n_ctx > 8192):
+        raise ValueError("probe_n_ctx diagnostico deve essere 512..8192.")
+    probe_prompt(prompt_repeat)
+    if not isinstance(max_tokens, int) or not 64 <= max_tokens <= 256:
+        raise ValueError("tokens deve essere 64..256.")
+
+
 def _worker(gpu_layers: int, max_tokens: int, cpu_tensor: str | None = None,
             candidate_id: str | None = None, native_memory_audit: bool = False,
             combination_ids: list[str] | None = None,
-            collect_gpu_telemetry: bool = False) -> dict:
+            collect_gpu_telemetry: bool = False,
+            probe_n_ctx: int = 512, prompt_repeat: int = 1) -> dict:
     import pynvml as nvml
 
+    validate_probe(probe_n_ctx, prompt_repeat, max_tokens)
     if gpu_layers < 1 or max_tokens < 64 or max_tokens > 256:
         raise ValueError("Richiesti almeno 1 blocco GPU e 64-256 token di generazione.")
     if sum(x is not None for x in (cpu_tensor, candidate_id, combination_ids)) > 1:
@@ -51,7 +81,7 @@ def _worker(gpu_layers: int, max_tokens: int, cpu_tensor: str | None = None,
     from llama_cpp import Llama
 
     mib = 1024 * 1024
-    n_ctx = 512
+    n_ctx = probe_n_ctx
     report = {
         "phase": "model_mapping_benchmark",
         "model": model.name,
@@ -61,6 +91,7 @@ def _worker(gpu_layers: int, max_tokens: int, cpu_tensor: str | None = None,
         "gpu": gpu["name"],
         "gpu_layers": gpu_layers,
         "probe_n_ctx": n_ctx,
+        "prompt_repeat": prompt_repeat,
         "selected_n_ctx": None,
         "max_generated_tokens": max_tokens,
         "cpu_tensor_override": cpu_tensor,
@@ -151,14 +182,7 @@ def _worker(gpu_layers: int, max_tokens: int, cpu_tensor: str | None = None,
 
             # Prompt Gemma 2 in formato chat; piu' lungo della prova precedente
             # per ottenere abbastanza step di decode da confrontare.
-            prompt = (
-                "<start_of_turn>user\n"
-                "Spiega dettagliatamente come funziona un motore elettrico, "
-                "dalla conversione dell'energia alle forze magnetiche, "
-                "con esempi pratici. Scrivi almeno 350 parole in italiano "
-                "in un testo continuo, senza riassumere e senza elenchi."
-                "<end_of_turn>\n<start_of_turn>model\n"
-            )
+            prompt = probe_prompt(prompt_repeat)
             tokens = llm.tokenize(prompt.encode("utf-8"), add_bos=True, special=True)
             if len(tokens) + max_tokens >= n_ctx:
                 raise ValueError("Il prompt e la generazione eccedono il contesto tecnico.")
@@ -267,10 +291,12 @@ def benchmark(gpu_layers: int, max_tokens: int = 128, timeout: int = 180,
               cpu_tensor: str | None = None, candidate_id: str | None = None,
               native_memory_audit: bool = False,
               combination_ids: list[str] | None = None,
-              collect_gpu_telemetry: bool = False) -> dict:
+              collect_gpu_telemetry: bool = False,
+              probe_n_ctx: int = 512, prompt_repeat: int = 1) -> dict:
     """Supervisiona la prova in subprocess; conserva diagnostica sui crash nativi."""
-    if gpu_layers < 1 or not 64 <= max_tokens <= 256 or timeout < 1:
-        raise ValueError("Richiesti gpu_layers>=1, 64<=tokens<=256 e timeout>0.")
+    validate_probe(probe_n_ctx, prompt_repeat, max_tokens)
+    if gpu_layers < 1 or timeout < 1:
+        raise ValueError("Richiesti gpu_layers>=1 e timeout>0.")
     if sum(x is not None for x in (cpu_tensor, candidate_id, combination_ids)) > 1:
         raise ValueError("Non combinare cpu_tensor, candidate_id e combination_ids.")
 
@@ -280,7 +306,7 @@ def benchmark(gpu_layers: int, max_tokens: int = 128, timeout: int = 180,
         from .mapping_composition import compose_candidates
 
         proposals = propose_mapping_candidates(
-            ModelManager().inspect("gemma-2-9b-it", n_ctx=512), gpu_layers
+            ModelManager().inspect("gemma-2-9b-it", n_ctx=probe_n_ctx), gpu_layers
         )
         if combination_ids is not None:
             candidate = compose_candidates(proposals, combination_ids)
@@ -295,6 +321,8 @@ def benchmark(gpu_layers: int, max_tokens: int = 128, timeout: int = 180,
     command = [
         sys.executable, "-m", "calibration.benchmark", "--worker",
         "--gpu-layers", str(gpu_layers), "--tokens", str(max_tokens),
+        "--probe-n-ctx", str(probe_n_ctx),
+        "--prompt-repeat", str(prompt_repeat),
     ]
     if cpu_tensor is not None:
         if not cpu_tensor or cpu_tensor == "token_embd.weight":
@@ -411,6 +439,10 @@ def main() -> None:
     )
     parser.add_argument("--gpu-layers", type=int, default=32)
     parser.add_argument("--tokens", type=int, default=128)
+    parser.add_argument("--probe-n-ctx", type=int, default=512,
+                        help="Contesto della prova, NON valore operativo")
+    parser.add_argument("--prompt-repeat", type=int, default=1,
+                        help="Lunghezza del testo input diagnostico (1..16)")
     parser.add_argument("--timeout", type=int, default=180)
     parser.add_argument("--cpu-tensor", default=None,
                         help="Tensore GGUF da forzare su host RAM (probe sperimentale)")
@@ -433,7 +465,8 @@ def main() -> None:
         try:
             outcome = _worker(args.gpu_layers, args.tokens, args.cpu_tensor,
                               args.candidate_id, args.native_memory_audit,
-                              args.combine, args.gpu_telemetry)
+                              args.combine, args.gpu_telemetry,
+                              args.probe_n_ctx, args.prompt_repeat)
         except Exception as exc:
             outcome = {"success": False, "error": f"{type(exc).__name__}: {exc}"}
         print(json.dumps(outcome, indent=2, ensure_ascii=False))
@@ -444,7 +477,9 @@ def main() -> None:
                                 candidate_id=args.candidate_id,
                                 native_memory_audit=args.native_memory_audit,
                                 combination_ids=args.combine,
-                                collect_gpu_telemetry=args.gpu_telemetry)
+                                collect_gpu_telemetry=args.gpu_telemetry,
+                                probe_n_ctx=args.probe_n_ctx,
+                                prompt_repeat=args.prompt_repeat)
         except Exception as exc:
             print(f"Benchmark non avviato: {exc}", file=sys.stderr)
             raise SystemExit(1) from None

@@ -13,7 +13,7 @@ import statistics
 from hardware import GPUManager
 from model import ModelManager
 
-from .benchmark import benchmark
+from .benchmark import benchmark, validate_probe
 from .mapping_candidates import propose_mapping_candidates
 from .mapping_composition import compose_candidates
 from .measured_combinations import choose_compound_trials
@@ -143,8 +143,10 @@ def summarize_stability(trials: list[dict], rounds: int, gpu_total_mib: float) -
 
 
 def run_stability(gpu_layers: int = 40, rounds: int = 3,
-                  tokens: int = 256, timeout: int = 180) -> dict:
+                  tokens: int = 256, timeout: int = 180,
+                  probe_n_ctx: int = 512, prompt_repeat: int = 1) -> dict:
     plan = schedule(rounds)
+    validate_probe(probe_n_ctx, prompt_repeat, tokens)
     if not isinstance(gpu_layers, int) or gpu_layers < 1:
         raise ValueError("gpu_layers deve essere positivo.")
     if not isinstance(tokens, int) or not 64 <= tokens <= 256 or timeout < 1:
@@ -153,7 +155,7 @@ def run_stability(gpu_layers: int = 40, rounds: int = 3,
     if not state["ready"]:
         raise RuntimeError(f"GPU non pronta: {state['errors']}; {state['foreign_processes']}")
     proposals = propose_mapping_candidates(
-        ModelManager().inspect("gemma-2-9b-it", n_ctx=512), gpu_layers
+        ModelManager().inspect("gemma-2-9b-it", n_ctx=probe_n_ctx), gpu_layers
     )
     seed = next(
         c for c in choose_compound_trials(proposals) if c["id"] == "dual_promotion"
@@ -165,7 +167,8 @@ def run_stability(gpu_layers: int = 40, rounds: int = 3,
         "model": "gemma-2-9b-it",
         "backend": "cuda",
         "gpu_layers": gpu_layers,
-        "probe_n_ctx": 512,
+        "probe_n_ctx": probe_n_ctx,
+        "prompt_repeat": prompt_repeat,
         "selected_n_ctx": None,
         "tokens": tokens,
         "rounds": rounds,
@@ -192,6 +195,8 @@ def run_stability(gpu_layers: int = 40, rounds: int = 3,
                 gpu_layers=gpu_layers, max_tokens=tokens, timeout=timeout,
                 combination_ids=seed["component_ids"] if variant == "candidate" else None,
                 collect_gpu_telemetry=True,
+                probe_n_ctx=probe_n_ctx,
+                prompt_repeat=prompt_repeat,
             )
             metrics = outcome.get("measurements") or {}
             checks = outcome.get("mapping_verification") or {}
@@ -207,6 +212,8 @@ def run_stability(gpu_layers: int = 40, rounds: int = 3,
                     checks.get("verified") is True if variant == "candidate" else None
                 ),
                 "requested_tokens": tokens,
+                "actual_probe_n_ctx": outcome.get("probe_n_ctx"),
+                "prompt_tokens": metrics.get("prompt_tokens"),
                 "generated_tokens": metrics.get("generated_tokens"),
                 "decode_tps": metrics.get("decode_tokens_per_second"),
                 "prefill_tps": metrics.get("prefill_tokens_per_second"),
@@ -221,7 +228,8 @@ def run_stability(gpu_layers: int = 40, rounds: int = 3,
             report["trials"].append(row)
             if (not row["success"]
                 or (variant == "candidate" and not row["mapping_verified"])
-                or row["generated_tokens"] != tokens):
+                or row["generated_tokens"] != tokens
+                or row["actual_probe_n_ctx"] != probe_n_ctx):
                 report["error"] = (
                     f"Misura incompleta: round {round_idx} slot {position} "
                     f"{variant}, {row['error'] or row['failure_type'] or 'token insufficienti'}"
@@ -241,10 +249,17 @@ def main() -> None:
     parser.add_argument("--gpu-layers", type=int, default=40)
     parser.add_argument("--rounds", type=int, default=3)
     parser.add_argument("--tokens", type=int, default=256)
+    parser.add_argument("--probe-n-ctx", type=int, default=512,
+                        help="Solo contesto diagnostico, non profilo operativo")
+    parser.add_argument("--prompt-repeat", type=int, default=1,
+                        help="Ripetizioni del testo del prompt diagnostico")
     parser.add_argument("--timeout", type=int, default=180)
     args = parser.parse_args()
     try:
-        result = run_stability(args.gpu_layers, args.rounds, args.tokens, args.timeout)
+        result = run_stability(
+            args.gpu_layers, args.rounds, args.tokens, args.timeout,
+            args.probe_n_ctx, args.prompt_repeat,
+        )
     except Exception as exc:
         result = {"success": False, "error": f"{type(exc).__name__}: {exc}"}
     print(json.dumps(result, ensure_ascii=False, indent=2))
