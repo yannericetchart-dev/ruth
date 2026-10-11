@@ -65,6 +65,22 @@ def _worker(layers: int, target: str) -> dict:
             llm.close()
 
 
+def _buffer_domain(native_name: str) -> str:
+    """Classify GGML buffer type names, not physical allocation guarantees.
+
+    In llama.cpp's CUDA backend, CUDA_Host is host RAM (normally pinned),
+    not GPU VRAM. Its allocator may fall back to ordinary CPU memory.
+    """
+    label = native_name.strip().upper()
+    if label == "CUDA_HOST":
+        return "host_cuda_pinned"
+    if label == "CPU" or label.startswith("CPU_"):
+        return "host_cpu"
+    if label.startswith("CUDA") and "HOST" not in label:
+        return "gpu_vram"
+    return "unknown"
+
+
 def probe(layers: int = 32, tensor: str | None = None, timeout: int = 180) -> dict:
     if layers < 1 or timeout <= 0:
         raise ValueError("Layer e timeout devono essere positivi.")
@@ -102,7 +118,10 @@ def probe(layers: int = 32, tensor: str | None = None, timeout: int = 180) -> di
         + r"\s+\([^\n]*?buffer type overridden to\s+([^\s]+)"
     )
     applied = pattern.findall(logs)
-    tensor_cpu = bool(applied) and all(name.upper().startswith("CPU") for name in applied)
+    buffer_domains = [_buffer_domain(name) for name in applied]
+    tensor_cpu = bool(buffer_domains) and all(
+        domain in ("host_cpu", "host_cuda_pinned") for domain in buffer_domains
+    )
 
     outcome.update({
         "phase": "granular_mapping_probe",
@@ -110,11 +129,18 @@ def probe(layers: int = 32, tensor: str | None = None, timeout: int = 180) -> di
         "tensor_cpu_verified_by_log": tensor_cpu,
         "tensor": tensor,
         "native_buffer_names": applied,
+        "native_buffer_domains": buffer_domains,
+        "tensor_host_cuda_pinned_selected": "host_cuda_pinned" in buffer_domains,
         "worker_returncode": done.returncode,
         "success": done.returncode == 0 and outcome.get("worker_ok") is True
                    and output_on_gpu and tensor_cpu,
         "profile_generated": False,
-        "log_note": "Verifica tramite log nativo DEBUG, non solo tramite richiesta di mapping.",
+        "log_note": (
+            "Verifica del buffer selezionato tramite log DEBUG del loader nativo. "
+            "CUDA_Host indica un buffer host CUDA (di norma RAM pinned), non VRAM; "
+            "il backend puo' ripiegare su CPU ordinaria se l'allocazione pinned fallisce. "
+            "Il log di offload output conferma l'assegnazione, non misura i byte allocati."
+        ),
     })
     if done.returncode < 0:
         outcome["failure_type"] = "native_signal"
