@@ -51,6 +51,15 @@ class ModelManager:
             )
         )
 
+    def inspect(self, model_id: str = "gemma-2-9b-it", n_ctx: int = 4096) -> dict:
+        """Struttura GGUF in sola lettura, senza eseguire inferenza."""
+        from .inspect import inspect_gguf
+
+        path = self.get(model_id)
+        if path is None:
+            raise FileNotFoundError(f"Modello non installato: {model_id}")
+        return inspect_gguf(path, n_ctx=n_ctx)
+
     def _spec(self, model_id: str) -> dict:
         try:
             return self.CATALOG[model_id]
