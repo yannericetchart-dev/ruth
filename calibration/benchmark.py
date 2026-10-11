@@ -7,6 +7,7 @@ tecnico di prova, NON il contesto operativo del futuro profilo.
 import argparse
 import json
 import os
+import re
 import signal
 import subprocess
 import sys
@@ -18,7 +19,7 @@ from hardware import GPUManager
 from model import ModelManager
 
 
-def _worker(gpu_layers: int, max_tokens: int) -> dict:
+def _worker(gpu_layers: int, max_tokens: int, cpu_tensor: str | None = None) -> dict:
     import pynvml as nvml
 
     if gpu_layers < 1 or max_tokens < 64 or max_tokens > 256:
@@ -57,6 +58,7 @@ def _worker(gpu_layers: int, max_tokens: int) -> dict:
         "probe_n_ctx": n_ctx,
         "selected_n_ctx": None,
         "max_generated_tokens": max_tokens,
+        "cpu_tensor_override": cpu_tensor,
         "measurements": {},
         "success": False,
         "error": None,
@@ -92,11 +94,23 @@ def _worker(gpu_layers: int, max_tokens: int) -> dict:
 
         try:
             start = time.perf_counter()
-            llm = Llama(
-                model_path=str(model), n_gpu_layers=gpu_layers,
-                n_ctx=n_ctx, n_batch=128, n_ubatch=128,
-                offload_kqv=True, flash_attn=False, verbose=False,
-            )
+            if cpu_tensor is None:
+                llm = Llama(
+                    model_path=str(model), n_gpu_layers=gpu_layers,
+                    n_ctx=n_ctx, n_batch=128, n_ubatch=128,
+                    offload_kqv=True, flash_attn=False, verbose=False,
+                )
+            else:
+                from inference.adapters.llama_cpp_python import LlamaCppPythonMappingAdapter
+
+                llm, rules = LlamaCppPythonMappingAdapter().load(
+                    model, n_gpu_layers=gpu_layers, n_ctx=n_ctx,
+                    rules=[{
+                        "pattern": "^" + re.escape(cpu_tensor) + "$",
+                        "device": "cpu",
+                    }],
+                )
+                report["mapping_rules"] = rules
             mem["load_seconds"] = round(time.perf_counter() - start, 3)
             mem["vram_used_loaded_mib"] = used_mib()
 
@@ -211,7 +225,8 @@ def _worker(gpu_layers: int, max_tokens: int) -> dict:
     return report
 
 
-def benchmark(gpu_layers: int, max_tokens: int = 128, timeout: int = 180) -> dict:
+def benchmark(gpu_layers: int, max_tokens: int = 128, timeout: int = 180,
+              cpu_tensor: str | None = None) -> dict:
     """Supervisiona la prova in subprocess; conserva diagnostica sui crash nativi."""
     if gpu_layers < 1 or not 64 <= max_tokens <= 256 or timeout < 1:
         raise ValueError("Richiesti gpu_layers>=1, 64<=tokens<=256 e timeout>0.")
@@ -220,6 +235,10 @@ def benchmark(gpu_layers: int, max_tokens: int = 128, timeout: int = 180) -> dic
         sys.executable, "-m", "calibration.benchmark", "--worker",
         "--gpu-layers", str(gpu_layers), "--tokens", str(max_tokens),
     ]
+    if cpu_tensor is not None:
+        if not cpu_tensor or cpu_tensor == "token_embd.weight":
+            raise ValueError("Tensore CPU non valido o condiviso con l'output.")
+        command.extend(("--cpu-tensor", cpu_tensor))
     try:
         result = subprocess.run(command, capture_output=True, text=True, timeout=timeout)
     except subprocess.TimeoutExpired as exc:
@@ -252,6 +271,32 @@ def benchmark(gpu_layers: int, max_tokens: int = 128, timeout: int = 180) -> dic
         report["failure_type"] = "worker_error"
         report["success"] = False
 
+    if cpu_tensor is not None:
+        from .granular_probe import _buffer_domain
+
+        override_pattern = re.compile(
+            r"tensor\s+" + re.escape(cpu_tensor)
+            + r"\s+\([^\n]*?buffer type overridden to\s+([^\s]+)"
+        )
+        native_names = override_pattern.findall(result.stderr)
+        domains = [_buffer_domain(name) for name in native_names]
+        host_selected = bool(domains) and all(
+            domain in ("host_cpu", "host_cuda_pinned") for domain in domains
+        )
+        output_gpu = "offloading output layer to GPU" in result.stderr
+        report["mapping_verification"] = {
+            "tensor": cpu_tensor,
+            "native_buffer_names": native_names,
+            "native_buffer_domains": domains,
+            "tensor_host_selected": host_selected,
+            "output_gpu_verified_by_log": output_gpu,
+        }
+        if not (host_selected and output_gpu):
+            report["success"] = False
+            report["error"] = report.get("error") or (
+                "Mapping granulare non confermato dai log nativi."
+            )
+
     # Mantieni le righe diagnostiche significative: i crash di CUDA
     # spesso includono path di build e warning del debugger poco utili.
     lines = [
@@ -280,6 +325,8 @@ def main() -> None:
     parser.add_argument("--gpu-layers", type=int, default=32)
     parser.add_argument("--tokens", type=int, default=128)
     parser.add_argument("--timeout", type=int, default=180)
+    parser.add_argument("--cpu-tensor", default=None,
+                        help="Tensore GGUF da forzare su host RAM (probe sperimentale)")
     parser.add_argument("--worker", action="store_true", help=argparse.SUPPRESS)
     args = parser.parse_args()
 
@@ -289,13 +336,14 @@ def main() -> None:
 
         resource.setrlimit(resource.RLIMIT_CORE, (0, 0))
         try:
-            outcome = _worker(args.gpu_layers, args.tokens)
+            outcome = _worker(args.gpu_layers, args.tokens, args.cpu_tensor)
         except Exception as exc:
             outcome = {"success": False, "error": f"{type(exc).__name__}: {exc}"}
         print(json.dumps(outcome, indent=2, ensure_ascii=False))
     else:
         try:
-            outcome = benchmark(args.gpu_layers, args.tokens, args.timeout)
+            outcome = benchmark(args.gpu_layers, args.tokens, args.timeout,
+                                cpu_tensor=args.cpu_tensor)
         except Exception as exc:
             print(f"Benchmark non avviato: {exc}", file=sys.stderr)
             raise SystemExit(1) from None
