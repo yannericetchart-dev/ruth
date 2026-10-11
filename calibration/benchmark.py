@@ -21,7 +21,8 @@ from model import ModelManager
 
 def _worker(gpu_layers: int, max_tokens: int, cpu_tensor: str | None = None,
             candidate_id: str | None = None, native_memory_audit: bool = False,
-            combination_ids: list[str] | None = None) -> dict:
+            combination_ids: list[str] | None = None,
+            collect_gpu_telemetry: bool = False) -> dict:
     import pynvml as nvml
 
     if gpu_layers < 1 or max_tokens < 64 or max_tokens > 256:
@@ -66,6 +67,7 @@ def _worker(gpu_layers: int, max_tokens: int, cpu_tensor: str | None = None,
         "mapping_candidate_id": candidate_id,
         "mapping_combination_ids": combination_ids,
         "native_memory_audit_requested": native_memory_audit,
+        "gpu_telemetry_requested": collect_gpu_telemetry,
         "measurements": {},
         "success": False,
         "error": None,
@@ -75,6 +77,7 @@ def _worker(gpu_layers: int, max_tokens: int, cpu_tensor: str | None = None,
     stop = threading.Event()
     phase = ["load"]
     samples = {"load": [], "prefill": [], "decode": [], "close": []}
+    gpu_samples = {"load": [], "prefill": [], "decode": [], "close": []}
     sampling_errors = []
     llm = None
     sampler_thread = None
@@ -86,9 +89,15 @@ def _worker(gpu_layers: int, max_tokens: int, cpu_tensor: str | None = None,
             return round(nvml.nvmlDeviceGetMemoryInfo(handle).used / mib, 1)
 
         def sample() -> None:
+            tick = 0
             while not stop.is_set():
                 try:
-                    samples[phase[0]].append(used_mib())
+                    now_phase = phase[0]
+                    samples[now_phase].append(used_mib())
+                    if collect_gpu_telemetry and tick % 4 == 0:
+                        from .gpu_telemetry import gpu_snapshot
+                        gpu_samples[now_phase].append(gpu_snapshot(nvml, handle))
+                    tick += 1
                 except nvml.NVMLError as exc:
                     sampling_errors.append(str(exc))
                     break
@@ -229,6 +238,9 @@ def _worker(gpu_layers: int, max_tokens: int, cpu_tensor: str | None = None,
                 name: len(readings) for name, readings in samples.items()
             }
             mem["vram_sampling_errors"] = sampling_errors
+            if collect_gpu_telemetry:
+                from .gpu_telemetry import summarize_gpu_telemetry
+                report["gpu_telemetry_by_phase"] = summarize_gpu_telemetry(gpu_samples)
     finally:
         nvml.nvmlShutdown()
 
@@ -254,7 +266,8 @@ def _worker(gpu_layers: int, max_tokens: int, cpu_tensor: str | None = None,
 def benchmark(gpu_layers: int, max_tokens: int = 128, timeout: int = 180,
               cpu_tensor: str | None = None, candidate_id: str | None = None,
               native_memory_audit: bool = False,
-              combination_ids: list[str] | None = None) -> dict:
+              combination_ids: list[str] | None = None,
+              collect_gpu_telemetry: bool = False) -> dict:
     """Supervisiona la prova in subprocess; conserva diagnostica sui crash nativi."""
     if gpu_layers < 1 or not 64 <= max_tokens <= 256 or timeout < 1:
         raise ValueError("Richiesti gpu_layers>=1, 64<=tokens<=256 e timeout>0.")
@@ -294,6 +307,8 @@ def benchmark(gpu_layers: int, max_tokens: int = 128, timeout: int = 180,
             command.extend(("--combine", id_))
     if native_memory_audit:
         command.append("--native-memory-audit")
+    if collect_gpu_telemetry:
+        command.append("--gpu-telemetry")
     try:
         result = subprocess.run(command, capture_output=True, text=True, timeout=timeout)
     except subprocess.TimeoutExpired as exc:
@@ -405,6 +420,8 @@ def main() -> None:
                         help="Ripeti per combinare candidati senza override sovrapposti")
     parser.add_argument("--native-memory-audit", action="store_true",
                         help="Include buffer nativi model/KV/compute/output nel report")
+    parser.add_argument("--gpu-telemetry", action="store_true",
+                        help="Campiona temperatura, clock SM e potenza NVML per fase")
     parser.add_argument("--worker", action="store_true", help=argparse.SUPPRESS)
     args = parser.parse_args()
 
@@ -416,7 +433,7 @@ def main() -> None:
         try:
             outcome = _worker(args.gpu_layers, args.tokens, args.cpu_tensor,
                               args.candidate_id, args.native_memory_audit,
-                              args.combine)
+                              args.combine, args.gpu_telemetry)
         except Exception as exc:
             outcome = {"success": False, "error": f"{type(exc).__name__}: {exc}"}
         print(json.dumps(outcome, indent=2, ensure_ascii=False))
@@ -426,7 +443,8 @@ def main() -> None:
                                 cpu_tensor=args.cpu_tensor,
                                 candidate_id=args.candidate_id,
                                 native_memory_audit=args.native_memory_audit,
-                                combination_ids=args.combine)
+                                combination_ids=args.combine,
+                                collect_gpu_telemetry=args.gpu_telemetry)
         except Exception as exc:
             print(f"Benchmark non avviato: {exc}", file=sys.stderr)
             raise SystemExit(1) from None
