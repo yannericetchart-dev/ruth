@@ -24,7 +24,8 @@ def summarize_memory_audit(trials: list[dict], runs: int) -> dict:
             raise ValueError(f"Audit incompleto o non valido: {id_}")
         metrics = (
             "decode_tps", "prefill_tps", "nvml_loaded_mib",
-            "nvml_peak_mib", "native_gpu_model_mib", "load_seconds",
+            "nvml_peak_mib", "native_gpu_model_mib", "native_gpu_compute_mib",
+            "load_seconds",
         )
         if any(
             not isinstance(t.get(key), (int, float)) or t[key] < 0
@@ -42,12 +43,26 @@ def summarize_memory_audit(trials: list[dict], runs: int) -> dict:
             "median_native_gpu_model_buffer_mib": round(
                 statistics.median(t["native_gpu_model_mib"] for t in rows), 2
             ),
+            "median_native_gpu_compute_buffer_mib": round(
+                statistics.median(t["native_gpu_compute_mib"] for t in rows), 2
+            ),
             "median_native_host_model_buffer_mib": round(
                 statistics.median(t["native_host_model_mib"] for t in rows), 2
             ),
         }
 
     baseline, host = groups["baseline"], groups[HOST_ID]
+    model_change = round(
+        host["median_native_gpu_model_buffer_mib"]
+        - baseline["median_native_gpu_model_buffer_mib"], 2
+    )
+    compute_change = round(
+        host["median_native_gpu_compute_buffer_mib"]
+        - baseline["median_native_gpu_compute_buffer_mib"], 2
+    )
+    nvml_peak_change = round(
+        host["max_nvml_peak_mib"] - baseline["max_nvml_peak_mib"], 1
+    )
     return {
         "baseline": baseline,
         "tied_output_on_host": host,
@@ -57,23 +72,29 @@ def summarize_memory_audit(trials: list[dict], runs: int) -> dict:
         "prefill_percent_change": round(
             (host["median_prefill_tps"] / baseline["median_prefill_tps"] - 1) * 100, 2
         ) if baseline["median_prefill_tps"] else None,
-        "nvml_peak_change_mib": round(
-            host["max_nvml_peak_mib"] - baseline["max_nvml_peak_mib"], 1
+        "nvml_peak_change_mib": nvml_peak_change,
+        "native_gpu_compute_buffer_change_mib": compute_change,
+        "native_gpu_model_plus_compute_change_mib": round(
+            model_change + compute_change, 2
         ),
+        "model_weight_savings_compensated_in_compute_buffer": (
+            model_change < 0 and compute_change > 0
+            and round(model_change + compute_change, 2) == 0
+        ),
+        "nvml_peak_savings_observed": nvml_peak_change < 0,
         "nvml_after_load_change_mib": round(
             host["median_nvml_after_load_mib"] - baseline["median_nvml_after_load_mib"], 1
         ),
-        "native_gpu_model_buffer_change_mib": round(
-            host["median_native_gpu_model_buffer_mib"]
-            - baseline["median_native_gpu_model_buffer_mib"], 2
-        ),
+        "native_gpu_model_buffer_change_mib": model_change,
         "native_host_model_buffer_change_mib": round(
             host["median_native_host_model_buffer_mib"]
             - baseline["median_native_host_model_buffer_mib"], 2
         ),
         "interpretation": (
-            "Una riduzione del modello CUDA riportata nei log non dimostra "
-            "una riduzione equivalente della VRAM NVML. Valutare entrambi."
+            "Confronto model e compute CUDA: uno spostamento di pesi puo' "
+            "aumentare di pari entita' il buffer di calcolo. "
+            "La VRAM effettiva resta definita dai dati NVML, "
+            "non dalla differenza del solo buffer model."
         ),
     }
 
@@ -137,6 +158,10 @@ def compare(runs: int = 2, gpu_layers: int = 32, tokens: int = 128,
                 "nvml_peak_mib": mem.get("vram_peak_sampled_mib"),
                 "nvml_peak_by_phase_mib": mem.get("vram_peak_by_phase_mib"),
                 "native_gpu_model_mib": native.get("gpu_model_buffer_mib"),
+                "native_gpu_compute_mib": (
+                    (native.get("totals_mib_by_category_and_domain") or {})
+                    .get("compute", {}).get("gpu_vram")
+                ),
                 "native_host_model_mib": native.get("host_model_buffer_mib"),
                 "native_buffer_record_count": native.get("record_count"),
                 "native_buffers_by_category_domain": native.get(
