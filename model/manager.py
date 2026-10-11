@@ -1,0 +1,58 @@
+from pathlib import Path
+
+
+class ModelManager:
+    """Catalogo e download locale dei modelli di Ruth."""
+
+    CATALOG = {
+        "gemma-2-9b-it": {
+            "source": "bartowski",
+            "repository": "bartowski/gemma-2-9b-it-GGUF",
+            "filename": "gemma-2-9b-it-Q4_K_M.gguf",
+            "format": "gguf",
+            "quantization": "Q4_K_M",
+        }
+    }
+
+    def __init__(self, root: str | Path | None = None):
+        self.root = (
+            Path(root).expanduser().resolve()
+            if root is not None
+            else Path(__file__).resolve().parents[1] / "models"
+        )
+
+    def list(self) -> list[dict]:
+        """Modelli disponibili nel catalogo, con stato locale."""
+        return [
+            {"id": model_id, **spec, "installed": self.get(model_id) is not None}
+            for model_id, spec in self.CATALOG.items()
+        ]
+
+    def get(self, model_id: str = "gemma-2-9b-it") -> Path | None:
+        """Percorso del GGUF, oppure None se non è installato."""
+        spec = self._spec(model_id)
+        path = self.root / model_id / spec["filename"]
+        return path if path.is_file() else None
+
+    def download(self, model_id: str = "gemma-2-9b-it") -> Path:
+        """Scarica il GGUF selezionato, soltanto se manca."""
+        spec = self._spec(model_id)
+        installed = self.get(model_id)
+        if installed is not None:
+            return installed
+
+        from huggingface_hub import hf_hub_download
+
+        return Path(
+            hf_hub_download(
+                repo_id=spec["repository"],
+                filename=spec["filename"],
+                local_dir=self.root / model_id,
+            )
+        )
+
+    def _spec(self, model_id: str) -> dict:
+        try:
+            return self.CATALOG[model_id]
+        except KeyError:
+            raise ValueError(f"Modello sconosciuto: {model_id}") from None
