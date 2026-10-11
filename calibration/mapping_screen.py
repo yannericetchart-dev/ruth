@@ -35,12 +35,18 @@ def choose_exploration_cohort(proposals: dict, candidate_count: int = 6) -> list
     # repeating-block tensors. Output/embedding are a distinct high-impact
     # calibration phase and require an explicit native placement probe.
     pilot_families = {"attention", "feed_forward", "normalization", "other_block"}
+    eligible_families = set()
     for c in items:
-        if (c["family"] in pilot_families
-            and c["direction"] == "gpu_to_host"
-            and c["kind"] == "single_tensor"):
+        if c["family"] not in pilot_families or c["kind"] != "single_tensor":
+            continue
+        if c["direction"] == "gpu_to_host":
             family_bytes[c["family"]] += c["gguf_bytes_to_host"]
-    families = sorted(family_bytes, key=lambda f: (-family_bytes[f], f))
+            eligible_families.add(c["family"])
+        elif c["direction"] == "host_to_gpu":
+            # If no repeating blocks are offloaded, promotions must
+            # still be discoverable even though there are no evictions.
+            eligible_families.add(c["family"])
+    families = sorted(eligible_families, key=lambda f: (-family_bytes[f], f))
     chosen = [baseline]
     used = {baseline["id"]}
     for family in families:

@@ -49,6 +49,22 @@ class MappingScreenTests(unittest.TestCase):
         self.assertTrue(all(c["direction"] in ("unchanged", "host_to_gpu")
                             for c in chosen))
 
+    def test_output_only_discovers_promotions_with_no_gpu_evictions(self):
+        proposals = propose_mapping_candidates(self.fixture(), 1)
+        cohort = choose_exploration_cohort(proposals, 6)
+        self.assertGreater(len(cohort), 1)
+        self.assertTrue(all(
+            c["kind"] != "tied_input_output" and
+            c["direction"] in ("unchanged", "host_to_gpu")
+            for c in cohort
+        ))
+        self.assertTrue(any(
+            c["family"] == "attention" for c in cohort[1:]
+        ))
+        self.assertTrue(any(
+            c["family"] == "feed_forward" for c in cohort[1:]
+        ))
+
     def test_reject_empty_budget(self):
         proposals = propose_mapping_candidates(self.fixture(), 3)
         with self.assertRaises(ValueError):
