@@ -20,7 +20,7 @@ from model import ModelManager
 
 
 def _worker(gpu_layers: int, max_tokens: int, cpu_tensor: str | None = None,
-            candidate_id: str | None = None) -> dict:
+            candidate_id: str | None = None, native_memory_audit: bool = False) -> dict:
     import pynvml as nvml
 
     if gpu_layers < 1 or max_tokens < 64 or max_tokens > 256:
@@ -63,6 +63,7 @@ def _worker(gpu_layers: int, max_tokens: int, cpu_tensor: str | None = None,
         "max_generated_tokens": max_tokens,
         "cpu_tensor_override": cpu_tensor,
         "mapping_candidate_id": candidate_id,
+        "native_memory_audit_requested": native_memory_audit,
         "measurements": {},
         "success": False,
         "error": None,
@@ -102,7 +103,8 @@ def _worker(gpu_layers: int, max_tokens: int, cpu_tensor: str | None = None,
                 llm = Llama(
                     model_path=str(model), n_gpu_layers=gpu_layers,
                     n_ctx=n_ctx, n_batch=128, n_ubatch=128,
-                    offload_kqv=True, flash_attn=False, verbose=False,
+                    offload_kqv=True, flash_attn=False,
+                    verbose=native_memory_audit,
                 )
             else:
                 from inference.adapters.llama_cpp_python import LlamaCppPythonMappingAdapter
@@ -244,7 +246,8 @@ def _worker(gpu_layers: int, max_tokens: int, cpu_tensor: str | None = None,
 
 
 def benchmark(gpu_layers: int, max_tokens: int = 128, timeout: int = 180,
-              cpu_tensor: str | None = None, candidate_id: str | None = None) -> dict:
+              cpu_tensor: str | None = None, candidate_id: str | None = None,
+              native_memory_audit: bool = False) -> dict:
     """Supervisiona la prova in subprocess; conserva diagnostica sui crash nativi."""
     if gpu_layers < 1 or not 64 <= max_tokens <= 256 or timeout < 1:
         raise ValueError("Richiesti gpu_layers>=1, 64<=tokens<=256 e timeout>0.")
@@ -275,6 +278,8 @@ def benchmark(gpu_layers: int, max_tokens: int = 128, timeout: int = 180,
         command.extend(("--cpu-tensor", cpu_tensor))
     if candidate_id is not None:
         command.extend(("--candidate-id", candidate_id))
+    if native_memory_audit:
+        command.append("--native-memory-audit")
     try:
         result = subprocess.run(command, capture_output=True, text=True, timeout=timeout)
     except subprocess.TimeoutExpired as exc:
@@ -317,6 +322,12 @@ def benchmark(gpu_layers: int, max_tokens: int = 128, timeout: int = 180,
             report["error"] = report.get("error") or (
                 "Il mapping granulare non corrisponde ai log nativi."
             )
+
+    if native_memory_audit:
+        from .native_memory import parse_native_memory
+
+        report["native_memory_breakdown"] = parse_native_memory(result.stderr)
+        report["native_memory_breakdown"]["logs_enabled_for_baseline"] = True
 
     if cpu_tensor is not None:
         from .granular_probe import _buffer_domain
@@ -376,6 +387,8 @@ def main() -> None:
                         help="Tensore GGUF da forzare su host RAM (probe sperimentale)")
     parser.add_argument("--candidate-id", default=None,
                         help="ID candidato del generatore GGUF (diagnostico)")
+    parser.add_argument("--native-memory-audit", action="store_true",
+                        help="Include buffer nativi model/KV/compute/output nel report")
     parser.add_argument("--worker", action="store_true", help=argparse.SUPPRESS)
     args = parser.parse_args()
 
@@ -386,7 +399,7 @@ def main() -> None:
         resource.setrlimit(resource.RLIMIT_CORE, (0, 0))
         try:
             outcome = _worker(args.gpu_layers, args.tokens, args.cpu_tensor,
-                              args.candidate_id)
+                              args.candidate_id, args.native_memory_audit)
         except Exception as exc:
             outcome = {"success": False, "error": f"{type(exc).__name__}: {exc}"}
         print(json.dumps(outcome, indent=2, ensure_ascii=False))
@@ -394,7 +407,8 @@ def main() -> None:
         try:
             outcome = benchmark(args.gpu_layers, args.tokens, args.timeout,
                                 cpu_tensor=args.cpu_tensor,
-                                candidate_id=args.candidate_id)
+                                candidate_id=args.candidate_id,
+                                native_memory_audit=args.native_memory_audit)
         except Exception as exc:
             print(f"Benchmark non avviato: {exc}", file=sys.stderr)
             raise SystemExit(1) from None
