@@ -103,4 +103,8 @@ def main() -> None:
 
 
 if __name__ == "__main__":
+    # Un SIGABRT di CUDA non deve generare un file core di molti GB.
+    import resource
+
+    resource.setrlimit(resource.RLIMIT_CORE, (0, 0))
     main()

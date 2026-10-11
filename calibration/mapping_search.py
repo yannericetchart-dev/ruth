@@ -45,6 +45,15 @@ def _run_trial(layers: int, timeout_seconds: int) -> dict:
         "status": "unknown_failure",
         "returncode": child.returncode,
     }
+    if child.returncode < 0:
+        import signal
+
+        result["status"] = "native_crash"
+        try:
+            result["native_signal"] = signal.Signals(-child.returncode).name
+        except ValueError:
+            result["native_signal"] = str(-child.returncode)
+
     if report is not None:
         measurement = report.get("measurement") or {}
         details = measurement.get("measurements") or {}
