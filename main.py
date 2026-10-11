@@ -1,3 +1,5 @@
+import os
+
 from chat import ChatManager
 from hardware import GPUManager
 from inference import InferenceManager
@@ -21,10 +23,18 @@ def main() -> None:
         print('Scaricalo con: .venv/bin/python -c "from model import ModelManager; print(ModelManager().download())"')
         return
 
-    inference = InferenceManager(engine="llama.cpp", backend="auto", n_ctx=4096, n_gpu_layers=-1)
+    # 6 GB di VRAM non bastano per tutti i layer di Gemma 2 9B più la KV cache.
+    # L'offload resta CUDA; i layer rimanenti lavorano in RAM/CPU.
+    gpu_layers = int(os.environ.get("RUTH_GPU_LAYERS", "20"))
+    inference = InferenceManager(
+        engine="llama.cpp",
+        backend="auto",
+        n_ctx=4096,
+        n_gpu_layers=gpu_layers,
+    )
 
     try:
-        print(f"Caricamento modello: {model_path.name}")
+        print(f"Caricamento modello: {model_path.name} (layer GPU richiesti: {gpu_layers})")
         inference.load(model_path)
         print(f"Inferenza: {inference.engine} / {inference.active_backend}")
         chat = ChatManager(inference)
