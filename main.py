@@ -1,26 +1,35 @@
 from chat import ChatManager
+from hardware import GPUManager
 from inference import InferenceManager
 from model import ModelManager
 
 
 def main() -> None:
+    gpu = GPUManager.select("nvidia")
+    if gpu is None:
+        print("Ruth richiede una GPU NVIDIA con driver funzionante e VRAM dedicata.")
+        print("Controlla nvidia-smi. Altri produttori saranno supportati in futuro.")
+        return
+
+    print(f"GPU: {gpu['name']}")
+    print(f"VRAM: {gpu['vram_total_mb']} MiB (liberi: {gpu['vram_free_mb']} MiB)")
+
     models = ModelManager()
     model_path = models.get()
-
     if model_path is None:
         print("Modello Gemma 2 9B IT non installato.")
         print('Scaricalo con: .venv/bin/python -c "from model import ModelManager; print(ModelManager().download())"')
         return
 
-    inference = InferenceManager(n_ctx=4096, n_gpu_layers=0)
+    inference = InferenceManager(engine="llama.cpp", backend="auto", n_ctx=4096, n_gpu_layers=-1)
 
     try:
         print(f"Caricamento modello: {model_path.name}")
         inference.load(model_path)
+        print(f"Inferenza: {inference.engine} / {inference.active_backend}")
         chat = ChatManager(inference)
 
         print("Ruth avviata. Comandi: /clear, /exit")
-
         while True:
             try:
                 message = input("\nTu: ").strip()
@@ -48,7 +57,6 @@ def main() -> None:
                 break
             except Exception as exc:
                 print(f"\nErrore di generazione: {exc}")
-
     finally:
         inference.close()
 

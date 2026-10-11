@@ -1,20 +1,77 @@
+import os
 from pathlib import Path
 from typing import Iterator
 
+from hardware import GPUManager
+
 
 class InferenceManager:
-    """Inferenza GGUF in-process tramite llama-cpp-python."""
+    """Inferenza in-process. Al momento: llama.cpp con backend NVIDIA CUDA."""
 
-    def __init__(self, n_ctx: int = 8192, n_gpu_layers: int = 0):
+    ENGINE_BACKENDS = {"llama.cpp": {"nvidia": "cuda"}}
+
+    def __init__(
+        self,
+        engine: str = "llama.cpp",
+        backend: str = "auto",
+        n_ctx: int = 4096,
+        n_gpu_layers: int = -1,
+    ):
+        if engine not in self.ENGINE_BACKENDS:
+            raise ValueError(f"Motore di inferenza non supportato: {engine}")
+        if backend != "auto" and backend not in self.ENGINE_BACKENDS[engine].values():
+            raise ValueError(f"Backend {backend!r} non supportato da {engine}")
+        if n_gpu_layers == 0 or n_gpu_layers < -1:
+            raise ValueError("Per CUDA, n_gpu_layers deve essere -1 o maggiore di zero.")
+
+        self.engine = engine
+        self.backend = backend
         self.n_ctx = n_ctx
         self.n_gpu_layers = n_gpu_layers
+        self.gpu = None
+        self.active_backend = None
         self._llm = None
 
+    def available_backends(self) -> list[str]:
+        """Backend utilizzabili sia dall'hardware sia dal binding Python installato."""
+        candidates = self.ENGINE_BACKENDS[self.engine]
+        if not GPUManager.select("nvidia") or "nvidia" not in candidates:
+            return []
+        try:
+            from llama_cpp.llama_cpp import llama_supports_gpu_offload
+            if llama_supports_gpu_offload():
+                return [candidates["nvidia"]]
+        except (ImportError, OSError, AttributeError):
+            pass
+        return []
+
     def load(self, model_path: str | Path) -> None:
-        """Carica un GGUF locale in memoria."""
+        """Carica il modello sulla GPU NVIDIA selezionata."""
         path = Path(model_path).expanduser().resolve()
         if not path.is_file():
             raise FileNotFoundError(f"Modello non trovato: {path}")
+
+        gpu = GPUManager.select("nvidia")
+        if gpu is None:
+            detected = [item["vendor"] for item in GPUManager.detect()]
+            raise RuntimeError(
+                f"GPU NVIDIA con VRAM accessibile non trovata (rilevate: {detected}). "
+                "Verifica nvidia-smi e il driver NVIDIA."
+            )
+
+        selected = self.ENGINE_BACKENDS[self.engine]["nvidia"]
+        if self.backend not in ("auto", selected):
+            raise RuntimeError(f"Backend {self.backend} non disponibile per {self.engine}.")
+
+        # La variabile deve essere impostata prima del caricamento del runtime CUDA.
+        # Una configurazione esplicita dell'utente ha priorità.
+        os.environ.setdefault("CUDA_VISIBLE_DEVICES", gpu["uuid"])
+
+        if selected not in self.available_backends():
+            raise RuntimeError(
+                "Il binding llama-cpp-python nel venv non supporta l'offload GPU. "
+                "Esegui ./setup_env.sh per compilare/abilitare CUDA."
+            )
 
         from llama_cpp import Llama
 
@@ -25,6 +82,8 @@ class InferenceManager:
             n_gpu_layers=self.n_gpu_layers,
             verbose=False,
         )
+        self.gpu = gpu
+        self.active_backend = selected
 
     def generate(
         self,
@@ -33,7 +92,6 @@ class InferenceManager:
         max_tokens: int = 512,
         temperature: float = 0.7,
     ) -> str:
-        """Restituisce la risposta completa come stringa."""
         result = self._model().create_chat_completion(
             messages=messages,
             max_tokens=max_tokens,
@@ -49,7 +107,6 @@ class InferenceManager:
         max_tokens: int = 512,
         temperature: float = 0.7,
     ) -> Iterator[str]:
-        """Produce frammenti di testo man mano che vengono generati."""
         chunks = self._model().create_chat_completion(
             messages=messages,
             max_tokens=max_tokens,
@@ -62,11 +119,12 @@ class InferenceManager:
                 yield content
 
     def close(self) -> None:
-        """Libera le risorse native del modello caricato."""
         if self._llm is not None:
             llm = self._llm
             self._llm = None
             llm.close()
+        self.gpu = None
+        self.active_backend = None
 
     def _model(self):
         if self._llm is None:
