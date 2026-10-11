@@ -20,13 +20,14 @@ from model import ModelManager
 
 
 def _worker(gpu_layers: int, max_tokens: int, cpu_tensor: str | None = None,
-            candidate_id: str | None = None, native_memory_audit: bool = False) -> dict:
+            candidate_id: str | None = None, native_memory_audit: bool = False,
+            combination_ids: list[str] | None = None) -> dict:
     import pynvml as nvml
 
     if gpu_layers < 1 or max_tokens < 64 or max_tokens > 256:
         raise ValueError("Richiesti almeno 1 blocco GPU e 64-256 token di generazione.")
-    if cpu_tensor is not None and candidate_id is not None:
-        raise ValueError("Usa cpu_tensor oppure candidate_id, non entrambi.")
+    if sum(x is not None for x in (cpu_tensor, candidate_id, combination_ids)) > 1:
+        raise ValueError("Usa una sola modalita': cpu_tensor, candidate_id o combination_ids.")
 
     status = GPUManager.calibration_status()
     if not status["ready"]:
@@ -63,6 +64,7 @@ def _worker(gpu_layers: int, max_tokens: int, cpu_tensor: str | None = None,
         "max_generated_tokens": max_tokens,
         "cpu_tensor_override": cpu_tensor,
         "mapping_candidate_id": candidate_id,
+        "mapping_combination_ids": combination_ids,
         "native_memory_audit_requested": native_memory_audit,
         "measurements": {},
         "success": False,
@@ -99,7 +101,7 @@ def _worker(gpu_layers: int, max_tokens: int, cpu_tensor: str | None = None,
 
         try:
             start = time.perf_counter()
-            if cpu_tensor is None and candidate_id is None:
+            if cpu_tensor is None and candidate_id is None and combination_ids is None:
                 llm = Llama(
                     model_path=str(model), n_gpu_layers=gpu_layers,
                     n_ctx=n_ctx, n_batch=128, n_ubatch=128,
@@ -109,17 +111,21 @@ def _worker(gpu_layers: int, max_tokens: int, cpu_tensor: str | None = None,
             else:
                 from inference.adapters.llama_cpp_python import LlamaCppPythonMappingAdapter
 
-                if candidate_id is not None:
+                if candidate_id is not None or combination_ids is not None:
                     from .mapping_candidates import propose_mapping_candidates
+                    from .mapping_composition import compose_candidates
 
                     layout = ModelManager().inspect("gemma-2-9b-it", n_ctx=n_ctx)
                     proposals = propose_mapping_candidates(layout, gpu_layers)
-                    candidate = next(
-                        (item for item in proposals["candidates"]
-                         if item["id"] == candidate_id), None
-                    )
+                    if combination_ids is not None:
+                        candidate = compose_candidates(proposals, combination_ids)
+                    else:
+                        candidate = next(
+                            (item for item in proposals["candidates"]
+                             if item["id"] == candidate_id), None
+                        )
                     if candidate is None or not candidate["rules"]:
-                        raise ValueError(f"Candidato mapping non valido: {candidate_id}")
+                        raise ValueError("Candidato mapping non valido.")
                     requested_rules = candidate["rules"]
                 else:
                     requested_rules = [{
@@ -247,24 +253,29 @@ def _worker(gpu_layers: int, max_tokens: int, cpu_tensor: str | None = None,
 
 def benchmark(gpu_layers: int, max_tokens: int = 128, timeout: int = 180,
               cpu_tensor: str | None = None, candidate_id: str | None = None,
-              native_memory_audit: bool = False) -> dict:
+              native_memory_audit: bool = False,
+              combination_ids: list[str] | None = None) -> dict:
     """Supervisiona la prova in subprocess; conserva diagnostica sui crash nativi."""
     if gpu_layers < 1 or not 64 <= max_tokens <= 256 or timeout < 1:
         raise ValueError("Richiesti gpu_layers>=1, 64<=tokens<=256 e timeout>0.")
-    if cpu_tensor is not None and candidate_id is not None:
-        raise ValueError("Non combinare cpu_tensor con candidate_id.")
+    if sum(x is not None for x in (cpu_tensor, candidate_id, combination_ids)) > 1:
+        raise ValueError("Non combinare cpu_tensor, candidate_id e combination_ids.")
 
     candidate = None
-    if candidate_id is not None:
+    if candidate_id is not None or combination_ids is not None:
         from .mapping_candidates import propose_mapping_candidates
+        from .mapping_composition import compose_candidates
 
         proposals = propose_mapping_candidates(
             ModelManager().inspect("gemma-2-9b-it", n_ctx=512), gpu_layers
         )
-        candidate = next(
-            (item for item in proposals["candidates"]
-             if item["id"] == candidate_id), None
-        )
+        if combination_ids is not None:
+            candidate = compose_candidates(proposals, combination_ids)
+        else:
+            candidate = next(
+                (item for item in proposals["candidates"]
+                 if item["id"] == candidate_id), None
+            )
         if candidate is None or not candidate["rules"]:
             raise ValueError(f"Candidato mapping sconosciuto: {candidate_id}")
 
@@ -278,6 +289,9 @@ def benchmark(gpu_layers: int, max_tokens: int = 128, timeout: int = 180,
         command.extend(("--cpu-tensor", cpu_tensor))
     if candidate_id is not None:
         command.extend(("--candidate-id", candidate_id))
+    if combination_ids is not None:
+        for id_ in combination_ids:
+            command.extend(("--combine", id_))
     if native_memory_audit:
         command.append("--native-memory-audit")
     try:
@@ -387,6 +401,8 @@ def main() -> None:
                         help="Tensore GGUF da forzare su host RAM (probe sperimentale)")
     parser.add_argument("--candidate-id", default=None,
                         help="ID candidato del generatore GGUF (diagnostico)")
+    parser.add_argument("--combine", action="append", default=None,
+                        help="Ripeti per combinare candidati senza override sovrapposti")
     parser.add_argument("--native-memory-audit", action="store_true",
                         help="Include buffer nativi model/KV/compute/output nel report")
     parser.add_argument("--worker", action="store_true", help=argparse.SUPPRESS)
@@ -399,7 +415,8 @@ def main() -> None:
         resource.setrlimit(resource.RLIMIT_CORE, (0, 0))
         try:
             outcome = _worker(args.gpu_layers, args.tokens, args.cpu_tensor,
-                              args.candidate_id, args.native_memory_audit)
+                              args.candidate_id, args.native_memory_audit,
+                              args.combine)
         except Exception as exc:
             outcome = {"success": False, "error": f"{type(exc).__name__}: {exc}"}
         print(json.dumps(outcome, indent=2, ensure_ascii=False))
@@ -408,7 +425,8 @@ def main() -> None:
             outcome = benchmark(args.gpu_layers, args.tokens, args.timeout,
                                 cpu_tensor=args.cpu_tensor,
                                 candidate_id=args.candidate_id,
-                                native_memory_audit=args.native_memory_audit)
+                                native_memory_audit=args.native_memory_audit,
+                                combination_ids=args.combine)
         except Exception as exc:
             print(f"Benchmark non avviato: {exc}", file=sys.stderr)
             raise SystemExit(1) from None
