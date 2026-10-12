@@ -51,7 +51,7 @@ class ModelManager:
                 "repository": "google/gemma-2",
                 "kaggle_handle": "google/gemma-2/gguf/2.0-9b-it",
                 "access_requires_consent": True,
-                "access_page": "https://www.kaggle.com/models/google/gemma-2",
+                "access_page": "https://www.kaggle.com/models/google/gemma-2/license/consent",
             },
         },
         "qwen-2.5-7b-instruct": {
