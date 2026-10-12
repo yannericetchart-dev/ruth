@@ -341,7 +341,7 @@ def choose_baseline(
         if kaggle_handle:
             raise ValueError("--kaggle-handle non valido per fonte Hugging Face.")
         models = inventory(repo_id)
-    remaining_kaggle_budget = (
+    per_candidate_kaggle_budget = (
         kaggle_max_download_mib * 1048576
         if kaggle_max_download_mib is not None else None
     )
@@ -394,6 +394,19 @@ def choose_baseline(
             "selezione della baseline."
         )
         return report
+
+    architecture_reference = None
+    if spec["source"] == "kaggle" and spec.get("architecture_reference_repo"):
+        from .kaggle_architecture_bound import read_architecture_reference
+        try:
+            architecture_reference = read_architecture_reference(spec)
+        except Exception as exc:
+            report["error"] = (
+                "Impossibile verificare il config.json di riferimento "
+                f"dell'architettura Kaggle: {type(exc).__name__}: {exc}. "
+                "Nessun download GGUF avviato."
+            )
+            return report
 
     for candidate in models:
         record = {
@@ -461,7 +474,8 @@ def choose_baseline(
         if not local_ready and exact is None and spec["source"] == "kaggle":
             from .kaggle_architecture_bound import conservative_kaggle_weight_floor
             theoretical = conservative_kaggle_weight_floor(
-                model_id, candidate, vram_bytes
+                model_id, candidate, vram_bytes,
+                reference=architecture_reference,
             )
             if theoretical is not None:
                 record["architecture_weight_floor"] = theoretical
@@ -489,7 +503,7 @@ def choose_baseline(
                 from .kaggle_transfer_guard import assess_kaggle_transfer
                 approval = assess_kaggle_transfer(
                     candidate, model_dir,
-                    remaining_budget_bytes=remaining_kaggle_budget,
+                    candidate_budget_bytes=per_candidate_kaggle_budget,
                     min_free_mib=kaggle_min_free_mib,
                 )
                 record["kaggle_transfer_preflight"] = approval
@@ -509,12 +523,8 @@ def choose_baseline(
                             "status": record["status"], "error": record["error"],
                         })
                     return report
-                # Conservative *cumulative* catalogue budget: all missing
-                # shards approved this run consume the allowance. A retry
-                # reuses already-local complete shards without spending it.
-                remaining_kaggle_budget = approval[
-                    "remaining_budget_after_bytes"
-                ]
+                # Budget is per candidate (ALL missing shards of its
+                # quantization), never deducted from the next quantization.
             if progress is not None:
                 progress({"event": "candidate_download", "model": model_id,
                           "quantization": candidate["quantization"],
