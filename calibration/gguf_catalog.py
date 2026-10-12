@@ -120,6 +120,8 @@ def gguf_payload_bytes(stream, file_bytes: int, *, include_tensors: bool = False
         if n > file_bytes:
             raise ValueError("Stringa GGUF troppo lunga.")
         if want:
+            if n > 65536:
+                raise ValueError("Nome/valore GGUF troppo lungo per inventario remoto.")
             return read(n).decode("utf-8")
         skip(n)
 
@@ -218,6 +220,11 @@ def gguf_payload_bytes(stream, file_bytes: int, *, include_tensors: bool = False
         "precheck_kind": "quantization_and_shape_exact_serialized_weights",
     }
     if include_tensors:
+        if any(
+            item["offset"] + item["bytes"] > file_bytes - data_offset
+            for item in catalog
+        ):
+            raise ValueError("Header GGUF: payload tensore oltre fine file.")
         if len(catalog) != len({item["name"] for item in catalog}):
             raise ValueError("Catalogo remoto GGUF: tensori duplicati.")
         if not metadata.get("general.architecture"):
