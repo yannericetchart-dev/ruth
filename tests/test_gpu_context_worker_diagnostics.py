@@ -67,6 +67,41 @@ class ContextWorkerDiagnosticsTests(unittest.TestCase):
                 self.assertEqual(report["failure_class"], "worker_protocol_error")
                 self.assertIn("malformato/non oggetto", report["error"])
 
+    def test_cublas_abort_has_native_boundary_not_json_protocol_cause(self):
+        layout = {"tensors": [], "metadata": {"general.architecture": "qwen2"}}
+        placement = {
+            "verified": True, "tensor_count": 339,
+            "unverified_names": [],
+            "native_override": {"native_logged_occurrence_count": 339},
+        }
+        stderr = (
+            "llama_kv_cache: CUDA0 KV buffer size = 140.00 MiB\n"
+            "CUDA error: the resource allocation failed\n"
+            "current device: 0, in function cublas_handle\n"
+            "cublasCreate_v2(&cublas_handles[device][curr_stream_no])\n"
+        )
+        with (
+            patch("calibration.gpu_context.inspect_gguf",
+                  return_value=layout),
+            patch("calibration.gpu_context.subprocess.run",
+                  return_value=subprocess.CompletedProcess(
+                      [], -6, "", stderr
+                  )),
+            patch("calibration.gpu_context.parse_native_memory",
+                  return_value={"native_buffer_records": []}),
+            patch("calibration.gpu_context.native_confirmation",
+                  return_value=placement),
+        ):
+            report = probe_context(Path("/test/model.gguf"), 2560)
+        self.assertFalse(report["success"])
+        self.assertEqual(report["worker_signal"], "SIGABRT")
+        self.assertIs(report["worker_json_valid"], False)
+        self.assertEqual(
+            report["failure_class"], "native_cuda_resource_allocation_failure"
+        )
+        self.assertFalse(report["suspected_cuda_oom"])
+        self.assertTrue(report["native_cuda_resource_allocation_failed"])
+
     @staticmethod
     def gpu():
         return {
@@ -148,6 +183,32 @@ class ContextWorkerDiagnosticsTests(unittest.TestCase):
         self.assertEqual(len([
             e for e in events if e.get("event") == "context_worker_retry"
         ]), 1)
+
+    def test_resource_failure_is_a_boundary_without_protocol_retry(self):
+        calls = []
+
+        def fake_probe(path, ctx, **kwargs):
+            calls.append(ctx)
+            if ctx == 129:
+                return {
+                    "success": False,
+                    "failure_class": "native_cuda_resource_allocation_failure",
+                    "worker_returncode": -6,
+                    "worker_signal": "SIGABRT",
+                    "error": "CUDA resource allocation failed at cuBLAS",
+                }
+            return self.success(ctx)
+
+        result, events = self.run_fake_search(fake_probe)
+        self.assertEqual(calls, [64, 128, 129, 128, 128])
+        self.assertEqual(result["cuda_resource_failure_boundaries"], [129])
+        self.assertEqual(result["confirmed_max_gpu_resident_n_ctx"], 128)
+        self.assertEqual(result["highest_gpu_resident_n_ctx_observed"], 128)
+        self.assertEqual(len(result["confirmation"]), 2)
+        self.assertTrue(result["success"])
+        self.assertFalse(any(
+            e["event"] == "context_worker_retry" for e in events
+        ))
 
     def test_two_protocol_failures_stop_without_inventing_maximum(self):
         calls = []
