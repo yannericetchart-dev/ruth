@@ -92,7 +92,7 @@ def assess_kaggle_transfer(
             "missing_shards": len(missing),
             "reason": (
                 f"Download catalogo ~{estimate_mib} MiB oltre il budget "
-                f"residuo {round(candidate_budget_bytes / MIB, 2)} MiB. "
+                f"per candidato {round(candidate_budget_bytes / MIB, 2)} MiB. "
                 "La candidata resta non verificata; nessun salto di qualita'."
             ),
         }
