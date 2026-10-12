@@ -460,9 +460,9 @@ def search_gpu_context(
         if progress is not None:
             progress({"event": "context_probe_start", "n_ctx": ctx,
                       "model": model_id, "token_count": tokens})
-        # A truncated/absent JSON frame may be a transient process failure.
-        # Retry only this protocol failure, once, in a fresh worker.
-        # Do NOT reinterpret a persistent failure as a CUDA OOM boundary.
+        # A SIGABRT is sufficient to reject THIS n_ctx immediately.
+        # Only a malformed non-SIGABRT worker frame is retried once.
+        # A generic SIGABRT must never be mislabeled native CUDA OOM.
         for attempt in range(2):
             candidate = probe_context(
                 model, ctx, generated_tokens=tokens, batch=min(batch, ctx),
@@ -491,6 +491,7 @@ def search_gpu_context(
                                   "verified_gpu_resident")})
             if (
                 candidate.get("failure_class") == "worker_protocol_error"
+                and candidate.get("worker_signal") != "SIGABRT"
                 and attempt == 0
             ):
                 if progress is not None:
@@ -514,16 +515,22 @@ def search_gpu_context(
                     failure.get("requested_n_ctx")
                 )
             return True
-        if cause == "worker_protocol_error" and failure.get("worker_signal") == "SIGABRT":
-            # The crash is reproducible at this particular context, but its
-            # cause is NOT known. Narrow towards proven working contexts and
-            # keep a permanent uncertainty marker. No OOM extrapolation.
+        if failure.get("worker_signal") == "SIGABRT":
+            # ONE SIGABRT is enough to reject this n_ctx and continue the
+            # downward search. Without explicit native allocation evidence,
+            # it remains an uncertain upper boundary, not a proven CUDA OOM.
             result["uncertain_failure_boundaries"].append({
                 "n_ctx": failure.get("requested_n_ctx"),
                 "failure_class": cause,
                 "signal": "SIGABRT",
-                "reason": "no native resource/OOM evidence",
+                "reason": "one native abort without classified CUDA allocation cause",
             })
+            if progress is not None:
+                progress({
+                    "event": "context_sigabrt_boundary",
+                    "n_ctx": failure.get("requested_n_ctx"),
+                    "failure_class": cause,
+                })
             return True
         if cause == "ambiguous_context_initialization" and retry_ambiguous_context:
             result["ambiguous_boundary_used"] = True
