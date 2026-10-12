@@ -138,7 +138,10 @@ def _matrix_from_layout(
             "percent_of_model_weights": round(100 * byte_count / total, 4),
             "groups": groups,
             "tensors": [record(t) for t in entries],
-            "current_baseline_location": "gpu_verified",
+            "current_baseline_location": (
+                "gpu_verified" if baseline_verified
+                else "remote_header_only_not_verified"
+            ),
             "future_cpu_placement_evaluated": False,
         })
 
