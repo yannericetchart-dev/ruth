@@ -11,7 +11,9 @@ import shutil
 from hardware import GPUManager
 from model import ModelManager
 from .kaggle_source import inventory_kaggle
-from .kaggle_architecture_bound import conservative_kaggle_weight_floor
+from .kaggle_architecture_bound import (
+    conservative_kaggle_weight_floor, read_architecture_reference,
+)
 from .profile_pipeline import atomic_json
 
 
@@ -28,6 +30,7 @@ def inspect_transfer_plan(model_id: str = "qwen-2.5-7b-instruct",
     models = inventory_kaggle(
         spec["repository"], spec["gguf_prefix"], selected_handle=handle
     )
+    reference = read_architecture_reference(spec)
     manager = ModelManager()
     dest = disk_path or manager.model_directory(
         model_id, "kaggle", spec["repository"]
@@ -44,7 +47,7 @@ def inspect_transfer_plan(model_id: str = "qwen-2.5-7b-instruct",
         bytes_reported = candidate.get("reported_download_bytes")
         all_complete = candidate.get("split_complete") is not False
         floor = conservative_kaggle_weight_floor(
-            model_id, candidate, vram_bytes
+            model_id, candidate, vram_bytes, reference=reference
         )
         rows.append({
             "architecture_weight_floor": floor,
@@ -78,6 +81,9 @@ def inspect_transfer_plan(model_id: str = "qwen-2.5-7b-instruct",
     return {
         "model_id": model_id, "source": "kaggle", "handle": handle,
         "gpu_total_mib": round(vram_bytes / 1048576, 1),
+        "architecture_reference": (
+            reference["repo"] if reference else None
+        ),
         "available_disk_mib": round(free / 1048576, 1),
         "candidates": rows, "weights_downloaded": False,
         "native_gpu_probe_executed": False,
@@ -87,9 +93,9 @@ def inspect_transfer_plan(model_id: str = "qwen-2.5-7b-instruct",
             "l'impossibilita' o la fattibilita' della residenza CUDA. "
             "kagglehub puo' richiedere cache e copia locale: lo spazio "
             "necessario effettivo puo' essere superiore a una copia. "
-            "Un limite inferiore architetturale valido solo per la "
-            "variante Qwen ufficiale e quantizzazioni FP16/Q8_0 "
-            "puo' escludere preventivamente un GGUF standard. "
+            "Un limite inferiore ricavato dal config.json esplicitamente "
+            "associato al modello Kaggle e quantizzazioni FP16/Q8_0 "
+            "puo' escludere preventivamente GGUF standard. "
             "Per gli altri, la baseline quality-first si arresta "
             "se manca un'autorizzazione di download o una prova affidabile."
         ),
