@@ -192,101 +192,62 @@ singole fasi rimangono disponibili per diagnosi e retrocompatibilita'.
 
 ## Modelli e fonti disponibili
 
-Ruth espone quattro **modelli logici** e sei combinazioni modello/fonte.
-La fonte `bartowski` identifica le quantizzazioni GGUF pubblicate su
-**Hugging Face**. Le fonti disponibili sono:
+Ruth espone quattro **modelli logici** e cinque combinazioni modello/fonte.
+La fonte `bartowski` identifica GGUF pubblicati su **Hugging Face**.
+L'unico modello supportato anche su Kaggle e' Qwen 2.5 7B Instruct:
 
 | Modello | Hugging Face (`bartowski`) | Kaggle (`kaggle`) |
 | --- | --- | --- |
-| `gemma-2-9b-it` | `bartowski/gemma-2-9b-it-GGUF` | `google/gemma-2/gguf/2.0-9b-it/1` |
-| `llama-3.1-8b-instruct` | `bartowski/Meta-Llama-3.1-8B-Instruct-GGUF` | Non disponibile |
+| `gemma-2-9b-it` | `bartowski/gemma-2-9b-it-GGUF` | Non supportato |
+| `llama-3.1-8b-instruct` | `bartowski/Meta-Llama-3.1-8B-Instruct-GGUF` | Non supportato |
 | `qwen-2.5-7b-instruct` | `bartowski/Qwen2.5-7B-Instruct-GGUF` | `qwen-lm/qwen2.5/gguf/7b-instruct` |
-| `mistral-7b-instruct-v0.3` | `bartowski/Mistral-7B-Instruct-v0.3-GGUF` | Non disponibile |
+| `mistral-7b-instruct-v0.3` | `bartowski/Mistral-7B-Instruct-v0.3-GGUF` | Non supportato |
 
-`--source` seleziona **una sola fonte per esecuzione**, senza fallback da
-Kaggle a Hugging Face o viceversa. Per ciascun modello, Hugging Face e'
-la fonte predefinita per mantenere la compatibilita' con i download e
-i profili locali preesistenti.
+Gemma 2 e' stata rimossa dalle fonti Kaggle intenzionalmente: il
+GGUF presente nella variazione verificata e' descritto dal publisher
+come **pesi non quantizzati**, da quantizzare separatamente con
+`llama-quantize`. Non e' un'alternativa utile al catalogo GGUF
+gia' quantizzato scelto per la calibrazione quality-first di Ruth.
+L'inventario Gemma su Hugging Face rimane valido e invariato.
+
+`--source` seleziona una sola fonte, senza fallback implicito.
+`--model gemma-2-9b-it --source kaggle` viene rifiutato: non si
+interroga piu' il modello Kaggle. La fonte di default per tutti
+i quattro modelli e' `bartowski`.
 
 ### Inventari senza download
-
-Le due varianti Kaggle sono preimpostate nel catalogo. Gemma 2 e'
-**fissata alla versione 1** (`google/gemma-2/gguf/2.0-9b-it/1`):
-l'API dell'account di prova restituisce la versione 2 nel catalogo,
-ma il suo elenco file torna `404`, mentre la versione 1 espone
-un file GGUF. Ruth non deve passare silenziosamente alla versione 2
-in una nuova esecuzione. Qwen mantiene la propria variante non
-numerata, risolta dall'API. In entrambi i casi non serve copiare
-`--kaggle-handle` per gli inventari predefiniti.
-
-La presenza di una pagina Kaggle **non conferma ancora i nomi o le
-quantizzazioni dei file GGUF**: e' l'inventario remoto a controllarli.
-Avere un unico GGUF accessibile su Gemma non implica che esso abbia
-una quantizzazione classificabile o che i pesi siano caricabili interamente
-nella VRAM disponibile.
 
 ```bash
 # Quattro modelli su Hugging Face
 .venv/bin/python -m calibration.profile_pipeline \
   --model all --source bartowski --until inventory
 
-# Solo Gemma e Qwen da Kaggle, con i rispettivi handle predefiniti
+# Solo Qwen 2.5 7B Instruct su Kaggle
 .venv/bin/python -m calibration.profile_pipeline \
   --model all --source kaggle --until inventory
 
-# Una sola combinazione, ad esempio Gemma su Kaggle
+# Equivalente, per il singolo modello Kaggle
 .venv/bin/python -m calibration.profile_pipeline \
-  --model gemma-2-9b-it --source kaggle --until inventory
+  --model qwen-2.5-7b-instruct --source kaggle --until inventory
 ```
 
-Il token Kaggle puo' essere configurato con
-`.venv/bin/python -m model.kaggle_auth --force` (input nascosto e cache
-personale). Alcuni modelli, incluso Gemma 2, possono richiedere
-l'accettazione delle condizioni d'accesso sul sito Kaggle prima della
-prima interrogazione.
-
-La CLI Kaggle non offre `models variations list`; Ruth usa direttamente
-gli handle di variante registrati nel catalogo. E' possibile sostituire
-la variante con `--kaggle-handle OWNER/MODEL/FRAMEWORK/VARIATION[/VERSION]`
-soltanto per Gemma o Qwen con `--source kaggle`. L'handle alternativo
-viene incluso nell'identita' della calibrazione.
+Gli inventari gia' completati vengono riutilizzati senza nuove
+interrogazioni; i report precedenti restano per diagnostica, ma i
+vecchi profili Gemma/Kaggle **non sono selezionabili dal catalogo**.
 
 ### Diagnosi Kaggle senza download
 
-Se l'inventario Kaggle segnala un errore, Ruth indica una categoria
-filtrata (`license_required`, `credentials_missing`, `unauthorized`,
-`forbidden`, `not_found`, `cli_syntax`, `network` oppure `unknown`)
-**senza stampare la risposta grezza**, che potrebbe contenere segreti.
-
-Per un modello soggetto a consenso (Gemma 2), Ruth stampa anche un
-messaggio di accesso: `LICENZA DA ACCETTARE` **soltanto se Kaggle dichiara
-esplicitamente l'assenza di consenso**; `ACCESSO DA VERIFICARE` per i
-generici `403`/`404`. Un `404` **non prova** che l'utente non abbia
-accettato la licenza: puo' riguardare l'handle, l'account autenticato
-o la visibilita' della variante. L'errore resta bloccante e non
-innesca download o fallback impliciti.
-
-Se la licenza e' stata gia' accettata, apri la pagina di consenso
-https://www.kaggle.com/models/google/gemma-2/license/consent e verifica
-che sia stata selezionata **Verify via Kaggle Account**. Controlla
-anche che l'account visualizzato nel browser coincida con quello
-restituito da `kagglehub.whoami()`. Non incollare il token nel
-terminale per questa verifica, non rigenerarlo automaticamente e non
-condividere credenziali nei log.
-`not_found` puo' includere risorse nascoste per mancanza di permessi:
-non e' una prova che la pagina web non esista. In questo caso Ruth
-prova a interrogare `models variations versions list`: se Kaggle
-pubblica un numero di versione verificabile, tenta `versions files`
-usando l'handle completo. In assenza di versioni confermate non ne
-inventa una e mantiene la fase bloccata. Il recupero non scarica
-i pesi GGUF.
-L'autenticazione a KaggleHub e quella della CLI devono entrambe funzionare
-nella stessa sessione utente.
+Il token puo' essere configurato in modo sicuro con
+`.venv/bin/python -m model.kaggle_auth --force`, senza metterlo
+nel repository. Ruth filtra gli errori della CLI (`license_required`,
+`credentials_missing`, `unauthorized`, `forbidden`, `not_found`,
+`cli_syntax`, `network`, `unknown`) senza riportare stderr grezzo.
+Stampa `LICENZA DA ACCETTARE` solo se l'API segnala esplicitamente
+che manca il consenso; un `404` da solo non prova un problema di licenza.
 
 ```bash
 .venv/bin/kaggle --version
 
-# Testa la CLI autenticata, senza mostrare output potenzialmente sensibile
 if .venv/bin/kaggle quota >/dev/null 2>&1; then
   echo "Autenticazione CLI Kaggle: OK"
 else
@@ -295,43 +256,34 @@ fi
 
 .venv/bin/python -c 'import kagglehub; print(kagglehub.whoami()["username"])'
 
-.venv/bin/kaggle models variations versions files \
-  google/gemma-2/gguf/2.0-9b-it/1 --csv --page-size 5
-
 .venv/bin/kaggle models variations files \
   qwen-lm/qwen2.5/gguf/7b-instruct --csv --page-size 5
 ```
 
-I comandi `variations files` sono consultazioni di metadati, non
-richiedono il download dei pesi. **Non condividere log grezzi che
-contengano il token**: rimuovi eventuali token, header e URL firmati.
-Per Gemma 2, verifica anche le condizioni di licenza su Kaggle.
+Non condividere token, header di autenticazione o URL firmati.
+La CLI non offre `models variations list`: Ruth usa la variazione
+esplicita dal catalogo. Per Qwen e' disponibile anche
+`--kaggle-handle OWNER/MODEL/FRAMEWORK/VARIATION[/VERSION]`, con
+identita' di calibrazione dedicata alla variante scelta.
 
-Su Qwen Kaggle le quantizzazioni possono essere distribuite in
-**shard GGUF** (`...-00001-of-00002.gguf` ecc.). Ruth raggruppa i
-file in un singolo candidato logico per quantizzazione, verifica la
-presenza di tutti gli shard e ordina le quantizzazioni per priorita'
-qualitativa. `FP16` e `Q5_0` sono formati riconosciuti. L'inventario
-non scarica pesi: i numeri riportati ora rappresentano **candidati
-logici**, non i singoli file.
+### GGUF suddivisi in shard e baseline
 
-Per le prove baseline il download Kaggle richiede tutti gli shard
-del candidato, a partire dallo shard 1; il lettore GGUF somma i tensori
-di tutti gli shard e la verifica nativa CUDA deve coprirli tutti.
-Un gruppo mancante/incompleto rimane non classificato e **blocca**
-l'avanzamento. La prima prova di una quantizzazione Kaggle potrebbe
-richiedere il download di molti gigabyte: non avviare `--until baseline`
-senza controllare spazio disco e piano di selezione. Nessuna valutazione
-della fattibilita' VRAM viene inferita soltanto dalle dimensioni dei file.
+Su Qwen Kaggle, piu' file
+`...-00001-of-00002.gguf`, `...-00002-of-00002.gguf` ecc.
+costituiscono un unico candidato logico. Ruth verifica che tutti
+gli shard siano presenti, ne aggrega i tensori per la verifica
+nativa CUDA e blocca i gruppi incompleti. L'inventario considera
+i **candidati logici**, non il numero di file fisici.
 
-Se il nome GGUF ottenuto da Kaggle non consente di classificare la
-quantizzazione in modo affidabile, il candidato resta nell'inventario
-come **non classificato** e la pipeline non seleziona una baseline di
-qualita' presunta. Una baseline richiede la verifica nativa CUDA di
-tutti i pesi e un'inferenza minima riuscita.
+L'inventario non scarica pesi. La fase `baseline` invece puo'
+scaricare molti gigabyte, specialmente con GGUF Kaggle multi-shard;
+su Kaggle non sono disponibili le stesse verifiche remote dei pesi
+usate per Hugging Face. Non avviare `--until baseline` su Qwen
+Kaggle senza prima verificare spazio disco e strategia di preflight.
+In ogni caso il codice non promuove automaticamente la baseline a
+modello operativo e richiede prova full-CUDA senza CPU spill.
 
-Le due fonti mantengono identita' e risultati diversi:
-`models/calibration_runs/<profile_key>/` per i report; i pesi Kaggle
-sono salvati sotto `models/<model-id>/sources/kaggle/<owner>/<model>/`,
-senza sovrascrivere i GGUF Hugging Face gia' presenti in
-`models/<model-id>/`. I profili non modificano il modello operativo.
+I report diagnostici di ogni fonte restano separati sotto
+`models/calibration_runs/<profile_key>/`. I GGUF Kaggle sono copiati
+sotto `models/<model-id>/sources/kaggle/<owner>/<model>/`,
+senza sovrascrivere i GGUF Hugging Face nella directory del modello.
