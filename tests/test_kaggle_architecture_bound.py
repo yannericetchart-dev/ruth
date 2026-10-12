@@ -54,6 +54,21 @@ class ArchitectureBoundTests(unittest.TestCase):
         self.assertEqual(mandatory_dense_parameter_floor(second), manual)
         self.assertNotEqual(manual, mandatory_dense_parameter_floor(CONFIG))
 
+    def test_explicit_head_dim_does_not_overcount_attention(self):
+        params = {**CONFIG, "head_dim": 64}
+        layers = params["num_hidden_layers"]
+        hidden = params["hidden_size"]
+        expected = (
+            params["vocab_size"] * hidden
+            + layers * (
+                3 * hidden * params["intermediate_size"]
+                + 2 * hidden * params["num_attention_heads"] * 64
+                + 2 * hidden * params["num_key_value_heads"] * 64
+            )
+        )
+        self.assertEqual(mandatory_dense_parameter_floor(params), expected)
+        self.assertLess(expected, mandatory_dense_parameter_floor(CONFIG))
+
     def test_fp16_and_q8_excluded_from_calculated_config(self):
         fp16 = conservative_kaggle_weight_floor(
             MODEL, item("fp16"), VRAM, reference=REF
