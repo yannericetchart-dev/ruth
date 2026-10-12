@@ -259,6 +259,18 @@ contesto passato durante la ricerca: **non** e' un massimo confermato
 e non soddisfa la fase 1. Una ripresa senza \`--rerun\` riutilizza
 la baseline salvata e ripete la sola ricerca del contesto.
 
+Se i log di un worker abortito riportano esplicitamente
+`CUDA error: the resource allocation failed` (ad esempio durante
+`cublasCreate_v2`), Ruth registra
+`native_cuda_resource_allocation_failure`: e' una prova di fallita
+allocazione di risorse CUDA **per la configurazione corrente**, distinta
+dall'errore `native_cuda_oom`. Tale fallimento delimita la ricerca
+e permette la bisezione; non afferma di conoscere la causa fisica
+esatta ne' i byte di VRAM mancanti. SIGABRT privo di questa
+evidenza continua invece a bloccare la ricerca. Solo i probe
+riusciti di pesi/KV/compute in CUDA e le ripetizioni di conferma
+validano il massimo diagnostico.
+
 Su Qwen Hugging Face Q5_K_L, un test a \`n_ctx=2048\` ha misurato
 6139,3 MiB su 6141 MiB: appena 1,7 MiB di margine campionato,
 non una riserva operativa sicura. Ruth non modifica automaticamente
