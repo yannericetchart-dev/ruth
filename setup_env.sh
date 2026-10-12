@@ -77,5 +77,15 @@ if ! .venv/bin/python -m model.hf_auth; then
     echo "I download dei modelli pubblici restano comunque disponibili." >&2
 fi
 
+echo "Configurazione accesso Kaggle..."
+# Anche Kaggle usa un token personale facoltativo. Nessun token negli
+# argomenti, nell'output, in Git o in variabili esportate dal setup.
+# Se c'e' un token gia' configurato, non vengono chieste credenziali.
+if ! .venv/bin/python -m model.kaggle_auth; then
+    echo "Attenzione: autenticazione Kaggle non configurata." >&2
+    echo "Riprova con: .venv/bin/python -m model.kaggle_auth --force" >&2
+    echo "I modelli pubblici possono comunque essere accessibili." >&2
+fi
+
 echo "CUDA disponibile nel venv. Avvia Ruth con:"
 echo "  .venv/bin/python main.py"
