@@ -66,5 +66,16 @@ if ! .venv/bin/python -c 'from llama_cpp.llama_cpp import llama_supports_gpu_off
     exit 1
 fi
 
+echo "Configurazione accesso Hugging Face..."
+# Chiede il token personale solo a chi esegue il setup da un terminale.
+# Non usare read -s o echo del segreto: getpass() mantiene il token nascosto,
+# huggingface_hub lo salva nella cache personale e non nelle credenziali Git.
+# In CI, cron o installazioni headless, l'autenticazione viene saltata.
+if ! .venv/bin/python -m model.hf_auth; then
+    echo "Attenzione: autenticazione Hugging Face non configurata." >&2
+    echo "Riprova con: .venv/bin/python -m model.hf_auth --force" >&2
+    echo "I download dei modelli pubblici restano comunque disponibili." >&2
+fi
+
 echo "CUDA disponibile nel venv. Avvia Ruth con:"
 echo "  .venv/bin/python main.py"
