@@ -103,6 +103,66 @@ class KaggleSourceTests(unittest.TestCase):
                 )
         cmd.assert_not_called()
 
+    def test_latest_404_recovers_only_from_listed_numeric_version(self):
+        unversioned = REPOSITORY + "/gguf/7b-instruct"
+        calls = []
+
+        def simulate(argv, **kwargs):
+            calls.append(argv)
+            if argv[2:4] == ["variations", "files"]:
+                return subprocess.CompletedProcess(argv, 1, "", "404 Not Found")
+            if argv[2:5] == ["variations", "versions", "list"]:
+                return subprocess.CompletedProcess(
+                    argv, 0, "version,variation\n2,7b-instruct\n8,7b-instruct\n", ""
+                )
+            if argv[2:5] == ["variations", "versions", "files"]:
+                return subprocess.CompletedProcess(
+                    argv, 0,
+                    "Name,Size\nQwen2.5-7B-Instruct-Q4_K_M.gguf,4.2GB\n", ""
+                )
+            raise AssertionError("Unexpected CLI command")
+
+        with patch("calibration.kaggle_source.subprocess.run",
+                   side_effect=simulate):
+            models = inventory_kaggle(
+                REPOSITORY, "Qwen2.5-7B-Instruct-",
+                selected_handle=unversioned,
+            )
+        self.assertEqual(len(models), 1)
+        self.assertEqual(models[0]["kaggle_handle"], unversioned + "/8")
+        self.assertEqual([x[2:5] for x in calls], [
+            ["variations", "files", unversioned],
+            ["variations", "versions", "list"],
+            ["variations", "versions", "files"],
+        ])
+        self.assertEqual(calls[-1][5], unversioned + "/8")
+
+    def test_latest_404_never_invents_version_if_discovery_fails(self):
+        unversioned = REPOSITORY + "/gguf/7b-instruct"
+        with patch("calibration.kaggle_source.subprocess.run",
+                   return_value=subprocess.CompletedProcess(
+                       [], 1, "", "404 Not Found"
+                   )) as cli:
+            with self.assertRaisesRegex(RuntimeError, "categoria=not_found"):
+                inventory_kaggle(
+                    REPOSITORY, "Qwen2.5-7B-Instruct-",
+                    selected_handle=unversioned,
+                )
+        self.assertEqual(cli.call_count, 2)
+
+    def test_forbidden_variation_never_retries_other_endpoints(self):
+        unversioned = REPOSITORY + "/gguf/7b-instruct"
+        with patch("calibration.kaggle_source.subprocess.run",
+                   return_value=subprocess.CompletedProcess(
+                       [], 1, "", "403 Forbidden"
+                   )) as cli:
+            with self.assertRaisesRegex(RuntimeError, "categoria=forbidden"):
+                inventory_kaggle(
+                    REPOSITORY, "Qwen2.5-7B-Instruct-",
+                    selected_handle=unversioned,
+                )
+        cli.assert_called_once()
+
     def test_versioned_handle_uses_version_files_subcommand(self):
         with patch("calibration.kaggle_source.subprocess.run",
                    side_effect=mock_kaggle_call) as call:
