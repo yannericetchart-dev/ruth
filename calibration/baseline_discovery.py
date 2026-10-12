@@ -277,11 +277,26 @@ def choose_baseline(
     source: str | None = None,
     progress=None, persist_selection: bool = True,
     kaggle_handle: str | None = None,
+    kaggle_max_download_mib: int | None = None,
+    kaggle_min_free_mib: int = 8192,
 ) -> dict:
     if (not isinstance(probe_n_ctx, int) or probe_n_ctx < 32
         or not isinstance(n_batch, int) or not 1 <= n_batch <= probe_n_ctx
         or not isinstance(timeout, int) or timeout < 1):
         raise ValueError("Probe minimo: ctx>=32, 1<=batch<=ctx, timeout>0.")
+    if (
+        kaggle_max_download_mib is not None
+        and (not isinstance(kaggle_max_download_mib, int)
+             or isinstance(kaggle_max_download_mib, bool)
+             or kaggle_max_download_mib <= 0)
+    ):
+        raise ValueError("Limite download Kaggle: MiB intero positivo.")
+    if (
+        not isinstance(kaggle_min_free_mib, int)
+        or isinstance(kaggle_min_free_mib, bool)
+        or kaggle_min_free_mib < 0
+    ):
+        raise ValueError("Riserva disco Kaggle: MiB intero non negativo.")
 
     from huggingface_hub import hf_hub_download
 
@@ -300,6 +315,8 @@ def choose_baseline(
     else:
         if kaggle_handle is not None:
             raise ValueError("--kaggle-handle richiede la fonte Kaggle.")
+        if kaggle_max_download_mib is not None or kaggle_min_free_mib != 8192:
+            raise ValueError("Opzioni trasferimento Kaggle richiedono --source kaggle.")
         repo_id = repo_id or spec["repository"]
         if repo_id != spec["repository"]:
             raise ValueError(
@@ -324,6 +341,10 @@ def choose_baseline(
         if kaggle_handle:
             raise ValueError("--kaggle-handle non valido per fonte Hugging Face.")
         models = inventory(repo_id)
+    remaining_kaggle_budget = (
+        kaggle_max_download_mib * 1048576
+        if kaggle_max_download_mib is not None else None
+    )
     unranked = [
         c["filename"] for c in models if c.get("quality_priority") is None
     ]
@@ -334,6 +355,8 @@ def choose_baseline(
         "repository": repo_id,
         "source": spec["source"],
         "kaggle_handle_filter": kaggle_handle,
+        "kaggle_download_budget_mib": kaggle_max_download_mib,
+        "kaggle_min_free_mib": kaggle_min_free_mib if spec["source"] == "kaggle" else None,
         "gpu": gpu["gpu"]["name"],
         "total_vram_mib": gpu["memory"]["total_mib"],
         "probe_n_ctx": probe_n_ctx,
@@ -436,6 +459,36 @@ def choose_baseline(
             continue
 
         if not local_ready:
+            if spec["source"] == "kaggle":
+                from .kaggle_transfer_guard import assess_kaggle_transfer
+                approval = assess_kaggle_transfer(
+                    candidate, model_dir,
+                    remaining_budget_bytes=remaining_kaggle_budget,
+                    min_free_mib=kaggle_min_free_mib,
+                )
+                record["kaggle_transfer_preflight"] = approval
+                if not approval["allowed"]:
+                    record["status"] = approval["status"]
+                    record["error"] = approval["reason"]
+                    report["blocked_candidate"] = {
+                        "filename": candidate["filename"],
+                        "quantization": candidate["quantization"],
+                        "status": record["status"],
+                    }
+                    report["error"] = approval["reason"]
+                    if progress is not None:
+                        progress({
+                            "event": "candidate_decision", "model": model_id,
+                            "quantization": candidate["quantization"],
+                            "status": record["status"], "error": record["error"],
+                        })
+                    return report
+                # Conservative *cumulative* catalogue budget: all missing
+                # shards approved this run consume the allowance. A retry
+                # reuses already-local complete shards without spending it.
+                remaining_kaggle_budget = approval[
+                    "remaining_budget_after_bytes"
+                ]
             if progress is not None:
                 progress({"event": "candidate_download", "model": model_id,
                           "quantization": candidate["quantization"],
