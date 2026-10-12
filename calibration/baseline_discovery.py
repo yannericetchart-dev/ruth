@@ -277,7 +277,7 @@ def choose_baseline(
     source: str | None = None,
     progress=None, persist_selection: bool = True,
     kaggle_handle: str | None = None,
- ) -> dict:
+) -> dict:
     if (not isinstance(probe_n_ctx, int) or probe_n_ctx < 32
         or not isinstance(n_batch, int) or not 1 <= n_batch <= probe_n_ctx
         or not isinstance(timeout, int) or timeout < 1):
@@ -429,6 +429,7 @@ def choose_baseline(
                         "quantization": candidate["quantization"],
                         "status": record["status"],
                         "weight_mib": record["catalog_gguf_total_mib"],
+                        "size_basis": "gguf_catalog_file_sum",
                     })
                 continue
         else:
