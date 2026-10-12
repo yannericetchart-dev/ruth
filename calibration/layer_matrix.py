@@ -221,6 +221,7 @@ def remote_huggingface_matrices(
     from model import ModelManager
     from .gguf_catalog import inventory, remote_header
     from .profile_pipeline import atomic_json
+    from .layer_export import export_matrix_tables
 
     catalog_inventory = catalog_inventory or inventory
     ranged_header = ranged_header or remote_header
@@ -258,6 +259,7 @@ def remote_huggingface_matrices(
         )
         path = root / model_id / (name + ".json")
         atomic_json(path, report)
+        report["table_paths"] = export_matrix_tables(report, path.parent)
         report["report_path"] = str(path)
         reports.append(report)
     return reports
