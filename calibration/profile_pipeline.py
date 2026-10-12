@@ -338,7 +338,9 @@ def _phase_call(name: str, identity: dict, previous: dict,
         )
         summary = {"quantization": selected.get("quantization"),
                    "file": selected.get("filename"),
-                   "attempts": len(report.get("attempts") or [])}
+                   "attempts": len(report.get("attempts") or []),
+                   "blocked_candidate": report.get("blocked_candidate"),
+                   "failure": report.get("error")}
         return report, good, summary
 
     if name == "layer_matrix":
