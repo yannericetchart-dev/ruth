@@ -174,6 +174,85 @@ class KaggleSourceTests(unittest.TestCase):
         self.assertEqual(len(result["inventory"]), 1)
         hf.assert_not_called()
 
+    def test_both_official_variations_are_passed_to_kaggle_inventory(self):
+        from model import ModelManager
+        for model in ("gemma-2-9b-it", "qwen-2.5-7b-instruct"):
+            with self.subTest(model=model):
+                spec = ModelManager.source_spec(model, "kaggle")
+                gpu = {
+                    "ready": True, "errors": [], "foreign_processes": [],
+                    "gpu": {"vendor": "nvidia", "name": "Mock CUDA",
+                            "uuid": "GPU-test", "index": 0},
+                    "memory": {"total_mib": 6141},
+                }
+                with (
+                    patch("calibration.baseline_discovery.GPUManager.calibration_status",
+                          return_value=gpu),
+                    patch("calibration.kaggle_source.inventory_kaggle",
+                          return_value=[{
+                              "filename": "synthetic-Q4_K_M.gguf",
+                              "quantization": "Q4_K_M",
+                              "quality_priority": 400,
+                          }]) as listed,
+                    patch("huggingface_hub.hf_hub_download") as hf,
+                ):
+                    result = choose_baseline(
+                        model_id=model, source="kaggle",
+                        inventory_only=True,
+                    )
+                listed.assert_called_once_with(
+                    spec["repository"], spec["gguf_prefix"],
+                    selected_handle=spec["kaggle_handle"],
+                )
+                hf.assert_not_called()
+                self.assertEqual(result["repository"], spec["repository"])
+
+    def test_mistral_huggingface_never_queries_kaggle(self):
+        from model import ModelManager
+        spec = ModelManager.source_spec("mistral-7b-instruct-v0.3")
+        self.assertEqual(
+            spec["repository"], "bartowski/Mistral-7B-Instruct-v0.3-GGUF"
+        )
+        gpu = {
+            "ready": True, "errors": [], "foreign_processes": [],
+            "gpu": {"vendor": "nvidia", "name": "Mock CUDA",
+                    "uuid": "GPU-test", "index": 0},
+            "memory": {"total_mib": 6141},
+        }
+        with (
+            patch("calibration.baseline_discovery.GPUManager.calibration_status",
+                  return_value=gpu),
+            patch("calibration.baseline_discovery.inventory",
+                  return_value=[{"filename": spec["filename"],
+                                 "quantization": "Q4_K_M",
+                                 "quality_priority": 400}]),
+            patch("calibration.kaggle_source.inventory_kaggle") as kaggle,
+        ):
+            result = choose_baseline(
+                model_id="mistral-7b-instruct-v0.3", inventory_only=True
+            )
+        self.assertEqual(result["source"], "bartowski")
+        kaggle.assert_not_called()
+
+    def test_context_rejects_huggingface_baseline_for_kaggle(self):
+        from calibration.gpu_context import search_gpu_context
+        gpu = {
+            "ready": True, "errors": [], "foreign_processes": [],
+            "gpu": {"vendor": "nvidia", "name": "Mock CUDA",
+                    "uuid": "GPU-test", "index": 0},
+            "memory": {"total_mib": 6141},
+        }
+        with patch("calibration.gpu_context.GPUManager.calibration_status",
+                   return_value=gpu):
+            with self.assertRaisesRegex(RuntimeError, "Fonte"):
+                search_gpu_context(
+                    "qwen-2.5-7b-instruct", source="kaggle",
+                    baseline_selection={
+                        "source": "bartowski",
+                        "native_verified_all_gpu": True,
+                    },
+                )
+
     def test_selected_kaggle_publisher_changes_profile_identity(self):
         base_handle = HANDLE
         other = "otherowner/qwen-2.5-7b-instruct/gguf/q5km/2"
