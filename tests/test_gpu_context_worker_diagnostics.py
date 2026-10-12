@@ -210,6 +210,96 @@ class ContextWorkerDiagnosticsTests(unittest.TestCase):
             e["event"] == "context_worker_retry" for e in events
         ))
 
+    def test_repeated_sigabrt_continues_bisection_below_crash(self):
+        # Qwen: 2048 OK; 2560 native resource failure; 2304 SIGABRT
+        # twice without an OOM line. Must search 2176, etc., and confirm
+        # a lower bound without inventing an exact maximum.
+        calls = []
+        from model import ModelManager
+        with tempfile.TemporaryDirectory() as folder:
+            path = Path(folder) / "Qwen2.5-7B-Instruct-Q5_K_L.gguf"
+            path.write_bytes(b"mock")
+            baseline = {
+                "native_verified_all_gpu": True,
+                "model_id": "qwen-2.5-7b-instruct", "source": "bartowski",
+                "repository": ModelManager.source_spec(
+                    "qwen-2.5-7b-instruct", "bartowski"
+                )["repository"],
+                "filename": path.name, "local_path": str(path),
+                "architecture": "qwen2", "quantization": "Q5_K_L",
+            }
+
+            def fake_probe(model_path, ctx, **kwargs):
+                calls.append(ctx)
+                if ctx >= 2560:
+                    return {
+                        "success": False,
+                        "failure_class": "native_cuda_resource_allocation_failure",
+                        "worker_returncode": -6,
+                        "worker_signal": "SIGABRT",
+                    }
+                if ctx > 2048:
+                    return {
+                        "success": False, "failure_class": "worker_protocol_error",
+                        "worker_json_valid": False,
+                        "worker_returncode": -6, "worker_signal": "SIGABRT",
+                        "error": "worker aborted without native resource diagnostics",
+                    }
+                return self.success(ctx)
+
+            with (
+                patch("calibration.gpu_context.GPUManager.calibration_status",
+                      return_value=self.gpu()),
+                patch("calibration.gpu_context.inspect_gguf",
+                      return_value={"metadata": {
+                          "general.architecture": "qwen2",
+                          "qwen2.context_length": 4096,
+                      }}),
+                patch("calibration.gpu_context.probe_context",
+                      side_effect=fake_probe),
+            ):
+                result = search_gpu_context(
+                    "qwen-2.5-7b-instruct", baseline_selection=baseline,
+                    source="bartowski", persist_reference=False,
+                    progress=lambda event: None,
+                )
+        self.assertIn(2304, calls)
+        self.assertEqual(calls.count(2304), 2)
+        self.assertIn(2176, calls)
+        self.assertEqual(result["confirmed_gpu_resident_n_ctx"], 2048)
+        self.assertIsNone(result["confirmed_max_gpu_resident_n_ctx"])
+        self.assertFalse(result["maximality_proven"])
+        self.assertFalse(result["success"])
+        self.assertFalse(result["measurement_completed"])
+        self.assertTrue(result["confirmation_completed"])
+        self.assertEqual(len(result["confirmation"]), 2)
+        self.assertTrue(result["uncertain_failure_boundaries"])
+        self.assertIn("massimo", result["error"])
+        self.assertEqual(result["highest_gpu_resident_n_ctx_observed"], 2048)
+
+    def test_sigabrt_after_two_attempts_confirms_floor_not_max(self):
+        calls = []
+
+        def fake_probe(path, ctx, **kwargs):
+            calls.append(ctx)
+            if ctx == 129:
+                return {
+                    "success": False, "failure_class": "worker_protocol_error",
+                    "worker_returncode": -6, "worker_signal": "SIGABRT",
+                    "error": "SIGABRT without CUDA OOM",
+                }
+            return self.success(ctx)
+
+        result, events = self.run_fake_search(fake_probe)
+        self.assertEqual(calls, [64, 128, 129, 129, 128, 128])
+        self.assertEqual(result["confirmed_gpu_resident_n_ctx"], 128)
+        self.assertIsNone(result["confirmed_max_gpu_resident_n_ctx"])
+        self.assertEqual(len(result["uncertain_failure_boundaries"]), 1)
+        self.assertTrue(result["confirmation_completed"])
+        self.assertEqual(len(result["confirmation"]), 2)
+        self.assertFalse(result["success"])
+        self.assertFalse(result["maximality_proven"])
+
     def test_two_protocol_failures_stop_without_inventing_maximum(self):
         calls = []
         def fake_probe(path, ctx, **kwargs):
