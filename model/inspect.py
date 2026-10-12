@@ -33,6 +33,41 @@ def _field(reader, name: str):
     return field.contents()
 
 
+_SPLIT_SUFFIX = re.compile(
+    r"^(?P<stem>.+)-(?P<part>\d{5})-of-(?P<total>\d{5})\.gguf$",
+    re.IGNORECASE,
+)
+
+
+def gguf_file_set(path: str | Path) -> list[Path]:
+    """Return a complete, sequential GGUF shard set, or fail closed.
+
+    llama.cpp requires the first split and automatically looks for siblings.
+    Do not infer a valid model from one isolated shard.
+    """
+    path = Path(path).expanduser().resolve()
+    match = _SPLIT_SUFFIX.fullmatch(path.name)
+    if match is None:
+        return [path]
+    part, count = int(match["part"]), int(match["total"])
+    if not 1 <= part <= count <= 99999:
+        raise ValueError("GGUF: indice shard non valido.")
+    if part != 1:
+        raise ValueError("GGUF: caricare soltanto dal primo shard.")
+    names = [
+        path.with_name(
+            f"{match['stem']}-{i:05d}-of-{count:05d}.gguf"
+        )
+        for i in range(1, count + 1)
+    ]
+    missing = [p.name for p in names if not p.is_file()]
+    if missing:
+        raise FileNotFoundError(
+            f"GGUF: gruppo shard incompleto: {len(missing)} file mancanti."
+        )
+    return names
+
+
 def inspect_gguf(path: str | Path, n_ctx: int = 4096) -> dict:
     """Legge il catalogo tensori senza eseguire inferenza o allocare VRAM."""
     from gguf import GGUFReader
@@ -43,8 +78,20 @@ def inspect_gguf(path: str | Path, n_ctx: int = 4096) -> dict:
     if n_ctx < 1:
         raise ValueError("n_ctx deve essere positivo")
 
-    reader = GGUFReader(path, mode="r")
+    files = gguf_file_set(path)
+    readers = [GGUFReader(file, mode="r") for file in files]
+    reader = readers[0]
     architecture = _field(reader, "general.architecture")
+    for index, shard in enumerate(readers):
+        shard_arch = _field(shard, "general.architecture")
+        if shard_arch is not None and shard_arch != architecture:
+            raise ValueError("GGUF: architetture shard incompatibili.")
+        split_total = _field(shard, "split.count")
+        split_index = _field(shard, "split.no")
+        if split_total is not None and int(split_total) != len(files):
+            raise ValueError("GGUF: conteggio shard incompatibile.")
+        if split_index is not None and int(split_index) != index:
+            raise ValueError("GGUF: ordine shard incompatibile.")
     prefix = f"{architecture}." if architecture else ""
     keys = [
         "general.architecture", "general.name", "general.file_type",
@@ -61,7 +108,7 @@ def inspect_gguf(path: str | Path, n_ctx: int = 4096) -> dict:
     layers = {}
     types = Counter()
     total_weights = 0
-    for tensor in reader.tensors:
+    for tensor in (tensor for shard in readers for tensor in shard.tensors):
         kind, layer_id = _kind(tensor.name)
         size = int(tensor.n_bytes)
         record = {
@@ -86,6 +133,9 @@ def inspect_gguf(path: str | Path, n_ctx: int = 4096) -> dict:
             block["bytes"] += size
             block["groups"][kind] = block["groups"].get(kind, 0) + size
 
+    if len(tensors) != len({tensor["name"] for tensor in tensors}):
+        raise ValueError("GGUF: nomi tensori duplicati tra shard.")
+
     # Stima teorica con K/V f16 complete; non rappresenta l'allocazione
     # reale di llama.cpp (SWA, quantizzazione KV e buffer dipendono dal runtime).
     kv = {
@@ -109,7 +159,9 @@ def inspect_gguf(path: str | Path, n_ctx: int = 4096) -> dict:
 
     return {
         "model_path": str(path),
-        "file_bytes": path.stat().st_size,
+        "file_bytes": sum(file.stat().st_size for file in files),
+        "shard_files": [str(file) for file in files],
+        "shard_count": len(files),
         "metadata": metadata,
         "tensor_count": len(tensors),
         "weights_bytes": total_weights,
