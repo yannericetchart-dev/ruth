@@ -307,7 +307,7 @@ Mistral con MLP gated e attenzione standard/GQA):
 ```text
 parametri_minimi = vocab * hidden + layers * (
     3 * hidden * intermediate
-    + 2 * hidden^2
+    + 2 * hidden * num_attention_heads * head_dim
     + 2 * hidden * num_kv_heads * head_dim
 )
 pesi_minimi_bytes = parametri_minimi * bit_minimi_formato / 8
