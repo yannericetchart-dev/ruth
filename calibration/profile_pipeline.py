@@ -208,13 +208,16 @@ def _phase_call(name: str, identity: dict, previous: dict,
                 reporter) -> tuple[dict, bool, dict]:
     choices = identity["choices"]
     model = choices["model_id"]
-    model_root = ModelManager().root / model
+    model_root = ModelManager().model_directory(
+        model, choices["source"], choices["repository"]
+    )
     opts = identity["reference_runtime"]
     if name == "inventory":
         from .baseline_discovery import choose_baseline
 
         report = choose_baseline(
             root=model_root, model_id=model, repo_id=choices["repository"],
+            source=choices["source"],
             probe_n_ctx=opts["baseline_n_ctx"], n_batch=opts["n_batch"],
             inventory_only=True, persist_selection=False, progress=reporter,
             kaggle_handle=choices.get("kaggle_handle"),
@@ -231,6 +234,7 @@ def _phase_call(name: str, identity: dict, previous: dict,
 
         report = choose_baseline(
             root=model_root, model_id=model, repo_id=choices["repository"],
+            source=choices["source"],
             probe_n_ctx=opts["baseline_n_ctx"], n_batch=opts["n_batch"],
             inventory_only=False, persist_selection=False, progress=reporter,
             kaggle_handle=choices.get("kaggle_handle"),
@@ -255,6 +259,7 @@ def _phase_call(name: str, identity: dict, previous: dict,
             raise RuntimeError("Impossibile avviare contesto senza baseline verificata.")
         report = search_gpu_context(
             model, baseline_selection=baseline, persist_reference=False,
+            source=choices["source"], kaggle_handle=choices.get("kaggle_handle"),
             min_ctx=opts["baseline_n_ctx"],
             tokens=opts["context_generated_tokens"],
             batch=opts["context_n_batch"],
@@ -361,7 +366,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--model", default="gemma-2-9b-it",
                         choices=["all", *sorted(ModelManager.CATALOG)])
     parser.add_argument("--source", default=None,
-                        help="Fonte: bartowski o kaggle; default dal catalogo del modello")
+                        help="Fonte: bartowski (Hugging Face) o kaggle; default bartowski")
     parser.add_argument("--kaggle-handle", default=None,
                         help="Variante Kaggle, formato owner/model/framework/variation[/version]")
     parser.add_argument("--engine", default="llama.cpp",
@@ -391,7 +396,7 @@ def main(argv: list[str] | None = None) -> int:
         # filter; individual model invocations still validate the source.
         models = [
             name for name in models
-            if ModelManager.CATALOG[name]["source"] == args.source
+            if args.source in ModelManager.available_sources(name)
         ]
         if not models:
             parser.error(f"Nessun modello registrato per la fonte {args.source}.")
