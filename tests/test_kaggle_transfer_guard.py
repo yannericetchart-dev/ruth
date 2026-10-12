@@ -156,11 +156,13 @@ class KaggleBudgetPipelineTests(unittest.TestCase):
             )
             return result, downloader.call_count, gpu.call_count
 
-    def test_no_approval_stops_at_fp16_without_downloading_or_skipping(self):
+    def test_no_approval_skips_impossible_fp16_q8_then_blocks_q6(self):
         with tempfile.TemporaryDirectory() as tmp:
             inventory = [
                 candidate("fp16", 15_000_000_000, 0),
-                candidate("Q5_K_M", 5_000_000_000, 300),
+                candidate("q8_0", 8_000_000_000, 100),
+                candidate("q6_k", 6_000_000_000, 200),
+                candidate("q5_k_m", 5_000_000_000, 300),
             ]
             result, downloaded, probed = self.run_baseline(
                 Path(tmp), inventory,
@@ -168,19 +170,33 @@ class KaggleBudgetPipelineTests(unittest.TestCase):
             self.assertFalse(result["success"])
             self.assertEqual(downloaded, 0)
             self.assertEqual(probed, 0)
-            self.assertEqual(len(result["attempts"]), 1)
-            self.assertEqual(result["blocked_candidate"]["quantization"], "fp16")
+            self.assertEqual(len(result["attempts"]), 3)
             self.assertEqual(
-                result["attempts"][0]["status"],
+                [a["status"] for a in result["attempts"]],
+                ["excluded_architecture_weight_floor_exceeds_vram",
+                 "excluded_architecture_weight_floor_exceeds_vram",
+                 "blocked_kaggle_download_approval_required"],
+            )
+            self.assertEqual(result["blocked_candidate"]["quantization"], "q6_k")
+            self.assertGreater(
+                result["attempts"][0]["architecture_weight_floor"][
+                    "minimum_weight_mib"], 6141
+            )
+            self.assertGreater(
+                result["attempts"][1]["architecture_weight_floor"][
+                    "minimum_weight_mib"], 6141
+            )
+            self.assertEqual(
+                result["attempts"][2]["status"],
                 "blocked_kaggle_download_approval_required",
             )
 
     def test_cumulative_budget_stops_at_next_high_quality_candidate(self):
         with tempfile.TemporaryDirectory() as tmp:
             inventory = [
-                candidate("fp16", 1_000_000, 0),
-                candidate("Q8_0", 1_000_000, 100),
-                candidate("Q5_K_M", 500_000, 300),
+                candidate("Q6_K", 1_000_000, 200),
+                candidate("Q5_K_M", 1_000_000, 300),
+                candidate("Q4_K_M", 500_000, 400),
             ]
             result, downloaded, probed = self.run_baseline(
                 Path(tmp), inventory, approval=1,
@@ -193,12 +209,12 @@ class KaggleBudgetPipelineTests(unittest.TestCase):
                 ["excluded_weight_payload_exceeds_total_vram",
                  "blocked_kaggle_download_budget"],
             )
-            self.assertEqual(result["blocked_candidate"]["quantization"], "Q8_0")
+            self.assertEqual(result["blocked_candidate"]["quantization"], "Q5_K_M")
 
     def test_unknown_size_blocks_even_with_large_explicit_budget(self):
         with tempfile.TemporaryDirectory() as tmp:
             result, downloaded, probed = self.run_baseline(
-                Path(tmp), [candidate("fp16", None, 0)],
+                Path(tmp), [candidate("Q6_K", None, 200)],
                 approval=16_000,
             )
             self.assertFalse(result["success"])
