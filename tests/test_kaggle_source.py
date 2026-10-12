@@ -44,13 +44,13 @@ class KaggleSourceTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             fake_python = Path(tmp) / "python"
             fake_cli = Path(tmp) / "kaggle"
-            fake_cli.write_text("#!/bin/sh\\n")
+            fake_cli.write_text("#!/bin/sh\n")
             with (
                 patch("calibration.kaggle_source.sys.executable",
                       str(fake_python)),
                 patch("calibration.kaggle_source.subprocess.run",
                       return_value=subprocess.CompletedProcess(
-                          [], 0, "Name,Size\\n", ""
+                          [], 0, "Name,Size\n", ""
                       )) as call,
             ):
                 self.assertEqual(
