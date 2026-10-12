@@ -189,11 +189,24 @@ class Journal:
         if phase == "baseline":
             selected = data.get("baseline") or {}
             model_path = Path(selected.get("local_path") or "/NONEXISTENT")
+            shard_files = selected.get("shard_filenames") or [selected.get("filename")]
+            shards_present = (
+                isinstance(shard_files, list)
+                and bool(shard_files)
+                and shard_files[0] == selected.get("filename")
+                and all(
+                    isinstance(name, str)
+                    and Path(name).name == name
+                    and (model_path.parent / name).is_file()
+                    for name in shard_files
+                )
+            )
             return data if (
                 data.get("success") is True
                 and selected.get("native_verified_all_gpu") is True
                 and model_path.is_file()
                 and model_path.name == selected.get("filename")
+                and shards_present
             ) else None
         if phase == "context_gpu":
             return data if (
