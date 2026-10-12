@@ -145,9 +145,9 @@ def analyze_layer_matrix(baseline: dict, *, model_id: str,
         "serialized_weight_mib": round(total / 1048576, 3),
         "block_serialized_weight_bytes": layer_bytes,
         "non_block_serialized_weight_bytes": outside_bytes,
-        "non_block_tensors": [record(t) for t in sorted(
-            outside, key=lambda t: t["name"
-        ])],
+        "non_block_tensors": [
+            record(t) for t in sorted(outside, key=lambda t: t["name"])
+        ],
         "layers": layers,
         "cpu_prefix_scenarios": scenarios,
         "cpu_offload_executed": False,
