@@ -133,10 +133,22 @@ L'interfaccia principale della calibrazione e' ora:
   --method llama_cpp_python
 ```
 
-Le quattro scelte sono esplicite e opzionali; possono essere estese
-quando nuovi fornitori, motori e adapter verranno implementati. Opzioni
-non ancora supportate producono un errore chiaro, **mai un fallback
-implicito**.
+Le quattro scelte sono esplicite e opzionali. La CLI accetta
+`--engine llama.cpp|exllamav2|vllm|aphrodite|tensorrt-llm` come
+**opzioni censite**, ma solo `llama.cpp` con `llama_cpp_python`
+e' oggi eseguibile. Gli altri motori vengono segnalati come **da fare**
+prima di qualunque prova GPU, senza conversioni di formato, installazioni
+automatiche o fallback impliciti.
+
+```bash
+.venv/bin/python -m calibration.profile_pipeline --list-engines
+```
+
+La matrice di compatibilita' registra, per ciascun motore, se sono
+previsti spostamenti CPU dei pesi per layer, offload KV e i formati
+dichiarati nella tabella fornita dall'utente. E' **metadato di
+pianificazione**, non una certificazione runtime di tutte le versioni
+o di ogni funzionalita'.
 
 Le caratteristiche hardware sono invece rilevate automaticamente:
 backend CUDA dalla GPU NVIDIA, UUID e modello GPU, VRAM totale, RAM,
@@ -147,17 +159,19 @@ Il comando usa una pipeline riprendibile per fasi:
 
 1. `inventory`: inventario GGUF e priorita' qualitativa.
 2. `baseline`: prima quantizzazione interamente caricabile su CUDA.
-3. `context_gpu`: massimo n_ctx diagnostico con pesi e KV su CUDA.
-4. `mapping`: previsto, non ancora implementato.
-5. `runtime`: previsto, non ancora implementato.
-6. `context_tuned`: previsto, non ancora implementato.
-7. `capacity`: previsto, non ancora implementato.
+3. `layer_matrix`: matrice per blocco e tensore **in sola lettura**, nessun offload.
+4. `context_gpu`: massimo n_ctx diagnostico con pesi e KV su CUDA.
+5. `mapping`: vero placement layer/tensori, **da fare**.
+6. `runtime`: ottimizzazione parametri llama.cpp, **da fare**.
+7. `context_tuned`: contesto con mapping ottimizzato, **da fare**.
+8. `capacity`: contesto esteso con RAM di sistema, **da fare**.
 
 Ogni candidato e test di contesto viene stampato **durante la prova** con
 il risultato e la decisione, senza dover attendere l'output JSON completo.
 I report rimangono disponibili in
 `models/calibration_runs/<profile_key>/` (`state.json`,
-`events.jsonl`, `inventory.json`, `baseline.json`, `context_gpu.json`).
+`events.jsonl`, `inventory.json`, `baseline.json`,
+`layer_matrix.json`, `context_gpu.json`).
 Questa cartella e' esclusa da Git. Il `profile_key` dipende dalle
 scelte, dall'hardware misurato e dalla versione del runtime: non si
 confondono i profili tra GPU, quantizzazioni o ambienti diversi.
@@ -189,6 +203,55 @@ di un worker) rimane `blocked` e potra' essere riprovato. Il processo
 non promuove mai un errore inconclusivo a OOM. I comandi manuali delle
 singole fasi rimangono disponibili per diagnosi e retrocompatibilita'.
 
+
+## Matrice dei layer senza CPU offload
+
+Dopo una baseline full-CUDA gia' riuscita, si puo' analizzare la
+distribuzione dei pesi **senza fare una nuova prova GPU**:
+
+```bash
+.venv/bin/python -m calibration.profile_pipeline \
+  --model qwen-2.5-7b-instruct \
+  --source bartowski \
+  --until layer_matrix
+```
+
+La pipeline recupera `inventory` e `baseline` gia' verificate e crea
+`models/calibration_runs/<profile_key>/layer_matrix.json`.
+Per Qwen Q5_K_L questo report contiene:
+
+- tutti i tensori con nome, tipo GGUF, forma e byte serializzati;
+- una riga per ciascun blocco `blk.N`, con dimensioni e gruppi
+  `attention`, `feed_forward`, `normalization`, ecc.;
+- tensori fuori dai blocchi (embedding, output, normalizzazioni);
+- scenari **puramente teorici** per futuri prefissi consecutivi di
+  blocchi CPU da 1/2/4/8/16/... layer (ove presenti);
+- marcatori `cpu_offload_executed=false` e
+  `operational_profile_changed=false`.
+
+Le cifre sono **byte GGUF serializzati**, non risparmio VRAM previsto.
+Non includono KV cache, scratch/compute buffer, overhead CUDA, costi
+di trasferimento CPU/GPU o latenza. La matrice non abilita
+`mapping` e non sposta alcun layer in RAM. Se un modello multi-shard
+e' incompleto, la fase viene bloccata.
+
+### Motori futuri: capacita' per tipologia di profilo
+
+La seguente tabella replica la classificazione condivisa per
+pianificare gli adapter, senza considerarla una verifica empirica
+delle release correnti:
+
+| Motore (`--engine`) | CPU offload pesi per layer | KV host/offload | Formati previsti | Stato |
+| --- | --- | --- | --- | --- |
+| `llama.cpp` | Si', totale/parziale | No, nella matrice di pianificazione | GGUF | Implementato |
+| `exllamav2` | No | No | EXL2, GPTQ | Da fare |
+| `vllm` | No (eccezione CPU-only fuori scope) | Si', swapping asincrono | AWQ, GPTQ, FP16/BF16 (no EXL2) | Da fare |
+| `aphrodite` | No | Si', configurabile | EXL2, GPTQ, AWQ | Da fare |
+| `tensorrt-llm` | No | Si', host pinned | Engine TensorRT compilati | Da fare |
+
+Solo la matrice dei layer GGUF con `llama.cpp` e' implementata.
+Le altre strategie di profilo richiederanno sorgenti, formati, worker,
+misure e verifiche dedicate: Ruth non tenta di eseguirle.
 
 ## Modelli e fonti disponibili
 
