@@ -294,59 +294,37 @@ Su Qwen Hugging Face Q5_K_L, un test a \`n_ctx=2048\` ha misurato
 non una riserva operativa sicura. Ruth non modifica automaticamente
 batch, KV, mapping o quantizzazione per far risultare la prova valida.
 
-## Esclusione prima del download e budget Kaggle per candidato
+## Kaggle: somma degli shard e controllo VRAM
 
-La regola di esclusione **non contiene piu' costanti dei pesi di Qwen**.
-Per ogni modello Kaggle registrato che dispone di un riferimento
-architetturale affidabile, Ruth legge il piccolo `config.json`
-dichiarato in `ModelManager.SOURCE_OVERRIDES`
-(`architecture_reference_repo`) e calcola il numero minimo di
-parametri obbligatori per decoder densi supportati (Qwen2, Llama,
-Mistral con MLP gated e attenzione standard/GQA):
+Kaggle segue la stessa ricerca quality-first gia' usata per
+Hugging Face: considera le quantizzazioni nell'ordine di qualita',
+scarta quelle troppo grandi e verifica nativamente su CUDA le altre.
+
+L'unica differenza nel controllo preventivo e' che un GGUF Kaggle
+puo' essere suddiviso in piu' shard. Ruth raggruppa tutti i file
+della quantizzazione e usa la somma delle dimensioni fornite dal
+catalogo:
 
 ```text
-parametri_minimi = vocab * hidden + layers * (
-    3 * hidden * intermediate
-    + 2 * hidden * num_attention_heads * head_dim
-    + 2 * hidden * num_kv_heads * head_dim
-)
-pesi_minimi_bytes = parametri_minimi * bit_minimi_formato / 8
+dimensione_gguf = somma(dimensioni_di_tutti_gli_shard)
+se dimensione_gguf > VRAM_totale:
+    scarta questa quantizzazione senza scaricarla
+altrimenti:
+    scarica gli shard mancanti e verifica tutti i pesi su CUDA
 ```
 
-Viene contata una sola matrice embedding; vengono omessi output
-head, norme, bias e tutti i buffer di runtime. Per le codifiche
-standard FP16 (16 bit) e Q8_0 (almeno 8 bit) questo costituisce
-un **limite inferiore** sotto l'assunzione che il GGUF corrisponda
-al modello e alla quantizzazione dichiarati. L'esclusione e'
-ammessa **solo quando tale limite supera la VRAM totale**.
+La regola non contiene nomi o numeri hardcoded di Qwen, non richiede
+il `config.json` del modello e non impone budget di download.
+Prima di scaricare Ruth verifica soltanto che sul disco ci sia
+spazio per la cache KaggleHub e la copia locale; riutilizza gli
+shard presenti e non elimina automaticamente modelli precedenti.
 
-Questa e' una regola parametrica, non un filtro hardcoded su Qwen.
-Ruth la puo' usare con qualsiasi nuova sorgente Kaggle **a patto**
-che sia associata a un config di riferimento verificabile e che
-la sua architettura rientri nelle famiglie dense supportate.
-**Non esiste un calcolo universalmente esatto dai soli byte del
-catalogo Kaggle**: per varianti con architettura sconosciuta, MoE,
-multimodale, config non associato o GGUF non corrispondente,
-il risultato e' `unknown`, non una falsa esclusione. L'ispezione
-GGUF locale e la prova CUDA reale restano definitive.
-
-Nel caso Qwen 2.5 7B, il config ufficiale
-`Qwen/Qwen2.5-7B-Instruct/config.json` restituisce
-`hidden=3584`, `layers=28`, `intermediate=18944`,
-`heads=28`, `kv_heads=4`, `vocab=152064`.
-Questo produce circa 13.485,5 MiB minimi FP16 e 6.742,8 MiB
-minimi Q8_0, entrambi superiori ai 6.141 MiB della RTX 4050;
-Q6_K non viene escluso da questa formula.
-
-**Budget di download: `--kaggle-max-download-mib` e' per
-quantizzazione, non cumulativo.** Se autorizzi 6400 MiB,
-Ruth puo' scaricare Q6_K (5.964,47 MiB) e successivamente
-Q5_K_M (5.192,60 MiB) nella *stessa* esecuzione,
-ognuno entro 6400 MiB. Rimane separato il controllo dello
-spazio disco reale, che tiene conto delle cache e della copia
-locale (+5% di margine sui byte di catalogo e riserva
-predefinita di 8192 MiB). Non e' un limite rigoroso di
-traffico di rete: i byte effettivi dipendono da KaggleHub.
+Esempio con RTX 4050 (6141 MiB): FP16 e Q8_0 Qwen vengono
+esclusi dalla somma dei file (rispettivamente circa 14532 e
+7723 MiB). Q6_K (~5964 MiB) supera il filtro preventivo ma,
+come verificato dal test nativo dell'utente, fallisce per OOM CUDA.
+Il successivo Q5_K_M (~5193 MiB) puo' quindi essere provato
+senza alcun parametro aggiuntivo.
 
 ```bash
 cd ~/Dev/ruth
@@ -354,38 +332,21 @@ cd ~/Dev/ruth
   --model qwen-2.5-7b-instruct
 
 .venv/bin/python -m calibration.profile_pipeline \
-  --model qwen-2.5-7b-instruct --source kaggle \
-  --until baseline --kaggle-max-download-mib 6400
+  --model qwen-2.5-7b-instruct --source kaggle --until baseline
 ```
 
-La baseline riutilizza i GGUF gia' scaricati e ripete la
-prova del modello migliore disponibile; non usare `--rerun`.
-Senza un budget esplicito non viene autorizzato alcun
-nuovo download Kaggle. Se una singola candidata eccede il
-limite, ha dimensione sconosciuta o non c'e' spazio
-Ruth si ferma senza saltare arbitrariamente a quantizzazioni
-di qualita' inferiore. I profili Kaggle e Bartowski restano separati.
+Il confronto usa le dimensioni **dei file GGUF**, non i byte dei
+soli tensori. Inoltre alcune misure del catalogo Kaggle possono
+essere arrotondate: e' un filtro preventivo pratico, non una
+prova matematica d'impossibilita' vicino alla soglia. Hugging
+Face continua a usare la lettura dell'header GGUF remoto per
+verificare i pesi senza scaricare il modello. Per ogni candidata
+Kaggle non esclusa, la prova nativa CUDA resta necessaria.
+Se il catalogo non restituisce una dimensione attendibile, Ruth
+si ferma e non salta una candidata ignota.
 
-Il **preflight Kaggle senza download** raggruppa le dimensioni
-riportate dalla CLI per ogni quantizzazione e per tutti gli shard:
-
-```bash
-.venv/bin/python -m calibration.kaggle_preflight \
-  --model qwen-2.5-7b-instruct
-```
-
-Scrive `models/calibration_runs/kaggle_preflight.json` e visualizza
-dimensione cumulativa da catalogo, conteggio degli shard, VRAM e
-spazio disco libero. Alcune dimensioni della CLI sono arrotondate:
-non sono i byte dei tensori GGUF e **non provano** che un modello
-entrera' o non entrera' in VRAM. Il preflight non avvia download
-o probe GPU. Con un config di riferimento esplicitamente associato al modello
-e un'architettura supportata, il preflight puo' inoltre calcolare
-limiti inferiori dei tensori FP16 e Q8_0 senza scaricare i pesi.
-Per quantizzazioni differenti o metadati insufficienti non inventa
-esclusioni dalla dimensione catalogo. La prova definitiva usa
-l'header GGUF locale e il backend CUDA. Nessun candidato escluso
-e' eliminato per tuning CPU/GPU futuro.
+Il preflight Kaggle non scarica pesi e non avvia prove GPU.
+La fonte Kaggle mantiene una baseline indipendente da Bartowski.
 
 Dopo aver completato le pipeline, rieseguire \`phase1_audit\`.
 Solo cinque righe \`COMPLETA\` permettono di dichiarare
