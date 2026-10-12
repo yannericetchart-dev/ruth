@@ -136,7 +136,8 @@ def resolve_identity(model_id: str, source: str | None = None,
         "choices": choices,
         "hardware": hardware,
         "software": software,
-        # The first three steps have one fixed inference configuration.
+        # Preserve the existing CUDA reference settings and identity key;
+        # layer_matrix reads the existing baseline and does not alter them.
         "reference_runtime": {
             "baseline_n_ctx": 64, "n_batch": 32,
             "context_generated_tokens": 8,
