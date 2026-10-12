@@ -372,7 +372,7 @@ def inventory_kaggle(
             quant, matched = _gguf_quantization(logical, gguf_prefix)
             # A valid split set must begin with shard 1; incomplete sets
             # never proceed to downloads, native parsing, or baseline.
-            first_file, first_path = present[0]
+            first_file, first_path, _first_size = present[0]
             candidates.append(new_candidate(
                 first_file, first_path, quant, matched,
                 shard_filenames=[pair[0] for pair in present],
