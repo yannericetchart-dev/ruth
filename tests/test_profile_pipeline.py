@@ -103,6 +103,35 @@ class ProfileIdentityTests(unittest.TestCase):
                 resolve_identity("mistral-7b-instruct-v0.3",
                                  source="kaggle", status=GPU_STATUS)
 
+    def test_cached_gpu_baseline_requires_every_split_shard(self):
+        from calibration.profile_pipeline import Journal
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            machine = identity()
+            journal = Journal(root, machine)
+            model_dir = root / "weights"
+            model_dir.mkdir()
+            files = [
+                f"qwen2.5-7b-instruct-q4_k_m-{i:05d}-of-00002.gguf"
+                for i in (1, 2)
+            ]
+            for file in files:
+                (model_dir / file).write_bytes(b"fake")
+            selection = {
+                "local_path": str(model_dir / files[0]),
+                "filename": files[0],
+                "shard_filenames": files,
+                "native_verified_all_gpu": True,
+            }
+            journal.phase_state("baseline", "completed", "baseline.json")
+            from calibration.profile_pipeline import atomic_json
+            atomic_json(root / "baseline.json", {
+                "success": True, "baseline": selection,
+            })
+            self.assertIsNotNone(journal.cached("baseline"))
+            (model_dir / files[1]).unlink()
+            self.assertIsNone(journal.cached("baseline"))
+
     def test_source_specific_model_directories_are_isolated(self):
         from model import ModelManager
         with tempfile.TemporaryDirectory() as temp:
