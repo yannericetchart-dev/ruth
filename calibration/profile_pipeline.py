@@ -135,8 +135,12 @@ def brief_event(event: dict) -> str:
             "Nessuna assunzione OOM."
         )
     if kind == "context_candidate_limit":
-        return (f"Massimo provvisorio n_ctx={event['n_ctx']} "
-                f"| primo limite={event.get('failed_boundary')}")
+        uncertainty = (
+            " | limite superiore INCERTO (non OOM)"
+            if event.get("maximality_uncertain") else ""
+        )
+        return (f"Contesto GPU candidato n_ctx={event['n_ctx']} "
+                f"| primo limite={event.get('failed_boundary')}{uncertainty}")
     if kind == "context_confirmation":
         return (f"Conferma {event['round']}/{event['total']} "
                 f"di n_ctx={event['n_ctx']}")
@@ -362,6 +366,12 @@ def _phase_call(name: str, identity: dict, previous: dict,
         good = report.get("success") is True and isinstance(result, int) and result > 0
         summary = {
             "n_ctx": result,
+            "confirmed_gpu_resident_lower_bound_n_ctx":
+                report.get("confirmed_gpu_resident_n_ctx"),
+            "maximality_proven": report.get("maximality_proven"),
+            "uncertain_failure_boundaries": len(
+                report.get("uncertain_failure_boundaries") or []
+            ),
             "peak_headroom_mib": report.get("confirmation_min_sampled_headroom_mib"),
             "attempts": len(report.get("attempts") or []),
             "best_observed_n_ctx_not_confirmed":
