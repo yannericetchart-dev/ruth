@@ -458,6 +458,32 @@ def choose_baseline(
                           "weight_mib": record["exact_serialized_weight_mib"]})
             continue
 
+        if not local_ready and exact is None and spec["source"] == "kaggle":
+            from .kaggle_architecture_bound import conservative_kaggle_weight_floor
+            theoretical = conservative_kaggle_weight_floor(
+                model_id, candidate, vram_bytes
+            )
+            if theoretical is not None:
+                record["architecture_weight_floor"] = theoretical
+                if theoretical["exceeds_total_vram"]:
+                    # This is an architecture-bound exclusion for the
+                    # *canonical* GGUF variant, not an estimate derived from
+                    # file size. Do not download or probe a known impossible
+                    # full-CUDA FP16/Q8_0 weight set.
+                    record["status"] = "excluded_architecture_weight_floor_exceeds_vram"
+                    record["weight_size_source"] = (
+                        "canonical_qwen_architecture_conservative_lower_bound"
+                    )
+                    record["future_cpu_gpu_tuning_allowed"] = True
+                    if progress is not None:
+                        progress({
+                            "event": "candidate_decision", "model": model_id,
+                            "quantization": candidate["quantization"],
+                            "status": record["status"],
+                            "weight_mib": theoretical["minimum_weight_mib"],
+                        })
+                    continue
+
         if not local_ready:
             if spec["source"] == "kaggle":
                 from .kaggle_transfer_guard import assess_kaggle_transfer
