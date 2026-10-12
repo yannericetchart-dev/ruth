@@ -525,12 +525,6 @@ def search_gpu_context(
                 "signal": "SIGABRT",
                 "reason": "one native abort without classified CUDA allocation cause",
             })
-            if progress is not None:
-                progress({
-                    "event": "context_sigabrt_boundary",
-                    "n_ctx": failure.get("requested_n_ctx"),
-                    "failure_class": cause,
-                })
             return True
         if cause == "ambiguous_context_initialization" and retry_ambiguous_context:
             result["ambiguous_boundary_used"] = True
@@ -619,6 +613,26 @@ def search_gpu_context(
             for row in result["confirmation"]), 1
     )
     result["reference_is_operationally_safe"] = False
+    result["validated_gpu_resident_context"] = {
+        "n_ctx": low,
+        "native_cuda_validation": True,
+        "confirmation_rounds_passed": confirm_rounds,
+        "confirmation_min_sampled_headroom_mib":
+            result["confirmation_min_sampled_headroom_mib"],
+        "maximality_proven": not bool(result["uncertain_failure_boundaries"]),
+        "operationally_safe": False,
+    }
+    if progress is not None:
+        progress({
+            "event": "context_gpu_validated",
+            "n_ctx": low,
+            "confirmation_rounds": confirm_rounds,
+            "peak_headroom_mib":
+                result["confirmation_min_sampled_headroom_mib"],
+            "maximality_proven": not bool(
+                result["uncertain_failure_boundaries"]
+            ),
+        })
     if result["uncertain_failure_boundaries"]:
         result["error"] = (
             "Contesto GPU-resident inferiore confermato, ma il massimo "
