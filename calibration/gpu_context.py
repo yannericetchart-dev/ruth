@@ -320,7 +320,7 @@ def search_gpu_context(
     manager = ModelManager(root=root)
     baseline_source = (
         (baseline_selection or {}).get("source")
-        or ModelManager.CATALOG[model_id]["source"]
+        or source or ModelManager.CATALOG[model_id]["source"]
     )
     selected_source = source or baseline_source
     spec = ModelManager.source_spec(model_id, selected_source)
