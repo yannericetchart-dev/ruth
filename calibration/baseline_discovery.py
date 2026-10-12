@@ -394,7 +394,9 @@ def choose_baseline(
             continue
 
         local = model_dir / candidate["filename"]
-        if local.is_file():
+        shard_files = candidate.get("shard_filenames") or [candidate["filename"]]
+        local_ready = all((model_dir / name).is_file() for name in shard_files)
+        if local_ready:
             layout = inspect_gguf(local, n_ctx=probe_n_ctx)
             exact = layout["weights_bytes"]
             record["weight_size_source"] = "local_gguf_tensors"
@@ -433,7 +435,7 @@ def choose_baseline(
                           "weight_mib": record["exact_serialized_weight_mib"]})
             continue
 
-        if not local.is_file():
+        if not local_ready:
             if progress is not None:
                 progress({"event": "candidate_download", "model": model_id,
                           "quantization": candidate["quantization"],
@@ -521,6 +523,7 @@ def choose_baseline(
             "model_id": model_id,
             "architecture": spec["architecture"],
             "filename": candidate["filename"],
+            "shard_filenames": shard_files,
             "quantization": candidate["quantization"],
             "local_path": str(local),
             "native_verified_all_gpu": True,
