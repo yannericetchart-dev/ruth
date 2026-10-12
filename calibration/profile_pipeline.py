@@ -292,8 +292,7 @@ class Journal:
 
 
 def _phase_call(name: str, identity: dict, previous: dict,
-                reporter, *, kaggle_max_download_mib: int | None = None,
-                kaggle_min_free_mib: int = 8192) -> tuple[dict, bool, dict]:
+                reporter) -> tuple[dict, bool, dict]:
     choices = identity["choices"]
     model = choices["model_id"]
     model_root = ModelManager().model_directory(
@@ -326,8 +325,6 @@ def _phase_call(name: str, identity: dict, previous: dict,
             probe_n_ctx=opts["baseline_n_ctx"], n_batch=opts["n_batch"],
             inventory_only=False, persist_selection=False, progress=reporter,
             kaggle_handle=choices.get("kaggle_handle"),
-            kaggle_max_download_mib=kaggle_max_download_mib,
-            kaggle_min_free_mib=kaggle_min_free_mib,
         )
         selected = report.get("baseline") or {}
         good = (
@@ -404,9 +401,7 @@ def _phase_call(name: str, identity: dict, previous: dict,
 
 
 def run_pipeline(identity: dict, *, until: str = "context_gpu",
-                 rerun: bool = False, output_root: Path | None = None,
-                 kaggle_max_download_mib: int | None = None,
-                 kaggle_min_free_mib: int = 8192) -> dict:
+                 rerun: bool = False, output_root: Path | None = None) -> dict:
     if until not in IMPLEMENTED:
         raise ValueError(
             f"Fase '{until}' non implementata. Disponibili: {IMPLEMENTED}"
@@ -451,8 +446,6 @@ def run_pipeline(identity: dict, *, until: str = "context_gpu",
                 report, good, summary = _phase_call(
                     stage, identity, previous,
                     lambda event, phase=stage: journal.event(phase, event),
-                    kaggle_max_download_mib=kaggle_max_download_mib,
-                    kaggle_min_free_mib=kaggle_min_free_mib,
                 )
                 if stage == "layer_matrix" and good:
                     from .layer_export import export_matrix_tables
@@ -517,12 +510,6 @@ def main(argv: list[str] | None = None) -> int:
                         help="Fonte: bartowski (Hugging Face) o kaggle; default bartowski")
     parser.add_argument("--kaggle-handle", default=None,
                         help="Variante Kaggle, formato owner/model/framework/variation[/version]")
-    parser.add_argument("--kaggle-max-download-mib", type=int,
-                        help=("Autorizza download Kaggle fino a questo budget "
-                              "di MiB da catalogo PER CANDIDATO. "
-                              "Senza opzione: nessun nuovo download Kaggle."))
-    parser.add_argument("--kaggle-min-free-mib", type=int, default=8192,
-                        help="Riserva disco richiesta oltre cache+copie (default 8192 MiB)")
     parser.add_argument("--engine", default="llama.cpp",
                         choices=tuple(ENGINE_CATALOG),
                         help="Motore; altri motori elencati come da fare")
@@ -553,13 +540,6 @@ def main(argv: list[str] | None = None) -> int:
         return 0
     if args.kaggle_handle and args.model == "all":
         parser.error("--kaggle-handle richiede un singolo --model.")
-    if args.kaggle_max_download_mib is not None and args.kaggle_max_download_mib <= 0:
-        parser.error("--kaggle-max-download-mib deve essere positivo.")
-    if args.kaggle_min_free_mib < 0:
-        parser.error("--kaggle-min-free-mib deve essere >= 0.")
-    if (args.kaggle_max_download_mib is not None
-        or args.kaggle_min_free_mib != 8192) and args.source != "kaggle":
-        parser.error("Budget e riserva download richiedono --source kaggle.")
     models = (
         sorted(ModelManager.CATALOG) if args.model == "all" else [args.model]
     )
@@ -583,8 +563,6 @@ def main(argv: list[str] | None = None) -> int:
             outcome = run_pipeline(
                 identity, until=args.until, rerun=args.rerun,
                 output_root=args.output_root,
-                kaggle_max_download_mib=args.kaggle_max_download_mib,
-                kaggle_min_free_mib=args.kaggle_min_free_mib,
             )
         except (Exception) as exc:
             # Never display token secrets. Exceptions in these code paths
