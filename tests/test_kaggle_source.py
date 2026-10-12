@@ -38,6 +38,27 @@ def mock_kaggle_call(argv, **kwargs):
 
 
 class KaggleSourceTests(unittest.TestCase):
+    def test_cli_uses_virtualenv_executable_without_activation(self):
+        from calibration.kaggle_source import _csv_call
+
+        with tempfile.TemporaryDirectory() as tmp:
+            fake_python = Path(tmp) / "python"
+            fake_cli = Path(tmp) / "kaggle"
+            fake_cli.write_text("#!/bin/sh\\n")
+            with (
+                patch("calibration.kaggle_source.sys.executable",
+                      str(fake_python)),
+                patch("calibration.kaggle_source.subprocess.run",
+                      return_value=subprocess.CompletedProcess(
+                          [], 0, "Name,Size\\n", ""
+                      )) as call,
+            ):
+                self.assertEqual(
+                    _csv_call("variations", "files", HANDLE),
+                    [],
+                )
+            self.assertEqual(call.call_args.args[0][0], str(fake_cli))
+
     def test_missing_handle_does_not_call_unsupported_cli(self):
         with patch("calibration.kaggle_source.subprocess.run") as cmd:
             with self.assertRaisesRegex(RuntimeError, "non supporta"):
