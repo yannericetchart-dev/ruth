@@ -356,6 +356,7 @@ def choose_baseline(
         "source": spec["source"],
         "kaggle_handle_filter": kaggle_handle,
         "kaggle_download_budget_mib": kaggle_max_download_mib,
+        "kaggle_budget_scope": "per_candidate",
         "kaggle_min_free_mib": kaggle_min_free_mib if spec["source"] == "kaggle" else None,
         "gpu": gpu["gpu"]["name"],
         "total_vram_mib": gpu["memory"]["total_mib"],
@@ -499,7 +500,7 @@ def choose_baseline(
                     # full-CUDA FP16/Q8_0 weight set.
                     record["status"] = "excluded_architecture_weight_floor_exceeds_vram"
                     record["weight_size_source"] = (
-                        "canonical_qwen_architecture_conservative_lower_bound"
+                        "configured_dense_decoder_architecture_lower_bound"
                     )
                     record["future_cpu_gpu_tuning_allowed"] = True
                     if progress is not None:
