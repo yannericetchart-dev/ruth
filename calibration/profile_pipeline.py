@@ -6,8 +6,8 @@ Usage:
   python -m calibration.profile_pipeline --model qwen-2.5-7b-instruct --rerun
 
 Every result is bound to explicit user choices AND automatically detected
-hardware. Only inventory, full-GPU baseline and GPU context are implemented
-now. Later stages have reserved IDs but cannot silently run or be marked done.
+hardware. Inventory, full-GPU baseline, read-only layer matrix and GPU context are
+implemented. Later placement/mapping stages remain unavailable.
 """
 
 import argparse
@@ -19,6 +19,7 @@ from pathlib import Path
 import sys
 
 from model import ModelManager
+from inference.engine_catalog import ENGINE_CATALOG
 
 from .profile_identity import resolve_identity
 
@@ -26,6 +27,7 @@ from .profile_identity import resolve_identity
 ROADMAP = (
     ("inventory", True),
     ("baseline", True),
+    ("layer_matrix", True),
     ("context_gpu", True),
     ("mapping", False),
     ("runtime", False),
@@ -36,6 +38,7 @@ IMPLEMENTED = [name for name, active in ROADMAP if active]
 MESSAGES = {
     "inventory": "Inventario GGUF e priorita' qualitativa",
     "baseline": "Caricamento del miglior GGUF interamente su GPU",
+    "layer_matrix": "Enumerazione tensori/layer (nessun offload CPU)",
     "context_gpu": "Ricerca del massimo contesto GPU-resident",
     "mapping": "Ricerca placement layer/tensori",
     "runtime": "Ottimizzazione parametri llama.cpp",
@@ -103,6 +106,9 @@ def brief_event(event: dict) -> str:
         if event.get("error"):
             info.append("errore=" + str(event["error"])[:160])
         return " | ".join(info)
+    if kind == "layer_matrix_ready":
+        return (f"Matrice: {event['layers']} layer, {event['tensors']} tensori "
+                f"| pesi serializzati={event['weights_mib']} MiB")
     if kind == "context_probe_start":
         return f"Test n_ctx={event['n_ctx']} (generazione={event['token_count']} token)"
     if kind == "context_probe_result":
@@ -144,6 +150,13 @@ class Journal:
                 "profile_generated": False,
                 "operationally_selected": False,
             }
+            atomic_json(self.state_path, self.state)
+        latest_roadmap = [
+            {"phase": name, "implemented": supported}
+            for name, supported in ROADMAP
+        ]
+        if self.state.get("roadmap") != latest_roadmap:
+            self.state["roadmap"] = latest_roadmap
             atomic_json(self.state_path, self.state)
 
     def event(self, stage: str, payload: dict) -> None:
@@ -223,6 +236,21 @@ class Journal:
                 and model_path.name == selected.get("filename")
                 and shards_present
             ) else None
+        if phase == "layer_matrix":
+            baseline = self.cached("baseline")
+            selected = (baseline or {}).get("baseline") or {}
+            path = Path(selected.get("local_path") or "/NONEXISTENT")
+            return data if (
+                baseline is not None
+                and data.get("success") is True
+                and data.get("status") == "enumeration_only"
+                and data.get("cpu_offload_executed") is False
+                and data.get("filename") == selected.get("filename")
+                and data.get("model_path") == str(path.resolve())
+                and isinstance(data.get("layers"), list)
+                and len(data["layers"]) == data.get("block_count")
+                and data.get("serialized_weight_bytes", 0) > 0
+            ) else None
         if phase == "context_gpu":
             return data if (
                 data.get("success") is True
@@ -278,6 +306,27 @@ def _phase_call(name: str, identity: dict, previous: dict,
                    "file": selected.get("filename"),
                    "attempts": len(report.get("attempts") or [])}
         return report, good, summary
+
+    if name == "layer_matrix":
+        from .layer_matrix import analyze_layer_matrix
+
+        baseline = previous["baseline"].get("baseline")
+        if baseline is None:
+            raise RuntimeError("Matrice layer richiede una baseline full-GPU.")
+        report = analyze_layer_matrix(
+            baseline, model_id=model, engine=choices["engine"]
+        )
+        reporter({
+            "event": "layer_matrix_ready", "layers": report["block_count"],
+            "tensors": report["tensor_count"],
+            "weights_mib": report["serialized_weight_mib"],
+        })
+        return report, report["success"] is True, {
+            "layers": report["block_count"],
+            "tensors": report["tensor_count"],
+            "cpu_offload_executed": False,
+            "hypothetical_cpu_prefixes": len(report["cpu_prefix_scenarios"]),
+        }
 
     if name == "context_gpu":
         from .gpu_context import search_gpu_context
@@ -405,7 +454,8 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--kaggle-handle", default=None,
                         help="Variante Kaggle, formato owner/model/framework/variation[/version]")
     parser.add_argument("--engine", default="llama.cpp",
-                        help="Motore; oggi disponibile solo llama.cpp")
+                        choices=tuple(ENGINE_CATALOG),
+                        help="Motore; altri motori elencati come da fare")
     parser.add_argument("--method", default="llama_cpp_python",
                         help="Metodo; oggi disponibile solo llama_cpp_python")
     parser.add_argument("--until", default="context_gpu", choices=IMPLEMENTED,
@@ -415,7 +465,17 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--output-root", type=Path,
                         help="Cartella per risultati per hardware/config")
     parser.add_argument("--list-phases", action="store_true")
+    parser.add_argument("--list-engines", action="store_true",
+                        help="Motori e capacita' dichiarate (anche da fare)")
     args = parser.parse_args(argv)
+    if args.list_engines:
+        for key, info in ENGINE_CATALOG.items():
+            print(f"{key:14} | {info['status']:12} "
+                  f"| metodo={info['method']:17} "
+                  f"| layer CPU={'si' if info['model_weight_layer_cpu_offload'] else 'no'} "
+                  f"| KV host={'si' if info['kv_cache_host_offload'] else 'no'} "
+                  f"| formati={', '.join(info['model_formats'])}")
+        return 0
     if args.list_phases:
         for phase, implemented in ROADMAP:
             print(f"{phase:15} {'implementato' if implemented else 'previsto'}"
