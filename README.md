@@ -250,14 +250,16 @@ puo' richiedere numerose iterazioni/tempo. Il massimo riportato
 e' diagnostico: non implica un margine operativo sicuro.
 
 Quando un worker di contesto non produce JSON valido, Ruth registra
-\`worker_returncode\`, \`worker_signal\` e lo stato del protocollo,
-poi riprova **una sola volta** in un nuovo processo CUDA. Un segnale
-come SIGKILL da solo **non dimostra** un OOM CUDA: senza indizi nativi
-espliciti la ricerca rimane inconclusiva. Se si ripete
-\`worker_protocol_error\` con \`SIGABRT\` senza una causa CUDA nativa
-classificabile, Ruth **continua la bisezione sotto quel n_ctx**, ma
-marca ogni punto come limite incerto. La ripetizione massima di due
-worker vale **per il singolo n_ctx**, non per l'intera ricerca.
+\`worker_returncode\`, \`worker_signal\` e lo stato del protocollo.
+**Un solo SIGABRT e' sufficiente a scartare immediatamente quel n_ctx**:
+nessun secondo tentativo sullo stesso valore; Ruth prosegue con la
+bisezione sui contesti inferiori. Se nei log manca una causa CUDA nativa
+esplicita, il punto scartato resta un **limite incerto** e non e'
+etichettato OOM. La ricerca continua ugualmente, conservando la
+distinzione tra massimo osservato, contesto confermato e massimo
+rigorosamente verificato. Solo un errore JSON senza SIGABRT puo'
+essere ritentato una volta per escludere un'anomalia transitoria.
+Neppure SIGKILL, preso isolatamente, prova esaurimento VRAM.
 
 Dopo aver esplorato i punti inferiori, il candidato funzionante e'
 verificato con due conferme CUDA native. Se esistono limiti incerti,
@@ -279,9 +281,10 @@ allocazione di risorse CUDA **per la configurazione corrente**, distinta
 dall'errore `native_cuda_oom`. Tale fallimento delimita la ricerca
 e permette la bisezione; non afferma di conoscere la causa fisica
 esatta ne' i byte di VRAM mancanti. SIGABRT privo di questa
-evidenza continua invece a bloccare la ricerca. Solo i probe
-riusciti di pesi/KV/compute in CUDA e le ripetizioni di conferma
-validano il massimo diagnostico.
+evidenza **scarta subito il singolo n_ctx** e permette la ricerca
+di contesti inferiori, ma non dimostra che il massimo assoluto
+sia stato trovato. Solo i probe riusciti di pesi/KV/compute in
+CUDA e le ripetizioni di conferma validano il contesto inferiore.
 
 Su Qwen Hugging Face Q5_K_L, un test a \`n_ctx=2048\` ha misurato
 6139,3 MiB su 6141 MiB: appena 1,7 MiB di margine campionato,
