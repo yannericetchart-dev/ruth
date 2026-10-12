@@ -44,6 +44,35 @@ MESSAGES = {
 }
 
 
+def kaggle_access_notice(model_id: str, source: str,
+                         failure: str) -> str | None:
+    """User-facing licensing hint based only on sanitized failure categories."""
+    if source != "kaggle":
+        return None
+    spec = ModelManager.source_spec(model_id, source)
+    page = spec.get("access_page")
+    if "categoria=license_required" in failure:
+        return (
+            "KAGGLE | LICENZA DA ACCETTARE: l'API indica che i termini "
+            "del modello non sono stati approvati dall'account corrente. "
+            f"Apri {page or 'https://www.kaggle.com/models'}, "
+            "scegli 'Verify via Kaggle Account' e accetta i termini. "
+            "Poi riprova con lo stesso account del token Kaggle."
+        )
+    if (spec.get("access_requires_consent")
+        and ("categoria=not_found" in failure
+             or "categoria=forbidden" in failure)):
+        return (
+            "KAGGLE | ACCESSO DA VERIFICARE: questo modello richiede "
+            "consenso Kaggle, ma l'errore non prova che manchi. "
+            f"Controlla lo stato di accesso su {page} e la verifica "
+            "'via Kaggle Account'. Se hai gia' accettato, verifica che "
+            "il token locale appartenga allo stesso account usato "
+            "nel browser e che la variante GGUF sia accessibile."
+        )
+    return None
+
+
 def now_utc():
     return datetime.now(timezone.utc).isoformat(timespec="seconds")
 
@@ -342,8 +371,15 @@ def run_pipeline(identity: dict, *, until: str = "context_gpu",
             except Exception as exc:
                 # Never lose the last known completed stages when a worker crashes.
                 detail = {"failure": f"{type(exc).__name__}: {exc}"}
+                notice = kaggle_access_notice(
+                    choices["model_id"], choices["source"], str(exc)
+                )
+                if notice:
+                    detail["access_notice"] = notice
                 journal.phase_state(stage, "blocked", detail=detail)
                 print(f"[{stage}] BLOCCATO: {detail['failure']}", flush=True)
+                if notice:
+                    print(f"[{stage}] {notice}", flush=True)
                 return {
                     "success": False, "blocked_phase": stage, "detail": detail,
                     "run_directory": str(folder), "profile_key": identity["profile_key"],
