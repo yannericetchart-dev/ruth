@@ -177,7 +177,7 @@ def variation_files(handle: str) -> tuple[list[dict], str]:
         numeric_versions = set()
         for version in versions:
             value = _get(version, "versionNumber", "version", "number")
-            if re.fullmatch(r"[1-9]\\d*", value):
+            if re.fullmatch(r"[1-9]\d*", value):
                 numeric_versions.add(int(value))
         if not numeric_versions:
             raise original from None
