@@ -56,6 +56,16 @@ class EngineCatalogTests(unittest.TestCase):
             self.assertIn(name, output.getvalue())
         self.assertIn("da fare", output.getvalue())
 
+    def test_runtime_manager_marks_future_adapters_da_fare(self):
+        from inference.manager import InferenceManager
+        for engine in ("exllamav2", "vllm", "aphrodite", "tensorrt-llm"):
+            with self.subTest(engine=engine):
+                with self.assertRaisesRegex(NotImplementedError, "da fare"):
+                    InferenceManager(engine=engine)
+        current = InferenceManager(engine="llama.cpp")
+        self.assertEqual(current.engine, "llama.cpp")
+        self.assertIsNone(current._llm)
+
     def test_future_engine_does_not_fall_back_to_llama(self):
         with self.assertRaisesRegex(NotImplementedError, "da fare"):
             validate_choices(
