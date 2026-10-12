@@ -404,6 +404,9 @@ def run_pipeline(identity: dict, *, until: str = "context_gpu",
                     stage, identity, previous,
                     lambda event, phase=stage: journal.event(phase, event),
                 )
+                if stage == "layer_matrix" and good:
+                    from .layer_export import export_matrix_tables
+                    export_matrix_tables(report, folder)
             except Exception as exc:
                 # Never lose the last known completed stages when a worker crashes.
                 detail = {"failure": f"{type(exc).__name__}: {exc}"}
