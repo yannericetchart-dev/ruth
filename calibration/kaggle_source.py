@@ -35,6 +35,41 @@ def validate_handle(handle: str, repository: str) -> str:
     return handle
 
 
+def classify_kaggle_cli_failure(stderr: str) -> tuple[str, str]:
+    """Return a safe, stable error category; never include upstream stderr.
+
+    Kaggle CLI error text can contain tokens, request URLs or auth headers.
+    Only recognize fixed phrases and HTTP codes; keep everything else private.
+    """
+    details = stderr.casefold()
+    if re.search(r"\b401\b|unauthorized|unauthenticated", details):
+        return ("unauthorized",
+                "Autenticazione rifiutata; controlla il token Kaggle attivo.")
+    if re.search(r"\b403\b|forbidden|permission denied|access denied", details):
+        return ("forbidden",
+                "Accesso vietato: controlla consenso/licenza e permessi "
+                "sulla variante Kaggle.")
+    if re.search(r"\b404\b|not found", details):
+        return ("not_found",
+                "Modello/variante non trovati dall'API; verifica l'handle.")
+    if re.search(r"\b429\b|rate limit|too many requests", details):
+        return ("rate_limited",
+                "Limite richieste Kaggle; riprova più tardi.")
+    if re.search(r"\b5(?:00|02|03|04)\b|internal server error", details):
+        return ("server_error",
+                "Servizio Kaggle temporaneamente non disponibile.")
+    if re.search(r"invalid choice|unrecognized arguments|usage:|no such option",
+                 details):
+        return ("cli_syntax",
+                "Versione CLI Kaggle incompatibile con il comando richiesto.")
+    if re.search(r"sslerror|connectionerror|name resolution|timed out", details):
+        return ("network",
+                "Problema di rete/TLS nel collegamento con Kaggle.")
+    return ("unknown",
+            "Causa non identificabile dal messaggio filtrato. "
+            "Verifica la CLI e la risposta del servizio in locale.")
+
+
 def _csv_call(*args: str) -> list[dict]:
     try:
         # Prefer the CLI installed in Ruth's venv even when not activated.
@@ -51,12 +86,13 @@ def _csv_call(*args: str) -> list[dict]:
     except subprocess.TimeoutExpired:
         raise RuntimeError("Timeout interrogazione catalogo Kaggle.") from None
     if run.returncode != 0:
-        # Do not echo CLI stderr: it can include credentials/auth fragments.
+        # Only expose recognized error categories, never raw stderr/stdout.
+        cause, hint = classify_kaggle_cli_failure(run.stderr or "")
         raise RuntimeError(
-            "Interrogazione Kaggle fallita (codice di uscita "
-            f"{run.returncode}). Verifica il modello, l'accesso e "
-            "l'handle della variante con 'kaggle models variations files' "
-            "oppure 'kaggle models variations versions files'."
+            f"Interrogazione Kaggle fallita (exit={run.returncode}, "
+            f"categoria={cause}). {hint} "
+            "Comando di verifica: kaggle models variations files "
+            "<owner/model/gguf/variation> --csv."
         )
     content = run.stdout.strip()
     if not content:
