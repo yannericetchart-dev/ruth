@@ -281,11 +281,28 @@ richiedono il download dei pesi. **Non condividere log grezzi che
 contengano il token**: rimuovi eventuali token, header e URL firmati.
 Per Gemma 2, verifica anche le condizioni di licenza su Kaggle.
 
+Su Qwen Kaggle le quantizzazioni possono essere distribuite in
+**shard GGUF** (`...-00001-of-00002.gguf` ecc.). Ruth raggruppa i
+file in un singolo candidato logico per quantizzazione, verifica la
+presenza di tutti gli shard e ordina le quantizzazioni per priorita'
+qualitativa. `FP16` e `Q5_0` sono formati riconosciuti. L'inventario
+non scarica pesi: i numeri riportati ora rappresentano **candidati
+logici**, non i singoli file.
+
+Per le prove baseline il download Kaggle richiede tutti gli shard
+del candidato, a partire dallo shard 1; il lettore GGUF somma i tensori
+di tutti gli shard e la verifica nativa CUDA deve coprirli tutti.
+Un gruppo mancante/incompleto rimane non classificato e **blocca**
+l'avanzamento. La prima prova di una quantizzazione Kaggle potrebbe
+richiedere il download di molti gigabyte: non avviare `--until baseline`
+senza controllare spazio disco e piano di selezione. Nessuna valutazione
+della fattibilita' VRAM viene inferita soltanto dalle dimensioni dei file.
+
 Se il nome GGUF ottenuto da Kaggle non consente di classificare la
-quantizzazione in modo affidabile, il file resta nell'inventario come
-**non classificato** e la pipeline non seleziona una baseline di qualita'
-presunta. Una baseline richiede la verifica nativa CUDA di tutti i pesi
-e un'inferenza minima riuscita.
+quantizzazione in modo affidabile, il candidato resta nell'inventario
+come **non classificato** e la pipeline non seleziona una baseline di
+qualita' presunta. Una baseline richiede la verifica nativa CUDA di
+tutti i pesi e un'inferenza minima riuscita.
 
 Le due fonti mantengono identita' e risultati diversi:
 `models/calibration_runs/<profile_key>/` per i report; i pesi Kaggle
