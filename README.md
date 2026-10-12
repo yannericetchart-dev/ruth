@@ -241,6 +241,31 @@ la variante con `--kaggle-handle OWNER/MODEL/FRAMEWORK/VARIATION[/VERSION]`
 soltanto per Gemma o Qwen con `--source kaggle`. L'handle alternativo
 viene incluso nell'identita' della calibrazione.
 
+### Diagnosi Kaggle senza download
+
+Se l'inventario Kaggle segnala un errore, Ruth indica una categoria
+filtrata (`unauthorized`, `forbidden`, `not_found`, `cli_syntax`,
+`network` oppure `unknown`) **senza stampare la risposta grezza**,
+che potrebbe contenere segreti. L'autenticazione a KaggleHub e quella
+della CLI devono entrambe funzionare nella stessa sessione utente.
+
+```bash
+.venv/bin/kaggle --version
+
+.venv/bin/python -c 'import kagglehub; print(kagglehub.whoami()["username"])'
+
+.venv/bin/kaggle models variations files \
+  google/gemma-2/gguf/2.0-9b-it --csv --page-size 5
+
+.venv/bin/kaggle models variations files \
+  qwen-lm/qwen2.5/gguf/7b-instruct --csv --page-size 5
+```
+
+I comandi `variations files` sono consultazioni di metadati, non
+richiedono il download dei pesi. **Non condividere log grezzi che
+contengano il token**: rimuovi eventuali token, header e URL firmati.
+Per Gemma 2, verifica anche le condizioni di licenza su Kaggle.
+
 Se il nome GGUF ottenuto da Kaggle non consente di classificare la
 quantizzazione in modo affidabile, il file resta nell'inventario come
 **non classificato** e la pipeline non seleziona una baseline di qualita'
