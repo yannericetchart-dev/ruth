@@ -108,7 +108,11 @@ def inspect_gguf(path: str | Path, n_ctx: int = 4096) -> dict:
     layers = {}
     types = Counter()
     total_weights = 0
-    for tensor in (tensor for shard in readers for tensor in shard.tensors):
+    for shard_index, tensor in (
+        (index, tensor)
+        for index, shard in enumerate(readers)
+        for tensor in shard.tensors
+    ):
         kind, layer_id = _kind(tensor.name)
         size = int(tensor.n_bytes)
         record = {
@@ -118,6 +122,9 @@ def inspect_gguf(path: str | Path, n_ctx: int = 4096) -> dict:
             "elements": int(tensor.n_elements),
             "bytes": size,
             "offset": int(tensor.data_offset),
+            "offset_source": "GGUFReader.data_offset",
+            "shard_index": shard_index,
+            "shard_file": files[shard_index].name,
             "group": kind,
             "block": layer_id,
         }
