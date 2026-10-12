@@ -162,12 +162,28 @@ class LayerMatrixTests(unittest.TestCase):
                     )
 
     def test_matrix_read_only_pipeline_bypasses_context_gpu(self):
-        from tests.test_profile_pipeline import identity
+        from calibration.profile_identity import resolve_identity
+        gpu = {
+            "ready": True, "errors": [], "foreign_processes": [],
+            "gpu": {"vendor": "nvidia", "name": "Mock RTX 4050",
+                    "uuid": "GPU-test-4050", "index": 0},
+            "memory": {"total_mib": 6141.0},
+        }
         with tempfile.TemporaryDirectory() as folder:
             root = Path(folder)
             path = root / "baseline.gguf"
             path.write_bytes(b"mock")
-            ident = identity("qwen-2.5-7b-instruct")
+            with (
+                patch("calibration.profile_identity._ram_total_mib",
+                      return_value=32000),
+                patch("calibration.profile_identity._cpu_model",
+                      return_value="Test CPU"),
+                patch("calibration.profile_identity._installed",
+                      return_value="0.3.36"),
+            ):
+                ident = resolve_identity(
+                    "qwen-2.5-7b-instruct", status=gpu
+                )
 
             def choose(**kwargs):
                 if kwargs["inventory_only"]:
