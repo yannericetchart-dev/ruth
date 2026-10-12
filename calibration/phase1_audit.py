@@ -310,12 +310,21 @@ def main(argv: list[str] | None = None) -> int:
     )
     for r in reports:
         ctx = r["n_ctx_gpu_resident"]
+        if r["context_gpu_resident_verified"]:
+            context_label = str(ctx)
+        elif r["confirmed_lower_bound_gpu_resident_n_ctx"] is not None:
+            context_label = (
+                f"{r['confirmed_lower_bound_gpu_resident_n_ctx']} "
+                "(minimo confermato; massimo incerto)"
+            )
+        else:
+            context_label = "NON VALIDATO"
         print(
             f"{r['model_id']} / {r['source']} | "
             f"{r['quantization'] or '-'} | "
             f"{'SI' if r['downloaded_local_gguf_verified'] else 'NO'} | "
             f"{'SI' if r['full_gpu_baseline_verified'] else 'NO'} | "
-            f"{ctx if r['context_gpu_resident_verified'] else 'NON VALIDATO'} | "
+            f"{context_label} | "
             f"{'COMPLETA' if r['phase1_complete'] else 'INCOMPLETA'}"
         )
         if r["errors"]:
