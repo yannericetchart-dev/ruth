@@ -248,7 +248,12 @@ filtrata (`credentials_missing`, `unauthorized`, `forbidden`,
 `not_found`, `cli_syntax`, `network` oppure `unknown`) **senza
 stampare la risposta grezza**, che potrebbe contenere segreti.
 `not_found` puo' includere risorse nascoste per mancanza di permessi:
-non e' una prova che la pagina web non esista.
+non e' una prova che la pagina web non esista. In questo caso Ruth
+prova a interrogare `models variations versions list`: se Kaggle
+pubblica un numero di versione verificabile, tenta `versions files`
+usando l'handle completo. In assenza di versioni confermate non ne
+inventa una e mantiene la fase bloccata. Il recupero non scarica
+i pesi GGUF.
 L'autenticazione a KaggleHub e quella della CLI devono entrambe funzionare
 nella stessa sessione utente.
 
