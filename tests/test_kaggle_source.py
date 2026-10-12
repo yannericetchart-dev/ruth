@@ -441,6 +441,49 @@ class KaggleSourceTests(unittest.TestCase):
                 hf.assert_not_called()
                 self.assertEqual(result["repository"], spec["repository"])
 
+    def test_gemma_default_is_pinned_to_accessible_version_one(self):
+        from model import ModelManager
+        from calibration.profile_identity import resolve_identity
+        spec = ModelManager.source_spec("gemma-2-9b-it", "kaggle")
+        self.assertEqual(
+            spec["kaggle_handle"], "google/gemma-2/gguf/2.0-9b-it/1"
+        )
+        gpu = {
+            "ready": True, "errors": [], "foreign_processes": [],
+            "gpu": {"vendor": "nvidia", "name": "Mock CUDA",
+                    "uuid": "GPU-test", "index": 0},
+            "memory": {"total_mib": 6141},
+        }
+        with (
+            patch("calibration.profile_identity._ram_total_mib",
+                  return_value=16000),
+            patch("calibration.profile_identity._cpu_model",
+                  return_value="Mock CPU"),
+        ):
+            identity = resolve_identity(
+                "gemma-2-9b-it", source="kaggle", status=gpu
+            )
+        self.assertEqual(identity["choices"]["kaggle_handle"],
+                         spec["kaggle_handle"])
+
+        rows = subprocess.CompletedProcess(
+            [], 0, "Name,Size\\n"
+            "gemma-2-9b-it-Q4_K_M.gguf,4GB\\n", ""
+        )
+        with patch("calibration.kaggle_source.subprocess.run",
+                   return_value=rows) as cli:
+            found = inventory_kaggle(
+                spec["repository"], spec["gguf_prefix"],
+                selected_handle=spec["kaggle_handle"]
+            )
+        self.assertEqual(len(found), 1)
+        self.assertEqual(found[0]["kaggle_handle"],
+                         spec["kaggle_handle"])
+        cli.assert_called_once()
+        self.assertEqual(cli.call_args.args[0][2:5],
+                         ["variations", "versions", "files"])
+        self.assertEqual(cli.call_args.args[0][5], spec["kaggle_handle"])
+
     def test_mistral_huggingface_never_queries_kaggle(self):
         from model import ModelManager
         spec = ModelManager.source_spec("mistral-7b-instruct-v0.3")
@@ -626,7 +669,7 @@ class KaggleSourceTests(unittest.TestCase):
         from model import ModelManager
         self.assertEqual(
             ModelManager.source_spec("gemma-2-9b-it", "kaggle")["kaggle_handle"],
-            "google/gemma-2/gguf/2.0-9b-it",
+            "google/gemma-2/gguf/2.0-9b-it/1",
         )
         self.assertEqual(
             ModelManager.source_spec("qwen-2.5-7b-instruct", "kaggle")[
