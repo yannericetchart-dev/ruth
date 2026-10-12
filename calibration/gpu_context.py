@@ -225,10 +225,13 @@ def probe_context(model_path: Path, n_ctx: int,
         return {"success": False, "failure_class": "timeout",
                 "n_ctx": n_ctx, "error": f"Timeout dopo {timeout}s"}
     try:
-        report = json.loads(child.stdout)
-        valid_json = isinstance(report, dict)
+        parsed = json.loads(child.stdout)
     except (ValueError, TypeError):
-        report, valid_json = {}, False
+        parsed = None
+    # Only an object is a valid worker protocol frame: JSON arrays, strings,
+    # numbers and null must never reach the dict-only diagnostic pipeline.
+    valid_json = isinstance(parsed, dict)
+    report = parsed if valid_json else {}
     worker_signal = None
     if child.returncode < 0:
         try:
