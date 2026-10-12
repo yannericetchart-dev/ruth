@@ -75,6 +75,50 @@ class ProfileIdentityTests(unittest.TestCase):
         with self.assertRaisesRegex(RuntimeError, "Backend"):
             resolve_identity("gemma-2-9b-it", status=unsupported)
 
+    def test_kaggle_and_hf_choices_have_distinct_profiles(self):
+        with (
+            patch("calibration.profile_identity._ram_total_mib",
+                  return_value=32000),
+            patch("calibration.profile_identity._cpu_model",
+                  return_value="Test CPU"),
+            patch("calibration.profile_identity._installed",
+                  return_value="0.3.36"),
+        ):
+            for model, handle in (
+                ("gemma-2-9b-it", "google/gemma-2/gguf/2.0-9b-it"),
+                ("qwen-2.5-7b-instruct",
+                 "qwen-lm/qwen2.5/gguf/7b-instruct"),
+            ):
+                with self.subTest(model=model):
+                    hf = resolve_identity(model, status=GPU_STATUS)
+                    kaggle = resolve_identity(
+                        model, source="kaggle", status=GPU_STATUS
+                    )
+                    self.assertNotEqual(hf["profile_key"],
+                                        kaggle["profile_key"])
+                    self.assertEqual(kaggle["choices"]["kaggle_handle"],
+                                     handle)
+                    self.assertEqual(hf["choices"]["source"], "bartowski")
+            with self.assertRaisesRegex(ValueError, "Fonte"):
+                resolve_identity("mistral-7b-instruct-v0.3",
+                                 source="kaggle", status=GPU_STATUS)
+
+    def test_source_specific_model_directories_are_isolated(self):
+        from model import ModelManager
+        with tempfile.TemporaryDirectory() as temp:
+            manager = ModelManager(root=temp)
+            model = "gemma-2-9b-it"
+            hf_dir = manager.model_directory(model, "bartowski")
+            kaggle_dir = manager.model_directory(model, "kaggle")
+            self.assertEqual(hf_dir, Path(temp) / model)
+            self.assertEqual(kaggle_dir, Path(temp) / model /
+                             "sources" / "kaggle" / "google" / "gemma-2")
+            self.assertNotEqual(kaggle_dir, hf_dir)
+            alternate = manager.model_directory(
+                model, "kaggle", "otherauthor/othermodel"
+            )
+            self.assertNotEqual(alternate, kaggle_dir)
+
     def test_unready_gpu_blocks_profiling(self):
         with self.assertRaisesRegex(RuntimeError, "GPU non pronta"):
             resolve_identity("gemma-2-9b-it", status={
@@ -297,6 +341,31 @@ class ProfilePipelineTests(unittest.TestCase):
                 json.loads((journal.folder / "state.json").read_text())[
                     "phases"]["baseline"]["stale_due_to"], "inventory"
             )
+
+    def test_source_filter_all_selects_two_kaggle_and_four_hf_models(self):
+        recorded = []
+        def fake_identity(model, **kwargs):
+            recorded.append((model, kwargs.get("source")))
+            return {"profile_key": model}
+        with (
+            patch("calibration.profile_pipeline.resolve_identity",
+                  side_effect=fake_identity),
+            patch("calibration.profile_pipeline.run_pipeline",
+                  return_value={"success": True}),
+            redirect_stdout(io.StringIO()),
+        ):
+            self.assertEqual(main(["--model", "all", "--source",
+                                   "kaggle", "--until", "inventory"]), 0)
+            self.assertEqual(
+                {m for m, _ in recorded},
+                {"gemma-2-9b-it", "qwen-2.5-7b-instruct"},
+            )
+            recorded.clear()
+            self.assertEqual(main(["--model", "all", "--source",
+                                   "bartowski", "--until", "inventory"]), 0)
+            self.assertEqual(len(recorded), 4)
+            self.assertIn(("mistral-7b-instruct-v0.3", "bartowski"),
+                          recorded)
 
     def test_cli_lists_registered_phases_without_gpu(self):
         out = io.StringIO()
