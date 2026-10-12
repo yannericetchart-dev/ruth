@@ -154,6 +154,36 @@ class KaggleSourceTests(unittest.TestCase):
                 )
         self.assertEqual(cli.call_count, 2)
 
+    def test_version_file_failure_retains_secondary_safe_cause(self):
+        handle = REPOSITORY + "/gguf/7b-instruct"
+        calls = []
+        def simulate(argv, **kwargs):
+            calls.append(argv)
+            if argv[2:4] == ["variations", "files"]:
+                return subprocess.CompletedProcess(argv, 1, "", "404 Not Found")
+            if argv[2:5] == ["variations", "versions", "list"]:
+                return subprocess.CompletedProcess(
+                    argv, 0, "versionNumber\\n5\\n", ""
+                )
+            if argv[2:5] == ["variations", "versions", "files"]:
+                return subprocess.CompletedProcess(
+                    argv, 1, "", "403 Forbidden token=KGAT_PRIVATE"
+                )
+            raise AssertionError("Unexpected CLI command")
+        with patch("calibration.kaggle_source.subprocess.run",
+                   side_effect=simulate):
+            with self.assertRaises(RuntimeError) as caught:
+                inventory_kaggle(
+                    REPOSITORY, "Qwen2.5-7B-Instruct-",
+                    selected_handle=handle,
+                )
+        message = str(caught.exception)
+        self.assertIn("categoria=not_found", message)
+        self.assertIn("Versione 5 confermata", message)
+        self.assertIn("categoria=forbidden", message)
+        self.assertNotIn("KGAT_PRIVATE", message)
+        self.assertEqual(len(calls), 3)
+
     def test_forbidden_variation_never_retries_other_endpoints(self):
         unversioned = REPOSITORY + "/gguf/7b-instruct"
         with patch("calibration.kaggle_source.subprocess.run",
