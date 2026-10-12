@@ -311,6 +311,7 @@ class ProfilePipelineTests(unittest.TestCase):
                       side_effect=fake_ctx),
                 patch("calibration.layer_matrix.analyze_layer_matrix",
                       side_effect=fake_matrix),
+                patch("calibration.layer_export.export_matrix_tables"),
                 redirect_stdout(log),
             ):
                 first = run_pipeline(config, output_root=root)
@@ -397,6 +398,7 @@ class ProfilePipelineTests(unittest.TestCase):
                       side_effect=fake_context),
                 patch("calibration.layer_matrix.analyze_layer_matrix",
                       side_effect=fake_matrix),
+                patch("calibration.layer_export.export_matrix_tables"),
                 redirect_stdout(io.StringIO()),
             ):
                 first = run_pipeline(config, output_root=root)
