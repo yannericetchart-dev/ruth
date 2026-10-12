@@ -42,6 +42,18 @@ def classify_kaggle_cli_failure(stderr: str) -> tuple[str, str]:
     Only recognize fixed phrases and HTTP codes; keep everything else private.
     """
     details = stderr.casefold()
+    # Distinguish absent credentials from an absent MODEL. The old broad
+    # "not found" check incorrectly reported both as missing variations.
+    if re.search(
+        r"(?:credentials?|api[_ ]?tokens?|api[_ ]?keys?)"
+        r".{0,70}(?:not found|missing|not configured|unavailable)"
+        r"|(?:not found|missing).{0,70}"
+        r"(?:credentials?|api[_ ]?tokens?|api[_ ]?keys?)"
+        r"|authentication required|please authenticate", details,
+    ):
+        return ("credentials_missing",
+                "Credenziali Kaggle non disponibili per la CLI. "
+                "Verifica l'accesso con 'kaggle quota', senza stampare token.")
     if re.search(r"\b401\b|unauthorized|unauthenticated", details):
         return ("unauthorized",
                 "Autenticazione rifiutata; controlla il token Kaggle attivo.")
@@ -49,9 +61,15 @@ def classify_kaggle_cli_failure(stderr: str) -> tuple[str, str]:
         return ("forbidden",
                 "Accesso vietato: controlla consenso/licenza e permessi "
                 "sulla variante Kaggle.")
-    if re.search(r"\b404\b|not found", details):
+    if re.search(
+        r"\b404\b"
+        r"|(?:model|variation|version|resource).{0,60}not found"
+        r"|not found.{0,60}(?:model|variation|version|resource)",
+        details,
+    ):
         return ("not_found",
-                "Modello/variante non trovati dall'API; verifica l'handle.")
+                "Risorsa modello/variante non trovata oppure non accessibile "
+                "con questo account. Verifica l'handle e l'accesso.")
     if re.search(r"\b429\b|rate limit|too many requests", details):
         return ("rate_limited",
                 "Limite richieste Kaggle; riprova più tardi.")
