@@ -139,6 +139,14 @@ class ModelManager:
             or not name.endswith(".gguf")
             or not (base_dir / name).is_file()):
             raise ValueError("Baseline persistita incompleta o non verificabile.")
+        expected_files = selection.get("shard_filenames") or [name]
+        if (not isinstance(expected_files, list)
+            or not expected_files or expected_files[0] != name
+            or any(not isinstance(filename, str)
+                   or Path(filename).name != filename
+                   or not (base_dir / filename).is_file()
+                   for filename in expected_files)):
+            raise ValueError("Baseline multi-shard incompleta o non verificabile.")
         expected = self.source_spec(model_id, source)
         if (selection.get("source", expected["source"]) != expected["source"]
             or selection.get("repository") !=
