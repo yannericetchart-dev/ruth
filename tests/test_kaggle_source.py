@@ -453,6 +453,40 @@ class KaggleSourceTests(unittest.TestCase):
                     },
                 )
 
+    def test_context_allows_version_pinned_by_kaggle_catalog(self):
+        from calibration.gpu_context import search_gpu_context
+        source_handle = "qwen-lm/qwen2.5/gguf/7b-instruct"
+        pinned_handle = source_handle + "/8"
+        gpu = {
+            "ready": True, "errors": [], "foreign_processes": [],
+            "gpu": {"vendor": "nvidia", "name": "Mock CUDA",
+                    "uuid": "GPU-test", "index": 0},
+            "memory": {"total_mib": 6141},
+        }
+        with patch("calibration.gpu_context.GPUManager.calibration_status",
+                   return_value=gpu):
+            selection = {
+                "source": "kaggle", "kaggle_handle": pinned_handle,
+                "repository": REPOSITORY, "model_id": "qwen-2.5-7b-instruct",
+                "native_verified_all_gpu": True,
+                "local_path": "/GGUF-NOT-DOWNLOADED.gguf",
+                "filename": "GGUF-NOT-DOWNLOADED.gguf",
+            }
+            # Passing the handle-match checks proves that /8 was accepted
+            # as a pinned snapshot of the unversioned catalogue variation.
+            with self.assertRaisesRegex(RuntimeError, "GGUF selezionato assente"):
+                search_gpu_context(
+                    "qwen-2.5-7b-instruct", source="kaggle",
+                    kaggle_handle=source_handle,
+                    baseline_selection=selection,
+                )
+            with self.assertRaisesRegex(RuntimeError, "Variante/versione"):
+                search_gpu_context(
+                    "qwen-2.5-7b-instruct", source="kaggle",
+                    kaggle_handle=source_handle + "/7",
+                    baseline_selection=selection,
+                )
+
     def test_selected_kaggle_publisher_changes_profile_identity(self):
         base_handle = HANDLE
         other = "otherowner/qwen-2.5-7b-instruct/gguf/q5km/2"
