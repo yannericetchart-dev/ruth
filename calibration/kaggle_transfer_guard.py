@@ -26,21 +26,24 @@ def _existing_ancestor(path: Path) -> Path:
 
 def assess_kaggle_transfer(
     candidate: dict, destination: Path, *,
-    remaining_budget_bytes: int | None,
+    candidate_budget_bytes: int | None,
     min_free_mib: int = DEFAULT_MIN_FREE_MIB,
     cache_root: Path | None = None,
 ) -> dict:
-    """Approve a group of *missing* shards or return a fail-closed blocker.
+    """Approve a group of *missing* shards within this candidate's budget.
+    
+    The budget is reset for each quantization. It is not shared with earlier
+    or later candidates. This function itself never downloads any bytes.
 
     The default cache root follows KaggleHub's usual user cache. An explicit
     KAGGLEHUB_CACHE environment variable takes precedence. The disk estimate
     conservatively assumes an uncompressed cached copy plus a destination
     copy, with 5% allowance for catalogue rounding and a free-space reserve.
     """
-    if (remaining_budget_bytes is not None and
-        (not isinstance(remaining_budget_bytes, int)
-         or isinstance(remaining_budget_bytes, bool)
-         or remaining_budget_bytes < 0)):
+    if (candidate_budget_bytes is not None and
+        (not isinstance(candidate_budget_bytes, int)
+         or isinstance(candidate_budget_bytes, bool)
+         or candidate_budget_bytes < 0)):
         raise ValueError("Budget di trasferimento Kaggle non valido.")
     if (not isinstance(min_free_mib, int)
         or isinstance(min_free_mib, bool) or min_free_mib < 0):
@@ -57,7 +60,7 @@ def assess_kaggle_transfer(
             "allowed": True, "catalog_transfer_bytes": 0,
             "missing_shards": 0, "reason": "already_local",
         }
-    if remaining_budget_bytes is None:
+    if candidate_budget_bytes is None:
         return {
             "allowed": False, "status": "blocked_kaggle_download_approval_required",
             "reason": (
@@ -82,14 +85,14 @@ def assess_kaggle_transfer(
         }
     expected = sum(shard_sizes[i]["bytes"] for i, _ in missing)
     estimate_mib = round(expected / MIB, 2)
-    if expected > remaining_budget_bytes:
+    if expected > candidate_budget_bytes:
         return {
             "allowed": False, "status": "blocked_kaggle_download_budget",
             "catalog_transfer_bytes": expected,
             "missing_shards": len(missing),
             "reason": (
                 f"Download catalogo ~{estimate_mib} MiB oltre il budget "
-                f"residuo {round(remaining_budget_bytes / MIB, 2)} MiB. "
+                f"residuo {round(candidate_budget_bytes / MIB, 2)} MiB. "
                 "La candidata resta non verificata; nessun salto di qualita'."
             ),
         }
@@ -129,7 +132,7 @@ def assess_kaggle_transfer(
         "catalog_transfer_bytes": expected,
         "missing_shards": len(missing),
         "catalog_transfer_mib": estimate_mib,
-        "remaining_budget_after_bytes": remaining_budget_bytes - expected,
+        "candidate_budget_unused_bytes": candidate_budget_bytes - expected,
         "same_disk_for_cache_and_copy": same_volume,
         "free_space_reserve_mib": min_free_mib,
         "note": (
