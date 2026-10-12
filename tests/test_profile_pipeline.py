@@ -132,6 +132,63 @@ class ProfileIdentityTests(unittest.TestCase):
             (model_dir / files[1]).unlink()
             self.assertIsNone(journal.cached("baseline"))
 
+    def test_kaggle_license_hint_requires_explicit_evidence(self):
+        from calibration.profile_pipeline import kaggle_access_notice
+        model = "gemma-2-9b-it"
+        required = kaggle_access_notice(
+            model, "kaggle", "categoria=license_required"
+        )
+        self.assertIn("LICENZA DA ACCETTARE", required)
+        self.assertIn("Verify via Kaggle Account", required)
+        self.assertIn("https://www.kaggle.com/models/google/gemma-2", required)
+
+        uncertain = kaggle_access_notice(
+            model, "kaggle", "categoria=not_found"
+        )
+        self.assertIn("ACCESSO DA VERIFICARE", uncertain)
+        self.assertIn("non prova", uncertain)
+        self.assertIn("Se hai gia' accettato", uncertain)
+        self.assertNotIn("LICENZA DA ACCETTARE", uncertain)
+        self.assertIsNone(kaggle_access_notice(
+            "qwen-2.5-7b-instruct", "kaggle", "categoria=not_found"
+        ))
+        self.assertIsNone(kaggle_access_notice(
+            model, "bartowski", "categoria=license_required"
+        ))
+
+    def test_gated_kaggle_error_prints_license_guidance_in_pipeline(self):
+        with tempfile.TemporaryDirectory() as temp:
+            with (
+                patch("calibration.profile_identity._ram_total_mib",
+                      return_value=32000),
+                patch("calibration.profile_identity._cpu_model",
+                      return_value="Test CPU"),
+            ):
+                kaggle_identity = resolve_identity(
+                    "gemma-2-9b-it", source="kaggle", status=GPU_STATUS
+                )
+            out = io.StringIO()
+            with (
+                patch("calibration.baseline_discovery.choose_baseline",
+                      side_effect=RuntimeError(
+                          "Interrogazione Kaggle fallita "
+                          "(exit=1, categoria=not_found)"
+                      )),
+                redirect_stdout(out),
+            ):
+                result = run_pipeline(
+                    kaggle_identity, until="inventory",
+                    output_root=Path(temp),
+                )
+            self.assertFalse(result["success"])
+            self.assertEqual(result["blocked_phase"], "inventory")
+            self.assertIn("ACCESSO DA VERIFICARE", out.getvalue())
+            self.assertNotIn("LICENZA DA ACCETTARE", out.getvalue())
+            self.assertIn(
+                "ACCESSO DA VERIFICARE",
+                result["detail"]["access_notice"],
+            )
+
     def test_source_specific_model_directories_are_isolated(self):
         from model import ModelManager
         with tempfile.TemporaryDirectory() as temp:
