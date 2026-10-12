@@ -220,6 +220,7 @@ class LayerMatrixTests(unittest.TestCase):
             def layer_matrix(baseline, **kwargs):
                 return {
                     "success": True, "status": "enumeration_only",
+                    "schema_version": 2,
                     "model_path": str(path), "filename": path.name,
                     "block_count": 2, "tensor_count": 12,
                     "serialized_weight_mib": 2.0,
