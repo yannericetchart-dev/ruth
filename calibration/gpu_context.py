@@ -576,7 +576,10 @@ def search_gpu_context(
     result["candidate_max_gpu_resident_n_ctx"] = low
     if progress is not None:
         progress({"event": "context_candidate_limit", "n_ctx": low,
-                  "failed_boundary": high, "model": model_id})
+                  "failed_boundary": high, "model": model_id,
+                  "maximality_uncertain": bool(
+                      result["uncertain_failure_boundaries"]
+                  )})
     result["confirmation"] = []
     for confirmation_index in range(1, confirm_rounds + 1):
         if progress is not None:
