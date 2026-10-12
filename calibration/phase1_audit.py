@@ -226,6 +226,8 @@ def audit_pair(identity: dict, *, output_root: Path | None = None,
                 and _confirmed_gpu_runtime_proof(partial, lower, rounds)
             ):
                 result["confirmed_lower_bound_gpu_resident_n_ctx"] = lower
+                result["context_gpu_resident_verified"] = True
+                result["context_maximality_proven"] = False
                 result["checks"]["uncertain_context_boundaries"] = (
                     partial["uncertain_failure_boundaries"]
                 )
@@ -233,7 +235,7 @@ def audit_pair(identity: dict, *, output_root: Path | None = None,
                     partial.get("confirmation_min_sampled_headroom_mib")
                 )
                 errors.append(
-                    f"Contesto GPU-resident {lower} confermato, ma "
+                    f"n_ctx={lower} VALIDATO full-CUDA, ma "
                     "massimo inconclusivo per SIGABRT senza causa certa."
                 )
                 return result
@@ -310,12 +312,12 @@ def main(argv: list[str] | None = None) -> int:
     )
     for r in reports:
         ctx = r["n_ctx_gpu_resident"]
-        if r["context_gpu_resident_verified"]:
-            context_label = str(ctx)
+        if r["context_maximality_proven"] and r["context_gpu_resident_verified"]:
+            context_label = f"{ctx} VALIDATO (massimo verificato)"
         elif r["confirmed_lower_bound_gpu_resident_n_ctx"] is not None:
             context_label = (
                 f"{r['confirmed_lower_bound_gpu_resident_n_ctx']} "
-                "(minimo confermato; massimo incerto)"
+                "VALIDATO full-CUDA (massimo incerto)"
             )
         else:
             context_label = "NON VALIDATO"
