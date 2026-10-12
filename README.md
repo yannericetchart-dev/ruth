@@ -38,6 +38,33 @@ Per verificare l'identita' autenticata senza mostrare il token:
 .venv/bin/python -c 'from huggingface_hub import whoami; print(whoami()["name"])'
 ```
 
+Kaggle usa **un token personale separato** da Hugging Face. Crea il token
+su https://www.kaggle.com/settings/api e conserva il valore segreto.
+Il nome scelto sul sito (per esempio `ruth-local`) non e' il token.
+Il setup, se eseguito da un terminale senza credenziali Kaggle gia'
+configurate, chiede il valore con input nascosto. Ruth lo verifica con
+Kaggle prima di salvarlo in `~/.kaggle/access_token`, con permessi
+`0600` (cartella `~/.kaggle` protetta con `0700`).
+La configurazione e' personale, facoltativa e non finisce in Git.
+
+Per aggiungerlo o sostituirlo senza ripetere il setup CUDA:
+
+```bash
+.venv/bin/python -m model.kaggle_auth --force
+```
+
+Per controllare l'account autenticato senza mostrare il segreto:
+
+```bash
+.venv/bin/python -c 'import kagglehub; print(kagglehub.whoami()["username"])'
+```
+
+Se usi CI o un terminale non interattivo, configura `KAGGLE_API_TOKEN`
+tramite il gestore di segreti dell'ambiente, senza inserirlo nella
+riga di comando. Tale variabile ha precedenza sul file personale.
+Sono supportate anche le credenziali Kaggle legacy gia' presenti.
+Nessun token viene richiesto automaticamente in CI.
+
 Avvio, dopo l'installazione:
 
 ```bash
@@ -171,13 +198,14 @@ Il catalogo iniziale punta alla pagina Kaggle pubblica
 una prova che contenga file GGUF**: Ruth accetta soltanto file .gguf
 confermati dal catalogo della variante Kaggle specificata, mai una
 sostituzione Hugging Face. La CLI Kaggle 2.2.4 non implementa
-\`models variations list\`, perciò l'handle di una variante reale è richiesto.
+`models variations list`, percio' l'handle di una variante reale e' richiesto.
 
 Requisiti: `kaggle` CLI e `kagglehub` Python, installati con
-`./setup_env.sh`. Se Kaggle richiede l'accesso, configura credenziali
-Kaggle personali con la CLI ufficiale (`kaggle auth login`).
-Non inserire mai token Kaggle negli argomenti, nel repository Git
-o nei report diagnostici. I token Hugging Face non autenticano Kaggle.
+`./setup_env.sh`. Per inserire il valore del token gia' creato su Kaggle
+usa `.venv/bin/python -m model.kaggle_auth --force`. In alternativa
+la CLI Kaggle supporta OAuth con `kaggle auth login`. Non inserire mai
+token negli argomenti, nel repository Git o nei report diagnostici.
+I token Hugging Face non autenticano Kaggle.
 
 Prima prova (soltanto metadata, nessun file multi-GB):
 
@@ -185,10 +213,15 @@ Prima prova (soltanto metadata, nessun file multi-GB):
 .venv/bin/python -m calibration.profile_pipeline \
   --model mistral-7b-instruct-v0.3 \
   --source kaggle --engine llama.cpp --method llama_cpp_python \
+  --kaggle-handle OWNER/MODEL/FRAMEWORK/VARIATION/VERSION \
   --until inventory
 ```
 
-Sostituisci OWNER/MODEL/FRAMEWORK/VARIATION/VERSION con un handle reale\nverificato nella pagina Kaggle. Non è un handle da eseguire letteralmente.\n\nSe una pubblicazione Kaggle non espone GGUF, Ruth segnala una fase
+Sostituisci `OWNER/MODEL/FRAMEWORK/VARIATION/VERSION` con un
+handle reale verificato nella pagina Kaggle: e' un segnaposto,
+non un handle pronto da eseguire.
+
+Se una pubblicazione Kaggle non espone GGUF, Ruth segnala una fase
 `blocked` e non inventa una baseline. È possibile specificare un
 handle **reale**, rilevato dalla pagina Kaggle di una variante GGUF:
 
