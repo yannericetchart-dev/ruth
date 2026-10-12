@@ -71,13 +71,15 @@ def mandatory_dense_parameter_floor(config: dict) -> int | None:
     head_dim = config.get("head_dim", hidden // heads)
     if not isinstance(head_dim, int) or head_dim < 1 or head_dim > hidden:
         return None
-    # Includes ONE embedding matrix and the gated up/down projections.
-    # Q and O are hidden x hidden; K and V are hidden x kv_heads*head_dim.
+    # ONE embedding matrix and the gated up/down projections.
+    # Q/O project to num_heads*head_dim, which need not equal hidden;
+    # K/V project to kv_heads*head_dim. Never over-count special
+    # head_dim configurations when deriving a conservative floor.
     return (
         vocab * hidden
         + layers * (
             3 * hidden * intermediate
-            + 2 * hidden * hidden
+            + 2 * hidden * heads * head_dim
             + 2 * hidden * kv_heads * head_dim
         )
     )
