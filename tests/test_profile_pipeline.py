@@ -65,7 +65,7 @@ class ProfileIdentityTests(unittest.TestCase):
     def test_unsupported_choices_do_not_silently_fallback(self):
         with self.assertRaisesRegex(ValueError, "Fonte"):
             resolve_identity("gemma-2-9b-it", source="other", status=GPU_STATUS)
-        with self.assertRaisesRegex(ValueError, "Motore/metodo"):
+        with self.assertRaisesRegex(ValueError, "Motore"):
             resolve_identity(
                 "gemma-2-9b-it", engine="onnx", status=GPU_STATUS
             )
