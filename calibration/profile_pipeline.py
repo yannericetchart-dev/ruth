@@ -134,6 +134,12 @@ def brief_event(event: dict) -> str:
             f"segnale={event.get('worker_signal')}). "
             "Nessuna assunzione OOM."
         )
+    if kind == "context_sigabrt_boundary":
+        return (
+            f"SIGABRT a n_ctx={event['n_ctx']}: scarto subito questo valore "
+            "senza ripeterlo, continuo la bisezione su n_ctx inferiori; "
+            "limite incerto, non OOM dimostrato."
+        )
     if kind == "context_candidate_limit":
         uncertainty = (
             " | limite superiore INCERTO (non OOM)"
