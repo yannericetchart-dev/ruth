@@ -217,6 +217,7 @@ def _phase_call(name: str, identity: dict, previous: dict,
             root=model_root, model_id=model, repo_id=choices["repository"],
             probe_n_ctx=opts["baseline_n_ctx"], n_batch=opts["n_batch"],
             inventory_only=True, persist_selection=False, progress=reporter,
+            kaggle_handle=choices.get("kaggle_handle"),
         )
         good = bool(report.get("inventory_only")) and not report.get("unranked_quantizations")
         summary = {
@@ -232,6 +233,7 @@ def _phase_call(name: str, identity: dict, previous: dict,
             root=model_root, model_id=model, repo_id=choices["repository"],
             probe_n_ctx=opts["baseline_n_ctx"], n_batch=opts["n_batch"],
             persist_selection=False, progress=reporter,
+            kaggle_handle=choices.get("kaggle_handle"),
         )
         selected = report.get("baseline") or {}
         good = (
@@ -358,8 +360,10 @@ def main(argv: list[str] | None = None) -> int:
     )
     parser.add_argument("--model", default="gemma-2-9b-it",
                         choices=["all", *sorted(ModelManager.CATALOG)])
-    parser.add_argument("--source", default="bartowski",
-                        help="Fonte GGUF; oggi disponibile solo bartowski")
+    parser.add_argument("--source", default=None,
+                        help="Fonte: bartowski o kaggle; default dal catalogo del modello")
+    parser.add_argument("--kaggle-handle", default=None,
+                        help="Variante Kaggle, formato owner/model/framework/variation[/version]")
     parser.add_argument("--engine", default="llama.cpp",
                         help="Motore; oggi disponibile solo llama.cpp")
     parser.add_argument("--method", default="llama_cpp_python",
@@ -377,15 +381,27 @@ def main(argv: list[str] | None = None) -> int:
             print(f"{phase:15} {'implementato' if implemented else 'previsto'}"
                   f" | {MESSAGES[phase]}")
         return 0
+    if args.kaggle_handle and args.model == "all":
+        parser.error("--kaggle-handle richiede un singolo --model.")
     models = (
         sorted(ModelManager.CATALOG) if args.model == "all" else [args.model]
     )
+    if args.model == "all" and args.source is not None:
+        # In a multi-source catalog, --source with --model all acts as a
+        # filter; individual model invocations still validate the source.
+        models = [
+            name for name in models
+            if ModelManager.CATALOG[name]["source"] == args.source
+        ]
+        if not models:
+            parser.error(f"Nessun modello registrato per la fonte {args.source}.")
     failed = False
     for model in models:
         try:
             identity = resolve_identity(
                 model, source=args.source, engine=args.engine,
                 method=args.method,
+                kaggle_handle=args.kaggle_handle,
             )
             outcome = run_pipeline(
                 identity, until=args.until, rerun=args.rerun,

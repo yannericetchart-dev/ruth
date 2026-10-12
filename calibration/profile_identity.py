@@ -68,12 +68,25 @@ def validate_choices(model_id: str, source: str = "bartowski",
     return item
 
 
-def resolve_identity(model_id: str, source: str = "bartowski",
+def resolve_identity(model_id: str, source: str | None = None,
                      engine: str = "llama.cpp",
                      method: str = "llama_cpp_python",
-                     status: dict | None = None) -> dict:
+                     status: dict | None = None,
+                     kaggle_handle: str | None = None) -> dict:
     """Validate available adapters and resolve one reproducible configuration."""
+    if model_id not in ModelManager.CATALOG:
+        raise ValueError(f"Modello non registrato: {model_id}")
+    source = source or ModelManager.CATALOG[model_id]["source"]
     item = validate_choices(model_id, source, engine, method)
+    selected_repository = item["repository"]
+    if kaggle_handle is not None:
+        if source != "kaggle":
+            raise ValueError("--kaggle-handle richiede la fonte kaggle.")
+        from .kaggle_source import validate_handle
+        # Kaggle hosts multiple publishers. A full versioned handle may
+        # identify a different publisher of this model family.
+        selected_repository = "/".join(kaggle_handle.split("/")[:2])
+        validate_handle(kaggle_handle, selected_repository)
     support = SUPPORTED_PAIRS[(engine, method)]
     if status is None:
         status = GPUManager.calibration_status()
@@ -99,10 +112,11 @@ def resolve_identity(model_id: str, source: str = "bartowski",
     choices = {
         "source": source,
         "model_id": model_id,
-        "repository": item["repository"],
+        "repository": selected_repository,
         "architecture": item["architecture"],
         "engine": engine,
         "method": method,
+        "kaggle_handle": kaggle_handle,
     }
     hardware = {
         "backend": backend,

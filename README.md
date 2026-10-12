@@ -161,3 +161,54 @@ il modello caricato da Ruth. Un run inconclusivo (per esempio per errore
 di un worker) rimane `blocked` e potra' essere riprovato. Il processo
 non promuove mai un errore inconclusivo a OOM. I comandi manuali delle
 singole fasi rimangono disponibili per diagnosi e retrocompatibilita'.
+
+
+## Fonte Kaggle: Mistral 7B Instruct v0.3
+
+Il quarto modello è `mistral-7b-instruct-v0.3`, con fonte `kaggle`.
+Il catalogo iniziale punta alla pagina Kaggle pubblica
+`bond005/mistral-7b-instruct-v0.3`. **La pagina di un modello non è
+una prova che contenga file GGUF**: Ruth interroga le varianti Kaggle
+e accetta soltanto file .gguf esistenti, mai una sostituzione Hugging Face.
+
+Requisiti: `kaggle` CLI e `kagglehub` Python, installati con
+`./setup_env.sh`. Se Kaggle richiede l'accesso, configura credenziali
+Kaggle personali con la CLI ufficiale (`kaggle auth login`).
+Non inserire mai token Kaggle negli argomenti, nel repository Git
+o nei report diagnostici. I token Hugging Face non autenticano Kaggle.
+
+Prima prova (soltanto metadata, nessun file multi-GB):
+
+```bash
+.venv/bin/python -m calibration.profile_pipeline \
+  --model mistral-7b-instruct-v0.3 \
+  --source kaggle --engine llama.cpp --method llama_cpp_python \
+  --until inventory
+```
+
+Se una pubblicazione Kaggle non espone GGUF, Ruth segnala una fase
+`blocked` e non inventa una baseline. È possibile specificare un
+handle **reale**, rilevato dalla pagina Kaggle di una variante GGUF:
+
+```bash
+.venv/bin/python -m calibration.profile_pipeline \
+  --model mistral-7b-instruct-v0.3 --source kaggle \
+  --kaggle-handle OWNER/MODEL/FRAMEWORK/VARIATION/VERSION \
+  --until inventory
+```
+
+Il valore nel comando sopra è solo il formato, **non un handle verificato**.
+Puoi specificare anche una pubblicazione di un altro autore su Kaggle:
+Ruth ricava `owner/model` dall'handle reale e lo inserisce
+nell'identita' del profilo, mantenendo invariato il modello logico
+Mistral 7B Instruct v0.3. L'eventuale GGUF deve comunque essere
+presente in Kaggle e avere un nome coerente con il modello.
+Dopo la conferma dell'inventario, riesegui senza `--until inventory`
+per la selezione GPU e il contesto diagnostico.
+
+La preselezione di memoria usa il numero esatto di byte dei tensori
+GGUF. Per Kaggle, non avendo al momento lo stesso accesso remoto
+parziale all'header usato dal provider Hugging Face, tale verifica
+viene effettuata **dopo il download del candidato**. Non vengono
+scartati GGUF sulla sola base della dimensione del file, né inventati
+margini VRAM. La fonte e l'handle Kaggle sono inclusi nei profili.

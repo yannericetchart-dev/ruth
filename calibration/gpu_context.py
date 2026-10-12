@@ -67,7 +67,8 @@ def verify_gpu_runtime(native: dict) -> dict:
 
 
 def make_context_tokens(llm, architecture: str, n_ctx: int,
-                        generated_tokens: int) -> list[int]:
+                        generated_tokens: int,
+                        model_id: str | None = None) -> list[int]:
     """Produce a long actual prompt and reserve room for the full decode."""
     if n_ctx < 64 or generated_tokens < 1 or generated_tokens > 32:
         raise ValueError("Contesto o numero di token diagnostici non validi.")
@@ -75,7 +76,7 @@ def make_context_tokens(llm, architecture: str, n_ctx: int,
     requested = n_ctx - reserved
     if requested < 16:
         raise ValueError("Contesto insufficiente per la prova.")
-    base = minimal_chat_prompt(architecture)
+    base = minimal_chat_prompt(architecture, model_id)
     repetitions = max(1, n_ctx // 4)
     while True:
         prompt = base + (
@@ -91,7 +92,7 @@ def make_context_tokens(llm, architecture: str, n_ctx: int,
 
 
 def _worker(model_path: Path, n_ctx: int, generated_tokens: int,
-            batch: int = 32) -> dict:
+            batch: int = 32, model_id: str | None = None) -> dict:
     import pynvml
     from llama_cpp.llama_cpp import llama_supports_gpu_offload
     from inference.adapters.llama_cpp_python import LlamaCppPythonMappingAdapter
@@ -158,7 +159,8 @@ def _worker(model_path: Path, n_ctx: int, generated_tokens: int,
                 time.perf_counter() - start, 3
             )
             result["measurements"]["vram_after_load_mib"] = used()
-            tokens = make_context_tokens(llm, architecture, n_ctx, generated_tokens)
+            tokens = make_context_tokens(llm, architecture, n_ctx,
+                                         generated_tokens, model_id=model_id)
             result["measurements"]["prompt_tokens"] = len(tokens)
             llm.reset()
             t0 = time.perf_counter()
@@ -204,7 +206,8 @@ def _worker(model_path: Path, n_ctx: int, generated_tokens: int,
 
 def probe_context(model_path: Path, n_ctx: int,
                   generated_tokens: int = 8, batch: int = 32,
-                  timeout: int = 300) -> dict:
+                  timeout: int = 300,
+                  model_id: str | None = None) -> dict:
     """One new CUDA process per point; no inherited cached CUDA allocations."""
     layout = inspect_gguf(model_path, n_ctx=n_ctx)
     cmd = [
@@ -213,6 +216,8 @@ def probe_context(model_path: Path, n_ctx: int,
         "--probe-n-ctx", str(n_ctx), "--tokens", str(generated_tokens),
         "--batch", str(batch),
     ]
+    if model_id:
+        cmd.extend(["--model", model_id])
     try:
         child = subprocess.run(cmd, capture_output=True, text=True, timeout=timeout)
     except subprocess.TimeoutExpired:
@@ -366,7 +371,7 @@ def search_gpu_context(
                       "model": model_id, "token_count": tokens})
         candidate = probe_context(
             model, ctx, generated_tokens=tokens, batch=min(batch, ctx),
-            timeout=timeout,
+            timeout=timeout, model_id=model_id,
         )
         candidate["requested_n_ctx"] = ctx
         result["attempts"].append(candidate)
@@ -490,7 +495,7 @@ def main() -> None:
     )
     parser.add_argument("--model", choices=sorted(ModelManager.CATALOG),
                         default="gemma-2-9b-it")
-    parser.add_argument("--source", default="bartowski")
+    parser.add_argument("--source", default=None)
     parser.add_argument("--engine", default="llama.cpp")
     parser.add_argument("--method", default="llama_cpp_python")
     parser.add_argument("--max-ctx", type=int)
@@ -511,13 +516,18 @@ def main() -> None:
             output = _worker(
                 Path(args.model_path), args.probe_n_ctx,
                 generated_tokens=args.tokens, batch=args.batch,
+                model_id=args.model,
             )
         except Exception as exc:
             output = {"success": False, "error": f"{type(exc).__name__}: {exc}"}
     else:
         try:
             from .profile_identity import validate_choices
-            validate_choices(args.model, args.source, args.engine, args.method)
+            validate_choices(
+                args.model,
+                args.source or ModelManager.CATALOG[args.model]["source"],
+                args.engine, args.method,
+            )
             output = search_gpu_context(
                 args.model, max_ctx=args.max_ctx, min_ctx=args.min_ctx,
                 tokens=args.tokens, batch=args.batch,

@@ -2,3 +2,5 @@ huggingface_hub>=0.30
 llama-cpp-python>=0.3.0
 nvidia-ml-py>=12.535.108
 gguf>=0.19,<0.20
+kaggle>=1.7
+kagglehub>=0.3

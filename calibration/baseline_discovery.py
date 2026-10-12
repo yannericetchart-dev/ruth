@@ -104,10 +104,13 @@ def native_confirmation(layout: dict, stderr: str) -> dict:
     }
 
 
-def minimal_chat_prompt(architecture: str) -> str:
+def minimal_chat_prompt(architecture: str, model_id: str | None = None) -> str:
     """Architecture-specific chat formatting with add_bos=True tokenization."""
     if architecture == "gemma2":
         return "<start_of_turn>user\nCiao.\n<end_of_turn>\n<start_of_turn>model\n"
+    if architecture == "llama" and model_id == "mistral-7b-instruct-v0.3":
+        # Mistral v0.3 uses the [INST] chat template and add_bos=True.
+        return "[INST] Ciao. [/INST]"
     if architecture == "llama":
         # Llama tokenizer prepends BOS via add_bos=True, so do not put
         # <|begin_of_text|> in the prompt and duplicate it.
@@ -121,7 +124,8 @@ def minimal_chat_prompt(architecture: str) -> str:
     raise ValueError(f"Chat template non validato: {architecture}")
 
 
-def _gpu_worker(path: Path, n_ctx: int = 64, n_batch: int = 32) -> dict:
+def _gpu_worker(path: Path, n_ctx: int = 64, n_batch: int = 32,
+                model_id: str | None = None) -> dict:
     """Runs in its own short-lived process; never persists a profile."""
     import pynvml as nvml
     from inference.adapters.llama_cpp_python import LlamaCppPythonMappingAdapter
@@ -190,7 +194,7 @@ def _gpu_worker(path: Path, n_ctx: int = 64, n_batch: int = 32) -> dict:
             memory["load_seconds"] = round(time.perf_counter() - start, 3)
             memory["vram_after_load_mib"] = usage()
             # Loading alone is insufficient; verify the context can execute.
-            prompt = minimal_chat_prompt(arch)
+            prompt = minimal_chat_prompt(arch, model_id)
             tokens = llm.tokenize(prompt.encode(), add_bos=True, special=True)
             if len(tokens) + 2 >= n_ctx:
                 raise RuntimeError("Probe minimale: prompt troppo lungo.")
@@ -224,7 +228,8 @@ def _gpu_worker(path: Path, n_ctx: int = 64, n_batch: int = 32) -> dict:
 
 
 def probe_gpu_candidate(path: Path, n_ctx: int = 64,
-                        n_batch: int = 32, timeout: int = 180) -> dict:
+                        n_batch: int = 32, timeout: int = 180,
+                        model_id: str | None = None) -> dict:
     """Native-verify a candidate in an isolated worker; record failure logs."""
     layout = inspect_gguf(path, n_ctx=n_ctx)
     command = [
@@ -232,6 +237,8 @@ def probe_gpu_candidate(path: Path, n_ctx: int = 64,
         "--worker", "--model-path", str(path.resolve()),
         "--probe-n-ctx", str(n_ctx), "--batch", str(n_batch),
     ]
+    if model_id:
+        command.extend(["--model", model_id])
     try:
         child = subprocess.run(command, capture_output=True, text=True, timeout=timeout)
     except subprocess.TimeoutExpired:
@@ -268,6 +275,7 @@ def choose_baseline(
     timeout: int = 180, inventory_only: bool = False,
     model_id: str = "gemma-2-9b-it",
     progress=None, persist_selection: bool = True,
+    kaggle_handle: str | None = None,
 ) -> dict:
     if (not isinstance(probe_n_ctx, int) or probe_n_ctx < 32
         or not isinstance(n_batch, int) or not 1 <= n_batch <= probe_n_ctx
@@ -282,10 +290,13 @@ def choose_baseline(
     if repo_id is None:
         repo_id = spec["repository"]
     if repo_id != spec["repository"]:
-        raise ValueError(
-            "Il repository non corrisponde al modello selezionato: "
-            f"{model_id} -> {spec['repository']}"
-        )
+        if spec["source"] != "kaggle" or not kaggle_handle:
+            raise ValueError(
+                "Il repository non corrisponde al modello selezionato: "
+                f"{model_id} -> {spec['repository']}"
+            )
+        from .kaggle_source import validate_handle
+        validate_handle(kaggle_handle, repo_id)
 
     gpu = GPUManager.calibration_status()
     if not gpu["ready"]:
@@ -295,7 +306,15 @@ def choose_baseline(
         Path(root).expanduser().resolve() if root is not None
         else ModelManager().root / model_id
     )
-    models = inventory(repo_id)
+    if spec["source"] == "kaggle":
+        from .kaggle_source import inventory_kaggle
+        models = inventory_kaggle(
+            repo_id, spec["gguf_prefix"], selected_handle=kaggle_handle
+        )
+    else:
+        if kaggle_handle:
+            raise ValueError("--kaggle-handle non valido per fonte Hugging Face.")
+        models = inventory(repo_id)
     unranked = [
         c["filename"] for c in models if c.get("quality_priority") is None
     ]
@@ -304,6 +323,8 @@ def choose_baseline(
         "model_id": model_id,
         "expected_architecture": spec["architecture"],
         "repository": repo_id,
+        "source": spec["source"],
+        "kaggle_handle_filter": kaggle_handle,
         "gpu": gpu["gpu"]["name"],
         "total_vram_mib": gpu["memory"]["total_mib"],
         "probe_n_ctx": probe_n_ctx,
@@ -368,6 +389,12 @@ def choose_baseline(
             layout = inspect_gguf(local, n_ctx=probe_n_ctx)
             exact = layout["weights_bytes"]
             record["weight_size_source"] = "local_gguf_tensors"
+        elif spec["source"] == "kaggle":
+            # Kaggle's file catalog does not provide an authenticated
+            # random-access GGUF header. No fabricated weight-size exclusion:
+            # actual tensor sizes are checked AFTER downloading the file.
+            exact = None
+            record["weight_size_source"] = "not_available_until_download"
         else:
             # A tiny ranged-header read, *not* a GGUF download.
             try:
@@ -385,8 +412,9 @@ def choose_baseline(
                 report["error"] = "Inventario peso GGUF non verificabile."
                 return report
 
-        record["exact_serialized_weight_mib"] = round(exact / 1048576, 2)
-        if exact > vram_bytes:
+        if exact is not None:
+            record["exact_serialized_weight_mib"] = round(exact / 1048576, 2)
+        if exact is not None and exact > vram_bytes:
             record["status"] = "excluded_weight_payload_exceeds_total_vram"
             record["future_cpu_gpu_tuning_allowed"] = True
             if progress is not None:
@@ -403,15 +431,34 @@ def choose_baseline(
                           "filename": candidate["filename"]})
             try:
                 model_dir.mkdir(parents=True, exist_ok=True)
-                local = Path(hf_hub_download(
-                    repo_id=repo_id, filename=candidate["filename"],
-                    local_dir=str(model_dir),
-                ))
+                if spec["source"] == "kaggle":
+                    from .kaggle_source import download_kaggle
+                    local = download_kaggle(candidate, model_dir)
+                else:
+                    local = Path(hf_hub_download(
+                        repo_id=repo_id, filename=candidate["filename"],
+                        local_dir=str(model_dir),
+                    ))
             except Exception as exc:
                 record["status"] = "download_failed"
                 record["error"] = f"{type(exc).__name__}: {exc}"
                 report["error"] = "Download fallito: impossibile verificare questo candidato."
                 return report
+
+        if exact is None:
+            layout = inspect_gguf(local, n_ctx=probe_n_ctx)
+            exact = layout["weights_bytes"]
+            record["exact_serialized_weight_mib"] = round(exact / 1048576, 2)
+            record["weight_size_source"] = "downloaded_local_gguf_tensors"
+            if exact > vram_bytes:
+                record["status"] = "excluded_weight_payload_exceeds_total_vram"
+                record["future_cpu_gpu_tuning_allowed"] = True
+                if progress is not None:
+                    progress({"event": "candidate_decision", "model": model_id,
+                              "quantization": candidate["quantization"],
+                              "status": record["status"],
+                              "weight_mib": record["exact_serialized_weight_mib"]})
+                continue
 
         if progress is not None:
             progress({"event": "candidate_gpu_probe", "model": model_id,
@@ -420,7 +467,7 @@ def choose_baseline(
         try:
             measured = probe_gpu_candidate(
                 local, n_ctx=probe_n_ctx,
-                n_batch=n_batch, timeout=timeout,
+                n_batch=n_batch, timeout=timeout, model_id=model_id,
             )
         except Exception as exc:
             measured = {
@@ -460,6 +507,8 @@ def choose_baseline(
         record["status"] = "selected_full_gpu_baseline"
         report["baseline"] = {
             "repository": repo_id,
+            "source": spec["source"],
+            "kaggle_handle": candidate.get("kaggle_handle"),
             "model_id": model_id,
             "architecture": spec["architecture"],
             "filename": candidate["filename"],
@@ -499,9 +548,11 @@ def main():
     parser.add_argument("--model", choices=sorted(ModelManager.CATALOG),
                         default="gemma-2-9b-it",
                         help="Modello nel catalogo Ruth (baseline separata)")
-    parser.add_argument("--source", default="bartowski")
+    parser.add_argument("--source", default=None)
     parser.add_argument("--engine", default="llama.cpp")
     parser.add_argument("--method", default="llama_cpp_python")
+    parser.add_argument("--kaggle-handle", default=None,
+                        help="Variante Kaggle completa (framework/variation[/version])")
     parser.add_argument("--repository", default=None,
                         help="Opzionale, deve coincidere col repository del modello")
     parser.add_argument("--root", default=None, help="Cartella modelli (non cambia profili)")
@@ -518,14 +569,18 @@ def main():
         try:
             result = _gpu_worker(
                 Path(args.model_path), n_ctx=args.probe_n_ctx,
-                n_batch=args.batch,
+                n_batch=args.batch, model_id=args.model,
             )
         except Exception as exc:
             result = {"success": False, "error": f"{type(exc).__name__}: {exc}"}
     else:
         try:
             from .profile_identity import validate_choices
-            validate_choices(args.model, args.source, args.engine, args.method)
+            validate_choices(
+                args.model,
+                args.source or ModelManager.CATALOG[args.model]["source"],
+                args.engine, args.method,
+            )
             result = choose_baseline(
                 root=Path(args.root) if args.root else None,
                 repo_id=args.repository,
@@ -533,7 +588,7 @@ def main():
                 n_batch=args.batch,
                 timeout=args.timeout,
                 inventory_only=args.inventory_only,
-                model_id=args.model,
+                model_id=args.model, kaggle_handle=args.kaggle_handle,
             )
         except Exception as exc:
             result = {"success": False, "error": f"{type(exc).__name__}: {exc}"}

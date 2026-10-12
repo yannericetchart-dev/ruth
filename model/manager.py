@@ -14,6 +14,26 @@ class ModelManager:
             "gguf_prefix": "gemma-2-9b-it-",
             "architecture": "gemma2",
         },
+        "qwen-2.5-7b-instruct": {
+            "source": "bartowski",
+            "repository": "bartowski/Qwen2.5-7B-Instruct-GGUF",
+            "filename": "Qwen2.5-7B-Instruct-Q4_K_M.gguf",
+            "format": "gguf",
+            "quantization": "Q4_K_M",
+            "gguf_prefix": "Qwen2.5-7B-Instruct-",
+            "architecture": "qwen2",
+        },
+        "mistral-7b-instruct-v0.3": {
+            "source": "kaggle",
+            "repository": "bond005/mistral-7b-instruct-v0.3",
+            "filename": "Mistral-7B-Instruct-v0.3-Q4_K_M.gguf",
+            "format": "gguf",
+            "quantization": "Q4_K_M",
+            "gguf_prefix": "Mistral-7B-Instruct-v0.3-",
+            "architecture": "llama",
+            "chat_template": "mistral_inst",
+            "kaggle_framework": "gguf",
+        },
         "llama-3.1-8b-instruct": {
             "source": "bartowski",
             "repository": "bartowski/Meta-Llama-3.1-8B-Instruct-GGUF",
@@ -74,6 +94,12 @@ class ModelManager:
         if installed is not None:
             return installed
 
+        if spec["source"] == "kaggle":
+            raise RuntimeError(
+                "Per un modello Kaggle, utilizzare "
+                "calibration.profile_pipeline: seleziona prima "
+                "il GGUF disponibile nella variante Kaggle."
+            )
         from huggingface_hub import hf_hub_download
 
         return Path(
