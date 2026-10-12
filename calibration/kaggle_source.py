@@ -11,6 +11,7 @@ from pathlib import Path
 import re
 import shutil
 import subprocess
+import sys
 
 from .gguf_catalog import quantization_priority
 
@@ -34,8 +35,11 @@ def validate_handle(handle: str, repository: str) -> str:
 
 def _csv_call(*args: str) -> list[dict]:
     try:
+        # Prefer the CLI installed in Ruth's venv even when not activated.
+        venv_cli = Path(sys.executable).with_name("kaggle")
+        cli = str(venv_cli) if venv_cli.is_file() else "kaggle"
         run = subprocess.run(
-            ["kaggle", "models", *args, "--csv"],
+            [cli, "models", *args, "--csv"],
             capture_output=True, text=True, timeout=60, check=False,
         )
     except FileNotFoundError:
