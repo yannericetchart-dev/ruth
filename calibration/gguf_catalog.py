@@ -89,7 +89,7 @@ _SCALAR_BYTES = {0: 1, 1: 1, 2: 2, 3: 2, 4: 4, 5: 4,
                  6: 4, 7: 1, 10: 8, 11: 8, 12: 8}
 
 
-def gguf_payload_bytes(stream, file_bytes: int) -> dict:
+def gguf_payload_bytes(stream, file_bytes: int, *, include_tensors: bool = False) -> dict:
     """Read v2/v3 GGUF tensor byte sizes without downloading tensor payload.
 
     Sizes come from GGML quantization block characteristics and tensor
@@ -123,15 +123,14 @@ def gguf_payload_bytes(stream, file_bytes: int) -> dict:
             return read(n).decode("utf-8")
         skip(n)
 
-    def value(kind, depth=0):
+    def value(kind, depth=0, want=False):
         if depth > 4:
             raise ValueError("Array GGUF troppo annidato.")
         if kind in _SCALAR_BYTES:
             size = _SCALAR_BYTES[kind]
             return read(size) if size <= 8 else None
         if kind == 8:
-            string()
-            return None
+            return string(want=want)
         if kind == 9:
             item_kind, length = u32(), u64()
             if length > file_bytes:
@@ -153,39 +152,62 @@ def gguf_payload_bytes(stream, file_bytes: int) -> dict:
     if tensor_count == 0 or tensor_count > 1_000_000 or field_count > 1_000_000:
         raise ValueError("Header GGUF con conteggi anomali.")
     alignment = 32
+    metadata = {}
     for _ in range(field_count):
         key = string(want=True)
         kind = u32()
-        raw = value(kind)
+        wanted = include_tensors and (
+            key == "general.architecture" or key.endswith(".block_count")
+        )
+        raw = value(kind, want=wanted)
+        if wanted and raw is not None:
+            if key == "general.architecture" and kind == 8:
+                metadata[key] = raw
+            elif key.endswith(".block_count") and kind in (0, 1, 2, 3, 4, 5, 10, 11):
+                metadata[key] = int.from_bytes(raw, "little")
         if key == "general.alignment":
             if kind not in (4, 10):
                 raise ValueError("Tipo alignment GGUF non valido.")
             alignment = int.from_bytes(raw, "little")
     exact_weight_bytes = 0
+    catalog = []
     for _ in range(tensor_count):
-        string()
+        name = string(want=include_tensors)
         dims = u32()
         if dims < 1 or dims > 8:
             raise ValueError("Dimensioni di tensore GGUF non plausibili.")
         elements = 1
+        shape = []
         for _ in range(dims):
             length = u64()
             if length < 1 or length > 1_000_000_000:
                 raise ValueError("Forma del tensore non valida.")
             elements *= length
+            if include_tensors:
+                shape.append(length)
         quant_type = GGMLQuantizationType(u32())
         block_size, type_size = GGML_QUANT_SIZES[quant_type]
-        u64()  # Offset relativo all'inizio dei dati dei tensori.
+        relative_offset = u64()  # Offset relativo all'inizio dei dati.
         if elements % block_size:
             raise ValueError("Tensor count incompatibile con blocchi quantizzati.")
-        exact_weight_bytes += elements // block_size * type_size
+        nbytes = elements // block_size * type_size
+        exact_weight_bytes += nbytes
+        if include_tensors:
+            from model.inspect import _kind
+            group, block = _kind(name)
+            catalog.append({
+                "name": name, "shape": shape,
+                "type": quant_type.name, "elements": elements,
+                "bytes": nbytes, "offset": relative_offset,
+                "group": group, "block": block,
+            })
     if alignment < 1 or alignment > 4096 or alignment & (alignment - 1):
         raise ValueError("Alignment GGUF non valido.")
     position = stream.tell()
     data_offset = (position + alignment - 1) // alignment * alignment
     if data_offset >= file_bytes:
         raise ValueError("Offset pesi GGUF non valido.")
-    return {
+    result = {
         "version": version,
         "tensor_count": tensor_count,
         "data_offset_bytes": data_offset,
@@ -193,6 +215,20 @@ def gguf_payload_bytes(stream, file_bytes: int) -> dict:
         "exact_serialized_tensor_bytes": exact_weight_bytes,
         "precheck_kind": "quantization_and_shape_exact_serialized_weights",
     }
+    if include_tensors:
+        if len(catalog) != len({item["name"] for item in catalog}):
+            raise ValueError("Catalogo remoto GGUF: tensori duplicati.")
+        if not metadata.get("general.architecture"):
+            raise ValueError("Catalogo remoto GGUF: architettura assente.")
+        arch = metadata["general.architecture"]
+        if not metadata.get(f"{arch}.block_count"):
+            raise ValueError("Catalogo remoto GGUF: conteggio blocchi assente.")
+        result.update({
+            "metadata": metadata, "tensors": catalog,
+            "weights_bytes": exact_weight_bytes,
+            "file_bytes": file_bytes, "shard_count": 1,
+        })
+    return result
 
 
 def inventory(repo_id: str = REPOSITORY) -> list[dict]:
@@ -249,11 +285,12 @@ def inventory(repo_id: str = REPOSITORY) -> list[dict]:
     )
 
 
-def remote_header(repo_id: str, filename: str, file_bytes: int) -> dict:
+def remote_header(repo_id: str, filename: str, file_bytes: int, *,
+                  include_tensors: bool = False) -> dict:
     """Inspect remote header only via ranged access; never fetch full weights."""
     from huggingface_hub import HfFileSystem
     with HfFileSystem().open(f"{repo_id}/{filename}", "rb") as remote:
-        return gguf_payload_bytes(remote, file_bytes)
+        return gguf_payload_bytes(remote, file_bytes, include_tensors=include_tensors)
 
 
 def preflight_locally_inspected_weights(layout: dict, total_vram_bytes: int) -> dict:
