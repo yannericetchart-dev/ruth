@@ -50,6 +50,7 @@ class ModelManager:
             "kaggle": {
                 "repository": "qwen-lm/qwen2.5",
                 "kaggle_handle": "qwen-lm/qwen2.5/gguf/7b-instruct",
+                "architecture_reference_repo": "Qwen/Qwen2.5-7B-Instruct",
             },
         },
     }
