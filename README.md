@@ -221,6 +221,12 @@ La pipeline recupera `inventory` e `baseline` gia' verificate e crea
 Se esiste un report della versione precedente, Ruth ricrea **soltanto**
 `layer_matrix` con schema 2, senza ritentare la baseline CUDA.
 
+Sono esportati anche quattro CSV affiancati al JSON:
+`layer_matrix_tensors.csv`, `layer_matrix_blocks.csv`,
+`layer_matrix_links.csv` e `layer_matrix_constraints.csv`.
+Sono tabelle direttamente consultabili/filtrabili e non contengono
+mapping eseguibili.
+
 Ogni voce in `tensor_index` contiene nome GGUF esatto, quantizzazione
 del tensore, forma, byte e MiB, categoria e blocco, `tensor_role`,
 selettore `exact_cpu_override_regex`, collegamenti con altri tensori
@@ -253,7 +259,9 @@ dei quattro GGUF di riferimento `Q4_K_M` dal catalogo. I report finiscono
 in `models/calibration_runs/remote_hf_matrices/<model-id>/<file>.json`.
 Ogni rapporto contiene `provenance=remote_gguf_header_only_no_runtime_verification`
 e `baseline_native_verified_all_gpu=false`: **non** prova che il
-modello sia caricabile integralmente su CUDA. Non scarica i pesi
+modello sia caricabile integralmente su CUDA. Nelle quattro directory
+sono presenti anche i CSV della matrice con nomi identici, ma file
+e modello di riferimento differenti. Non scarica i pesi
 GGUF e non sposta layer; richiede l'accesso a Hugging Face.
 
 La matrice locale Qwen `Q5_K_L` e' invece ricavata dal GGUF della
