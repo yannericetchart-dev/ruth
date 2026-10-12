@@ -618,6 +618,10 @@ def main():
     parser.add_argument("--method", default="llama_cpp_python")
     parser.add_argument("--kaggle-handle", default=None,
                         help="Variante Kaggle completa (framework/variation[/version])")
+    parser.add_argument("--kaggle-max-download-mib", type=int,
+                        help="Budget cumulativo MiB catalogo per nuovi download Kaggle")
+    parser.add_argument("--kaggle-min-free-mib", type=int, default=8192,
+                        help="Riserva disco Kaggle oltre cache e copie")
     parser.add_argument("--repository", default=None,
                         help="Opzionale, deve coincidere col repository del modello")
     parser.add_argument("--root", default=None, help="Cartella modelli (non cambia profili)")
@@ -655,6 +659,8 @@ def main():
                 inventory_only=args.inventory_only,
                 model_id=args.model, source=args.source,
                 kaggle_handle=args.kaggle_handle,
+                kaggle_max_download_mib=args.kaggle_max_download_mib,
+                kaggle_min_free_mib=args.kaggle_min_free_mib,
             )
         except Exception as exc:
             result = {"success": False, "error": f"{type(exc).__name__}: {exc}"}
