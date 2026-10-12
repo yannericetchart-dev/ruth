@@ -7,6 +7,7 @@ downloads. A model page alone does not guarantee that a GGUF variation exists.
 
 import csv
 import io
+from decimal import Decimal, InvalidOperation
 from pathlib import Path
 import re
 import shutil
@@ -145,6 +146,45 @@ def _get(record: dict, *keys: str) -> str:
     return ""
 
 
+_SIZE_FACTORS = {
+    "B": 1, "KB": 1000, "MB": 1000 ** 2, "GB": 1000 ** 3,
+    "TB": 1000 ** 4, "KIB": 1024, "MIB": 1024 ** 2,
+    "GIB": 1024 ** 3, "TIB": 1024 ** 4,
+}
+
+
+def parse_kaggle_file_size(value: str) -> dict | None:
+    """Parse known CSV size units; keep rounded human values approximate."""
+    if not value or not isinstance(value, str):
+        return None
+    raw = value.strip()
+    if re.fullmatch(r"\d{1,3}(?:,\d{3})+", raw):
+        raw = raw.replace(",", "")
+    m = re.fullmatch(
+        r"(\d+(?:\.\d+)?)\s*([KMGT]?I?B|BYTES?)?", raw, re.I
+    )
+    if not m:
+        return None
+    try:
+        number = Decimal(m.group(1))
+        unit = (m.group(2) or "B").upper()
+        if unit in ("BYTE", "BYTES"):
+            unit = "B"
+        factor = _SIZE_FACTORS.get(unit)
+        if factor is None:
+            return None
+        byte_count = int(number * factor)
+        if byte_count < 0:
+            return None
+        return {
+            "bytes": byte_count,
+            "estimated": unit != "B",
+            "reported_value": raw,
+        }
+    except (InvalidOperation, OverflowError, ValueError):
+        return None
+
+
 def variation_handles(repository: str, selected_handle: str | None = None) -> list[str]:
     if selected_handle:
         return [validate_handle(selected_handle, repository)]
@@ -243,6 +283,9 @@ def inventory_kaggle(
         splits = {}
         singles = []
         for row in rows:
+            reported_size = parse_kaggle_file_size(
+                _get(row, "size", "fileSize", "sizeBytes", "bytes")
+            )
             source_path = _filename(row)
             if not source_path.casefold().endswith(".gguf"):
                 continue
@@ -266,19 +309,35 @@ def inventory_kaggle(
                     raise RuntimeError(
                         "Inventario Kaggle: shard duplicati o totale incoerente."
                     )
-                group["parts"][index] = (filename, source_path)
+                group["parts"][index] = (filename, source_path, reported_size)
             else:
-                singles.append((filename, source_path))
+                singles.append((filename, source_path, reported_size))
 
         def new_candidate(
             filename: str, source_path: str, quant: str, matched: bool,
             *, shard_filenames: list[str], shard_paths: list[str],
             split_total: int = 1, split_complete: bool = True,
             missing: list[int] | None = None,
+            sizes: list[dict | None] | None = None,
         ) -> dict:
             ranked = (quantization_priority(quant) if matched and split_complete
                       else quantization_priority(""))
+            known_sizes = sizes or []
+            all_sizes_known = (
+                bool(known_sizes)
+                and all(item is not None for item in known_sizes)
+            )
+            total_download_bytes = (
+                sum(item["bytes"] for item in known_sizes)
+                if all_sizes_known else None
+            )
             return {
+                "reported_download_bytes": total_download_bytes,
+                "reported_download_size_estimated": (
+                    any(item["estimated"] for item in known_sizes)
+                    if all_sizes_known else None
+                ),
+                "reported_shard_sizes": known_sizes,
                 "repo_id": repository,
                 "filename": filename,
                 "source_file_path": source_path,
@@ -297,11 +356,12 @@ def inventory_kaggle(
                 "source": "kaggle",
             }
 
-        for filename, source_path in singles:
+        for filename, source_path, size in singles:
             quant, matched = _gguf_quantization(filename, gguf_prefix)
             candidates.append(new_candidate(
                 filename, source_path, quant, matched,
                 shard_filenames=[filename], shard_paths=[source_path],
+                sizes=[size],
             ))
         for group in splits.values():
             total = group["total"]
@@ -318,6 +378,7 @@ def inventory_kaggle(
                 shard_filenames=[pair[0] for pair in present],
                 shard_paths=[pair[1] for pair in present],
                 split_total=total, split_complete=not missing,
+                sizes=[pair[2] for pair in present],
                 missing=missing,
             ))
 
