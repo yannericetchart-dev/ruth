@@ -237,7 +237,11 @@ def inventory_kaggle(
                 if not (1 <= index <= total <= 99999):
                     raise RuntimeError("Inventario Kaggle: indice GGUF split non valido.")
                 logical_name = found["name"] + ".gguf"
-                group = splits.setdefault(logical_name.casefold(), {
+                # Never combine similarly named shards from different
+                # folders inside one Kaggle variation.
+                split_key = (logical_name.casefold(),
+                             str(Path(source_path).parent).casefold())
+                group = splits.setdefault(split_key, {
                     "logical_name": logical_name, "parts": {}, "total": total,
                 })
                 if group["total"] != total or index in group["parts"]:
