@@ -294,20 +294,43 @@ Su Qwen Hugging Face Q5_K_L, un test a \`n_ctx=2048\` ha misurato
 non una riserva operativa sicura. Ruth non modifica automaticamente
 batch, KV, mapping o quantizzazione per far risultare la prova valida.
 
-Per Qwen Kaggle si usa una pipeline distinta:
+Per Qwen Kaggle si usa una pipeline distinta, protetta da un limite
+di trasferimento cumulativo. **Senza autorizzazione esplicita, Ruth
+non scarica alcun nuovo GGUF Kaggle** (riutilizza soltanto shard
+gia' presenti). Una esecuzione deliberatamente autorizzata e':
 
-\`\`\`bash
-.venv/bin/python -m calibration.profile_pipeline \\
-  --model qwen-2.5-7b-instruct --source kaggle --until context_gpu
-\`\`\`
+```bash
+.venv/bin/python -m calibration.profile_pipeline \
+  --model qwen-2.5-7b-instruct --source kaggle \
+  --until baseline --kaggle-max-download-mib 16000
+```
 
-**Attenzione ai download Kaggle multi-shard**: Ruth non puo'
-dedurre l'esatto payload GGUF dall'elenco dei file Kaggle prima
-di averli scaricati. La ricerca quality-first puo' tentare pesi
-FP16 e Q8 molto grandi, anche se incompatibili con la VRAM
-disponibile. Valutare prima spazio disco, rete e costi; interrompere
-se il download della candidata eccessiva non e' desiderato. Non
-combinare i risultati Kaggle e Bartowski in un'unica baseline.
+Il numero **16000 e' un esempio di budget approvato**, non un valore
+automatico: il catalogo attuale riporta il primo FP16 a circa
+14532 MiB (4 shard). Questa esecuzione potrebbe quindi avviare
+un download di circa 14,5 GiB prima di conoscere i byte esatti
+dei tensori GGUF. Il budget si consuma **cumulativamente per run**
+solo sugli shard mancanti. Se la candidata migliore supera il
+budget residuo, ha dimensione non nota o manca spazio disco,
+Ruth interrompe la baseline **prima di KaggleHub**, senza saltare
+silenziosamente verso quantizzazioni inferiori.
+
+La riserva disco predefinita e' 8192 MiB oltre alla stima della
+cache KaggleHub e della copia locale; su uno stesso volume la
+previsione include due copie e un 5% aggiuntivo per arrotondamenti.
+Il cache root predefinito di KaggleHub e' ~/.cache/kagglehub e puo'
+essere impostato con KAGGLEHUB_CACHE. Le dimensioni catalogo sono
+spesso arrotondate: il budget non e' un limite di rete esatto.
+Rieseguire la baseline in un secondo momento riutilizza gli shard
+locali e applica una nuova autorizzazione soltanto ai download
+ancora necessari. Non utilizzare --rerun se si desidera conservare
+inventario e baseline gia' confermati.
+
+**Il preflight non e' una prova GPU:** non basta che il file
+superi o rientri nella VRAM per escludere o convalidare un
+modello. L'eventuale impossibilita' della baseline full-CUDA va
+verificata con pesi locali e runtime nativo, e i profili Kaggle
+e Bartowski rimangono separati.
 
 Il **preflight Kaggle senza download** raggruppa le dimensioni
 riportate dalla CLI per ogni quantizzazione e per tutti gli shard:
