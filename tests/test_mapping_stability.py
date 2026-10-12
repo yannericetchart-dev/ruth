@@ -115,8 +115,9 @@ class StabilityProtocolTests(unittest.TestCase):
 
     def test_diagnostic_context_and_prompt_bounds(self):
         validate_probe(768, 6, 256)
+        validate_probe(2048, 34, 256)
         for params in ((256, 1, 128), (8193, 1, 128),
-                       (768, 0, 256), (768, 17, 256),
+                       (768, 0, 256), (768, 49, 256),
                        (512, 1, 512)):
             with self.assertRaises(ValueError):
                 validate_probe(*params)

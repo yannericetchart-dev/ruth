@@ -36,7 +36,7 @@ class MappingEnvelopeTests(unittest.TestCase):
 
     def test_rejects_duplicate_incomplete_and_oversized_cases(self):
         for values in ([], ["40:768"], ["40:768:6", "40:768:6"],
-                       ["40:256:6"], ["0:1024:1"], ["39:1024:17"],
+                       ["40:256:6"], ["0:1024:1"], ["39:1024:49"],
                        ["nonsense"], ["40:768:6"] * 9):
             with self.assertRaises(ValueError):
                 parse_cases(values)

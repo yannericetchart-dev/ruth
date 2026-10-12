@@ -21,8 +21,8 @@ from model import ModelManager
 
 def probe_prompt(repeat: int = 1) -> str:
     """One Gemma-2 chat turn with a configurable deterministic prompt length."""
-    if not isinstance(repeat, int) or isinstance(repeat, bool) or not 1 <= repeat <= 16:
-        raise ValueError("prompt_repeat deve essere compreso fra 1 e 16.")
+    if not isinstance(repeat, int) or isinstance(repeat, bool) or not 1 <= repeat <= 48:
+        raise ValueError("prompt_repeat deve essere compreso fra 1 e 48.")
     body = (
         "Spiega dettagliatamente come funziona un motore elettrico, "
         "dalla conversione dell'energia alle forze magnetiche, "
@@ -453,7 +453,7 @@ def main() -> None:
     parser.add_argument("--probe-n-ctx", type=int, default=512,
                         help="Contesto della prova, NON valore operativo")
     parser.add_argument("--prompt-repeat", type=int, default=1,
-                        help="Lunghezza del testo input diagnostico (1..16)")
+                        help="Lunghezza del testo input diagnostico (1..48)")
     parser.add_argument("--timeout", type=int, default=180)
     parser.add_argument("--cpu-tensor", default=None,
                         help="Tensore GGUF da forzare su host RAM (probe sperimentale)")
