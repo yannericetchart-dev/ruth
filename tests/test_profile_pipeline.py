@@ -483,6 +483,36 @@ class ProfilePipelineTests(unittest.TestCase):
             self.assertIn(("mistral-7b-instruct-v0.3", "bartowski"),
                           recorded)
 
+    def test_kaggle_download_budget_is_forwarded_without_gpu_work(self):
+        with (
+            patch("calibration.profile_pipeline.resolve_identity",
+                  return_value={"profile_key": "mock-kaggle"}),
+            patch("calibration.profile_pipeline.run_pipeline",
+                  return_value={"success": True}) as pipeline,
+            redirect_stdout(io.StringIO()),
+        ):
+            status = main([
+                "--model", "qwen-2.5-7b-instruct",
+                "--source", "kaggle", "--until", "baseline",
+                "--kaggle-max-download-mib", "16000",
+                "--kaggle-min-free-mib", "8192",
+            ])
+        self.assertEqual(status, 0)
+        self.assertEqual(
+            pipeline.call_args.kwargs["kaggle_max_download_mib"], 16000
+        )
+        self.assertEqual(
+            pipeline.call_args.kwargs["kaggle_min_free_mib"], 8192
+        )
+
+    def test_hf_cannot_receive_kaggle_transfer_approval(self):
+        with self.assertRaises(SystemExit) as caught:
+            main([
+                "--model", "qwen-2.5-7b-instruct", "--source", "bartowski",
+                "--until", "baseline", "--kaggle-max-download-mib", "16000",
+            ])
+        self.assertEqual(caught.exception.code, 2)
+
     def test_cli_lists_registered_phases_without_gpu(self):
         out = io.StringIO()
         with redirect_stdout(out):
