@@ -28,7 +28,7 @@ def repo_prefix(repo_id: str) -> str:
 # without direct published comparisons stay explicitly heuristic.
 QUALITY_ORDER = (
     "f32", "f16", "Q8_0_L", "Q8_0", "Q6_K_L", "Q6_K",
-    "Q5_K_L", "Q5_K_M", "Q5_K_S", "Q4_K_L", "Q4_K_M",
+    "Q5_K_L", "Q5_K_M", "Q5_K_S", "Q5_1", "Q5_0", "Q4_K_L", "Q4_K_M",
     "Q4_K_S", "IQ4_NL", "IQ4_XS", "Q4_0", "Q3_K_XL", "Q3_K_L", "Q3_K_M",
     "IQ3_M", "IQ3_S", "Q3_K_S", "IQ3_XS", "Q2_K_L", "Q2_K",
     "IQ3_XXS", "IQ2_M", "IQ2_S", "IQ2_XS", "IQ2_XXS",
@@ -59,6 +59,7 @@ def quantization_priority(label: str) -> dict:
             "quality_base": None, "quality_modifier": None,
         }
     folded = label.casefold()
+    folded = {"fp16": "f16", "fp32": "f32"}.get(folded, folded)
     rank = _QUALITY_RANK.get(folded)
     if rank is not None:
         return {
