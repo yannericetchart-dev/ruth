@@ -24,15 +24,14 @@ class ModelManager:
             "architecture": "qwen2",
         },
         "mistral-7b-instruct-v0.3": {
-            "source": "kaggle",
-            "repository": "bond005/mistral-7b-instruct-v0.3",
+            "source": "bartowski",
+            "repository": "bartowski/Mistral-7B-Instruct-v0.3-GGUF",
             "filename": "Mistral-7B-Instruct-v0.3-Q4_K_M.gguf",
             "format": "gguf",
             "quantization": "Q4_K_M",
             "gguf_prefix": "Mistral-7B-Instruct-v0.3-",
             "architecture": "llama",
             "chat_template": "mistral_inst",
-            "kaggle_framework": "gguf",
         },
         "llama-3.1-8b-instruct": {
             "source": "bartowski",
@@ -44,6 +43,59 @@ class ModelManager:
             "architecture": "llama",
         }
     }
+
+    # Optional alternative publishers; Hugging Face remains the default.
+    SOURCE_OVERRIDES = {
+        "gemma-2-9b-it": {
+            "kaggle": {
+                "repository": "google/gemma-2",
+                "kaggle_handle": "google/gemma-2/gguf/2.0-9b-it",
+            },
+        },
+        "qwen-2.5-7b-instruct": {
+            "kaggle": {
+                "repository": "qwen-lm/qwen2.5",
+                "kaggle_handle": "qwen-lm/qwen2.5/gguf/7b-instruct",
+            },
+        },
+    }
+
+    @classmethod
+    def available_sources(cls, model_id: str) -> tuple[str, ...]:
+        if model_id not in cls.CATALOG:
+            raise ValueError(f"Modello sconosciuto: {model_id}")
+        return (cls.CATALOG[model_id]["source"],
+                *cls.SOURCE_OVERRIDES.get(model_id, {}))
+
+    @classmethod
+    def source_spec(cls, model_id: str, source: str | None = None) -> dict:
+        if model_id not in cls.CATALOG:
+            raise ValueError(f"Modello sconosciuto: {model_id}")
+        default = cls.CATALOG[model_id]
+        source = source or default["source"]
+        if source == default["source"]:
+            return dict(default)
+        override = cls.SOURCE_OVERRIDES.get(model_id, {}).get(source)
+        if override is None:
+            raise ValueError(
+                f"Fonte '{source}' non disponibile per {model_id}; "
+                f"disponibili: {', '.join(cls.available_sources(model_id))}."
+            )
+        return {**default, **override, "source": source}
+
+    def model_directory(self, model_id: str, source: str | None = None,
+                        repository: str | None = None) -> Path:
+        spec = self.source_spec(model_id, source)
+        repo = repository or spec["repository"]
+        if spec["source"] == self.CATALOG[model_id]["source"]:
+            if repo != spec["repository"]:
+                raise ValueError("Repository differente dalla fonte predefinita.")
+            return self.root / model_id
+        from calibration.kaggle_source import validate_handle
+        if "/" not in repo or len(repo.split("/")) != 2:
+            raise ValueError("Repository Kaggle non valido.")
+        validate_handle(repo + "/gguf/placeholder", repo)
+        return self.root / model_id / "sources" / spec["source"] / repo
 
     def __init__(self, root: str | Path | None = None):
         self.root = (
@@ -65,7 +117,9 @@ class ModelManager:
         path = self.root / model_id / spec["filename"]
         return path if path.is_file() else None
 
-    def selected_baseline(self, model_id: str = "gemma-2-9b-it") -> dict | None:
+    def selected_baseline(self, model_id: str = "gemma-2-9b-it", *,
+                          source: str | None = None,
+                          repository: str | None = None) -> dict | None:
         """Read the full-GPU calibration selection, without changing get().
 
         Only the explicit follow-on profiling stage should promote this
@@ -73,7 +127,7 @@ class ModelManager:
         """
         import json
 
-        base_dir = self.root / model_id
+        base_dir = self.model_directory(model_id, source, repository)
         manifest = base_dir / "baseline_selection.json"
         if not manifest.is_file():
             return None
@@ -85,6 +139,12 @@ class ModelManager:
             or not name.endswith(".gguf")
             or not (base_dir / name).is_file()):
             raise ValueError("Baseline persistita incompleta o non verificabile.")
+        expected = self.source_spec(model_id, source)
+        if (selection.get("source", expected["source"]) != expected["source"]
+            or selection.get("repository") !=
+                (repository or expected["repository"])
+            or selection.get("model_id") != model_id):
+            raise ValueError("Baseline di una fonte/repository diverso.")
         return {**selection, "local_path": str(base_dir / name)}
 
     def download(self, model_id: str = "gemma-2-9b-it") -> Path:
