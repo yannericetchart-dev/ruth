@@ -232,7 +232,7 @@ def _phase_call(name: str, identity: dict, previous: dict,
         report = choose_baseline(
             root=model_root, model_id=model, repo_id=choices["repository"],
             probe_n_ctx=opts["baseline_n_ctx"], n_batch=opts["n_batch"],
-            persist_selection=False, progress=reporter,
+            inventory_only=False, persist_selection=False, progress=reporter,
             kaggle_handle=choices.get("kaggle_handle"),
         )
         selected = report.get("baseline") or {}
