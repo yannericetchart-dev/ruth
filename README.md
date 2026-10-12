@@ -253,11 +253,23 @@ Quando un worker di contesto non produce JSON valido, Ruth registra
 \`worker_returncode\`, \`worker_signal\` e lo stato del protocollo,
 poi riprova **una sola volta** in un nuovo processo CUDA. Un segnale
 come SIGKILL da solo **non dimostra** un OOM CUDA: senza indizi nativi
-espliciti la ricerca rimane inconclusiva. Il report fallito conserva
-\`highest_gpu_resident_n_ctx_observed\`, che e' soltanto il miglior
-contesto passato durante la ricerca: **non** e' un massimo confermato
-e non soddisfa la fase 1. Una ripresa senza \`--rerun\` riutilizza
-la baseline salvata e ripete la sola ricerca del contesto.
+espliciti la ricerca rimane inconclusiva. Se si ripete
+\`worker_protocol_error\` con \`SIGABRT\` senza una causa CUDA nativa
+classificabile, Ruth **continua la bisezione sotto quel n_ctx**, ma
+marca ogni punto come limite incerto. La ripetizione massima di due
+worker vale **per il singolo n_ctx**, non per l'intera ricerca.
+
+Dopo aver esplorato i punti inferiori, il candidato funzionante e'
+verificato con due conferme CUDA native. Se esistono limiti incerti,
+Ruth registra \`confirmed_gpu_resident_n_ctx\` come minimo realmente
+confermato e salva \`uncertain_failure_boundaries\`, ma lascia
+\`confirmed_max_gpu_resident_n_ctx=null\`, \`maximality_proven=false\`
+e \`success=false\`. La fase 1 resta incompleta: questo e' un
+riferimento diagnostico verificato, **non** un massimo matematico
+e nemmeno un profilo operativo. L'audit visualizza il valore
+come "minimo confermato; massimo incerto", senza promuoverlo
+a fase completata. Una ripresa senza \`--rerun\` riutilizza la
+baseline salvata e ripete la sola ricerca del contesto.
 
 Se i log di un worker abortito riportano esplicitamente
 `CUDA error: the resource allocation failed` (ad esempio durante
