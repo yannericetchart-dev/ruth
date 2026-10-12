@@ -519,7 +519,7 @@ def main(argv: list[str] | None = None) -> int:
                         help="Variante Kaggle, formato owner/model/framework/variation[/version]")
     parser.add_argument("--kaggle-max-download-mib", type=int,
                         help=("Autorizza download Kaggle fino a questo budget "
-                              "cumulativo di MiB da catalogo per esecuzione. "
+                              "di MiB da catalogo PER CANDIDATO. "
                               "Senza opzione: nessun nuovo download Kaggle."))
     parser.add_argument("--kaggle-min-free-mib", type=int, default=8192,
                         help="Riserva disco richiesta oltre cache+copie (default 8192 MiB)")
