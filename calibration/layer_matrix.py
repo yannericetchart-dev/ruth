@@ -270,37 +270,109 @@ def remote_huggingface_matrices(
     return reports
 
 
+def local_baseline_matrices(
+    models: list[str], *, source: str = "all",
+    output_root: Path | None = None,
+) -> list[dict]:
+    """Read existing verified local baselines; never discover/download one."""
+    import json
+    from .phase1_audit import audit_all
+
+    reports = []
+    inspected = audit_all(model="all", source=source, output_root=output_root)
+    for state in inspected:
+        if state["model_id"] not in models:
+            continue
+        if not state["full_gpu_baseline_verified"]:
+            raise RuntimeError(
+                f"{state['model_id']} / {state['source']}: baseline e GGUF "
+                "full-CUDA non ancora verificati: "
+                + "; ".join(state["errors"])
+            )
+        folder = Path(state["run_directory"])
+        original = json.loads(
+            (folder / "baseline.json").read_text(encoding="utf-8")
+        )
+        selected = original["baseline"]
+        report = analyze_layer_matrix(
+            selected, model_id=state["model_id"]
+        )
+        from .profile_pipeline import atomic_json
+        from .layer_export import export_matrix_tables
+        # Write a separate analysis report, never overwrite the resumable
+        # pipeline's own layer_matrix.json or alter its completed state.
+        dest = folder / "local_matrix_analysis"
+        target = dest / "layer_matrix.json"
+        atomic_json(target, report)
+        report["table_paths"] = export_matrix_tables(report, dest)
+        report["report_path"] = str(target)
+        reports.append(report)
+    return reports
+
+
 def main(argv: list[str] | None = None) -> int:
     import argparse
     from model import ModelManager
 
     parser = argparse.ArgumentParser(
-        description="Matrice GGUF via header Hugging Face, senza download pesi/GPU."
+        description="Matrici GGUF locali con baseline verificata "
+                    "(oppure --remote-header per ricerca solo header)."
     )
     parser.add_argument("--model", default="all",
                         choices=["all", *sorted(ModelManager.CATALOG)])
-    parser.add_argument("--source", default="bartowski", choices=["bartowski"])
+    parser.add_argument("--source", default="all",
+                        choices=["all", "bartowski", "kaggle"])
+    parser.add_argument("--remote-header", action="store_true",
+                        help="Solo header HF: nessuna prova full-CUDA locale.")
     parser.add_argument("--output-root", type=Path, default=None)
     args = parser.parse_args(argv)
     models = sorted(ModelManager.CATALOG) if args.model == "all" else [args.model]
     errors = 0
-    for model_id in models:
+    if args.remote_header:
+        if args.source not in ("bartowski", "all"):
+            parser.error("--remote-header e' disponibile solo per Bartowski HF.")
+        for model_id in models:
+            try:
+                reports = remote_huggingface_matrices(
+                    [model_id], output_root=args.output_root
+                )
+            except Exception as exc:
+                errors += 1
+                print(f"[{model_id}] BLOCCATO: {type(exc).__name__}: {exc}")
+                continue
+            for report in reports:
+                print(
+                    f"[{report['model_id']}] HEADER HF: "
+                    f"{report['block_count']} layer, {report['tensor_count']} tensori "
+                    f"| {report['serialized_weight_mib']} MiB serializzati "
+                    f"| {report['report_path']}"
+                )
+        print("Solo header remoti, nessun GGUF scaricato o validazione CUDA.")
+        return 1 if errors else 0
+
+    # Audit every registered pair, but only selected model/source reports
+    # are exported. No CLI path here can download model weights.
+    from .phase1_audit import model_source_pairs
+    for model_id, source in model_source_pairs(args.source, args.model):
         try:
-            reports = remote_huggingface_matrices(
-                [model_id], output_root=args.output_root
+            reports = local_baseline_matrices(
+                [model_id], source=source, output_root=args.output_root
             )
+            if len(reports) != 1:
+                raise RuntimeError("Baseline GGUF locale non trovata.")
         except Exception as exc:
             errors += 1
-            print(f"[{model_id}] BLOCCATO: {type(exc).__name__}: {exc}")
+            print(f"[{model_id} / {source}] NON VERIFICATO: "
+                  f"{type(exc).__name__}: {exc}")
             continue
-        for report in reports:
-            print(
-                f"[{report['model_id']}] HEADER HF: "
-                f"{report['block_count']} layer, {report['tensor_count']} tensori "
-                f"| {report['serialized_weight_mib']} MiB serializzati "
-                f"| {report['report_path']}"
-            )
-    print("Nessun peso GGUF scaricato o trasferimento CPU/GPU eseguito.")
+        report = reports[0]
+        print(
+            f"[{model_id} / {source}] LOCALE: "
+            f"{report['quantization']}, {report['block_count']} layer, "
+            f"{report['tensor_count']} tensori, "
+            f"{report['serialized_weight_mib']} MiB | {report['report_path']}"
+        )
+    print("Nessun download GGUF, test CUDA o modifica al profilo operativo.")
     return 1 if errors else 0
 
 
