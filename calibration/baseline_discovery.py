@@ -267,6 +267,7 @@ def choose_baseline(
     probe_n_ctx: int = 64, n_batch: int = 32,
     timeout: int = 180, inventory_only: bool = False,
     model_id: str = "gemma-2-9b-it",
+    progress=None, persist_selection: bool = True,
 ) -> dict:
     if (not isinstance(probe_n_ctx, int) or probe_n_ctx < 32
         or not isinstance(n_batch, int) or not 1 <= n_batch <= probe_n_ctx
@@ -323,6 +324,9 @@ def choose_baseline(
             "avere conferma nativa CUDA."
         ),
     }
+    if progress is not None:
+        progress({"event": "inventory_ready", "model": model_id,
+                  "count": len(models), "unranked": len(unranked)})
     if inventory_only:
         report["inventory_only"] = True
         return report
@@ -346,9 +350,17 @@ def choose_baseline(
             "status": None,
         }
         report["attempts"].append(record)
+        if progress is not None:
+            progress({"event": "candidate_start", "model": model_id,
+                      "quantization": candidate["quantization"],
+                      "filename": candidate["filename"]})
         if candidate.get("cuda_baseline_eligible") is False:
             record["status"] = "excluded_publisher_arm_prepacked_format"
             record["future_cpu_gpu_tuning_allowed"] = True
+            if progress is not None:
+                progress({"event": "candidate_decision", "model": model_id,
+                          "quantization": candidate["quantization"],
+                          "status": record["status"]})
             continue
 
         local = model_dir / candidate["filename"]
@@ -377,9 +389,18 @@ def choose_baseline(
         if exact > vram_bytes:
             record["status"] = "excluded_weight_payload_exceeds_total_vram"
             record["future_cpu_gpu_tuning_allowed"] = True
+            if progress is not None:
+                progress({"event": "candidate_decision", "model": model_id,
+                          "quantization": candidate["quantization"],
+                          "status": record["status"],
+                          "weight_mib": record["exact_serialized_weight_mib"]})
             continue
 
         if not local.is_file():
+            if progress is not None:
+                progress({"event": "candidate_download", "model": model_id,
+                          "quantization": candidate["quantization"],
+                          "filename": candidate["filename"]})
             try:
                 model_dir.mkdir(parents=True, exist_ok=True)
                 local = Path(hf_hub_download(
@@ -392,6 +413,10 @@ def choose_baseline(
                 report["error"] = "Download fallito: impossibile verificare questo candidato."
                 return report
 
+        if progress is not None:
+            progress({"event": "candidate_gpu_probe", "model": model_id,
+                      "quantization": candidate["quantization"],
+                      "n_ctx": probe_n_ctx, "batch": n_batch})
         try:
             measured = probe_gpu_candidate(
                 local, n_ctx=probe_n_ctx,
@@ -412,6 +437,12 @@ def choose_baseline(
         if not fully_verified:
             record["status"] = "failed_full_gpu_native_probe"
             record["future_cpu_gpu_tuning_allowed"] = True
+            if progress is not None:
+                progress({"event": "candidate_decision", "model": model_id,
+                          "quantization": candidate["quantization"],
+                          "status": record["status"],
+                          "failure_hint": measured.get("failure_hint"),
+                          "error": measured.get("error")})
             # Stop on diagnostic errors not caused by model feasibility:
             # don't mislabel broken adapter or missing logs as a bad GGUF.
             if measured.get("failure_hint") not in (
@@ -441,6 +472,14 @@ def choose_baseline(
         }
         report["success"] = True
         report["next_phase_unlocked"] = True
+        if progress is not None:
+            progress({"event": "candidate_decision", "model": model_id,
+                      "quantization": candidate["quantization"],
+                      "status": record["status"],
+                      "peak_mib": (measured.get("measurements") or {}).get(
+                          "vram_peak_sampled_mib")})
+        if not persist_selection:
+            break
         # Atomic persistent selection: no update on failure, no switch to
         # a new operational runtime profile without a separate step.
         target = model_dir / "baseline_selection.json"
@@ -460,6 +499,9 @@ def main():
     parser.add_argument("--model", choices=sorted(ModelManager.CATALOG),
                         default="gemma-2-9b-it",
                         help="Modello nel catalogo Ruth (baseline separata)")
+    parser.add_argument("--source", default="bartowski")
+    parser.add_argument("--engine", default="llama.cpp")
+    parser.add_argument("--method", default="llama_cpp_python")
     parser.add_argument("--repository", default=None,
                         help="Opzionale, deve coincidere col repository del modello")
     parser.add_argument("--root", default=None, help="Cartella modelli (non cambia profili)")
@@ -482,6 +524,8 @@ def main():
             result = {"success": False, "error": f"{type(exc).__name__}: {exc}"}
     else:
         try:
+            from .profile_identity import validate_choices
+            validate_choices(args.model, args.source, args.engine, args.method)
             result = choose_baseline(
                 root=Path(args.root) if args.root else None,
                 repo_id=args.repository,

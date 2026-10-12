@@ -287,6 +287,9 @@ def search_gpu_context(
     confirm_rounds: int = 2,
     retry_ambiguous_context: bool = False,
     root: str | Path | None = None,
+    baseline_selection: dict | None = None,
+    persist_reference: bool = True,
+    progress=None,
 ) -> dict:
     """Bounded doubling + token-granularity bisection, then confirmation.
 
@@ -308,13 +311,20 @@ def search_gpu_context(
     if not status["ready"]:
         raise RuntimeError(f"GPU non pronta: {status['errors']}")
     manager = ModelManager(root=root)
-    selection = manager.selected_baseline(model_id)
+    selection = baseline_selection if baseline_selection is not None else manager.selected_baseline(model_id)
     if selection is None:
         raise RuntimeError(
             f"Baseline full-GPU non selezionata per {model_id}. "
             "Eseguire prima calibration.baseline_discovery."
         )
+    if (selection.get("native_verified_all_gpu") is not True
+        or selection.get("model_id", model_id) != model_id
+        or selection.get("repository", ModelManager.CATALOG[model_id]["repository"])
+           != ModelManager.CATALOG[model_id]["repository"]):
+        raise RuntimeError("Baseline non verificata o di un'altra configurazione.")
     model = Path(selection["local_path"])
+    if not model.is_file() or model.name != selection.get("filename"):
+        raise RuntimeError("GGUF selezionato assente o nome incoerente.")
     layout = inspect_gguf(model, n_ctx=min_ctx)
     arch = layout["metadata"].get("general.architecture")
     if arch != selection["architecture"]:
@@ -351,12 +361,27 @@ def search_gpu_context(
     }
 
     def measure(ctx: int) -> dict:
+        if progress is not None:
+            progress({"event": "context_probe_start", "n_ctx": ctx,
+                      "model": model_id, "token_count": tokens})
         candidate = probe_context(
             model, ctx, generated_tokens=tokens, batch=min(batch, ctx),
             timeout=timeout,
         )
         candidate["requested_n_ctx"] = ctx
         result["attempts"].append(candidate)
+        if progress is not None:
+            progress({"event": "context_probe_result", "n_ctx": ctx,
+                      "model": model_id,
+                      "success": candidate.get("success") is True,
+                      "failure_class": candidate.get("failure_class"),
+                      "peak_mib": (candidate.get("measurements") or {}).get(
+                          "vram_peak_sampled_mib"),
+                      "native_gpu_weights": (candidate.get(
+                          "full_gpu_native_verification") or {}).get("verified"),
+                      "native_gpu_kv": (candidate.get(
+                          "gpu_runtime_validation") or {}).get("kv", {}).get(
+                              "verified_gpu_resident")})
         return candidate
 
     def is_boundary(failure: dict) -> bool:
@@ -406,8 +431,15 @@ def search_gpu_context(
                 return result
 
     result["candidate_max_gpu_resident_n_ctx"] = low
+    if progress is not None:
+        progress({"event": "context_candidate_limit", "n_ctx": low,
+                  "failed_boundary": high, "model": model_id})
     result["confirmation"] = []
-    for _ in range(confirm_rounds):
+    for confirmation_index in range(1, confirm_rounds + 1):
+        if progress is not None:
+            progress({"event": "context_confirmation", "n_ctx": low,
+                      "round": confirmation_index, "total": confirm_rounds,
+                      "model": model_id})
         confirmation = measure(low)
         result["confirmation"].append({
             "success": confirmation["success"],
@@ -433,6 +465,8 @@ def search_gpu_context(
             for row in result["confirmation"]), 1
     )
     result["reference_is_operationally_safe"] = False
+    if not persist_reference:
+        return result
     target = model.parent / "gpu_context_reference.json"
     temp = model.parent / "gpu_context_reference.json.tmp"
     temp.write_text(json.dumps({
@@ -456,6 +490,9 @@ def main() -> None:
     )
     parser.add_argument("--model", choices=sorted(ModelManager.CATALOG),
                         default="gemma-2-9b-it")
+    parser.add_argument("--source", default="bartowski")
+    parser.add_argument("--engine", default="llama.cpp")
+    parser.add_argument("--method", default="llama_cpp_python")
     parser.add_argument("--max-ctx", type=int)
     parser.add_argument("--min-ctx", type=int, default=64)
     parser.add_argument("--tokens", type=int, default=8)
@@ -479,6 +516,8 @@ def main() -> None:
             output = {"success": False, "error": f"{type(exc).__name__}: {exc}"}
     else:
         try:
+            from .profile_identity import validate_choices
+            validate_choices(args.model, args.source, args.engine, args.method)
             output = search_gpu_context(
                 args.model, max_ctx=args.max_ctx, min_ctx=args.min_ctx,
                 tokens=args.tokens, batch=args.batch,

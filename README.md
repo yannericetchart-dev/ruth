@@ -92,3 +92,72 @@ e' automaticamente stabile o idoneo alla produzione, specialmente con
 poco margine VRAM; la selezione del profilo operativo e' una fase
 successiva. Nessun upload dei risultati e nessun profiling dei layer
 viene effettuato da questi comandi.
+
+
+## Profilazione automatica incrementale
+
+L'interfaccia principale della calibrazione e' ora:
+
+```bash
+.venv/bin/python -m calibration.profile_pipeline \
+  --model gemma-2-9b-it \
+  --source bartowski \
+  --engine llama.cpp \
+  --method llama_cpp_python
+```
+
+Le quattro scelte sono esplicite e opzionali; possono essere estese
+quando nuovi fornitori, motori e adapter verranno implementati. Opzioni
+non ancora supportate producono un errore chiaro, **mai un fallback
+implicito**.
+
+Le caratteristiche hardware sono invece rilevate automaticamente:
+backend CUDA dalla GPU NVIDIA, UUID e modello GPU, VRAM totale, RAM,
+CPU e versione del runtime. Non esiste un argomento per inventare una
+VRAM diversa da quella fisica.
+
+Il comando usa una pipeline riprendibile per fasi:
+
+1. `inventory`: inventario GGUF e priorita' qualitativa.
+2. `baseline`: prima quantizzazione interamente caricabile su CUDA.
+3. `context_gpu`: massimo n_ctx diagnostico con pesi e KV su CUDA.
+4. `mapping`: previsto, non ancora implementato.
+5. `runtime`: previsto, non ancora implementato.
+6. `context_tuned`: previsto, non ancora implementato.
+7. `capacity`: previsto, non ancora implementato.
+
+Ogni candidato e test di contesto viene stampato **durante la prova** con
+il risultato e la decisione, senza dover attendere l'output JSON completo.
+I report rimangono disponibili in
+`models/calibration_runs/<profile_key>/` (`state.json`,
+`events.jsonl`, `inventory.json`, `baseline.json`, `context_gpu.json`).
+Questa cartella e' esclusa da Git. Il `profile_key` dipende dalle
+scelte, dall'hardware misurato e dalla versione del runtime: non si
+confondono i profili tra GPU, quantizzazioni o ambienti diversi.
+
+```bash
+# Esegui solo il primo passo su tutti i modelli registrati
+.venv/bin/python -m calibration.profile_pipeline \
+  --model all --until inventory
+
+# Completa solo fino alla baseline, conservando l'inventario
+.venv/bin/python -m calibration.profile_pipeline \
+  --model qwen-2.5-7b-instruct --until baseline
+
+# Riprendi dal primo passo mancante o incompleto
+.venv/bin/python -m calibration.profile_pipeline \
+  --model qwen-2.5-7b-instruct
+
+# Ripeti anche fasi gia' verificate
+.venv/bin/python -m calibration.profile_pipeline \
+  --model qwen-2.5-7b-instruct --rerun
+
+# Mostra anche i passi futuri non ancora implementati
+.venv/bin/python -m calibration.profile_pipeline --list-phases
+```
+
+I risultati diagnostici non sono un profilo operativo e **non cambiano**
+il modello caricato da Ruth. Un run inconclusivo (per esempio per errore
+di un worker) rimane `blocked` e potra' essere riprovato. Il processo
+non promuove mai un errore inconclusivo a OOM. I comandi manuali delle
+singole fasi rimangono disponibili per diagnosi e retrocompatibilita'.
