@@ -49,7 +49,10 @@ class ModelManager:
         "gemma-2-9b-it": {
             "kaggle": {
                 "repository": "google/gemma-2",
-                "kaggle_handle": "google/gemma-2/gguf/2.0-9b-it",
+                # Version 2 currently returns 404 for file listing;
+                # version 1 was confirmed accessible for the configured account.
+                # Pin the exact snapshot to avoid silent version switching.
+                "kaggle_handle": "google/gemma-2/gguf/2.0-9b-it/1",
                 "access_requires_consent": True,
                 "access_page": "https://www.kaggle.com/models/google/gemma-2/license/consent",
             },
