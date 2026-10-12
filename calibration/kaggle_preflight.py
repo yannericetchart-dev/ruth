@@ -11,9 +11,6 @@ import shutil
 from hardware import GPUManager
 from model import ModelManager
 from .kaggle_source import inventory_kaggle
-from .kaggle_architecture_bound import (
-    conservative_kaggle_weight_floor, read_architecture_reference,
-)
 from .profile_pipeline import atomic_json
 
 
@@ -30,15 +27,6 @@ def inspect_transfer_plan(model_id: str = "qwen-2.5-7b-instruct",
     models = inventory_kaggle(
         spec["repository"], spec["gguf_prefix"], selected_handle=handle
     )
-    default_handle = spec.get("kaggle_handle")
-    canonical = (
-        isinstance(default_handle, str)
-        and (handle == default_handle or (
-            handle.startswith(default_handle + "/")
-            and handle[len(default_handle) + 1:].isdigit()
-        ))
-    )
-    reference = read_architecture_reference(spec) if canonical else None
     manager = ModelManager()
     dest = disk_path or manager.model_directory(
         model_id, "kaggle", spec["repository"]
@@ -54,14 +42,7 @@ def inspect_transfer_plan(model_id: str = "qwen-2.5-7b-instruct",
     for candidate in models:
         bytes_reported = candidate.get("reported_download_bytes")
         all_complete = candidate.get("split_complete") is not False
-        floor = conservative_kaggle_weight_floor(
-            model_id, candidate, vram_bytes, reference=reference
-        )
         rows.append({
-            "architecture_weight_floor": floor,
-            "pre_download_full_cuda_exclusion": bool(
-                floor and floor["exceeds_total_vram"]
-            ),
             "quantization": candidate["quantization"],
             "first_shard": candidate["filename"],
             "shard_count": candidate.get("shard_count", 1),
@@ -89,23 +70,18 @@ def inspect_transfer_plan(model_id: str = "qwen-2.5-7b-instruct",
     return {
         "model_id": model_id, "source": "kaggle", "handle": handle,
         "gpu_total_mib": round(vram_bytes / 1048576, 1),
-        "architecture_reference": (
-            reference["repo"] if reference else None
-        ),
         "available_disk_mib": round(free / 1048576, 1),
         "candidates": rows, "weights_downloaded": False,
         "native_gpu_probe_executed": False,
         "warning": (
-            "Dimensioni Kaggle riportate (talvolta arrotondate): "
-            "non sono i byte GGUF dei soli tensori e non dimostrano "
-            "l'impossibilita' o la fattibilita' della residenza CUDA. "
-            "kagglehub puo' richiedere cache e copia locale: lo spazio "
-            "necessario effettivo puo' essere superiore a una copia. "
-            "Un limite inferiore ricavato dal config.json esplicitamente "
-            "associato al modello Kaggle e quantizzazioni FP16/Q8_0 "
-            "puo' escludere preventivamente GGUF standard. "
-            "Per gli altri, la baseline quality-first si arresta "
-            "se manca un'autorizzazione di download o una prova affidabile."
+            "Kaggle: dimensione GGUF = somma delle dimensioni catalogo "
+            "dei suoi shard. Se supera la VRAM totale, la baseline "
+            "lo salta prima del download. Questo e' un filtro "
+            "pratico sulle dimensioni dei file, non una prova "
+            "matematica sui byte effettivi dei tensori: "
+            "dimensioni catalogo arrotondate possono dare falsi "
+            "positivi vicino alla soglia. I candidati non esclusi "
+            "richiedono comunque un test nativo full-CUDA."
         ),
     }
 
@@ -128,26 +104,19 @@ def main(argv: list[str] | None = None) -> int:
     for item in plan["candidates"]:
         size = (f"{item['reported_download_mib']} MiB"
                 if item["reported_download_mib"] is not None else "SCONOSCIUTA")
-        floor = item["architecture_weight_floor"]
-        if item["pre_download_full_cuda_exclusion"]:
-            risk = (
-                "ESCLUSO prima del download: pesi standard >= "
-                f"{floor['minimum_weight_mib']} MiB > VRAM"
-            )
+        if item["reported_file_total_above_vram"] is True:
+            risk = "GGUF totale > VRAM: salta il download"
+        elif item["reported_file_total_above_vram"] is None:
+            risk = "dimensione GGUF sconosciuta: blocca baseline"
         else:
-            risk = (
-                "file > VRAM: NON e' prova di OOM"
-                if item["reported_file_total_above_vram"]
-                else "fattibilita' VRAM da provare"
-            )
+            risk = "GGUF totale <= VRAM: prova CUDA necessaria"
         if not item["shards_complete"]:
             risk = "SHARD INCOMPLETI"
         print(f"  {item['quantization']:10} | "
               f"{item['shard_count']} shard | "
               f"dimensione catalogo={size} | {risk}")
     print(
-        f"Report: {dest} | Nessun GGUF scaricato o caricato su GPU. "
-        "Possibile lettura del piccolo config.json architetturale."
+        f"Report: {dest} | Nessun download o caricamento GPU."
     )
     return 0
 
