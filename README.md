@@ -244,13 +244,23 @@ viene incluso nell'identita' della calibrazione.
 ### Diagnosi Kaggle senza download
 
 Se l'inventario Kaggle segnala un errore, Ruth indica una categoria
-filtrata (`unauthorized`, `forbidden`, `not_found`, `cli_syntax`,
-`network` oppure `unknown`) **senza stampare la risposta grezza**,
-che potrebbe contenere segreti. L'autenticazione a KaggleHub e quella
-della CLI devono entrambe funzionare nella stessa sessione utente.
+filtrata (`credentials_missing`, `unauthorized`, `forbidden`,
+`not_found`, `cli_syntax`, `network` oppure `unknown`) **senza
+stampare la risposta grezza**, che potrebbe contenere segreti.
+`not_found` puo' includere risorse nascoste per mancanza di permessi:
+non e' una prova che la pagina web non esista.
+L'autenticazione a KaggleHub e quella della CLI devono entrambe funzionare
+nella stessa sessione utente.
 
 ```bash
 .venv/bin/kaggle --version
+
+# Testa la CLI autenticata, senza mostrare output potenzialmente sensibile
+if .venv/bin/kaggle quota >/dev/null 2>&1; then
+  echo "Autenticazione CLI Kaggle: OK"
+else
+  echo "Autenticazione CLI Kaggle: NON VERIFICATA"
+fi
 
 .venv/bin/python -c 'import kagglehub; print(kagglehub.whoami()["username"])'
 
