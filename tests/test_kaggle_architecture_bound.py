@@ -1,10 +1,14 @@
 """Data-driven architectural lower-bound tests; no real network or GPU."""
 
 import unittest
+import json
+from pathlib import Path
+import tempfile
 from unittest.mock import patch
 
 from calibration.kaggle_architecture_bound import (
     mandatory_dense_parameter_floor, conservative_kaggle_weight_floor,
+    read_architecture_reference,
 )
 
 MODEL = "qwen-2.5-7b-instruct"
@@ -62,6 +66,38 @@ class ArchitectureBoundTests(unittest.TestCase):
         self.assertEqual(fp16["minimum_dense_parameters"], 7_070_285_824)
         self.assertEqual(fp16["minimum_weight_bytes"], 14_140_571_648)
         self.assertEqual(q8["minimum_weight_bytes"], 7_070_285_824)
+
+    def test_reference_loader_reads_tiny_official_config_not_weights(self):
+        spec = {
+            "architecture_reference_repo": "Qwen/Qwen2.5-7B-Instruct",
+            "architecture": "qwen2",
+        }
+        with tempfile.TemporaryDirectory() as folder:
+            path = Path(folder) / "config.json"
+            path.write_text(json.dumps(CONFIG), encoding="utf-8")
+            with patch(
+                "huggingface_hub.hf_hub_download", return_value=str(path)
+            ) as downloaded:
+                result = read_architecture_reference(spec)
+        downloaded.assert_called_once_with(
+            repo_id="Qwen/Qwen2.5-7B-Instruct", filename="config.json"
+        )
+        self.assertEqual(result["config"], CONFIG)
+        self.assertEqual(result["repo"], spec["architecture_reference_repo"])
+
+    def test_reference_loader_refuses_mismatched_model_type(self):
+        spec = {
+            "architecture_reference_repo": "Qwen/Qwen2.5-7B-Instruct",
+            "architecture": "llama",
+        }
+        with tempfile.TemporaryDirectory() as folder:
+            path = Path(folder) / "config.json"
+            path.write_text(json.dumps(CONFIG), encoding="utf-8")
+            with patch(
+                "huggingface_hub.hf_hub_download", return_value=str(path)
+            ):
+                with self.assertRaisesRegex(ValueError, "incompatibile"):
+                    read_architecture_reference(spec)
 
     def test_missing_reference_never_invents_exclusion(self):
         self.assertIsNone(
