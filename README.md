@@ -76,7 +76,7 @@ Avvio, dopo l'installazione:
 
 Questa fase diagnostica **non modifica il modello operativo**. Ogni
 modello conserva manifest separati in `models/<model-id>/` (ignorati da Git).
-Disponibili: Gemma 2 9B IT, Llama 3.1 8B Instruct, Qwen 2.5 7B Instruct.
+Disponibili: Gemma 2 9B IT, Llama 3.1 8B Instruct, Qwen 2.5 7B Instruct e Mistral 7B Instruct v0.3.
 
 Per Qwen, prima controllare l'inventario e selezionare la baseline full-GPU:
 
