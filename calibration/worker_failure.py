@@ -14,6 +14,14 @@ _OOM_EVIDENCE = (
     "cudamalloc failed",
     "cuda error 2",
 )
+# cuBLAS handle creation can explicitly fail to allocate GPU resources
+# without a cudaMalloc OOM line. This is a *runtime feasibility limit*,
+# not proof that a specific number of bytes of VRAM was exhausted.
+_CUDA_RESOURCE_FAILURE = re.compile(
+    r"(?:cuda error:\s*the resource allocation failed|"
+    r"cublas_status_alloc_failed)",
+    flags=re.IGNORECASE,
+)
 _NATIVE_MARKERS = (
     "cuda", "ggml", "llama_context", "llama_new_context",
     "failed to allocate", "failed to create", "abort", "assert", "sigabrt",
@@ -30,6 +38,10 @@ def analyze_worker_failure(stderr: str, error: str | None,
     if not isinstance(worker_error, str):
         raise ValueError("Errore del worker non valido.")
     oom = (not success) and any(marker in native_lower for marker in _OOM_EVIDENCE)
+    allocation_failed = (
+        not success and not oom
+        and bool(_CUDA_RESOURCE_FAILURE.search(stderr))
+    )
     context_creation = (not success) and bool(re.search(
         r"failed\s+to\s+create\s+llama_context",
         worker_error + "\n" + stderr, flags=re.IGNORECASE,
@@ -40,11 +52,13 @@ def analyze_worker_failure(stderr: str, error: str | None,
     ]
     classification = (
         "explicit_cuda_oom_evidence" if oom
+        else "explicit_cuda_resource_allocation_failure" if allocation_failed
         else "ambiguous_context_initialization" if context_creation
         else None
     )
     return {
         "suspected_cuda_oom": oom,
+        "native_cuda_resource_allocation_failed": allocation_failed,
         "failure_hint": classification,
         "context_creation_failed": context_creation,
         "cuda_diagnostics": hints[-12:],
@@ -54,6 +68,8 @@ def analyze_worker_failure(stderr: str, error: str | None,
         "diagnostic_note": (
             "Un fallimento di llama_context non prova OOM CUDA. "
             "La classificazione usa solo indizi espliciti nei log nativi; "
-            "SIGABRT o returncode=0 non bastano a determinarne la causa."
+            "SIGABRT o returncode=0 non bastano a determinarne la causa. "
+            "Un errore di allocazione cuBLAS limita il runtime, ma non "
+            "dimostra quanti byte di VRAM siano esauriti."
         ),
     }
