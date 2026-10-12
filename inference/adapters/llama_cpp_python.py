@@ -140,10 +140,12 @@ class LlamaCppPythonMappingAdapter:
                 matching = [n for n in all_names if regex.search(n)]
                 if not matching:
                     raise ValueError(f"Override senza tensori corrispondenti: {pattern}")
-                tied = "token_embd.weight" in matching
+                tied = (
+                    layout["metadata"].get("general.architecture") == "gemma2"
+                    and "token_embd.weight" in matching
+                )
                 if tied:
-                    if (layout["metadata"].get("general.architecture") != "gemma2"
-                        or matching != ["token_embd.weight"]
+                    if (matching != ["token_embd.weight"]
                         or pattern not in (r"^(token_embd\.weight)$",
                                            r"^token_embd\.weight$")):
                         raise ValueError(

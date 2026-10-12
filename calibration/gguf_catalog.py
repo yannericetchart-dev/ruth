@@ -10,14 +10,26 @@ import re
 import struct
 
 REPOSITORY = "bartowski/gemma-2-9b-it-GGUF"
-PREFIX = "gemma-2-9b-it-"
+
+
+def repo_prefix(repo_id: str) -> str:
+    """Find the GGUF filename prefix from the registered model catalog."""
+    from model import ModelManager
+
+    matches = [
+        spec["gguf_prefix"] for spec in ModelManager.CATALOG.values()
+        if spec["repository"] == repo_id
+    ]
+    if len(matches) != 1:
+        raise ValueError(f"Repository GGUF non registrato o ambiguo: {repo_id}")
+    return matches[0]
 # Coarse high-to-low fidelity convention derived from the publisher's
 # descriptions. It is a PRIORITY, not a measured quality score. Variants
 # without direct published comparisons stay explicitly heuristic.
 QUALITY_ORDER = (
     "f32", "f16", "Q8_0_L", "Q8_0", "Q6_K_L", "Q6_K",
     "Q5_K_L", "Q5_K_M", "Q5_K_S", "Q4_K_L", "Q4_K_M",
-    "Q4_K_S", "IQ4_XS", "Q3_K_XL", "Q3_K_L", "Q3_K_M",
+    "Q4_K_S", "IQ4_NL", "IQ4_XS", "Q4_0", "Q3_K_XL", "Q3_K_L", "Q3_K_M",
     "IQ3_M", "Q3_K_S", "IQ3_XS", "Q2_K_L", "Q2_K",
     "IQ3_XXS", "IQ2_M", "IQ2_S", "IQ2_XS", "IQ2_XXS",
 )
@@ -184,6 +196,7 @@ def gguf_payload_bytes(stream, file_bytes: int) -> dict:
 def inventory(repo_id: str = REPOSITORY) -> list[dict]:
     """Fetch all single-file GGUF siblings, ordered by expected fidelity."""
     from huggingface_hub import HfApi
+    prefix = repo_prefix(repo_id)
     info = HfApi().model_info(repo_id, files_metadata=True)
     found = []
     for entry in info.siblings:
@@ -191,12 +204,19 @@ def inventory(repo_id: str = REPOSITORY) -> list[dict]:
         if "/" in name or not name.lower().endswith(".gguf"):
             continue
         match = re.fullmatch(
-            re.escape(PREFIX) + r"(.+)\.gguf", name, re.IGNORECASE
+            re.escape(prefix) + r"(.+)\.gguf", name, re.IGNORECASE
         )
         if not match:
             continue
         q = match.group(1)
-        classification = quantization_priority(q)
+        # ARM-specific prepacked Q4_0 formats are not suitable for an
+        # all-CUDA baseline on the RTX 4050. Preserve them in the catalog.
+        arm_only = q.casefold() in {
+            "q4_0_4_4", "q4_0_4_8", "q4_0_8_8"
+        }
+        classification = quantization_priority(
+            "Q4_0" if arm_only else q
+        )
         size = entry.size
         if not isinstance(size, int) or size <= 0:
             raise RuntimeError(f"Dimensione remota mancante per {name}.")
@@ -205,6 +225,10 @@ def inventory(repo_id: str = REPOSITORY) -> list[dict]:
             "filename": name,
             "quantization": q,
             **classification,
+            "cuda_baseline_eligible": not arm_only,
+            "compatibility_note": (
+                "prepacked_arm_only_not_cuda_baseline" if arm_only else None
+            ),
             "file_bytes": size,
             "ranking_basis": "coarse_quantization_family_plus_mixed_precision_heuristic",
         })

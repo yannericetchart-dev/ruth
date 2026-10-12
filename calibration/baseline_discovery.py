@@ -33,19 +33,21 @@ from .worker_failure import analyze_worker_failure
 def all_gpu_rules(layout: dict) -> tuple[list[dict], dict]:
     """Generate verified, non-overlapping rules covering every GGUF tensor.
 
-    Token embedding is deliberately isolated because Gemma 2 reuses the
-    same tensor for input and output. A generic wildcard cannot safely
-    express its coupled placement in the current native adapter.
+    Gemma 2's tied token embedding is isolated and must appear twice
+    in native logs. Llama 3.1 has an independent output.weight tensor:
+    its embedding and output are verified independently on CUDA.
     """
     names = [t["name"] for t in layout["tensors"]]
     if not names or len(names) != len(set(names)):
         raise ValueError("Inventario GGUF vuoto o duplicato.")
     architecture = layout["metadata"].get("general.architecture")
-    if architecture != "gemma2":
-        raise ValueError("Adapter all-GPU validato qui solo per architettura gemma2.")
-    tied = "token_embd.weight" in names
+    if architecture not in ("gemma2", "llama"):
+        raise ValueError(f"Architettura non validata per full-GPU: {architecture}")
+    tied = architecture == "gemma2" and "token_embd.weight" in names
+    if architecture == "llama" and not {"token_embd.weight", "output.weight"}.issubset(names):
+        raise ValueError("Llama: embedding e output.weight indipendenti mancanti.")
     grouped = [n for n in names if re.fullmatch(r"blk\.\d+\..+", n)]
-    other = [n for n in names if n not in grouped and n != "token_embd.weight"]
+    other = [n for n in names if n not in grouped and (n != "token_embd.weight" or not tied)]
     rules = []
     if grouped:
         rules.append({"pattern": r"^blk\.\d+\..+$", "device": "gpu"})
@@ -65,7 +67,7 @@ def all_gpu_rules(layout: dict) -> tuple[list[dict], dict]:
         "host_tensor_names": [],
         "gpu_tensor_names": names,
         "expected_native_log_occurrences": {"token_embd.weight": 2} if tied else {},
-        "output_weight_target": "gpu" if tied else None,
+        "output_weight_target": "gpu",
     }
     return rules, expected
 
@@ -89,6 +91,21 @@ def native_confirmation(layout: dict, stderr: str) -> dict:
     }
 
 
+def minimal_chat_prompt(architecture: str) -> str:
+    """Architecture-specific chat formatting with add_bos=True tokenization."""
+    if architecture == "gemma2":
+        return "<start_of_turn>user\nCiao.\n<end_of_turn>\n<start_of_turn>model\n"
+    if architecture == "llama":
+        # Llama tokenizer prepends BOS via add_bos=True, so do not put
+        # <|begin_of_text|> in the prompt and duplicate it.
+        return (
+            "<|start_header_id|>user<|end_header_id|>\n\n"
+            "Ciao.<|eot_id|>"
+            "<|start_header_id|>assistant<|end_header_id|>\n\n"
+        )
+    raise ValueError(f"Chat template non validato: {architecture}")
+
+
 def _gpu_worker(path: Path, n_ctx: int = 64, n_batch: int = 32) -> dict:
     """Runs in its own short-lived process; never persists a profile."""
     import pynvml as nvml
@@ -101,9 +118,10 @@ def _gpu_worker(path: Path, n_ctx: int = 64, n_batch: int = 32) -> dict:
     if not status["ready"]:
         raise RuntimeError(f"GPU non libera: {status['errors']}; {status['foreign_processes']}")
     layout = inspect_gguf(path, n_ctx=n_ctx)
-    blocks = layout["metadata"].get("gemma2.block_count")
+    arch = layout["metadata"].get("general.architecture")
+    blocks = layout["metadata"].get(f"{arch}.block_count")
     if not isinstance(blocks, int) or blocks <= 0:
-        raise ValueError("Numero di blocchi Gemma2 non valido.")
+        raise ValueError(f"Numero di blocchi non valido per {arch}.")
     rules, _ = all_gpu_rules(layout)
     visible = os.environ.get("CUDA_VISIBLE_DEVICES")
     if visible and visible not in (status["gpu"]["uuid"], str(status["gpu"]["index"])):
@@ -111,6 +129,7 @@ def _gpu_worker(path: Path, n_ctx: int = 64, n_batch: int = 32) -> dict:
     os.environ.setdefault("CUDA_VISIBLE_DEVICES", status["gpu"]["uuid"])
     report = {
         "success": False, "file": path.name,
+        "architecture": arch,
         "n_ctx_minimal_probe": n_ctx,
         "n_gpu_layers": blocks + 1,
         "requested_gpu_tensors": len(layout["tensors"]),
@@ -156,7 +175,7 @@ def _gpu_worker(path: Path, n_ctx: int = 64, n_batch: int = 32) -> dict:
             memory["load_seconds"] = round(time.perf_counter() - start, 3)
             memory["vram_after_load_mib"] = usage()
             # Loading alone is insufficient; verify the context can execute.
-            prompt = "<start_of_turn>user\nCiao.\n<end_of_turn>\n<start_of_turn>model\n"
+            prompt = minimal_chat_prompt(arch)
             tokens = llm.tokenize(prompt.encode(), add_bos=True, special=True)
             if len(tokens) + 2 >= n_ctx:
                 raise RuntimeError("Probe minimale: prompt troppo lungo.")
@@ -229,9 +248,10 @@ def probe_gpu_candidate(path: Path, n_ctx: int = 64,
 
 
 def choose_baseline(
-    root: Path | None = None, repo_id: str = REPOSITORY,
+    root: Path | None = None, repo_id: str | None = None,
     probe_n_ctx: int = 64, n_batch: int = 32,
     timeout: int = 180, inventory_only: bool = False,
+    model_id: str = "gemma-2-9b-it",
 ) -> dict:
     if (not isinstance(probe_n_ctx, int) or probe_n_ctx < 32
         or not isinstance(n_batch, int) or not 1 <= n_batch <= probe_n_ctx
@@ -240,13 +260,24 @@ def choose_baseline(
 
     from huggingface_hub import hf_hub_download
 
+    spec = ModelManager.CATALOG.get(model_id)
+    if spec is None:
+        raise ValueError(f"Modello non registrato: {model_id}")
+    if repo_id is None:
+        repo_id = spec["repository"]
+    if repo_id != spec["repository"]:
+        raise ValueError(
+            "Il repository non corrisponde al modello selezionato: "
+            f"{model_id} -> {spec['repository']}"
+        )
+
     gpu = GPUManager.calibration_status()
     if not gpu["ready"]:
         raise RuntimeError(f"GPU non pronta: {gpu['errors']}; {gpu['foreign_processes']}")
     vram_bytes = int(gpu["memory"]["total_mib"] * 1024 * 1024)
     model_dir = (
         Path(root).expanduser().resolve() if root is not None
-        else ModelManager().root / "gemma-2-9b-it"
+        else ModelManager().root / model_id
     )
     models = inventory(repo_id)
     unranked = [
@@ -254,6 +285,8 @@ def choose_baseline(
     ]
     report = {
         "phase": "quality_first_full_gpu_baseline",
+        "model_id": model_id,
+        "expected_architecture": spec["architecture"],
         "repository": repo_id,
         "gpu": gpu["gpu"]["name"],
         "total_vram_mib": gpu["memory"]["total_mib"],
@@ -298,6 +331,10 @@ def choose_baseline(
             "status": None,
         }
         report["attempts"].append(record)
+        if candidate.get("cuda_baseline_eligible") is False:
+            record["status"] = "excluded_publisher_arm_prepacked_format"
+            record["future_cpu_gpu_tuning_allowed"] = True
+            continue
 
         local = model_dir / candidate["filename"]
         if local.is_file():
@@ -355,6 +392,7 @@ def choose_baseline(
             measured.get("success") is True
             and (measured.get("full_gpu_native_verification") or {}).get("verified") is True
             and (measured.get("measurements") or {}).get("minimal_inference_completed") is True
+            and measured.get("architecture") == spec["architecture"]
         )
         if not fully_verified:
             record["status"] = "failed_full_gpu_native_probe"
@@ -376,6 +414,8 @@ def choose_baseline(
         record["status"] = "selected_full_gpu_baseline"
         report["baseline"] = {
             "repository": repo_id,
+            "model_id": model_id,
+            "architecture": spec["architecture"],
             "filename": candidate["filename"],
             "quantization": candidate["quantization"],
             "local_path": str(local),
@@ -402,7 +442,11 @@ def main():
     parser = argparse.ArgumentParser(
         description="Discover Bartowski GGUFs and select first native-verified full-GPU baseline"
     )
-    parser.add_argument("--repository", default=REPOSITORY)
+    parser.add_argument("--model", choices=sorted(ModelManager.CATALOG),
+                        default="gemma-2-9b-it",
+                        help="Modello nel catalogo Ruth (baseline separata)")
+    parser.add_argument("--repository", default=None,
+                        help="Opzionale, deve coincidere col repository del modello")
     parser.add_argument("--root", default=None, help="Cartella modelli (non cambia profili)")
     parser.add_argument("--inventory-only", action="store_true")
     parser.add_argument("--probe-n-ctx", type=int, default=64)
@@ -430,6 +474,7 @@ def main():
                 n_batch=args.batch,
                 timeout=args.timeout,
                 inventory_only=args.inventory_only,
+                model_id=args.model,
             )
         except Exception as exc:
             result = {"success": False, "error": f"{type(exc).__name__}: {exc}"}

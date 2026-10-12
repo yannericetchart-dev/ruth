@@ -11,6 +11,17 @@ class ModelManager:
             "filename": "gemma-2-9b-it-Q4_K_M.gguf",
             "format": "gguf",
             "quantization": "Q4_K_M",
+            "gguf_prefix": "gemma-2-9b-it-",
+            "architecture": "gemma2",
+        },
+        "llama-3.1-8b-instruct": {
+            "source": "bartowski",
+            "repository": "bartowski/Meta-Llama-3.1-8B-Instruct-GGUF",
+            "filename": "Meta-Llama-3.1-8B-Instruct-Q4_K_M.gguf",
+            "format": "gguf",
+            "quantization": "Q4_K_M",
+            "gguf_prefix": "Meta-Llama-3.1-8B-Instruct-",
+            "architecture": "llama",
         }
     }
 

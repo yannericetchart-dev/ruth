@@ -14,9 +14,10 @@ from calibration.gguf_catalog import (
     quantization_priority,
 )
 from calibration.baseline_discovery import (
-    all_gpu_rules, choose_baseline, native_confirmation,
+    all_gpu_rules, choose_baseline, native_confirmation, minimal_chat_prompt,
 )
 from model import ModelManager
+from calibration.mapping_candidates import propose_mapping_candidates
 
 
 LAYOUT = {
@@ -211,6 +212,7 @@ class BaselineSelectionTests(unittest.TestCase):
                     }
                 return {
                     "success": True,
+                    "architecture": "gemma2",
                     "full_gpu_native_verification": {"verified": True},
                     "measurements": {"minimal_inference_completed": True},
                 }
@@ -345,6 +347,218 @@ class BaselineSelectionTests(unittest.TestCase):
             self.assertTrue(report["attempts"][0]["needs_diagnostic_review"])
             self.assertEqual(len(report["attempts"]), 1)
             self.assertFalse((Path(tmp) / "baseline_selection.json").exists())
+
+
+LLAMA_LAYOUT = {
+    "metadata": {
+        "general.architecture": "llama",
+        "llama.block_count": 2,
+    },
+    "tensors": [
+        {"name": "token_embd.weight", "bytes": 60},
+        {"name": "output.weight", "bytes": 60},
+        {"name": "output_norm.weight", "bytes": 10},
+        {"name": "blk.0.attn_k.weight", "bytes": 20},
+        {"name": "blk.1.ffn_gate.weight", "bytes": 20},
+    ],
+    "weights_bytes": 170,
+}
+
+
+class Llama31CompatibilityTests(unittest.TestCase):
+    def test_llama_publisher_prefix_and_arm_variants_are_catalogued(self):
+        names = [
+            "Meta-Llama-3.1-8B-Instruct-Q6_K.gguf",
+            "Meta-Llama-3.1-8B-Instruct-Q5_K_M.gguf",
+            "Meta-Llama-3.1-8B-Instruct-Q4_K_M.gguf",
+            "Meta-Llama-3.1-8B-Instruct-IQ4_NL.gguf",
+            "Meta-Llama-3.1-8B-Instruct-Q4_0_4_4.gguf",
+            "Meta-Llama-3.1-8B-Instruct-Q4_0_4_8.gguf",
+            "Meta-Llama-3.1-8B-Instruct-Q4_0_8_8.gguf",
+        ]
+        with patch("huggingface_hub.HfApi") as api:
+            api.return_value.model_info.return_value.siblings = [
+                SimpleNamespace(rfilename=name, size=1000) for name in names
+            ]
+            models = inventory("bartowski/Meta-Llama-3.1-8B-Instruct-GGUF")
+        self.assertEqual(len(models), len(names))
+        self.assertEqual(models[0]["quantization"], "Q6_K")
+        self.assertFalse(any(m["quality_priority"] is None for m in models))
+        special = [
+            m for m in models if m["quantization"].startswith("Q4_0_")
+        ]
+        self.assertEqual(len(special), 3)
+        self.assertTrue(all(m["cuda_baseline_eligible"] is False for m in special))
+
+    def test_full_gpu_llama_embedding_and_output_are_independent(self):
+        rules, expected = all_gpu_rules(LLAMA_LAYOUT)
+        self.assertEqual(expected["expected_native_log_occurrences"], {})
+        self.assertEqual(expected["output_weight_target"], "gpu")
+        self.assertEqual(set(expected["gpu_tensor_names"]), {
+            t["name"] for t in LLAMA_LAYOUT["tensors"]
+        })
+        self.assertTrue(any("output" in r["pattern"] for r in rules))
+        log = "\n".join(
+            f"tensor {tensor['name']} (1 MiB Q4) buffer type overridden to CUDA0"
+            for tensor in LLAMA_LAYOUT["tensors"]
+        )
+        check = native_confirmation(LLAMA_LAYOUT, log)
+        self.assertTrue(check["verified"])
+        self.assertIsNone(check["tied_embedding_output_verified"])
+        wrong = log.replace(
+            "tensor output.weight (1 MiB Q4) buffer type overridden to CUDA0",
+            "tensor output.weight (1 MiB Q4) buffer type overridden to CPU",
+        )
+        self.assertFalse(native_confirmation(LLAMA_LAYOUT, wrong)["verified"])
+
+    def test_each_model_uses_its_own_minimal_chat_template(self):
+        gemma = minimal_chat_prompt("gemma2")
+        llama = minimal_chat_prompt("llama")
+        self.assertIn("<start_of_turn>user", gemma)
+        self.assertIn("<|start_header_id|>user<|end_header_id|>", llama)
+        self.assertIn("<|eot_id|>", llama)
+        self.assertNotIn("<|begin_of_text|>", llama)
+        self.assertIn("\n\n", llama)
+        with self.assertRaises(ValueError):
+            minimal_chat_prompt("unknown")
+
+    def test_llama_inventory_mode_does_not_write_gemma_baseline(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            models = [{
+                **catalog_entry("Q5_K_M", 700),
+                "filename": "Meta-Llama-3.1-8B-Instruct-Q5_K_M.gguf",
+            }]
+            with (
+                patch("calibration.baseline_discovery.GPUManager.calibration_status",
+                      return_value=gpu_status()),
+                patch("calibration.baseline_discovery.inventory",
+                      return_value=models),
+            ):
+                output = choose_baseline(
+                    root=Path(tmp) / "llama-3.1-8b-instruct",
+                    model_id="llama-3.1-8b-instruct",
+                    inventory_only=True,
+                )
+            self.assertEqual(
+                output["repository"],
+                "bartowski/Meta-Llama-3.1-8B-Instruct-GGUF",
+            )
+            self.assertEqual(output["model_id"], "llama-3.1-8b-instruct")
+            self.assertEqual(output["expected_architecture"], "llama")
+            self.assertEqual(len(output["inventory"]), 1)
+            self.assertFalse((Path(tmp) / "gemma-2-9b-it").exists())
+
+    def test_llama_full_gpu_selection_is_separate_and_strict(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            model_dir = Path(tmp) / "llama-3.1-8b-instruct"
+            model_dir.mkdir(parents=True)
+            file = model_dir / "Meta-Llama-3.1-8B-Instruct-Q5_K_M.gguf"
+            file.write_bytes(b"placeholder")
+            models = [{
+                **catalog_entry("Q5_K_M", 700),
+                "filename": file.name,
+            }]
+            probe = {
+                "success": True,
+                "architecture": "llama",
+                "full_gpu_native_verification": {"verified": True},
+                "measurements": {"minimal_inference_completed": True},
+            }
+            with (
+                patch("calibration.baseline_discovery.GPUManager.calibration_status",
+                      return_value=gpu_status()),
+                patch("calibration.baseline_discovery.inventory", return_value=models),
+                patch("calibration.baseline_discovery.inspect_gguf",
+                      return_value=LLAMA_LAYOUT),
+                patch("calibration.baseline_discovery.probe_gpu_candidate",
+                      return_value=probe),
+            ):
+                report = choose_baseline(root=model_dir,
+                                         model_id="llama-3.1-8b-instruct")
+            self.assertTrue(report["success"])
+            self.assertEqual(report["baseline"]["quantization"], "Q5_K_M")
+            self.assertEqual(report["baseline"]["architecture"], "llama")
+            selected = ModelManager(root=Path(tmp)).selected_baseline(
+                "llama-3.1-8b-instruct"
+            )
+            self.assertEqual(selected["filename"], file.name)
+            self.assertIsNone(ModelManager(root=Path(tmp)).selected_baseline(
+                "gemma-2-9b-it"
+            ))
+
+    def test_llama_mapping_generator_does_not_tie_embedding_and_output(self):
+        layout = {
+            "metadata": LLAMA_LAYOUT["metadata"],
+            "tensors": [
+                {**t, "group": (
+                    "embedding" if t["name"].startswith("token_embd.")
+                    else "output" if t["name"].startswith("output.")
+                    else "attention" if ".attn_" in t["name"]
+                    else "feed_forward"
+                ), "block": (
+                    int(t["name"].split(".")[1])
+                    if t["name"].startswith("blk.") else None
+                )}
+                for t in LLAMA_LAYOUT["tensors"]
+            ],
+        }
+        proposed = propose_mapping_candidates(layout, n_gpu_layers=2)
+        self.assertEqual(proposed["architecture"], "llama")
+        self.assertEqual(proposed["inventory_tensor_count"], 5)
+        self.assertEqual(proposed["unknown_baseline_tensor_count"], 0)
+        ids = {c["id"] for c in proposed["candidates"]}
+        self.assertIn("single:gpu_to_host:output.weight", ids)
+        self.assertIn("single:host_to_gpu:token_embd.weight", ids)
+        self.assertFalse(any(c["kind"] == "tied_input_output"
+                             for c in proposed["candidates"]))
+
+    def test_arm_only_variant_is_visible_but_never_cuda_tested(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            file = Path(tmp) / "Meta-Llama-3.1-8B-Instruct-Q4_K_M.gguf"
+            file.write_bytes(b"placeholder")
+            models = [
+                {
+                    "filename": "Meta-Llama-3.1-8B-Instruct-Q4_0_4_4.gguf",
+                    "quantization": "Q4_0_4_4", "quality_priority": 500,
+                    "cuda_baseline_eligible": False,
+                    "file_bytes": 1000,
+                },
+                {
+                    "filename": file.name,
+                    "quantization": "Q4_K_M", "quality_priority": 1000,
+                    "cuda_baseline_eligible": True,
+                    "file_bytes": 1000,
+                },
+            ]
+            with (
+                patch("calibration.baseline_discovery.GPUManager.calibration_status",
+                      return_value=gpu_status()),
+                patch("calibration.baseline_discovery.inventory",
+                      return_value=models),
+                patch("calibration.baseline_discovery.inspect_gguf",
+                      return_value=LLAMA_LAYOUT),
+                patch("calibration.baseline_discovery.probe_gpu_candidate",
+                      return_value={
+                          "success": True,
+                          "architecture": "llama",
+                          "full_gpu_native_verification": {"verified": True},
+                          "measurements": {"minimal_inference_completed": True},
+                      }),
+                patch("calibration.baseline_discovery.remote_header") as header,
+            ):
+                report = choose_baseline(root=Path(tmp),
+                                         model_id="llama-3.1-8b-instruct")
+            self.assertTrue(report["success"])
+            self.assertEqual(report["attempts"][0]["status"],
+                             "excluded_publisher_arm_prepacked_format")
+            self.assertEqual(report["attempts"][1]["status"],
+                             "selected_full_gpu_baseline")
+            header.assert_not_called()
+
+    def test_mismatched_repository_cannot_select_wrong_model(self):
+        with self.assertRaises(ValueError):
+            choose_baseline(model_id="llama-3.1-8b-instruct",
+                            repo_id="bartowski/gemma-2-9b-it-GGUF")
 
 
 if __name__ == "__main__":
