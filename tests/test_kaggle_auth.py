@@ -13,6 +13,29 @@ from model import kaggle_auth
 
 
 class KaggleAuthTests(unittest.TestCase):
+    def test_validation_uses_kagglehub_and_clears_in_memory_credentials(self):
+        with (
+            patch("kagglehub.config.set_kaggle_api_token") as set_token,
+            patch("kagglehub.config.clear_kaggle_credentials") as clear,
+            patch("kagglehub.whoami",
+                  return_value={"username": "ruth-tester"}) as whoami,
+        ):
+            self.assertTrue(kaggle_auth._validate_token("KGAT_fake"))
+        set_token.assert_called_once_with("KGAT_fake")
+        whoami.assert_called_once_with(verbose=False)
+        clear.assert_called_once()
+
+    def test_validation_failure_also_clears_in_memory_credentials(self):
+        with (
+            patch("kagglehub.config.set_kaggle_api_token"),
+            patch("kagglehub.config.clear_kaggle_credentials") as clear,
+            patch("kagglehub.whoami",
+                  side_effect=RuntimeError("private diagnostics")),
+        ):
+            with self.assertRaises(RuntimeError):
+                kaggle_auth._validate_token("KGAT_fake")
+        clear.assert_called_once()
+
     def test_existing_environment_token_is_reused_without_prompt(self):
         output = io.StringIO()
         with (
