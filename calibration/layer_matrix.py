@@ -112,7 +112,12 @@ def _matrix_from_layout(
         return {
             "name": tensor["name"], "type": tensor["type"],
             "shape": tensor["shape"], "bytes": tensor["bytes"],
+            "elements": tensor.get("elements"),
             "mib": round(tensor["bytes"] / 1048576, 3),
+            "gguf_offset_bytes": tensor.get("offset"),
+            "offset_source": tensor.get("offset_source"),
+            "shard_index": tensor.get("shard_index"),
+            "shard_file": tensor.get("shard_file"),
             "group": tensor["group"],
         }
 
