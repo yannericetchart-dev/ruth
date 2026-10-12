@@ -262,16 +262,19 @@ essere ritentato una volta per escludere un'anomalia transitoria.
 Neppure SIGKILL, preso isolatamente, prova esaurimento VRAM.
 
 Dopo aver esplorato i punti inferiori, il candidato funzionante e'
-verificato con due conferme CUDA native. Se esistono limiti incerti,
-Ruth registra \`confirmed_gpu_resident_n_ctx\` come minimo realmente
-confermato e salva \`uncertain_failure_boundaries\`, ma lascia
-\`confirmed_max_gpu_resident_n_ctx=null\`, \`maximality_proven=false\`
-e \`success=false\`. La fase 1 resta incompleta: questo e' un
-riferimento diagnostico verificato, **non** un massimo matematico
-e nemmeno un profilo operativo. L'audit visualizza il valore
-come "minimo confermato; massimo incerto", senza promuoverlo
-a fase completata. Una ripresa senza \`--rerun\` riutilizza la
-baseline salvata e ripete la sola ricerca del contesto.
+verificato con due conferme CUDA native. Al termine Ruth stampa
+`n_ctx=N VALIDATO full-CUDA | conferme=2/2` e salva anche
+`validated_gpu_resident_context` con il margine VRAM campionato.
+**Questo valore e' realmente validato** anche se esistono limiti
+superiori incerti: in tal caso `confirmed_gpu_resident_n_ctx=N`,
+`confirmed_max_gpu_resident_n_ctx=null`, `maximality_proven=false`
+e `success=false`. La fase 1 resta incompleta **rispetto alla prova
+del massimo**, non rispetto alla validazione di N.
+L'audit non invasivo mostra `N VALIDATO full-CUDA (massimo incerto)`;
+non serve rieseguire CUDA per rendere esplicita la prova gia' registrata.
+Questa validazione non rende automaticamente sicuro il contesto per
+un profilo operativo. Una ripresa senza `--rerun` riutilizza la
+baseline e ripete soltanto la ricerca del massimo se desiderato.
 
 Se i log di un worker abortito riportano esplicitamente
 `CUDA error: the resource allocation failed` (ad esempio durante
