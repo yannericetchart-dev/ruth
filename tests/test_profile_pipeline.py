@@ -291,6 +291,7 @@ class ProfilePipelineTests(unittest.TestCase):
                 calls.append("layer_matrix")
                 return {
                     "success": True, "status": "enumeration_only",
+                    "schema_version": 2,
                     "filename": baseline["filename"],
                     "model_path": baseline["local_path"],
                     "block_count": 1, "tensor_count": 2,
@@ -377,6 +378,7 @@ class ProfilePipelineTests(unittest.TestCase):
                 runs.append("layer_matrix")
                 return {
                     "success": True, "status": "enumeration_only",
+                    "schema_version": 2,
                     "filename": baseline["filename"],
                     "model_path": baseline["local_path"],
                     "block_count": 1, "tensor_count": 1,
