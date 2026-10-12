@@ -85,11 +85,28 @@ def audit_pair(identity: dict, *, output_root: Path | None = None,
     selected = baseline.get("baseline") or {}
     result["quantization"] = selected.get("quantization")
     result["filename"] = selected.get("filename")
+    pinned = selected.get("kaggle_handle")
+    requested = choices.get("kaggle_handle")
+    handle_ok = (
+        choices["source"] != "kaggle"
+        or (
+            isinstance(pinned, str) and isinstance(requested, str)
+            and (
+                pinned == requested
+                or (
+                    len(requested.split("/")) == 4
+                    and pinned.startswith(requested + "/")
+                    and pinned.rsplit("/", 1)[-1].isdigit()
+                )
+            )
+        )
+    )
     if (
         selected.get("model_id") != choices["model_id"]
         or selected.get("source") != choices["source"]
         or selected.get("repository") != choices["repository"]
         or selected.get("native_verified_all_gpu") is not True
+        or not handle_ok
     ):
         errors.append("Baseline di altro modello/fonte o prova CUDA insufficiente.")
         return result
