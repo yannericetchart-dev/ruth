@@ -204,6 +204,98 @@ non promuove mai un errore inconclusivo a OOM. I comandi manuali delle
 singole fasi rimangono disponibili per diagnosi e retrocompatibilita'.
 
 
+## Fase 1 completa: audit delle cinque combinazioni modello/fonte
+
+Le cinque configurazioni sono **quattro modelli Hugging Face** e
+**Qwen 2.5 7B Instruct Kaggle**. La fase 1, per ciascuna fonte, e'
+considerata completa **soltanto** quando sono verificati tutti:
+
+1. inventario completo;
+2. scelta della migliore quantizzazione che ha superato la prova CUDA
+   nativa della baseline, con inferenza minima riuscita;
+3. peso GGUF **scaricato e presente su disco** (tutti gli shard nel caso Kaggle);
+4. \`context_gpu\`: massimo \`n_ctx\` diagnostico confermato piu' volte,
+   con tutti i tensori del modello su CUDA, KV su CUDA e compute principale
+   su CUDA. Sono possibili piccoli buffer ausiliari \`CUDA_Host\`, registrati
+   esplicitamente e non equivalenti a KV in RAM.
+
+I quattro report da \`--remote-header\` dimostrano unicamente la struttura
+GGUF remota. **Non sono un risultato della fase 1** e non garantiscono
+download, qualita' selezionata, caricamento CUDA ne' contesto residente.
+
+Audit non invasivo di quanto gia' misurato sulla macchina:
+
+\`\`\`bash
+.venv/bin/python -m calibration.phase1_audit --model all --source all
+\`\`\`
+
+Il report consolidato e' salvato come
+\`models/calibration_runs/phase1_audit.json\`, con cinque righe,
+quantizzazione, GGUF locale, prova nativa full-CUDA e \`n_ctx\`
+confermato. L'audit non effettua download o nuovi probe CUDA,
+non cambia profili operativi e **termina con codice 1** se manca
+anche una sola configurazione.
+
+Per completare le fasi non ancora misurate su Hugging Face:
+
+\`\`\`bash
+.venv/bin/python -m calibration.profile_pipeline \\
+  --model all --source bartowski --until context_gpu
+\`\`\`
+
+La pipeline **riutilizza** inventari/baseline/matrici esistenti:
+non usare \`--rerun\` salvo una richiesta intenzionale di rifare
+tutte le prove. La prova di contesto avvia worker CUDA isolati e
+puo' richiedere numerose iterazioni/tempo. Il massimo riportato
+e' diagnostico: non implica un margine operativo sicuro.
+
+Per Qwen Kaggle si usa una pipeline distinta:
+
+\`\`\`bash
+.venv/bin/python -m calibration.profile_pipeline \\
+  --model qwen-2.5-7b-instruct --source kaggle --until context_gpu
+\`\`\`
+
+**Attenzione ai download Kaggle multi-shard**: Ruth non puo'
+dedurre l'esatto payload GGUF dall'elenco dei file Kaggle prima
+di averli scaricati. La ricerca quality-first puo' tentare pesi
+FP16 e Q8 molto grandi, anche se incompatibili con la VRAM
+disponibile. Valutare prima spazio disco, rete e costi; interrompere
+se il download della candidata eccessiva non e' desiderato. Non
+combinare i risultati Kaggle e Bartowski in un'unica baseline.
+
+Dopo aver completato le pipeline, rieseguire \`phase1_audit\`.
+Solo cinque righe \`COMPLETA\` permettono di dichiarare
+verificata l'intera fase 1.
+
+### Matrici locali dopo la baseline
+
+La CLI \`calibration.layer_matrix\` ora lavora **di default sui GGUF
+gia' scaricati e validati dalla baseline**, senza avviare baseline
+mancanti:
+
+\`\`\`bash
+.venv/bin/python -m calibration.layer_matrix \\
+  --model all --source all
+\`\`\`
+
+Se alcune baseline sono assenti, quelle configurazioni sono
+segnalate come non verificate e il comando esce con stato nonzero.
+Ogni report locale viene salvato in
+\`models/calibration_runs/<profile_key>/local_matrix_analysis/\` per
+non sovrascrivere il report della pipeline.
+
+La vecchia lettura dei soli header Hugging Face e' opzionale:
+
+\`\`\`bash
+.venv/bin/python -m calibration.layer_matrix \\
+  --model all --source bartowski --remote-header
+\`\`\`
+
+Il file remoto porta \`baseline_native_verified_all_gpu=false\` e
+\`current_baseline_location=remote_header_only_not_verified\` per
+non confondere la struttura con l'evidenza CUDA.
+
 ## Matrice dei layer senza CPU offload
 
 Dopo una baseline full-CUDA gia' riuscita, si puo' analizzare la
@@ -251,7 +343,7 @@ e struttura di tutti i blocchi** anche senza una baseline full-GPU:
 
 ```bash
 .venv/bin/python -m calibration.layer_matrix \
-  --model all --source bartowski
+  --model all --source bartowski --remote-header
 ```
 
 Il comando usa l'elenco dei file e letture *ranged* dei **soli header**
