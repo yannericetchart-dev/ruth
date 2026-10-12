@@ -209,6 +209,101 @@ class ContextFrontierTests(unittest.TestCase):
         )
         self.assertEqual(len(result["contexts"][0]["attempts"]), 2)
 
+    @staticmethod
+    def ambiguous_context_failure():
+        return {
+            "success": False,
+            "error": "ValueError: Failed to create llama_context",
+            "worker_returncode": 0,
+            "failure_hint": "ambiguous_context_initialization",
+            "suspected_cuda_oom": False,
+            "cuda_diagnostics": ["llama_context: failed to initialize"],
+            "stderr_tail": "llama_context: failed to initialize",
+        }
+
+    def test_ambiguous_context_error_is_not_labelled_oom(self):
+        issue = self.ambiguous_context_failure()
+        self.assertEqual(
+            classify_trial(issue, False, 2048, 256),
+            (False, "ambiguous_context_initialization"),
+        )
+        self.assertFalse(issue["suspected_cuda_oom"])
+
+    def test_ambiguous_context_stops_by_default_but_retains_partial_summary(self):
+        contexts = parse_contexts(["2048:34"])
+        calls = []
+
+        def fake_benchmark(**kwargs):
+            calls.append(kwargs)
+            return self.ambiguous_context_failure()
+
+        with (
+            patch("calibration.context_frontier.GPUManager.calibration_status",
+                  return_value=STATUS),
+            patch("calibration.context_frontier.ModelManager"),
+            patch("calibration.context_frontier.propose_mapping_candidates",
+                  return_value={"candidates": []}),
+            patch("calibration.context_frontier.choose_compound_trials",
+                  return_value=[SEED]),
+            patch("calibration.context_frontier.compose_candidates",
+                  return_value={"rules": []}),
+            patch("calibration.context_frontier.benchmark",
+                  side_effect=fake_benchmark),
+        ):
+            result = explore_frontier(contexts, initial_gpu_layers=39,
+                                      minimum_gpu_layers=37, rounds=2)
+        self.assertFalse(result["success"])
+        self.assertFalse(result["retry_ambiguous_context"])
+        self.assertEqual(len(calls), 1)
+        self.assertIsNotNone(result["summary"])
+        self.assertEqual(result["contexts"][0]["attempts"][0]["failure_class"],
+                         "ambiguous_context_initialization")
+        trial = result["contexts"][0]["attempts"][0]["trials"][0]
+        self.assertIn("llama_context", trial["stderr_tail"])
+        self.assertFalse(trial["suspected_cuda_oom"])
+
+    def test_explicit_opt_in_retries_ambiguous_context_without_reclassifying_it(self):
+        contexts = parse_contexts(["2048:34"])
+        calls = []
+
+        def fake_benchmark(**kwargs):
+            calls.append(kwargs)
+            if kwargs["gpu_layers"] == 39:
+                return self.ambiguous_context_failure()
+            return fake_outcome(kwargs)
+
+        with (
+            patch("calibration.context_frontier.GPUManager.calibration_status",
+                  return_value=STATUS),
+            patch("calibration.context_frontier.ModelManager"),
+            patch("calibration.context_frontier.propose_mapping_candidates",
+                  return_value={"candidates": []}),
+            patch("calibration.context_frontier.choose_compound_trials",
+                  return_value=[SEED]),
+            patch("calibration.context_frontier.compose_candidates",
+                  return_value={"rules": []}),
+            patch("calibration.context_frontier.benchmark",
+                  side_effect=fake_benchmark),
+        ):
+            result = explore_frontier(
+                contexts, initial_gpu_layers=39,
+                minimum_gpu_layers=37, rounds=2,
+                retry_ambiguous_context=True,
+            )
+        self.assertTrue(result["success"])
+        self.assertTrue(result["retry_ambiguous_context"])
+        self.assertEqual(len(calls), 9)
+        self.assertEqual(
+            result["summary"]["contexts"][0]["highest_tested_feasible_gpu_layers"],
+            38,
+        )
+        self.assertEqual(result["contexts"][0]["attempts"][0]["failure_class"],
+                         "ambiguous_context_initialization")
+        self.assertEqual(result["contexts"][0]["attempts"][1]["failure_class"], None)
+        self.assertTrue(result["contexts"][0]["attempts"][1]["complete"])
+        self.assertFalse(result["profile_generated"])
+        self.assertIsNone(result["selected_n_ctx"])
+
     def test_summary_disallows_duplicate_successful_offload_per_context(self):
         duplicated = [{
             "probe_n_ctx": 1536, "prompt_repeat": 24,

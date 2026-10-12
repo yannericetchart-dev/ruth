@@ -49,8 +49,16 @@ def classify_trial(out: dict, candidate: bool, expected_ctx: int,
                    tokens: int) -> tuple[bool, str | None]:
     """Strictly distinguish allocation evidence from every other failure."""
     if out.get("success") is not True:
-        return False, ("suspected_cuda_oom" if out.get("suspected_cuda_oom") is True
-                       else "worker_failure")
+        if out.get("suspected_cuda_oom") is True:
+            return False, "suspected_cuda_oom"
+        # This exception is intentionally separate from an OOM: llama.cpp
+        # context initialization can fail for more than one reason.
+        if (out.get("failure_hint") == "ambiguous_context_initialization"
+            or (out.get("worker_returncode") == 0
+                and "failed to create llama_context" in
+                str(out.get("error") or "").lower())):
+            return False, "ambiguous_context_initialization"
+        return False, "worker_failure"
     if candidate and (out.get("mapping_verification") or {}).get("verified") is not True:
         return False, "native_mapping_mismatch"
     mem = out.get("measurements") or {}
@@ -106,14 +114,16 @@ def summarize_frontier(cases: list[dict], total_mib: float) -> dict:
 
 def explore_frontier(contexts: list[dict], initial_gpu_layers: int = 39,
                      minimum_gpu_layers: int = 36, rounds: int = 2,
-                     tokens: int = 256, timeout: int = 180) -> dict:
+                     tokens: int = 256, timeout: int = 180,
+                     retry_ambiguous_context: bool = False) -> dict:
     contexts = parse_contexts([
         f"{item['probe_n_ctx']}:{item['prompt_repeat']}" for item in contexts
     ], tokens)
     if (not isinstance(initial_gpu_layers, int)
         or not isinstance(minimum_gpu_layers, int)
         or not 1 <= minimum_gpu_layers <= initial_gpu_layers <= 256
-        or not isinstance(timeout, int) or timeout < 1):
+        or not isinstance(timeout, int) or timeout < 1
+        or not isinstance(retry_ambiguous_context, bool)):
         raise ValueError("Offload iniziale/finale o timeout non valido.")
     plan = schedule(rounds)
     gpu = GPUManager.calibration_status()
@@ -137,12 +147,15 @@ def explore_frontier(contexts: list[dict], initial_gpu_layers: int = 39,
         "summary": None,
         "success": False,
         "measurement_completed": False,
+        "retry_ambiguous_context": retry_ambiguous_context,
         "profile_generated": False,
         "selected_n_ctx": None,
         "note": (
             "Prova fino a trovare un offload misurato fattibile per ogni "
-            "contesto diagnostico. Riduzione dell'offload solo dopo "
-            "suspected_cuda_oom, mai su soglie VRAM inventate. "
+            "contesto diagnostico. Riduzione dell'offload dopo indizi "
+            "espliciti di OOM; facoltativamente, con flag dedicato, anche "
+            "dopo un errore ambiguo di creazione del contesto, senza "
+            "considerarlo OOM confermato. Nessuna soglia VRAM inventata. "
             "Nessuna selezione operativa."
         ),
     }
@@ -218,18 +231,31 @@ def explore_frontier(contexts: list[dict], initial_gpu_layers: int = 39,
                         "worker_returncode": out.get("worker_returncode"),
                         "failure_type": out.get("failure_type"),
                         "suspected_cuda_oom": out.get("suspected_cuda_oom", False),
+                        "failure_hint": out.get("failure_hint"),
+                        "native_evidence_available": out.get("native_evidence_available"),
+                        "cuda_diagnostics": out.get("cuda_diagnostics"),
+                        "stderr_tail": out.get("stderr_tail"),
                         "error": out.get("error"),
                     }
                     attempt["trials"].append(row)
                     if not valid:
                         attempt["failure_class"] = failure
-                        if failure == "suspected_cuda_oom":
+                        if (failure == "suspected_cuda_oom"
+                            or (failure == "ambiguous_context_initialization"
+                                and retry_ambiguous_context)):
+                            # Ambiguous failures stay explicitly marked as
+                            # such in attempt/trial evidence and summaries.
                             can_retry_lower = True
                             break
                         report["error"] = (
                             f"Errore non-OOM a ctx={ctx}, gpu_layers={layers}, "
                             f"round={run}, posizione={position}, causa={failure}: "
-                            f"{out.get('error') or out.get('failure_type')}"
+                            f"{out.get('error') or out.get('failure_type')}. "
+                            "La causa non e' attribuibile alla VRAM senza "
+                            "evidenze CUDA native."
+                        )
+                        report["summary"] = summarize_frontier(
+                            report["contexts"], total_mib
                         )
                         return report
                 if attempt["failure_class"] is not None:
@@ -259,6 +285,9 @@ def main() -> None:
     parser.add_argument("--rounds", type=int, default=2)
     parser.add_argument("--tokens", type=int, default=256)
     parser.add_argument("--timeout", type=int, default=180)
+    parser.add_argument("--retry-ambiguous-context", action="store_true",
+                        help="Prova offload inferiori anche se llama_context fallisce "
+                             "senza prova esplicita di OOM; conserva il risultato ambiguo")
     args = parser.parse_args()
     try:
         contexts = parse_contexts(
@@ -267,6 +296,7 @@ def main() -> None:
         result = explore_frontier(
             contexts, args.initial_gpu_layers, args.minimum_gpu_layers,
             args.rounds, args.tokens, args.timeout,
+            args.retry_ambiguous_context,
         )
     except Exception as exc:
         result = {"success": False, "error": f"{type(exc).__name__}: {exc}"}

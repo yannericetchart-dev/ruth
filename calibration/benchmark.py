@@ -423,24 +423,15 @@ def benchmark(gpu_layers: int, max_tokens: int = 128, timeout: int = 180,
                 "Mapping granulare non confermato dai log nativi."
             )
 
-    # Mantieni le righe diagnostiche significative: i crash di CUDA
-    # spesso includono path di build e warning del debugger poco utili.
-    lines = [
-        line.strip() for line in result.stderr.splitlines()
-        if any(word in line.lower() for word in (
-            "cuda error", "out of memory", "ggml_cuda", "cudamalloc",
-            "failed to allocate", "assert", "abort", "sigabrt",
-        ))
-    ]
-    report["cuda_diagnostics"] = [line[:400] for line in lines[-12:]]
-    if result.returncode and not report["cuda_diagnostics"]:
-        report["stderr_tail"] = result.stderr[-1500:]
+    # La diagnostica e' importante anche quando il worker Python termina
+    # con returncode=0: llama_cpp puo' segnalare il fallimento della
+    # creazione di llama_context come ValueError senza segnale nativo.
+    from .worker_failure import analyze_worker_failure
 
-    # Un generico errore CUDA o SIGABRT non e' prova certa di OOM.
-    report["suspected_cuda_oom"] = any(
-        term in result.stderr.lower()
-        for term in ("out of memory", "cudamalloc failed", "cuda error 2")
-    )
+    report.update(analyze_worker_failure(
+        result.stderr, report.get("error"),
+        result.returncode, report.get("success") is True,
+    ))
     return report
 
 
