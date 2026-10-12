@@ -15,8 +15,8 @@ from calibration.profile_identity import resolve_identity
 from calibration.profile_pipeline import main
 
 
-REPOSITORY = "bond005/mistral-7b-instruct-v0.3"
-HANDLE = REPOSITORY + "/gguf/quantizations/1"
+REPOSITORY = "qwen-lm/qwen2.5"
+HANDLE = REPOSITORY + "/gguf/7b-instruct/1"
 
 
 def mock_kaggle_call(argv, **kwargs):
@@ -30,8 +30,8 @@ def mock_kaggle_call(argv, **kwargs):
         return subprocess.CompletedProcess(
             argv, 0,
             "Name,Size\n"
-            "Mistral-7B-Instruct-v0.3-Q4_K_M.gguf,4.2GB\n"
-            "Mistral-7B-Instruct-v0.3-Q5_K_M.gguf,5.2GB\n"
+            "Qwen2.5-7B-Instruct-Q4_K_M.gguf,4.2GB\n"
+            "Qwen2.5-7B-Instruct-Q5_K_M.gguf,5.2GB\n"
             "README.md,10KB\n", ""
         )
     raise AssertionError(f"Unexpected external command: {argv}")
@@ -63,7 +63,7 @@ class KaggleSourceTests(unittest.TestCase):
         with patch("calibration.kaggle_source.subprocess.run") as cmd:
             with self.assertRaisesRegex(RuntimeError, "non supporta"):
                 inventory_kaggle(
-                    REPOSITORY, "Mistral-7B-Instruct-v0.3-"
+                    REPOSITORY, "Qwen2.5-7B-Instruct-"
                 )
         cmd.assert_not_called()
 
@@ -71,7 +71,7 @@ class KaggleSourceTests(unittest.TestCase):
         with patch("calibration.kaggle_source.subprocess.run",
                    side_effect=mock_kaggle_call) as call:
             result = inventory_kaggle(
-                REPOSITORY, "Mistral-7B-Instruct-v0.3-",
+                REPOSITORY, "Qwen2.5-7B-Instruct-",
                 selected_handle=HANDLE,
             )
         self.assertTrue(result)
@@ -82,7 +82,7 @@ class KaggleSourceTests(unittest.TestCase):
         with patch("calibration.kaggle_source.subprocess.run",
                    side_effect=mock_kaggle_call) as call:
             result = inventory_kaggle(
-                REPOSITORY, "Mistral-7B-Instruct-v0.3-",
+                REPOSITORY, "Qwen2.5-7B-Instruct-",
                 selected_handle=HANDLE,
             )
         self.assertEqual(call.call_count, 1)
@@ -99,7 +99,7 @@ class KaggleSourceTests(unittest.TestCase):
         ):
             with self.assertRaisesRegex(RuntimeError, "Nessun file .gguf"):
                 inventory_kaggle(
-                    REPOSITORY, "Mistral-7B-Instruct-v0.3-",
+                    REPOSITORY, "Qwen2.5-7B-Instruct-",
                     selected_handle=HANDLE,
                 )
             hf.assert_not_called()
@@ -107,8 +107,8 @@ class KaggleSourceTests(unittest.TestCase):
     def test_handle_validation_never_accepts_foreign_model(self):
         self.assertEqual(validate_handle(HANDLE, REPOSITORY), HANDLE)
         for invalid in (
-            "bond005/mistral-7b-instruct-v0.3",
-            "other/mistral-7b-instruct-v0.3/gguf/quantizations",
+            "bond005/qwen-2.5-7b-instruct",
+            "other/qwen-2.5-7b-instruct/gguf/quantizations",
             "../etc/passwd/gguf/quantizations",
             REPOSITORY + "/gguf/../../bad",
         ):
@@ -119,7 +119,7 @@ class KaggleSourceTests(unittest.TestCase):
     def test_single_gguf_download_uses_kagglehub_cache_not_hf(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
-            source = root / "cache" / "Mistral-7B-Instruct-v0.3-Q5_K_M.gguf"
+            source = root / "cache" / "Qwen2.5-7B-Instruct-Q5_K_M.gguf"
             source.parent.mkdir()
             source.write_bytes(b"GGUFfake")
             candidate = {
@@ -158,7 +158,7 @@ class KaggleSourceTests(unittest.TestCase):
             patch("calibration.kaggle_source.inventory_kaggle",
                   return_value=[
                       {
-                          "filename": "Mistral-7B-Instruct-v0.3-Q5_K_M.gguf",
+                          "filename": "Qwen2.5-7B-Instruct-Q5_K_M.gguf",
                           "quantization": "Q5_K_M",
                           "quality_priority": 700,
                       },
@@ -166,7 +166,8 @@ class KaggleSourceTests(unittest.TestCase):
             patch("huggingface_hub.hf_hub_download") as hf,
         ):
             result = choose_baseline(
-                model_id="mistral-7b-instruct-v0.3", inventory_only=True,
+                model_id="qwen-2.5-7b-instruct", source="kaggle",
+                inventory_only=True,
             )
         self.assertTrue(result["inventory_only"])
         self.assertEqual(result["source"], "kaggle")
@@ -175,7 +176,7 @@ class KaggleSourceTests(unittest.TestCase):
 
     def test_selected_kaggle_publisher_changes_profile_identity(self):
         base_handle = HANDLE
-        other = "otherowner/mistral-7b-instruct-v0.3/gguf/q5km/2"
+        other = "otherowner/qwen-2.5-7b-instruct/gguf/q5km/2"
         from calibration.profile_identity import resolve_identity
         gpu = {
             "ready": True, "errors": [], "foreign_processes": [],
@@ -190,23 +191,23 @@ class KaggleSourceTests(unittest.TestCase):
                   return_value="Mock CPU"),
         ):
             a = resolve_identity(
-                "mistral-7b-instruct-v0.3",
+                "qwen-2.5-7b-instruct",
                 source="kaggle", kaggle_handle=base_handle, status=gpu,
             )
             b = resolve_identity(
-                "mistral-7b-instruct-v0.3",
+                "qwen-2.5-7b-instruct",
                 source="kaggle", kaggle_handle=other, status=gpu,
             )
         self.assertNotEqual(a["profile_key"], b["profile_key"])
         self.assertEqual(b["choices"]["repository"],
-                         "otherowner/mistral-7b-instruct-v0.3")
+                         "otherowner/qwen-2.5-7b-instruct")
         self.assertEqual(a["choices"]["source"], "kaggle")
 
     def test_baseline_routes_kaggle_download_not_huggingface(self):
         with tempfile.TemporaryDirectory() as tmp:
-            repo = "alternate/mistral-7b-instruct-v0.3"
+            repo = "alternate/qwen-2.5-7b-instruct"
             handle = repo + "/gguf/mistral/2"
-            local = Path(tmp) / "Mistral-7B-Instruct-v0.3-Q5_K_M.gguf"
+            local = Path(tmp) / "Qwen2.5-7B-Instruct-Q5_K_M.gguf"
             def fake_download(candidate, destination):
                 self.assertEqual(candidate["kaggle_handle"], handle)
                 self.assertEqual(Path(destination), Path(tmp))
@@ -218,7 +219,7 @@ class KaggleSourceTests(unittest.TestCase):
                 "repo_id": repo, "source_file_path": local.name,
             }]
             layout = {
-                "metadata": {"general.architecture": "llama", "llama.block_count": 32},
+                "metadata": {"general.architecture": "qwen2", "qwen2.block_count": 32},
                 "weights_bytes": 5_000_000_000,
             }
             gpu = {
@@ -228,7 +229,7 @@ class KaggleSourceTests(unittest.TestCase):
                 "memory": {"total_mib": 6141.0},
             }
             result_probe = {
-                "success": True, "architecture": "llama",
+                "success": True, "architecture": "qwen2",
                 "full_gpu_native_verification": {"verified": True},
                 "measurements": {"minimal_inference_completed": True},
             }
@@ -247,7 +248,7 @@ class KaggleSourceTests(unittest.TestCase):
             ):
                 result = choose_baseline(
                     root=Path(tmp), repo_id=repo,
-                    model_id="mistral-7b-instruct-v0.3",
+                    model_id="qwen-2.5-7b-instruct", source="kaggle",
                     kaggle_handle=handle, persist_selection=False,
                 )
             self.assertTrue(result["success"])
@@ -259,18 +260,49 @@ class KaggleSourceTests(unittest.TestCase):
 
     def test_source_identity_is_scoped_and_no_cross_source_fallback(self):
         from calibration.profile_identity import validate_choices
+        for model in ("gemma-2-9b-it", "qwen-2.5-7b-instruct"):
+            self.assertEqual(
+                validate_choices(model, "kaggle")["source"], "kaggle"
+            )
+            self.assertEqual(
+                validate_choices(model, "bartowski")["source"], "bartowski"
+            )
+        for model in ("mistral-7b-instruct-v0.3",
+                      "llama-3.1-8b-instruct"):
+            self.assertEqual(
+                validate_choices(model, "bartowski")["source"], "bartowski"
+            )
+            with self.assertRaisesRegex(ValueError, "Fonte"):
+                validate_choices(model, "kaggle")
+
+    def test_official_kaggle_handles_are_defaults_only_for_two_models(self):
+        from model import ModelManager
         self.assertEqual(
-            validate_choices("mistral-7b-instruct-v0.3", "kaggle")["source"],
-            "kaggle",
+            ModelManager.source_spec("gemma-2-9b-it", "kaggle")["kaggle_handle"],
+            "google/gemma-2/gguf/2.0-9b-it",
         )
         self.assertEqual(
-            validate_choices("qwen-2.5-7b-instruct", "bartowski")["source"],
-            "bartowski",
+            ModelManager.source_spec("qwen-2.5-7b-instruct", "kaggle")[
+                "kaggle_handle"
+            ], "qwen-lm/qwen2.5/gguf/7b-instruct",
         )
-        with self.assertRaisesRegex(ValueError, "Fonte"):
-            validate_choices("mistral-7b-instruct-v0.3", "bartowski")
-        with self.assertRaisesRegex(ValueError, "Fonte"):
-            validate_choices("gemma-2-9b-it", "kaggle")
+        for model in ("llama-3.1-8b-instruct",
+                      "mistral-7b-instruct-v0.3"):
+            self.assertEqual(ModelManager.available_sources(model),
+                             ("bartowski",))
+
+    def test_unrecognized_gguf_name_is_reported_but_not_ranked(self):
+        unknown = subprocess.CompletedProcess(
+            [], 0, "Name,Size\\nunknown-format.gguf,3GB\\n", ""
+        )
+        with patch("calibration.kaggle_source.subprocess.run",
+                   return_value=unknown):
+            found = inventory_kaggle(
+                REPOSITORY, "Qwen2.5-7B-Instruct-", selected_handle=HANDLE
+            )
+        self.assertEqual(len(found), 1)
+        self.assertIsNone(found[0]["quality_priority"])
+        self.assertFalse(found[0]["filename_matches_model_prefix"])
 
 
 if __name__ == "__main__":
