@@ -32,6 +32,31 @@ def model_source_pairs(source: str = "all", model: str = "all") -> list[tuple[st
     return pairs
 
 
+def _confirmed_gpu_runtime_proof(context: dict, n_ctx: int,
+                                 rounds: int) -> bool:
+    """Require repeatable native full-GPU and CUDA KV+compute evidence."""
+    if (not isinstance(n_ctx, int) or isinstance(n_ctx, bool)
+        or n_ctx < 64 or not isinstance(rounds, int) or rounds < 1):
+        return False
+    confirmations = context.get("confirmation") or []
+    if (
+        len(confirmations) < rounds
+        or not all(c.get("success") is True for c in confirmations[-rounds:])
+    ):
+        return False
+    probes = [
+        p for p in context.get("attempts") or []
+        if p.get("requested_n_ctx") == n_ctx
+        and p.get("success") is True
+        and (p.get("full_gpu_native_verification") or {}).get("verified") is True
+        and (p.get("gpu_runtime_validation") or {}).get("verified") is True
+        and (p.get("gpu_runtime_validation") or {}).get("kv", {}).get(
+            "verified_gpu_resident"
+        ) is True
+    ]
+    return len(probes) >= rounds
+
+
 def audit_pair(identity: dict, *, output_root: Path | None = None,
                inspect_local: bool = True) -> dict:
     """Inspect phase evidence, existing bytes and native CUDA validation."""
@@ -46,6 +71,8 @@ def audit_pair(identity: dict, *, output_root: Path | None = None,
         "profile_key": identity["profile_key"],
         "run_directory": str(folder), "quantization": None,
         "filename": None, "n_ctx_gpu_resident": None,
+        "confirmed_lower_bound_gpu_resident_n_ctx": None,
+        "context_maximality_proven": False,
         "inventory_verified": False,
         "downloaded_local_gguf_verified": False,
         "full_gpu_baseline_verified": False,
@@ -174,7 +201,42 @@ def audit_pair(identity: dict, *, output_root: Path | None = None,
     ).get("vram_peak_sampled_mib")
 
     context = journal.cached("context_gpu")
+    rounds = identity["reference_runtime"]["context_confirm_rounds"]
     if context is None:
+        # A blocked context run may still contain rigorously confirmed
+        # lower-bound CUDA probes. Report them but do not certify a maximum.
+        state_item = journal.state["phases"].get("context_gpu") or {}
+        context_path = folder / "context_gpu.json"
+        partial = None
+        if state_item.get("status") == "blocked" and context_path.is_file():
+            try:
+                partial = json.loads(context_path.read_text(encoding="utf-8"))
+            except (OSError, ValueError, TypeError):
+                pass
+        if isinstance(partial, dict):
+            lower = partial.get("confirmed_gpu_resident_n_ctx")
+            if (
+                partial.get("success") is False
+                and partial.get("confirmation_completed") is True
+                and partial.get("maximality_proven") is False
+                and partial.get("uncertain_failure_boundaries")
+                and partial.get("model_id") == choices["model_id"]
+                and partial.get("filename") == path.name
+                and partial.get("quantization") == selected.get("quantization")
+                and _confirmed_gpu_runtime_proof(partial, lower, rounds)
+            ):
+                result["confirmed_lower_bound_gpu_resident_n_ctx"] = lower
+                result["checks"]["uncertain_context_boundaries"] = (
+                    partial["uncertain_failure_boundaries"]
+                )
+                result["checks"]["context_min_sampled_headroom_mib"] = (
+                    partial.get("confirmation_min_sampled_headroom_mib")
+                )
+                errors.append(
+                    f"Contesto GPU-resident {lower} confermato, ma "
+                    "massimo inconclusivo per SIGABRT senza causa certa."
+                )
+                return result
         errors.append("Contesto GPU-resident non ancora completato.")
         return result
     n_ctx = context["confirmed_max_gpu_resident_n_ctx"]
@@ -188,25 +250,11 @@ def audit_pair(identity: dict, *, output_root: Path | None = None,
     ):
         errors.append("Contesto confermato non coerente con la baseline.")
         return result
-    rounds = identity["reference_runtime"]["context_confirm_rounds"]
-    confirmations = context.get("confirmation") or []
-    matching_probes = [
-        p for p in context.get("attempts") or []
-        if p.get("requested_n_ctx") == n_ctx
-        and p.get("success") is True
-        and (p.get("full_gpu_native_verification") or {}).get("verified") is True
-        and (p.get("gpu_runtime_validation") or {}).get("verified") is True
-        and (p.get("gpu_runtime_validation") or {}).get("kv", {}).get(
-            "verified_gpu_resident"
-        ) is True
-    ]
-    if (
-        len(confirmations) < rounds
-        or not all(c.get("success") is True for c in confirmations[-rounds:])
-        or len(matching_probes) < rounds
-    ):
+    if not _confirmed_gpu_runtime_proof(context, n_ctx, rounds):
         errors.append("Conferme contesto insufficienti: pesi/KV/compute non provati.")
         return result
+    result["confirmed_lower_bound_gpu_resident_n_ctx"] = n_ctx
+    result["context_maximality_proven"] = True
     result["checks"]["confirmation_rounds"] = rounds
     result["checks"]["context_min_sampled_headroom_mib"] = (
         context.get("confirmation_min_sampled_headroom_mib")
