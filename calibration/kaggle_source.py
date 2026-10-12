@@ -153,6 +153,43 @@ def _filename(record: dict) -> str:
     return value
 
 
+def variation_files(handle: str) -> tuple[list[dict], str]:
+    """List files without downloading bytes; pin any discovered version.
+
+    The latest-version endpoint may return 404 while the versioned endpoint
+    works. Only retry a version explicitly returned by Kaggle's catalog.
+    If version discovery is also inaccessible, retain the original failure.
+    """
+    if len(handle.split("/")) == 5:
+        return (_csv_call("variations", "versions", "files", handle,
+                          "--page-size", "100"), handle)
+    try:
+        return (_csv_call("variations", "files", handle,
+                          "--page-size", "100"), handle)
+    except RuntimeError as original:
+        if "categoria=not_found" not in str(original):
+            raise
+        try:
+            versions = _csv_call("variations", "versions", "list", handle,
+                                 "--page-size", "100")
+        except RuntimeError:
+            raise original from None
+        numeric_versions = set()
+        for version in versions:
+            value = _get(version, "versionNumber", "version", "number")
+            if re.fullmatch(r"[1-9]\\d*", value):
+                numeric_versions.add(int(value))
+        if not numeric_versions:
+            raise original from None
+        pinned = f"{handle}/{max(numeric_versions)}"
+        try:
+            rows = _csv_call("variations", "versions", "files", pinned,
+                             "--page-size", "100")
+        except RuntimeError:
+            raise original from None
+        return rows, pinned
+
+
 def inventory_kaggle(
     repository: str, gguf_prefix: str,
     selected_handle: str | None = None,
@@ -161,13 +198,7 @@ def inventory_kaggle(
     candidates = []
     handles = variation_handles(repository, selected_handle)
     for handle in handles:
-        # A pinned version uses a different official Kaggle CLI subcommand.
-        if len(handle.split("/")) == 5:
-            rows = _csv_call("variations", "versions", "files", handle,
-                             "--page-size", "100")
-        else:
-            rows = _csv_call("variations", "files", handle,
-                             "--page-size", "100")
+        rows, resolved_handle = variation_files(handle)
         for row in rows:
             filename = _filename(row)
             if not filename.casefold().endswith(".gguf"):
@@ -186,7 +217,7 @@ def inventory_kaggle(
                 "filename_matches_model_prefix": matched_prefix,
                 "source_file_path": filename,
                 "quantization": quant, **ranked,
-                "kaggle_handle": handle,
+                "kaggle_handle": resolved_handle,
                 "file_bytes": None,  # Kaggle does not expose GGUF range header.
                 "cuda_baseline_eligible": True,
                 "weight_size_source": "unknown_until_local_gguf_download",
