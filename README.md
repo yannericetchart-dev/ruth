@@ -198,7 +198,7 @@ La fonte `bartowski` identifica le quantizzazioni GGUF pubblicate su
 
 | Modello | Hugging Face (`bartowski`) | Kaggle (`kaggle`) |
 | --- | --- | --- |
-| `gemma-2-9b-it` | `bartowski/gemma-2-9b-it-GGUF` | `google/gemma-2/gguf/2.0-9b-it` |
+| `gemma-2-9b-it` | `bartowski/gemma-2-9b-it-GGUF` | `google/gemma-2/gguf/2.0-9b-it/1` |
 | `llama-3.1-8b-instruct` | `bartowski/Meta-Llama-3.1-8B-Instruct-GGUF` | Non disponibile |
 | `qwen-2.5-7b-instruct` | `bartowski/Qwen2.5-7B-Instruct-GGUF` | `qwen-lm/qwen2.5/gguf/7b-instruct` |
 | `mistral-7b-instruct-v0.3` | `bartowski/Mistral-7B-Instruct-v0.3-GGUF` | Non disponibile |
@@ -210,10 +210,20 @@ i profili locali preesistenti.
 
 ### Inventari senza download
 
-Le due varianti Kaggle sono preimpostate nel catalogo a partire dagli URL
-forniti dall'utente: non serve piu' copiare un `--kaggle-handle` per esse.
+Le due varianti Kaggle sono preimpostate nel catalogo. Gemma 2 e'
+**fissata alla versione 1** (`google/gemma-2/gguf/2.0-9b-it/1`):
+l'API dell'account di prova restituisce la versione 2 nel catalogo,
+ma il suo elenco file torna `404`, mentre la versione 1 espone
+un file GGUF. Ruth non deve passare silenziosamente alla versione 2
+in una nuova esecuzione. Qwen mantiene la propria variante non
+numerata, risolta dall'API. In entrambi i casi non serve copiare
+`--kaggle-handle` per gli inventari predefiniti.
+
 La presenza di una pagina Kaggle **non conferma ancora i nomi o le
 quantizzazioni dei file GGUF**: e' l'inventario remoto a controllarli.
+Avere un unico GGUF accessibile su Gemma non implica che esso abbia
+una quantizzazione classificabile o che i pesi siano caricabili interamente
+nella VRAM disponibile.
 
 ```bash
 # Quattro modelli su Hugging Face
@@ -285,8 +295,8 @@ fi
 
 .venv/bin/python -c 'import kagglehub; print(kagglehub.whoami()["username"])'
 
-.venv/bin/kaggle models variations files \
-  google/gemma-2/gguf/2.0-9b-it --csv --page-size 5
+.venv/bin/kaggle models variations versions files \
+  google/gemma-2/gguf/2.0-9b-it/1 --csv --page-size 5
 
 .venv/bin/kaggle models variations files \
   qwen-lm/qwen2.5/gguf/7b-instruct --csv --page-size 5
