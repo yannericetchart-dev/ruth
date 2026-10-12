@@ -93,7 +93,8 @@ class LlamaCppPythonMappingAdapter:
             "output_gpu_required": False,
         }
 
-    def load(self, path: Path, *, n_gpu_layers: int, rules: list[dict], n_ctx: int = 512):
+    def load(self, path: Path, *, n_gpu_layers: int, rules: list[dict],
+             n_ctx: int = 512, n_batch: int = 128, n_ubatch: int = 128):
         """Load a model with native per-tensor placement rules.
 
         Rules are {"pattern": regex, "device": "cpu"|"gpu"}. A pattern
@@ -108,6 +109,8 @@ class LlamaCppPythonMappingAdapter:
             raise RuntimeError(
                 f"Adapter validato solo per llama-cpp-python 0.3.36; installato {caps['version']}."
             )
+        if not (1 <= n_ubatch <= n_batch <= n_ctx):
+            raise ValueError("Richiesti 1 <= n_ubatch <= n_batch <= n_ctx.")
         if n_gpu_layers < 1:
             raise ValueError("n_gpu_layers deve essere positivo in questo esperimento; "
                                  "l'output puo' essere collocato su host tramite override.")
@@ -173,7 +176,7 @@ class LlamaCppPythonMappingAdapter:
             try:
                 llm = Llama(
                     model_path=str(path), n_ctx=n_ctx, n_gpu_layers=n_gpu_layers,
-                    n_batch=128, n_ubatch=128,
+                    n_batch=n_batch, n_ubatch=n_ubatch,
                     offload_kqv=True, flash_attn=False, verbose=True,
                 )
             finally:
