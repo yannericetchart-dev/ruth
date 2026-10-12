@@ -98,7 +98,11 @@ def brief_event(event: dict) -> str:
             str(event["status"]),
         ]
         if event.get("weight_mib") is not None:
-            info.append(f"pesi={event['weight_mib']} MiB")
+            label = (
+                "GGUF totale da catalogo" if event.get("size_basis")
+                == "gguf_catalog_file_sum" else "pesi"
+            )
+            info.append(f"{label}={event['weight_mib']} MiB")
         if event.get("peak_mib") is not None:
             info.append(f"picco={event['peak_mib']} MiB")
         if event.get("failure_hint"):
