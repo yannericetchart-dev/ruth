@@ -297,6 +297,50 @@ class KaggleSourceTests(unittest.TestCase):
         self.assertLess(fp16["quality_priority"],
                         by_quant["q5_k_m"]["quality_priority"])
 
+    def test_multi_shard_kaggle_sizes_are_summed_without_download(self):
+        from calibration.kaggle_source import parse_kaggle_file_size
+        self.assertEqual(
+            parse_kaggle_file_size("2.5GB")["bytes"], 2_500_000_000
+        )
+        self.assertEqual(
+            parse_kaggle_file_size("1 GiB")["bytes"], 1_073_741_824
+        )
+        self.assertEqual(
+            parse_kaggle_file_size("5,000")["bytes"], 5000
+        )
+        self.assertIsNone(parse_kaggle_file_size("unknown"))
+
+        files = [
+            {"Name": "qwen2.5-7b-instruct-q5_k_m-00001-of-00002.gguf",
+             "Size": "2.5GB"},
+            {"Name": "qwen2.5-7b-instruct-q5_k_m-00002-of-00002.gguf",
+             "Size": "2.0GB"},
+            {"Name": "qwen2.5-7b-instruct-q4_k_m.gguf",
+             "Size": "unknown"},
+        ]
+        with (patch("calibration.kaggle_source.variation_files",
+                    return_value=(files, HANDLE)),
+              patch("kagglehub.model_download") as download):
+            found = inventory_kaggle(
+                REPOSITORY, "Qwen2.5-7B-Instruct-",
+                selected_handle=HANDLE
+            )
+        download.assert_not_called()
+        self.assertEqual(len(found), 2)
+        by_quant = {r["quantization"].casefold(): r for r in found}
+        self.assertEqual(
+            by_quant["q5_k_m"]["reported_download_bytes"], 4_500_000_000
+        )
+        self.assertTrue(
+            by_quant["q5_k_m"]["reported_download_size_estimated"]
+        )
+        self.assertIsNone(
+            by_quant["q4_k_m"]["reported_download_bytes"]
+        )
+        self.assertEqual(
+            len(by_quant["q5_k_m"]["reported_shard_sizes"]), 2
+        )
+
     def test_incomplete_split_remains_unranked_without_download(self):
         files = [
             {"Name": "qwen2.5-7b-instruct-q5_k_m-00002-of-00003.gguf"},
