@@ -244,9 +244,25 @@ viene incluso nell'identita' della calibrazione.
 ### Diagnosi Kaggle senza download
 
 Se l'inventario Kaggle segnala un errore, Ruth indica una categoria
-filtrata (`credentials_missing`, `unauthorized`, `forbidden`,
-`not_found`, `cli_syntax`, `network` oppure `unknown`) **senza
-stampare la risposta grezza**, che potrebbe contenere segreti.
+filtrata (`license_required`, `credentials_missing`, `unauthorized`,
+`forbidden`, `not_found`, `cli_syntax`, `network` oppure `unknown`)
+**senza stampare la risposta grezza**, che potrebbe contenere segreti.
+
+Per un modello soggetto a consenso (Gemma 2), Ruth stampa anche un
+messaggio di accesso: `LICENZA DA ACCETTARE` **soltanto se Kaggle dichiara
+esplicitamente l'assenza di consenso**; `ACCESSO DA VERIFICARE` per i
+generici `403`/`404`. Un `404` **non prova** che l'utente non abbia
+accettato la licenza: puo' riguardare l'handle, l'account autenticato
+o la visibilita' della variante. L'errore resta bloccante e non
+innesca download o fallback impliciti.
+
+Se la licenza e' stata gia' accettata, apri la pagina di consenso
+https://www.kaggle.com/models/google/gemma-2/license/consent e verifica
+che sia stata selezionata **Verify via Kaggle Account**. Controlla
+anche che l'account visualizzato nel browser coincida con quello
+restituito da `kagglehub.whoami()`. Non incollare il token nel
+terminale per questa verifica, non rigenerarlo automaticamente e non
+condividere credenziali nei log.
 `not_found` puo' includere risorse nascoste per mancanza di permessi:
 non e' una prova che la pagina web non esista. In questo caso Ruth
 prova a interrogare `models variations versions list`: se Kaggle
