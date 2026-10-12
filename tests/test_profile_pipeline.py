@@ -75,7 +75,7 @@ class ProfileIdentityTests(unittest.TestCase):
         with self.assertRaisesRegex(RuntimeError, "Backend"):
             resolve_identity("gemma-2-9b-it", status=unsupported)
 
-    def test_kaggle_and_hf_choices_have_distinct_profiles(self):
+    def test_only_qwen_retains_kaggle_profile(self):
         with (
             patch("calibration.profile_identity._ram_total_mib",
                   return_value=32000),
@@ -84,24 +84,25 @@ class ProfileIdentityTests(unittest.TestCase):
             patch("calibration.profile_identity._installed",
                   return_value="0.3.36"),
         ):
-            for model, handle in (
-                ("gemma-2-9b-it", "google/gemma-2/gguf/2.0-9b-it/1"),
-                ("qwen-2.5-7b-instruct",
-                 "qwen-lm/qwen2.5/gguf/7b-instruct"),
+            model = "qwen-2.5-7b-instruct"
+            hf = resolve_identity(model, status=GPU_STATUS)
+            kaggle = resolve_identity(
+                model, source="kaggle", status=GPU_STATUS
+            )
+            self.assertNotEqual(hf["profile_key"], kaggle["profile_key"])
+            self.assertEqual(kaggle["choices"]["kaggle_handle"],
+                             "qwen-lm/qwen2.5/gguf/7b-instruct")
+            self.assertEqual(hf["choices"]["source"], "bartowski")
+            for unsupported in (
+                "gemma-2-9b-it", "mistral-7b-instruct-v0.3",
+                "llama-3.1-8b-instruct",
             ):
-                with self.subTest(model=model):
-                    hf = resolve_identity(model, status=GPU_STATUS)
-                    kaggle = resolve_identity(
-                        model, source="kaggle", status=GPU_STATUS
-                    )
-                    self.assertNotEqual(hf["profile_key"],
-                                        kaggle["profile_key"])
-                    self.assertEqual(kaggle["choices"]["kaggle_handle"],
-                                     handle)
-                    self.assertEqual(hf["choices"]["source"], "bartowski")
-            with self.assertRaisesRegex(ValueError, "Fonte"):
-                resolve_identity("mistral-7b-instruct-v0.3",
-                                 source="kaggle", status=GPU_STATUS)
+                with self.subTest(model=unsupported):
+                    with self.assertRaisesRegex(ValueError, "Fonte"):
+                        resolve_identity(
+                            unsupported, source="kaggle",
+                            status=GPU_STATUS
+                        )
 
     def test_cached_gpu_baseline_requires_every_split_shard(self):
         from calibration.profile_pipeline import Journal
@@ -132,31 +133,23 @@ class ProfileIdentityTests(unittest.TestCase):
             (model_dir / files[1]).unlink()
             self.assertIsNone(journal.cached("baseline"))
 
-    def test_kaggle_license_hint_requires_explicit_evidence(self):
+    def test_license_notice_is_generic_and_requires_explicit_evidence(self):
         from calibration.profile_pipeline import kaggle_access_notice
-        model = "gemma-2-9b-it"
+        model = "qwen-2.5-7b-instruct"
         required = kaggle_access_notice(
             model, "kaggle", "categoria=license_required"
         )
         self.assertIn("LICENZA DA ACCETTARE", required)
-        self.assertIn("Verify via Kaggle Account", required)
-        self.assertIn("https://www.kaggle.com/models/google/gemma-2", required)
-
-        uncertain = kaggle_access_notice(
+        self.assertNotIn("google/gemma-2", required)
+        self.assertIsNone(kaggle_access_notice(
             model, "kaggle", "categoria=not_found"
-        )
-        self.assertIn("ACCESSO DA VERIFICARE", uncertain)
-        self.assertIn("non prova", uncertain)
-        self.assertIn("Se hai gia' accettato", uncertain)
-        self.assertNotIn("LICENZA DA ACCETTARE", uncertain)
-        self.assertIsNone(kaggle_access_notice(
-            "qwen-2.5-7b-instruct", "kaggle", "categoria=not_found"
         ))
         self.assertIsNone(kaggle_access_notice(
-            model, "bartowski", "categoria=license_required"
+            "gemma-2-9b-it", "bartowski",
+            "categoria=license_required"
         ))
 
-    def test_gated_kaggle_error_prints_license_guidance_in_pipeline(self):
+    def test_explicit_license_rejection_prints_generic_kaggle_guidance(self):
         with tempfile.TemporaryDirectory() as temp:
             with (
                 patch("calibration.profile_identity._ram_total_mib",
@@ -165,14 +158,15 @@ class ProfileIdentityTests(unittest.TestCase):
                       return_value="Test CPU"),
             ):
                 kaggle_identity = resolve_identity(
-                    "gemma-2-9b-it", source="kaggle", status=GPU_STATUS
+                    "qwen-2.5-7b-instruct",
+                    source="kaggle", status=GPU_STATUS
                 )
             out = io.StringIO()
             with (
                 patch("calibration.baseline_discovery.choose_baseline",
                       side_effect=RuntimeError(
                           "Interrogazione Kaggle fallita "
-                          "(exit=1, categoria=not_found)"
+                          "(exit=1, categoria=license_required)"
                       )),
                 redirect_stdout(out),
             ):
@@ -182,41 +176,22 @@ class ProfileIdentityTests(unittest.TestCase):
                 )
             self.assertFalse(result["success"])
             self.assertEqual(result["blocked_phase"], "inventory")
-            self.assertIn("ACCESSO DA VERIFICARE", out.getvalue())
-            self.assertNotIn("LICENZA DA ACCETTARE", out.getvalue())
+            self.assertIn("LICENZA DA ACCETTARE", out.getvalue())
             self.assertIn(
-                "ACCESSO DA VERIFICARE",
+                "LICENZA DA ACCETTARE",
                 result["detail"]["access_notice"],
             )
-
-    def test_gemma_kaggle_pinning_creates_distinct_profile_from_unpinned(self):
-        with (
-            patch("calibration.profile_identity._ram_total_mib",
-                  return_value=32000),
-            patch("calibration.profile_identity._cpu_model",
-                  return_value="Test CPU"),
-        ):
-            pinned = resolve_identity(
-                "gemma-2-9b-it", source="kaggle", status=GPU_STATUS
-            )
-            unpinned = resolve_identity(
-                "gemma-2-9b-it", source="kaggle", status=GPU_STATUS,
-                kaggle_handle="google/gemma-2/gguf/2.0-9b-it"
-            )
-        self.assertNotEqual(pinned["profile_key"], unpinned["profile_key"])
-        self.assertEqual(pinned["choices"]["kaggle_handle"],
-                         "google/gemma-2/gguf/2.0-9b-it/1")
 
     def test_source_specific_model_directories_are_isolated(self):
         from model import ModelManager
         with tempfile.TemporaryDirectory() as temp:
             manager = ModelManager(root=temp)
-            model = "gemma-2-9b-it"
+            model = "qwen-2.5-7b-instruct"
             hf_dir = manager.model_directory(model, "bartowski")
             kaggle_dir = manager.model_directory(model, "kaggle")
             self.assertEqual(hf_dir, Path(temp) / model)
             self.assertEqual(kaggle_dir, Path(temp) / model /
-                             "sources" / "kaggle" / "google" / "gemma-2")
+                             "sources" / "kaggle" / "qwen-lm" / "qwen2.5")
             self.assertNotEqual(kaggle_dir, hf_dir)
             alternate = manager.model_directory(
                 model, "kaggle", "otherauthor/othermodel"
@@ -446,7 +421,7 @@ class ProfilePipelineTests(unittest.TestCase):
                     "phases"]["baseline"]["stale_due_to"], "inventory"
             )
 
-    def test_source_filter_all_selects_two_kaggle_and_four_hf_models(self):
+    def test_source_filter_all_selects_qwen_only_and_four_hf_models(self):
         recorded = []
         def fake_identity(model, **kwargs):
             recorded.append((model, kwargs.get("source")))
@@ -462,7 +437,7 @@ class ProfilePipelineTests(unittest.TestCase):
                                    "kaggle", "--until", "inventory"]), 0)
             self.assertEqual(
                 {m for m, _ in recorded},
-                {"gemma-2-9b-it", "qwen-2.5-7b-instruct"},
+                {"qwen-2.5-7b-instruct"},
             )
             recorded.clear()
             self.assertEqual(main(["--model", "all", "--source",
