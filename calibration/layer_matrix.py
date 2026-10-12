@@ -49,6 +49,44 @@ def analyze_layer_matrix(baseline: dict, *, model_id: str,
         or block_count < 1):
         raise RuntimeError("Matrice layer: numero blocchi GGUF non verificabile.")
 
+    return _matrix_from_layout(
+        layout, baseline, model_id=model_id, engine=engine,
+        model_path=str(path.resolve()),
+        shards=[p.name for p in shards],
+        baseline_verified=True,
+    )
+
+
+def analyze_remote_header_layout(
+    layout: dict, *, model_id: str, repository: str,
+    filename: str, quantization: str, engine: str = "llama.cpp",
+) -> dict:
+    """Analyze remote GGUF header only. Never claim full-GPU verification."""
+    if engine != "llama.cpp":
+        raise NotImplementedError("Matrice per altri engine: da fare.")
+    baseline = {
+        "model_id": model_id, "source": "bartowski",
+        "repository": repository, "filename": filename,
+        "architecture": layout["metadata"].get("general.architecture"),
+        "quantization": quantization,
+    }
+    return _matrix_from_layout(
+        layout, baseline, model_id=model_id, engine=engine,
+        model_path=f"hf://{repository}/{filename}",
+        shards=[filename], baseline_verified=False,
+    )
+
+
+def _matrix_from_layout(
+    layout: dict, baseline: dict, *, model_id: str, engine: str,
+    model_path: str, shards: list[str], baseline_verified: bool
+) -> dict:
+    info = engine_info(engine)
+    arch = layout["metadata"].get("general.architecture")
+    block_count = layout["metadata"].get(f"{arch}.block_count")
+    if (not isinstance(block_count, int) or isinstance(block_count, bool)
+        or block_count < 1):
+        raise RuntimeError("Matrice layer: numero blocchi GGUF non verificabile.")
     tensors = layout["tensors"]
     total = layout["weights_bytes"]
     if total <= 0 or sum(t["bytes"] for t in tensors) != total:
@@ -125,7 +163,7 @@ def analyze_layer_matrix(baseline: dict, *, model_id: str,
                     "executable_mapping": False,
                 })
 
-    return {
+    report = {
         "phase": "layer_matrix",
         "status": "enumeration_only",
         "success": True,
@@ -134,11 +172,15 @@ def analyze_layer_matrix(baseline: dict, *, model_id: str,
         "repository": baseline.get("repository"),
         "quantization": baseline.get("quantization"),
         "filename": baseline["filename"],
-        "model_path": str(path.resolve()),
-        "shard_filenames": [p.name for p in shards],
+        "model_path": model_path,
+        "shard_filenames": shards,
         "architecture": arch,
         "engine": engine,
-        "baseline_native_verified_all_gpu": True,
+        "baseline_native_verified_all_gpu": baseline_verified,
+        "provenance": (
+            "local_cuda_baseline_verified" if baseline_verified
+            else "remote_gguf_header_only_no_runtime_verification"
+        ),
         "block_count": block_count,
         "tensor_count": len(tensors),
         "serialized_weight_bytes": total,
@@ -162,3 +204,6 @@ def analyze_layer_matrix(baseline: dict, *, model_id: str,
             "VRAM, RAM, trasferimenti e prestazioni.",
         ],
     }
+
+    from .layer_dependencies import annotate_matrix
+    return annotate_matrix(report)
