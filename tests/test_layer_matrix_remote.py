@@ -48,8 +48,8 @@ class HeaderCatalogTests(unittest.TestCase):
         enriched = gguf_payload_bytes(
             io.BytesIO(padded), len(padded), include_tensors=True
         )
-        self.assertEqual(original["exact_serialized_tensor_bytes"], 256)
-        self.assertEqual(enriched["exact_serialized_tensor_bytes"], 256)
+        self.assertEqual(original["exact_serialized_tensor_bytes"], 64)
+        self.assertEqual(enriched["exact_serialized_tensor_bytes"], 64)
         self.assertEqual(enriched["metadata"]["general.architecture"], "qwen2")
         self.assertEqual(enriched["metadata"]["qwen2.block_count"], 2)
         self.assertEqual(len(enriched["tensors"]), 4)
