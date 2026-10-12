@@ -467,8 +467,8 @@ class KaggleSourceTests(unittest.TestCase):
                          spec["kaggle_handle"])
 
         rows = subprocess.CompletedProcess(
-            [], 0, "Name,Size\\n"
-            "gemma-2-9b-it-Q4_K_M.gguf,4GB\\n", ""
+            [], 0, "Name,Size\n"
+            "gemma-2-9b-it-Q4_K_M.gguf,4GB\n", ""
         )
         with patch("calibration.kaggle_source.subprocess.run",
                    return_value=rows) as cli:
