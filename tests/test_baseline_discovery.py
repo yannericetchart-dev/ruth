@@ -411,6 +411,101 @@ class Llama31CompatibilityTests(unittest.TestCase):
         )
         self.assertFalse(native_confirmation(LLAMA_LAYOUT, wrong)["verified"])
 
+    def test_llama_rope_freqs_repeated_per_block_are_all_verified(self):
+        layout = {
+            "metadata": {
+                "general.architecture": "llama",
+                "llama.block_count": 32,
+            },
+            "tensors": LLAMA_LAYOUT["tensors"] + [
+                {"name": "rope_freqs.weight", "bytes": 128},
+            ],
+        }
+        _, expected = all_gpu_rules(layout)
+        self.assertEqual(
+            expected["expected_native_log_occurrences"],
+            {"rope_freqs.weight": 32},
+        )
+
+        # One serialized rope tensor is loaded by llama.cpp into a native
+        # RoPE buffer for each block, as observed in the actual RTX report.
+        base = "\n".join(
+            f"tensor {item['name']} (1 MiB f32) "
+            "buffer type overridden to CUDA0"
+            for item in layout["tensors"]
+            if item["name"] != "rope_freqs.weight"
+        )
+        rope = (
+            "tensor rope_freqs.weight (0 MiB f32) "
+            "buffer type overridden to CUDA0"
+        )
+        logs = base + "\n" + "\n".join([rope] * 32)
+        result = native_confirmation(layout, logs)
+        self.assertTrue(result["verified"])
+        self.assertIsNone(result["tied_embedding_output_verified"])
+        self.assertEqual(result["unverified_names"], [])
+        native = result["native_override"]
+        self.assertTrue(native["native_logged_names_exact"])
+        self.assertEqual(
+            native["output_placement_source"],
+            "independent_output_native_override_logs",
+        )
+        self.assertEqual(native["native_logged_tensor_count"], 6)
+        self.assertEqual(native["native_logged_occurrence_count"], 37)
+        actual = next(
+            item for item in native["tensors"]
+            if item["name"] == "rope_freqs.weight"
+        )
+        self.assertEqual(actual["native_occurrences"], 32)
+        self.assertTrue(actual["verified_by_log"])
+
+    def test_llama_rope_requires_exact_repetitions_and_gpu_for_all(self):
+        layout = {
+            "metadata": {
+                "general.architecture": "llama",
+                "llama.block_count": 3,
+            },
+            "tensors": LLAMA_LAYOUT["tensors"] + [
+                {"name": "rope_freqs.weight", "bytes": 12},
+            ],
+        }
+        base = "\n".join(
+            f"tensor {item['name']} (1 MiB f32) "
+            "buffer type overridden to CUDA0"
+            for item in layout["tensors"]
+            if item["name"] != "rope_freqs.weight"
+        )
+        rope = (
+            "tensor rope_freqs.weight (0 MiB f32) "
+            "buffer type overridden to CUDA0"
+        )
+        self.assertTrue(native_confirmation(
+            layout, base + "\n" + "\n".join([rope] * 3)
+        )["verified"])
+        for entries in (
+            [rope] * 2,
+            [rope] * 4,
+            [rope, rope.replace("CUDA0", "CPU"), rope],
+            [rope, rope.replace("CUDA0", "CUDA_Host"), rope],
+        ):
+            with self.subTest(entries=entries):
+                self.assertFalse(native_confirmation(
+                    layout, base + "\n" + "\n".join(entries)
+                )["verified"])
+
+    def test_llama_rope_without_valid_block_count_is_inconclusive(self):
+        layout = {
+            "metadata": {
+                "general.architecture": "llama",
+                "llama.block_count": 0,
+            },
+            "tensors": LLAMA_LAYOUT["tensors"] + [
+                {"name": "rope_freqs.weight", "bytes": 12},
+            ],
+        }
+        with self.assertRaises(ValueError):
+            all_gpu_rules(layout)
+
     def test_each_model_uses_its_own_minimal_chat_template(self):
         gemma = minimal_chat_prompt("gemma2")
         llama = minimal_chat_prompt("llama")

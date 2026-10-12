@@ -67,6 +67,8 @@ def verify_override_logs(candidate: dict, logs: str) -> dict:
 
     Gemma 2's tied token embedding has two logical uses under the same name,
     so it requires TWO native log occurrences, both on the target device.
+    Other GGUF weights may also be materialized repeatedly by llama.cpp;
+    callers supply the exact expected count from validated model metadata.
     """
     from collections import defaultdict
 
@@ -119,7 +121,13 @@ def verify_override_logs(candidate: dict, logs: str) -> dict:
                 item["verified_by_log"] for item in per_tensor
             )
         )
-        output_placement_source = "tied_weight_native_override_logs"
+        output_placement_source = (
+            "tied_weight_native_override_logs"
+            if occurrences.get("token_embd.weight") == 2
+            else "independent_output_native_override_logs"
+            if "output.weight" in expected
+            else "explicit_native_override_logs"
+        )
     else:
         output_placement_verified = output_layer_gpu_default_log
         output_placement_source = "default_offload_log"

@@ -36,6 +36,8 @@ def all_gpu_rules(layout: dict) -> tuple[list[dict], dict]:
     Gemma 2's tied token embedding is isolated and must appear twice
     in native logs. Llama 3.1 has an independent output.weight tensor:
     its embedding and output are verified independently on CUDA.
+    Llama rope_freqs.weight appears once in the GGUF inventory, but
+    once per transformer block in the native placement logs.
     """
     names = [t["name"] for t in layout["tensors"]]
     if not names or len(names) != len(set(names)):
@@ -63,10 +65,21 @@ def all_gpu_rules(layout: dict) -> tuple[list[dict], dict]:
     if sorted(resolved) != sorted(names):
         raise RuntimeError("Copertura nativa di tutti i tensori incompleta.")
 
+    occurrences = {"token_embd.weight": 2} if tied else {}
+    if architecture == "llama" and "rope_freqs.weight" in names:
+        # llama.cpp materializes the one GGUF rope_freqs.weight tensor for
+        # every transformer block. On Llama 3.1 8B it logs 32 native
+        # override occurrences, all of which must use GPU VRAM.
+        block_count = layout["metadata"].get("llama.block_count")
+        if (not isinstance(block_count, int) or isinstance(block_count, bool)
+            or block_count < 1):
+            raise ValueError("Llama: block_count non valido per rope_freqs.weight.")
+        occurrences["rope_freqs.weight"] = block_count
+
     expected = {
         "host_tensor_names": [],
         "gpu_tensor_names": names,
-        "expected_native_log_occurrences": {"token_embd.weight": 2} if tied else {},
+        "expected_native_log_occurrences": occurrences,
         "output_weight_target": "gpu",
     }
     return rules, expected
