@@ -274,6 +274,7 @@ def choose_baseline(
     probe_n_ctx: int = 64, n_batch: int = 32,
     timeout: int = 180, inventory_only: bool = False,
     model_id: str = "gemma-2-9b-it",
+    source: str | None = None,
     progress=None, persist_selection: bool = True,
     kaggle_handle: str | None = None,
 ) -> dict:
@@ -284,19 +285,27 @@ def choose_baseline(
 
     from huggingface_hub import hf_hub_download
 
-    spec = ModelManager.CATALOG.get(model_id)
-    if spec is None:
-        raise ValueError(f"Modello non registrato: {model_id}")
-    if repo_id is None:
-        repo_id = spec["repository"]
-    if repo_id != spec["repository"]:
-        if spec["source"] != "kaggle" or not kaggle_handle:
+    spec = ModelManager.source_spec(model_id, source)
+    if spec["source"] == "kaggle":
+        from .kaggle_source import validate_handle
+        kaggle_handle = kaggle_handle or spec.get("kaggle_handle")
+        if not kaggle_handle:
+            raise ValueError("Variante Kaggle GGUF non specificata.")
+        selected_repo = "/".join(kaggle_handle.split("/")[:2])
+        validate_handle(kaggle_handle, selected_repo)
+        if repo_id is None:
+            repo_id = selected_repo
+        if repo_id != selected_repo:
+            raise ValueError("Repository Kaggle diverso dall'handle selezionato.")
+    else:
+        if kaggle_handle is not None:
+            raise ValueError("--kaggle-handle richiede la fonte Kaggle.")
+        repo_id = repo_id or spec["repository"]
+        if repo_id != spec["repository"]:
             raise ValueError(
                 "Il repository non corrisponde al modello selezionato: "
                 f"{model_id} -> {spec['repository']}"
             )
-        from .kaggle_source import validate_handle
-        validate_handle(kaggle_handle, repo_id)
 
     gpu = GPUManager.calibration_status()
     if not gpu["ready"]:
@@ -304,7 +313,7 @@ def choose_baseline(
     vram_bytes = int(gpu["memory"]["total_mib"] * 1024 * 1024)
     model_dir = (
         Path(root).expanduser().resolve() if root is not None
-        else ModelManager().root / model_id
+        else ModelManager().model_directory(model_id, spec["source"], repo_id)
     )
     if spec["source"] == "kaggle":
         from .kaggle_source import inventory_kaggle
@@ -543,7 +552,7 @@ def choose_baseline(
 
 def main():
     parser = argparse.ArgumentParser(
-        description="Discover Bartowski GGUFs and select first native-verified full-GPU baseline"
+        description="Discover GGUFs from selected source and native-verify a full-GPU baseline"
     )
     parser.add_argument("--model", choices=sorted(ModelManager.CATALOG),
                         default="gemma-2-9b-it",
@@ -588,7 +597,8 @@ def main():
                 n_batch=args.batch,
                 timeout=args.timeout,
                 inventory_only=args.inventory_only,
-                model_id=args.model, kaggle_handle=args.kaggle_handle,
+                model_id=args.model, source=args.source,
+                kaggle_handle=args.kaggle_handle,
             )
         except Exception as exc:
             result = {"success": False, "error": f"{type(exc).__name__}: {exc}"}
