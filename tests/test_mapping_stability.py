@@ -7,6 +7,7 @@ from calibration.benchmark import probe_prompt, validate_probe
 from calibration.mapping_stability import run_stability
 from calibration.gpu_telemetry import gpu_snapshot, summarize_gpu_telemetry
 from calibration.mapping_stability import schedule, summarize_stability
+from calibration.window_stability import compare_decode_windows
 
 
 class FakeNvml:
@@ -141,6 +142,17 @@ class StabilityProtocolTests(unittest.TestCase):
                 "measurements": {
                     "prompt_tokens": 330,
                     "generated_tokens": 256,
+                    "decode_windows": {
+                        "windows": [
+                            {
+                                "window": i + 1,
+                                "decode_tps": 22.2 + i * 0.1 + (0.2 if is_candidate else 0.0),
+                                "decode_steps": 64,
+                            }
+                            for i in range(4)
+                        ],
+                        "end_context_fraction": 0.762,
+                    },
                     "decode_tokens_per_second": 22.2 if is_candidate else 22.0,
                     "prefill_tokens_per_second": 280.0,
                     "vram_peak_sampled_mib": 6035.0 if is_candidate else 6003.0,
@@ -172,9 +184,63 @@ class StabilityProtocolTests(unittest.TestCase):
         self.assertTrue(all(c["probe_n_ctx"] == 768 for c in calls))
         self.assertTrue(all(c["prompt_repeat"] == 6 for c in calls))
         self.assertTrue(all(t["prompt_tokens"] == 330 for t in report["trials"]))
+        window_report = report["summary"]["counterbalanced_decode_windows"]
+        self.assertEqual(window_report["last_quartile_positive_rounds"], 2)
+        self.assertAlmostEqual(window_report["last_quartile_delta_median_tps"], 0.2)
         manager.return_value.inspect.assert_called_once_with(
             "gemma-2-9b-it", n_ctx=768
         )
+
+    def test_counterbalanced_window_deltas_cancel_linear_drift(self):
+        data = rows(rounds=2)
+        for row in data:
+            is_candidate = row["variant"] == "candidate"
+            row["prompt_tokens"] = 720
+            row["final_context_token_fraction"] = 0.9521
+            row["decode_window_details"] = [
+                {
+                    "window": i + 1,
+                    "decode_steps": 64,
+                    "decode_tps": 22.0 + 0.1 * row["position"]
+                    - 0.3 * i + (0.2 if is_candidate else 0.0),
+                }
+                for i in range(4)
+            ]
+        report = summarize_stability(data, 2, 6141)
+        result = report["counterbalanced_decode_windows"]
+        self.assertEqual(result["prompt_tokens"], 720)
+        self.assertEqual(result["last_quartile_positive_rounds"], 2)
+        self.assertAlmostEqual(result["last_quartile_delta_median_tps"], 0.2)
+        self.assertEqual(
+            result["median_candidate_minus_baseline_by_quartile_tps"],
+            [0.2, 0.2, 0.2, 0.2],
+        )
+        self.assertAlmostEqual(
+            result["rounds"][0]["baseline_last_minus_first_tps"], -0.9
+        )
+
+    def test_missing_or_inconsistent_windows_are_rejected(self):
+        data = rows(rounds=2)
+        self.assertIsNone(compare_decode_windows(data, 2))
+        data[0]["decode_window_details"] = []
+        with self.assertRaises(ValueError):
+            compare_decode_windows(data, 2)
+
+        data = rows(rounds=2)
+        for row in data:
+            row["prompt_tokens"] = 720
+            row["final_context_token_fraction"] = 0.95
+            row["decode_window_details"] = [
+                {"window": i + 1, "decode_steps": 64, "decode_tps": 20.0}
+                for i in range(4)
+            ]
+        data[1]["prompt_tokens"] = 719
+        with self.assertRaises(ValueError):
+            compare_decode_windows(data, 2)
+        data[1]["prompt_tokens"] = 720
+        data[3]["decode_window_details"][0]["decode_tps"] = -1
+        with self.assertRaises(ValueError):
+            compare_decode_windows(data, 2)
 
     def test_missing_gpu_telemetry_is_null_not_failure(self):
         class Unsupported(FakeNvml):

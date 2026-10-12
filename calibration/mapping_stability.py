@@ -17,6 +17,7 @@ from .benchmark import benchmark, validate_probe
 from .mapping_candidates import propose_mapping_candidates
 from .mapping_composition import compose_candidates
 from .measured_combinations import choose_compound_trials
+from .window_stability import compare_decode_windows
 
 
 def schedule(rounds: int) -> list[list[str]]:
@@ -114,6 +115,7 @@ def summarize_stability(trials: list[dict], rounds: int, gpu_total_mib: float) -
     decode = [r["decode_delta_tps"] for r in batches]
     prefill = [r["prefill_delta_tps"] for r in batches]
     vram = [r["vram_peak_mib"] for r in trials if r["variant"] == "candidate"]
+    segmented = compare_decode_windows(trials, rounds)
     return {
         "baseline": {
             "median_decode_tps": median_metric("baseline", "decode_tps"),
@@ -124,6 +126,7 @@ def summarize_stability(trials: list[dict], rounds: int, gpu_total_mib: float) -
             "median_prefill_tps": median_metric("candidate", "prefill_tps"),
         },
         "rounds": batches,
+        "counterbalanced_decode_windows": segmented,
         "median_decode_delta_tps": round(statistics.median(decode), 3),
         "median_prefill_delta_tps": round(statistics.median(prefill), 3),
         "decode_positive_rounds": sum(x > 0 for x in decode),
@@ -181,7 +184,8 @@ def run_stability(gpu_layers: int = 40, rounds: int = 3,
         "profile_generated": False,
         "note": (
             "Esperimento controbilanciato ABBA/BAAB con telemetria GPU. "
-            "Misure di decode piu' lunghe; ogni prova usa un worker isolato. "
+            "Le velocita' di quattro quartili sono confrontate in modo "
+            "controbilanciato fra le due varianti. Ogni prova usa un worker isolato. "
             "Nessuna decisione su mapping o n_ctx operativo."
         ),
     }
@@ -199,6 +203,7 @@ def run_stability(gpu_layers: int = 40, rounds: int = 3,
                 prompt_repeat=prompt_repeat,
             )
             metrics = outcome.get("measurements") or {}
+            decode_windows = metrics.get("decode_windows") or {}
             checks = outcome.get("mapping_verification") or {}
             telemetry = (outcome.get("gpu_telemetry_by_phase") or {}).get("decode") or {}
             temp = telemetry.get("gpu_temperature_c") or {}
@@ -215,6 +220,8 @@ def run_stability(gpu_layers: int = 40, rounds: int = 3,
                 "actual_probe_n_ctx": outcome.get("probe_n_ctx"),
                 "prompt_tokens": metrics.get("prompt_tokens"),
                 "generated_tokens": metrics.get("generated_tokens"),
+                "decode_window_details": decode_windows.get("windows"),
+                "final_context_token_fraction": decode_windows.get("end_context_fraction"),
                 "decode_tps": metrics.get("decode_tokens_per_second"),
                 "prefill_tps": metrics.get("prefill_tokens_per_second"),
                 "vram_peak_mib": metrics.get("vram_peak_sampled_mib"),
@@ -229,7 +236,9 @@ def run_stability(gpu_layers: int = 40, rounds: int = 3,
             if (not row["success"]
                 or (variant == "candidate" and not row["mapping_verified"])
                 or row["generated_tokens"] != tokens
-                or row["actual_probe_n_ctx"] != probe_n_ctx):
+                or row["actual_probe_n_ctx"] != probe_n_ctx
+                or not isinstance(row["decode_window_details"], list)
+                or len(row["decode_window_details"]) != 4):
                 report["error"] = (
                     f"Misura incompleta: round {round_idx} slot {position} "
                     f"{variant}, {row['error'] or row['failure_type'] or 'token insufficienti'}"
