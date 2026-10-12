@@ -408,46 +408,10 @@ class KaggleSourceTests(unittest.TestCase):
         self.assertEqual(len(result["inventory"]), 1)
         hf.assert_not_called()
 
-    def test_both_official_variations_are_passed_to_kaggle_inventory(self):
+    def test_only_qwen_kaggle_variation_is_used_for_inventory(self):
         from model import ModelManager
-        for model in ("gemma-2-9b-it", "qwen-2.5-7b-instruct"):
-            with self.subTest(model=model):
-                spec = ModelManager.source_spec(model, "kaggle")
-                gpu = {
-                    "ready": True, "errors": [], "foreign_processes": [],
-                    "gpu": {"vendor": "nvidia", "name": "Mock CUDA",
-                            "uuid": "GPU-test", "index": 0},
-                    "memory": {"total_mib": 6141},
-                }
-                with (
-                    patch("calibration.baseline_discovery.GPUManager.calibration_status",
-                          return_value=gpu),
-                    patch("calibration.kaggle_source.inventory_kaggle",
-                          return_value=[{
-                              "filename": "synthetic-Q4_K_M.gguf",
-                              "quantization": "Q4_K_M",
-                              "quality_priority": 400,
-                          }]) as listed,
-                    patch("huggingface_hub.hf_hub_download") as hf,
-                ):
-                    result = choose_baseline(
-                        model_id=model, source="kaggle",
-                        inventory_only=True,
-                    )
-                listed.assert_called_once_with(
-                    spec["repository"], spec["gguf_prefix"],
-                    selected_handle=spec["kaggle_handle"],
-                )
-                hf.assert_not_called()
-                self.assertEqual(result["repository"], spec["repository"])
-
-    def test_gemma_default_is_pinned_to_accessible_version_one(self):
-        from model import ModelManager
-        from calibration.profile_identity import resolve_identity
-        spec = ModelManager.source_spec("gemma-2-9b-it", "kaggle")
-        self.assertEqual(
-            spec["kaggle_handle"], "google/gemma-2/gguf/2.0-9b-it/1"
-        )
+        model = "qwen-2.5-7b-instruct"
+        spec = ModelManager.source_spec(model, "kaggle")
         gpu = {
             "ready": True, "errors": [], "foreign_processes": [],
             "gpu": {"vendor": "nvidia", "name": "Mock CUDA",
@@ -455,34 +419,44 @@ class KaggleSourceTests(unittest.TestCase):
             "memory": {"total_mib": 6141},
         }
         with (
-            patch("calibration.profile_identity._ram_total_mib",
-                  return_value=16000),
-            patch("calibration.profile_identity._cpu_model",
-                  return_value="Mock CPU"),
+            patch("calibration.baseline_discovery.GPUManager.calibration_status",
+                  return_value=gpu),
+            patch("calibration.kaggle_source.inventory_kaggle",
+                  return_value=[{
+                      "filename": "synthetic-Q4_K_M.gguf",
+                      "quantization": "Q4_K_M",
+                      "quality_priority": 400,
+                  }]) as listed,
+            patch("huggingface_hub.hf_hub_download") as hf,
         ):
-            identity = resolve_identity(
-                "gemma-2-9b-it", source="kaggle", status=gpu
+            result = choose_baseline(
+                model_id=model, source="kaggle",
+                inventory_only=True,
             )
-        self.assertEqual(identity["choices"]["kaggle_handle"],
-                         spec["kaggle_handle"])
-
-        rows = subprocess.CompletedProcess(
-            [], 0, "Name,Size\n"
-            "gemma-2-9b-it-Q4_K_M.gguf,4GB\n", ""
+        listed.assert_called_once_with(
+            spec["repository"], spec["gguf_prefix"],
+            selected_handle=spec["kaggle_handle"],
         )
-        with patch("calibration.kaggle_source.subprocess.run",
-                   return_value=rows) as cli:
-            found = inventory_kaggle(
-                spec["repository"], spec["gguf_prefix"],
-                selected_handle=spec["kaggle_handle"]
+        hf.assert_not_called()
+        self.assertEqual(result["repository"], spec["repository"])
+
+    def test_gemma_kaggle_is_not_a_supported_source(self):
+        from model import ModelManager
+        from calibration.profile_identity import validate_choices
+        self.assertEqual(
+            ModelManager.available_sources("gemma-2-9b-it"),
+            ("bartowski",)
+        )
+        with self.assertRaisesRegex(ValueError, "Fonte"):
+            ModelManager.source_spec("gemma-2-9b-it", "kaggle")
+        with self.assertRaisesRegex(ValueError, "Fonte"):
+            validate_choices("gemma-2-9b-it", "kaggle")
+        with self.assertRaisesRegex(ValueError, "Fonte"):
+            choose_baseline(
+                model_id="gemma-2-9b-it", source="kaggle",
+                inventory_only=True,
+                kaggle_handle="google/gemma-2/gguf/2.0-9b-it/1",
             )
-        self.assertEqual(len(found), 1)
-        self.assertEqual(found[0]["kaggle_handle"],
-                         spec["kaggle_handle"])
-        cli.assert_called_once()
-        self.assertEqual(cli.call_args.args[0][2:5],
-                         ["variations", "versions", "files"])
-        self.assertEqual(cli.call_args.args[0][5], spec["kaggle_handle"])
 
     def test_mistral_huggingface_never_queries_kaggle(self):
         from model import ModelManager
@@ -650,36 +624,40 @@ class KaggleSourceTests(unittest.TestCase):
 
     def test_source_identity_is_scoped_and_no_cross_source_fallback(self):
         from calibration.profile_identity import validate_choices
-        for model in ("gemma-2-9b-it", "qwen-2.5-7b-instruct"):
-            self.assertEqual(
-                validate_choices(model, "kaggle")["source"], "kaggle"
-            )
-            self.assertEqual(
-                validate_choices(model, "bartowski")["source"], "bartowski"
-            )
-        for model in ("mistral-7b-instruct-v0.3",
-                      "llama-3.1-8b-instruct"):
-            self.assertEqual(
-                validate_choices(model, "bartowski")["source"], "bartowski"
-            )
-            with self.assertRaisesRegex(ValueError, "Fonte"):
-                validate_choices(model, "kaggle")
-
-    def test_official_kaggle_handles_are_defaults_only_for_two_models(self):
-        from model import ModelManager
         self.assertEqual(
-            ModelManager.source_spec("gemma-2-9b-it", "kaggle")["kaggle_handle"],
-            "google/gemma-2/gguf/2.0-9b-it/1",
+            validate_choices("qwen-2.5-7b-instruct", "kaggle")["source"],
+            "kaggle",
         )
+        for model in (
+            "gemma-2-9b-it", "qwen-2.5-7b-instruct",
+            "llama-3.1-8b-instruct", "mistral-7b-instruct-v0.3",
+        ):
+            self.assertEqual(
+                validate_choices(model, "bartowski")["source"],
+                "bartowski",
+            )
+        for model in (
+            "gemma-2-9b-it", "llama-3.1-8b-instruct",
+            "mistral-7b-instruct-v0.3",
+        ):
+            with self.subTest(model=model):
+                with self.assertRaisesRegex(ValueError, "Fonte"):
+                    validate_choices(model, "kaggle")
+
+    def test_only_qwen_has_kaggle_handle_in_catalog(self):
+        from model import ModelManager
         self.assertEqual(
             ModelManager.source_spec("qwen-2.5-7b-instruct", "kaggle")[
                 "kaggle_handle"
             ], "qwen-lm/qwen2.5/gguf/7b-instruct",
         )
-        for model in ("llama-3.1-8b-instruct",
-                      "mistral-7b-instruct-v0.3"):
-            self.assertEqual(ModelManager.available_sources(model),
-                             ("bartowski",))
+        for model in (
+            "gemma-2-9b-it", "llama-3.1-8b-instruct",
+            "mistral-7b-instruct-v0.3",
+        ):
+            self.assertEqual(
+                ModelManager.available_sources(model), ("bartowski",)
+            )
 
     def test_unrecognized_gguf_name_is_reported_but_not_ranked(self):
         unknown = subprocess.CompletedProcess(
