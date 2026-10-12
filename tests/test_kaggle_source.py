@@ -38,6 +38,37 @@ def mock_kaggle_call(argv, **kwargs):
 
 
 class KaggleSourceTests(unittest.TestCase):
+    def test_cli_failures_are_classified_without_leaking_credentials(self):
+        from calibration.kaggle_source import (
+            _csv_call, classify_kaggle_cli_failure,
+        )
+
+        examples = (
+            ("HTTPError 401", "unauthorized"),
+            ("HTTP 403 Forbidden", "forbidden"),
+            ("404 Not Found", "not_found"),
+            ("429 Too Many Requests", "rate_limited"),
+            ("500 Internal Server Error", "server_error"),
+            ("usage: kaggle models variations", "cli_syntax"),
+            ("ConnectionError", "network"),
+            ("unknown failure", "unknown"),
+        )
+        for diagnostic, category in examples:
+            with self.subTest(diagnostic=diagnostic):
+                observed, _ = classify_kaggle_cli_failure(
+                    diagnostic + " KGAT_test_private"
+                )
+                self.assertEqual(observed, category)
+
+        with patch("calibration.kaggle_source.subprocess.run",
+                   return_value=subprocess.CompletedProcess(
+                       [], 1, "",
+                       "HTTP 403 Forbidden token=KGAT_sensitive"
+                   )):
+            with self.assertRaisesRegex(RuntimeError, "categoria=forbidden") as e:
+                _csv_call("variations", "files", HANDLE)
+        self.assertNotIn("KGAT_sensitive", str(e.exception))
+
     def test_cli_uses_virtualenv_executable_without_activation(self):
         from calibration.kaggle_source import _csv_call
 
