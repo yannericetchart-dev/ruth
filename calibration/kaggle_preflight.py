@@ -11,6 +11,7 @@ import shutil
 from hardware import GPUManager
 from model import ModelManager
 from .kaggle_source import inventory_kaggle
+from .kaggle_architecture_bound import conservative_kaggle_weight_floor
 from .profile_pipeline import atomic_json
 
 
@@ -42,7 +43,14 @@ def inspect_transfer_plan(model_id: str = "qwen-2.5-7b-instruct",
     for candidate in models:
         bytes_reported = candidate.get("reported_download_bytes")
         all_complete = candidate.get("split_complete") is not False
+        floor = conservative_kaggle_weight_floor(
+            model_id, candidate, vram_bytes
+        )
         rows.append({
+            "architecture_weight_floor": floor,
+            "pre_download_full_cuda_exclusion": bool(
+                floor and floor["exceeds_total_vram"]
+            ),
             "quantization": candidate["quantization"],
             "first_shard": candidate["filename"],
             "shard_count": candidate.get("shard_count", 1),
@@ -79,9 +87,11 @@ def inspect_transfer_plan(model_id: str = "qwen-2.5-7b-instruct",
             "l'impossibilita' o la fattibilita' della residenza CUDA. "
             "kagglehub puo' richiedere cache e copia locale: lo spazio "
             "necessario effettivo puo' essere superiore a una copia. "
-            "La baseline quality-first deve arrestarsi, anziche' saltare "
-            "silenziosamente una quantizzazione migliore, se manca "
-            "una prova affidabile o un'autorizzazione di download."
+            "Un limite inferiore architetturale valido solo per la "
+            "variante Qwen ufficiale e quantizzazioni FP16/Q8_0 "
+            "puo' escludere preventivamente un GGUF standard. "
+            "Per gli altri, la baseline quality-first si arresta "
+            "se manca un'autorizzazione di download o una prova affidabile."
         ),
     }
 
@@ -104,11 +114,18 @@ def main(argv: list[str] | None = None) -> int:
     for item in plan["candidates"]:
         size = (f"{item['reported_download_mib']} MiB"
                 if item["reported_download_mib"] is not None else "SCONOSCIUTA")
-        risk = (
-            "file > VRAM: NON e' prova di OOM"
-            if item["reported_file_total_above_vram"]
-            else "fattibilita' VRAM da provare"
-        )
+        floor = item["architecture_weight_floor"]
+        if item["pre_download_full_cuda_exclusion"]:
+            risk = (
+                "ESCLUSO prima del download: pesi standard >= "
+                f"{floor['minimum_weight_mib']} MiB > VRAM"
+            )
+        else:
+            risk = (
+                "file > VRAM: NON e' prova di OOM"
+                if item["reported_file_total_above_vram"]
+                else "fattibilita' VRAM da provare"
+            )
         if not item["shards_complete"]:
             risk = "SHARD INCOMPLETI"
         print(f"  {item['quantization']:10} | "
