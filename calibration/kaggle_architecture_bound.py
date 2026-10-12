@@ -62,6 +62,15 @@ def conservative_kaggle_weight_floor(model_id: str, candidate: dict,
         return None
     if candidate.get("repo_id") != _SOURCE_REPO:
         return None
+    filename = candidate.get("filename")
+    if (not isinstance(filename, str)
+        or not filename.casefold().startswith(
+            spec["gguf_prefix"].casefold()
+        )
+        or not filename.casefold().endswith(".gguf")
+        or candidate.get("filename_matches_model_prefix") is False
+        or candidate.get("split_complete") is False):
+        return None
     handle = candidate.get("kaggle_handle")
     if (not isinstance(handle, str)
         or not (handle == _SOURCE_HANDLE_PREFIX
