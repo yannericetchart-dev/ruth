@@ -396,7 +396,20 @@ def choose_baseline(
         return report
 
     architecture_reference = None
-    if spec["source"] == "kaggle" and spec.get("architecture_reference_repo"):
+    default_kaggle_handle = spec.get("kaggle_handle")
+    canonical_kaggle_source = (
+        spec["source"] == "kaggle"
+        and repo_id == spec.get("repository")
+        and isinstance(default_kaggle_handle, str)
+        and (
+            kaggle_handle == default_kaggle_handle
+            or (
+                kaggle_handle.startswith(default_kaggle_handle + "/")
+                and kaggle_handle[len(default_kaggle_handle) + 1:].isdigit()
+            )
+        )
+    )
+    if canonical_kaggle_source and spec.get("architecture_reference_repo"):
         from .kaggle_architecture_bound import read_architecture_reference
         try:
             architecture_reference = read_architecture_reference(spec)
