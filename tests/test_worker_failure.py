@@ -31,6 +31,43 @@ class WorkerFailureTests(unittest.TestCase):
         self.assertTrue(report["suspected_cuda_oom"])
         self.assertEqual(len(report["cuda_diagnostics"]), 1)
 
+    def test_cublas_handle_allocation_failure_is_explicit_resource_boundary(self):
+        stderr = (
+            "CUDA error: the resource allocation failed\n"
+            "  current device: 0, in function cublas_handle\n"
+            "  cublasCreate_v2(&cublas_handles[device][curr_stream_no])\n"
+            "CUDA error"
+        )
+        outcome = analyze_worker_failure(
+            stderr, "JSON worker vuoto", -6, False
+        )
+        self.assertEqual(
+            outcome["failure_hint"],
+            "explicit_cuda_resource_allocation_failure",
+        )
+        self.assertTrue(outcome["native_cuda_resource_allocation_failed"])
+        self.assertFalse(outcome["suspected_cuda_oom"])
+        self.assertIn("cublas_handle", outcome["stderr_tail"])
+
+    def test_unrelated_sigabrt_and_generic_resource_string_not_allocation(self):
+        for text in ("SIGABRT: process aborted", "resource allocation warning",
+                     "CUDA error: invalid device function"):
+            with self.subTest(stderr=text):
+                outcome = analyze_worker_failure(
+                    text, "JSON worker vuoto", -6, False
+                )
+                self.assertIsNone(outcome["failure_hint"])
+                self.assertFalse(outcome["native_cuda_resource_allocation_failed"])
+                self.assertFalse(outcome["suspected_cuda_oom"])
+
+    def test_cublas_status_alloc_failed_is_not_mislabelled_oom(self):
+        outcome = analyze_worker_failure(
+            "cuBLAS error: CUBLAS_STATUS_ALLOC_FAILED",
+            "JSON worker vuoto", -6, False,
+        )
+        self.assertTrue(outcome["native_cuda_resource_allocation_failed"])
+        self.assertFalse(outcome["suspected_cuda_oom"])
+
     def test_sigabrt_alone_is_not_oom(self):
         report = analyze_worker_failure(
             "worker aborted",
