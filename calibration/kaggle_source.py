@@ -172,15 +172,21 @@ def variation_files(handle: str) -> tuple[list[dict], str]:
         try:
             versions = _csv_call("variations", "versions", "list", handle,
                                  "--page-size", "100")
-        except RuntimeError:
-            raise original from None
+        except RuntimeError as secondary:
+            # Both errors are already sanitized by _csv_call.
+            raise RuntimeError(
+                f"{original} Ricerca delle versioni: {secondary}"
+            ) from None
         numeric_versions = set()
         for version in versions:
             value = _get(version, "versionNumber", "version", "number")
             if re.fullmatch(r"[1-9]\d*", value):
                 numeric_versions.add(int(value))
         if not numeric_versions:
-            raise original from None
+            raise RuntimeError(
+                f"{original} La risposta Kaggle non contiene numeri "
+                "di versione verificabili."
+            ) from None
         pinned = f"{handle}/{max(numeric_versions)}"
         try:
             rows = _csv_call("variations", "versions", "files", pinned,
