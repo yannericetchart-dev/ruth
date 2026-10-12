@@ -40,26 +40,32 @@ class ContextWorkerDiagnosticsTests(unittest.TestCase):
         self.assertFalse(report["suspected_cuda_oom"])
         self.assertIn("non assumere OOM CUDA", report["error"])
 
-    def test_json_array_not_accepted_as_valid_worker_result(self):
+    def test_non_object_json_is_rejected_without_type_error(self):
         layout = {"tensors": [], "metadata": {"general.architecture": "qwen2"}}
         native_confirmation = {
             "verified": False, "tensor_count": 0,
             "unverified_names": [],
             "native_override": {"native_logged_occurrence_count": 0},
         }
-        with (
-            patch("calibration.gpu_context.inspect_gguf", return_value=layout),
-            patch("calibration.gpu_context.subprocess.run",
-                  return_value=subprocess.CompletedProcess([], 0, "[]", "")),
-            patch("calibration.gpu_context.parse_native_memory",
-                  return_value={"native_buffer_records": []}),
-            patch("calibration.gpu_context.native_confirmation",
-                  return_value=native_confirmation),
-        ):
-            report = probe_context(Path("/test/model.gguf"), 2560)
-        self.assertFalse(report["worker_json_valid"])
-        self.assertEqual(report["failure_class"], "worker_protocol_error")
-        self.assertIn("malformato/non oggetto", report["error"])
+        for stdout in ("[]", "null", "42", "true", '"hello"'):
+            with (
+                self.subTest(stdout=stdout),
+                patch("calibration.gpu_context.inspect_gguf",
+                      return_value=layout),
+                patch("calibration.gpu_context.subprocess.run",
+                      return_value=subprocess.CompletedProcess(
+                          [], 0, stdout, ""
+                      )),
+                patch("calibration.gpu_context.parse_native_memory",
+                      return_value={"native_buffer_records": []}),
+                patch("calibration.gpu_context.native_confirmation",
+                      return_value=native_confirmation),
+            ):
+                report = probe_context(Path("/test/model.gguf"), 2560)
+                self.assertFalse(report["success"])
+                self.assertIs(report["worker_json_valid"], False)
+                self.assertEqual(report["failure_class"], "worker_protocol_error")
+                self.assertIn("malformato/non oggetto", report["error"])
 
     @staticmethod
     def gpu():
