@@ -11,6 +11,7 @@ from unittest.mock import patch
 
 from calibration.gguf_catalog import (
     gguf_payload_bytes, inventory, preflight_locally_inspected_weights,
+    quantization_priority,
 )
 from calibration.baseline_discovery import (
     all_gpu_rules, choose_baseline, native_confirmation,
@@ -65,15 +66,75 @@ class CatalogTests(unittest.TestCase):
                          ["Q6_K", "Q4_K_L", "Q4_K_M"])
         self.assertTrue(all(c["quality_priority"] is not None for c in found))
 
-    def test_unknown_quant_requires_explicit_ranking(self):
+    def test_unknown_quant_is_visible_but_unranked(self):
         with patch("huggingface_hub.HfApi") as api:
             api.return_value.model_info.return_value.siblings = [
                 SimpleNamespace(
                     rfilename="gemma-2-9b-it-FUTURE_QUANT.gguf", size=100
-                )
+                ),
+                SimpleNamespace(
+                    rfilename="gemma-2-9b-it-Q4_K_M.gguf", size=500
+                ),
             ]
-            with self.assertRaises(RuntimeError):
-                inventory()
+            found = inventory()
+        self.assertEqual(len(found), 2)
+        self.assertEqual(found[0]["quantization"], "Q4_K_M")
+        self.assertEqual(found[1]["quality_rank_confidence"], "unranked")
+        self.assertIsNone(found[1]["quality_priority"])
+
+    def test_all_nine_publisher_variants_are_ranked(self):
+        variants = (
+            "IQ2_S", "IQ2_XS", "Q3_K_L-Q8", "Q3_K_XL",
+            "Q4_K_M-fp16", "Q6_K-Q8", "Q6_K-f32",
+            "Q8_0-f16", "Q8_0_L",
+        )
+        for label in variants:
+            with self.subTest(label=label):
+                classification = quantization_priority(label)
+                self.assertIsInstance(classification["quality_priority"], int)
+                self.assertNotEqual(classification["quality_rank_confidence"], "unranked")
+
+    def test_mixed_precision_variants_rank_before_plain_parent(self):
+        for child, parent in (
+            ("Q3_K_L-Q8", "Q3_K_L"),
+            ("Q4_K_M-fp16", "Q4_K_M"),
+            ("Q6_K-Q8", "Q6_K"),
+            ("Q6_K-f32", "Q6_K"),
+            ("Q8_0-f16", "Q8_0"),
+        ):
+            with self.subTest(child=child):
+                self.assertLess(
+                    quantization_priority(child)["quality_priority"],
+                    quantization_priority(parent)["quality_priority"],
+                )
+        self.assertLess(
+            quantization_priority("Q8_0_L")["quality_priority"],
+            quantization_priority("Q8_0")["quality_priority"],
+        )
+        self.assertLess(
+            quantization_priority("Q3_K_XL")["quality_priority"],
+            quantization_priority("Q3_K_L")["quality_priority"],
+        )
+
+    def test_live_inventory_all_nine_extra_types_not_blocked(self):
+        variant_list = (
+            "IQ2_S", "IQ2_XS", "Q3_K_L-Q8", "Q3_K_XL",
+            "Q4_K_M-fp16", "Q6_K-Q8", "Q6_K-f32",
+            "Q8_0-f16", "Q8_0_L",
+        )
+        siblings = [
+            SimpleNamespace(rfilename=f"gemma-2-9b-it-{name}.gguf", size=900)
+            for name in variant_list + ("Q4_K_M",)
+        ]
+        with patch("huggingface_hub.HfApi") as api:
+            api.return_value.model_info.return_value.siblings = siblings
+            found = inventory()
+        self.assertEqual(len(found), 10)
+        self.assertFalse(any(c["quality_priority"] is None for c in found))
+        self.assertLess(
+            next(i for i, c in enumerate(found) if c["quantization"] == "Q4_K_M-fp16"),
+            next(i for i, c in enumerate(found) if c["quantization"] == "Q4_K_M"),
+        )
 
     def test_remote_header_exact_tensor_bytes_not_file_bytes(self):
         name = b"test.weight"
@@ -239,6 +300,30 @@ class BaselineSelectionTests(unittest.TestCase):
             self.assertEqual(len(report["attempts"]), 1)
             self.assertTrue(report["attempts"][0]["needs_diagnostic_review"])
             self.assertFalse((Path(tmp) / "baseline_selection.json").exists())
+
+    def test_unknown_candidate_prevents_selection_without_downloading(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            unranked = {
+                **catalog_entry("UNKNOWN_NEW_SCHEME", None),
+                "quality_rank_confidence": "unranked",
+            }
+            with (
+                patch("calibration.baseline_discovery.GPUManager.calibration_status",
+                      return_value=gpu_status()),
+                patch("calibration.baseline_discovery.inventory",
+                      return_value=[catalog_entry("Q4_K_M", 900), unranked]),
+                patch("huggingface_hub.hf_hub_download") as downloader,
+            ):
+                result = choose_baseline(root=Path(tmp))
+                inventory_only = choose_baseline(root=Path(tmp), inventory_only=True)
+            self.assertFalse(result["success"])
+            self.assertEqual(result["unranked_quantizations"], [
+                "gemma-2-9b-it-UNKNOWN_NEW_SCHEME.gguf"
+            ])
+            self.assertIn("Quantizzazioni non classificabili", result["error"])
+            self.assertTrue(inventory_only["inventory_only"])
+            self.assertEqual(len(inventory_only["inventory"]), 2)
+            downloader.assert_not_called()
 
     def test_unclassified_load_failure_stops_instead_of_skipping_quality(self):
         with tempfile.TemporaryDirectory() as tmp:

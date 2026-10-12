@@ -11,15 +11,66 @@ import struct
 
 REPOSITORY = "bartowski/gemma-2-9b-it-GGUF"
 PREFIX = "gemma-2-9b-it-"
-# Published high-to-low fidelity convention. Adjacent IQ/K variants may
-# exchange rank on specific tasks; no exact quality ordering is claimed.
+# Coarse high-to-low fidelity convention derived from the publisher's
+# descriptions. It is a PRIORITY, not a measured quality score. Variants
+# without direct published comparisons stay explicitly heuristic.
 QUALITY_ORDER = (
-    "f32", "Q8_0", "Q6_K_L", "Q6_K", "Q5_K_L", "Q5_K_M",
-    "Q5_K_S", "Q4_K_L", "Q4_K_M", "Q4_K_S", "IQ4_XS",
-    "Q3_K_L", "Q3_K_M", "IQ3_M", "Q3_K_S", "IQ3_XS",
-    "Q2_K_L", "Q2_K", "IQ3_XXS", "IQ2_M",
+    "f32", "f16", "Q8_0_L", "Q8_0", "Q6_K_L", "Q6_K",
+    "Q5_K_L", "Q5_K_M", "Q5_K_S", "Q4_K_L", "Q4_K_M",
+    "Q4_K_S", "IQ4_XS", "Q3_K_XL", "Q3_K_L", "Q3_K_M",
+    "IQ3_M", "Q3_K_S", "IQ3_XS", "Q2_K_L", "Q2_K",
+    "IQ3_XXS", "IQ2_M", "IQ2_S", "IQ2_XS", "IQ2_XXS",
 )
-_QUALITY_RANK = {q.lower(): i for i, q in enumerate(QUALITY_ORDER)}
+_QUALITY_RANK = {q.casefold(): i for i, q in enumerate(QUALITY_ORDER)}
+# Mixed-precision variants inherit their principal weight format's quality
+# tier and are tried before the plain version of the SAME tier. The suffix
+# alone cannot quantify any actual perplexity/accuracy gain.
+_PRECISION_SUFFIX_PRIORITY = (
+    ("-f32", -40), ("-fp32", -40),
+    ("-f16", -30), ("-fp16", -30),
+    ("-q8", -20), ("-q8_0", -20),
+)
+
+
+def quantization_priority(label: str) -> dict:
+    """Resolve family/precision suffix without hiding unknown quantizations.
+
+    The interval of 100 between main quantization families ensures that a
+    mixed-precision variant cannot leap into a stronger *base* family just
+    because its filename contains f16/f32. Such cross-family comparisons
+    require model-quality benchmarks rather than naming heuristics.
+    """
+    if not isinstance(label, str) or not label.strip():
+        return {
+            "quality_priority": None, "quality_rank_confidence": "unranked",
+            "quality_base": None, "quality_modifier": None,
+        }
+    folded = label.casefold()
+    rank = _QUALITY_RANK.get(folded)
+    if rank is not None:
+        return {
+            "quality_priority": rank * 100,
+            "quality_rank_confidence": "coarse_family_prior",
+            "quality_base": QUALITY_ORDER[rank],
+            "quality_modifier": None,
+        }
+    for suffix, boost in _PRECISION_SUFFIX_PRIORITY:
+        if folded.endswith(suffix):
+            parent = folded[:-len(suffix)]
+            parent_rank = _QUALITY_RANK.get(parent)
+            if parent_rank is not None:
+                return {
+                    "quality_priority": parent_rank * 100 + boost,
+                    "quality_rank_confidence": "mixed_precision_heuristic",
+                    "quality_base": QUALITY_ORDER[parent_rank],
+                    "quality_modifier": suffix[1:],
+                }
+    return {
+        "quality_priority": None,
+        "quality_rank_confidence": "unranked",
+        "quality_base": None,
+        "quality_modifier": None,
+    }
 _SCALAR_BYTES = {0: 1, 1: 1, 2: 2, 3: 2, 4: 4, 5: 4,
                  6: 4, 7: 1, 10: 8, 11: 8, 12: 8}
 
@@ -145,7 +196,7 @@ def inventory(repo_id: str = REPOSITORY) -> list[dict]:
         if not match:
             continue
         q = match.group(1)
-        rank = _QUALITY_RANK.get(q.lower())
+        classification = quantization_priority(q)
         size = entry.size
         if not isinstance(size, int) or size <= 0:
             raise RuntimeError(f"Dimensione remota mancante per {name}.")
@@ -153,20 +204,23 @@ def inventory(repo_id: str = REPOSITORY) -> list[dict]:
             "repo_id": repo_id,
             "filename": name,
             "quantization": q,
-            "quality_priority": rank,
+            **classification,
             "file_bytes": size,
-            "ranking_basis": "coarse_publisher_quantization_hierarchy",
+            "ranking_basis": "coarse_quantization_family_plus_mixed_precision_heuristic",
         })
     if not found:
         raise RuntimeError("Nessun GGUF singolo trovato nel repository.")
-    # Unranked entries are never silently treated as lower quality:
-    # halt and require a ranking update before selecting a baseline.
-    unknown = [x["filename"] for x in found if x["quality_priority"] is None]
-    if unknown:
-        raise RuntimeError(
-            f"Quantizzazioni sconosciute, aggiornare ordine prima della selezione: {unknown}"
-        )
-    return sorted(found, key=lambda x: (x["quality_priority"], x["filename"]))
+    # Inventory must ALWAYS be observable, even if a new type is unknown.
+    # Unranked entries stay in the catalog; the full-GPU *selector* refuses
+    # to crown a winner until the unknown types have been reviewed.
+    return sorted(
+        found,
+        key=lambda x: (
+            x["quality_priority"] is None,
+            x["quality_priority"] if x["quality_priority"] is not None else 0,
+            x["filename"],
+        ),
+    )
 
 
 def remote_header(repo_id: str, filename: str, file_bytes: int) -> dict:

@@ -249,6 +249,9 @@ def choose_baseline(
         else ModelManager().root / "gemma-2-9b-it"
     )
     models = inventory(repo_id)
+    unranked = [
+        c["filename"] for c in models if c.get("quality_priority") is None
+    ]
     report = {
         "phase": "quality_first_full_gpu_baseline",
         "repository": repo_id,
@@ -258,6 +261,7 @@ def choose_baseline(
         "probe_batch": n_batch,
         "rank_is_empirical_prior_not_measured_quality": True,
         "inventory": models,
+        "unranked_quantizations": unranked,
         "attempts": [],
         "baseline": None,
         "success": False,
@@ -273,6 +277,17 @@ def choose_baseline(
     }
     if inventory_only:
         report["inventory_only"] = True
+        return report
+
+    if unranked:
+        # Unknown formats may be superior to currently ranked candidates.
+        # Inventory is still returned, but selection must not silently
+        # skip them or call a lower-ranked model the best available.
+        report["error"] = (
+            "Quantizzazioni non classificabili rilevate. Inventario completo "
+            "disponibile; aggiornare la gerarchia di qualita' prima della "
+            "selezione della baseline."
+        )
         return report
 
     for candidate in models:
