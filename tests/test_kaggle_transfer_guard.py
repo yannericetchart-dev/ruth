@@ -191,6 +191,40 @@ class KaggleBudgetPipelineTests(unittest.TestCase):
                 "blocked_kaggle_download_approval_required",
             )
 
+    def test_explicit_large_budget_never_downloads_four_fp16_shards(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            fp16 = candidate("fp16", 15_000_000_000, 0)
+            names = [
+                f"Qwen2.5-7B-Instruct-fp16-{i:05d}-of-00004.gguf"
+                for i in range(1, 5)
+            ]
+            fp16.update({
+                "filename": names[0],
+                "shard_filenames": names,
+                "shard_source_file_paths": names,
+                "shard_count": 4,
+                "reported_download_bytes": 15_000_000_000,
+                "reported_shard_sizes": [
+                    {"bytes": 3_750_000_000, "estimated": False}
+                    for _ in names
+                ],
+            })
+            q8 = candidate("q8_0", 8_000_000_000, 100)
+            q6 = candidate("q6_k", 6_000_000_000, 200)
+            result, downloaded, probed = self.run_baseline(
+                Path(tmp), [fp16, q8, q6], approval=16000,
+            )
+            self.assertFalse(result["success"])
+            self.assertEqual(downloaded, 1)
+            self.assertEqual(probed, 0)
+            self.assertEqual(
+                [entry["status"] for entry in result["attempts"]],
+                ["excluded_architecture_weight_floor_exceeds_vram",
+                 "excluded_architecture_weight_floor_exceeds_vram",
+                 "excluded_weight_payload_exceeds_total_vram"],
+            )
+            self.assertIsNone(result["baseline"])
+
     def test_cumulative_budget_stops_at_next_high_quality_candidate(self):
         with tempfile.TemporaryDirectory() as tmp:
             inventory = [
