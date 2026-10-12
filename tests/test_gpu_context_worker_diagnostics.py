@@ -278,6 +278,16 @@ class ContextWorkerDiagnosticsTests(unittest.TestCase):
         self.assertTrue(result["uncertain_failure_boundaries"])
         self.assertIn("massimo", result["error"])
         self.assertEqual(result["highest_gpu_resident_n_ctx_observed"], 2048)
+        self.assertEqual(
+            result["validated_gpu_resident_context"]["n_ctx"], 2048
+        )
+        self.assertEqual(
+            result["validated_gpu_resident_context"]["confirmation_rounds_passed"],
+            2,
+        )
+        self.assertFalse(
+            result["validated_gpu_resident_context"]["operationally_safe"]
+        )
 
     def test_one_sigabrt_confirms_floor_not_max(self):
         calls = []
@@ -304,10 +314,22 @@ class ContextWorkerDiagnosticsTests(unittest.TestCase):
         self.assertFalse(any(
             event.get("event") == "context_worker_retry" for event in events
         ))
-        self.assertEqual(len([
+        self.assertFalse(any(
+            event.get("event") == "context_sigabrt_boundary"
+            for event in events
+        ))
+        validated = [
             event for event in events
-            if event.get("event") == "context_sigabrt_boundary"
-        ]), 1)
+            if event.get("event") == "context_gpu_validated"
+        ]
+        self.assertEqual(len(validated), 1)
+        self.assertEqual(validated[0]["n_ctx"], 128)
+        self.assertEqual(validated[0]["confirmation_rounds"], 2)
+        self.assertIs(validated[0]["maximality_proven"], False)
+        self.assertTrue(result["validated_gpu_resident_context"][
+            "native_cuda_validation"
+        ])
+        self.assertEqual(result["validated_gpu_resident_context"]["n_ctx"], 128)
 
     def test_sigabrt_in_other_worker_failure_class_also_skips_retry(self):
         calls = []
