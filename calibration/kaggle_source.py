@@ -47,9 +47,10 @@ def _csv_call(*args: str) -> list[dict]:
     if run.returncode != 0:
         # Do not echo CLI stderr: it can include credentials/auth fragments.
         raise RuntimeError(
-            "Kaggle API non disponibile o accesso al modello negato. "
-            "Verifica l'autenticazione Kaggle, la pagina del modello e il "
-            "comando 'kaggle models variations list'."
+            "Interrogazione Kaggle fallita (codice di uscita "
+            f"{run.returncode}). Verifica il modello, l'accesso e "
+            "l'handle della variante con 'kaggle models variations files' "
+            "oppure 'kaggle models variations versions files'."
         )
     content = run.stdout.strip()
     if not content:
@@ -75,29 +76,16 @@ def _get(record: dict, *keys: str) -> str:
 def variation_handles(repository: str, selected_handle: str | None = None) -> list[str]:
     if selected_handle:
         return [validate_handle(selected_handle, repository)]
-    rows = _csv_call("variations", "list", repository, "--page-size", "100")
-    handles = []
-    for row in rows:
-        value = _get(row, "ref", "reference", "handle", "url")
-        if value.startswith("https://www.kaggle.com/models/"):
-            value = value.split("/models/", 1)[1].strip("/")
-        if not _HANDLE.fullmatch(value):
-            framework = _get(row, "framework")
-            variation = _get(row, "variation", "variation_slug",
-                             "instanceSlug", "slug")
-            if framework and variation:
-                value = f"{repository}/{framework}/{variation}"
-        if _HANDLE.fullmatch(value) and value.startswith(repository + "/"):
-            handles.append(validate_handle(value, repository))
-    handles = sorted(set(handles))
-    if not handles:
-        raise RuntimeError(
-            "Nessuna variante Kaggle identificabile per il modello. "
-            "La pagina non dimostra la presenza di GGUF: specifica "
-            "--kaggle-handle owner/model/framework/variation[/version] "
-            "per provare una variante pubblicata."
-        )
-    return handles
+    # Kaggle CLI 2.2.4 has no "models variations list" command.
+    # Never invent a variation or interpret an unsupported command as auth denial.
+    raise RuntimeError(
+        "La CLI Kaggle non supporta la ricerca automatica delle varianti "
+        "(comando 'models variations list' inesistente). Apri la pagina "
+        f"https://www.kaggle.com/models/{repository}, verifica una variante "
+        "che contenga file GGUF e specifica il suo handle reale con "
+        "--kaggle-handle owner/model/framework/variation[/version]. "
+        "Nessun fallback implicito a Hugging Face."
+    )
 
 
 def _filename(record: dict) -> str:
@@ -113,7 +101,13 @@ def inventory_kaggle(
     candidates = []
     handles = variation_handles(repository, selected_handle)
     for handle in handles:
-        rows = _csv_call("variations", "files", handle, "--page-size", "100")
+        # A pinned version uses a different official Kaggle CLI subcommand.
+        if len(handle.split("/")) == 5:
+            rows = _csv_call("variations", "versions", "files", handle,
+                             "--page-size", "100")
+        else:
+            rows = _csv_call("variations", "files", handle,
+                             "--page-size", "100")
         for row in rows:
             filename = _filename(row)
             if not filename.casefold().endswith(".gguf"):
