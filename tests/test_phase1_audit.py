@@ -154,6 +154,53 @@ class PhaseOneAuditTests(unittest.TestCase):
             self.assertIsNone(result["n_ctx_gpu_resident"])
             self.assertIn("non ancora completato", result["errors"][0])
 
+    def test_local_matrix_uses_verified_download_without_remote_queries(self):
+        from calibration.layer_matrix import local_baseline_matrices
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            folder = root / "runs" / "saved_qwen"
+            folder.mkdir(parents=True)
+            baseline = {
+                "baseline": {
+                    "model_id": "qwen-2.5-7b-instruct",
+                    "native_verified_all_gpu": True,
+                    "filename": "chosen-Q5_K_L.gguf",
+                    "quantization": "Q5_K_L",
+                }
+            }
+            (folder / "baseline.json").write_text(json.dumps(baseline))
+            scanned = [{
+                "model_id": "qwen-2.5-7b-instruct",
+                "source": "bartowski",
+                "run_directory": str(folder),
+                "full_gpu_baseline_verified": True,
+                "errors": [],
+            }]
+            report = {
+                "schema_version": 2,
+                "block_count": 28, "tensor_count": 339,
+                "quantization": "Q5_K_L",
+                "serialized_weight_mib": 5507.7,
+            }
+            with (
+                patch("calibration.phase1_audit.audit_all",
+                      return_value=scanned) as audit,
+                patch("calibration.layer_matrix.analyze_layer_matrix",
+                      return_value=report) as local,
+                patch("calibration.layer_export.export_matrix_tables",
+                      return_value={}) as csv,
+            ):
+                result = local_baseline_matrices(
+                    ["qwen-2.5-7b-instruct"],
+                    source="bartowski", output_root=root / "runs",
+                )
+            self.assertEqual(len(result), 1)
+            self.assertEqual(result[0]["quantization"], "Q5_K_L")
+            self.assertEqual(local.call_count, 1)
+            self.assertEqual(csv.call_count, 1)
+            self.assertEqual(audit.call_count, 1)
+            self.assertTrue(Path(result[0]["report_path"]).is_file())
+
     def test_missing_shard_or_empty_local_file_is_not_reported_as_downloaded(self):
         with tempfile.TemporaryDirectory() as temp:
             root = Path(temp)
