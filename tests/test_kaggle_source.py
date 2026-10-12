@@ -163,7 +163,7 @@ class KaggleSourceTests(unittest.TestCase):
                 return subprocess.CompletedProcess(argv, 1, "", "404 Not Found")
             if argv[2:5] == ["variations", "versions", "list"]:
                 return subprocess.CompletedProcess(
-                    argv, 0, "versionNumber\\n5\\n", ""
+                    argv, 0, "versionNumber\n5\n", ""
                 )
             if argv[2:5] == ["variations", "versions", "files"]:
                 return subprocess.CompletedProcess(
