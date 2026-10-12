@@ -264,6 +264,24 @@ disponibile. Valutare prima spazio disco, rete e costi; interrompere
 se il download della candidata eccessiva non e' desiderato. Non
 combinare i risultati Kaggle e Bartowski in un'unica baseline.
 
+Il **preflight Kaggle senza download** raggruppa le dimensioni
+riportate dalla CLI per ogni quantizzazione e per tutti gli shard:
+
+```bash
+.venv/bin/python -m calibration.kaggle_preflight \
+  --model qwen-2.5-7b-instruct
+```
+
+Scrive `models/calibration_runs/kaggle_preflight.json` e visualizza
+dimensione cumulativa da catalogo, conteggio degli shard, VRAM e
+spazio disco libero. Alcune dimensioni della CLI sono arrotondate:
+non sono i byte dei tensori GGUF e **non provano** che un modello
+entrera' o non entrera' in VRAM. Il preflight non avvia il download,
+non conferma la compatibilita' CUDA e **non salta automaticamente**
+le quantizzazioni piu' qualitative. Per un vero preflight di
+fattibilita' servira' accesso all'header GGUF attendibile o una
+prova locale; non bisogna inventare soglie di VRAM dai file.
+
 Dopo aver completato le pipeline, rieseguire \`phase1_audit\`.
 Solo cinque righe \`COMPLETA\` permettono di dichiarare
 verificata l'intera fase 1.
