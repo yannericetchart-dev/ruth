@@ -3,6 +3,7 @@ from pathlib import Path
 from typing import Iterator
 
 from hardware import GPUManager
+from .engine_catalog import ENGINE_CATALOG
 
 
 class InferenceManager:
@@ -17,6 +18,11 @@ class InferenceManager:
         n_ctx: int = 4096,
         n_gpu_layers: int = -1,
     ):
+        if engine in ENGINE_CATALOG and not ENGINE_CATALOG[engine]["enabled"]:
+            raise NotImplementedError(
+                f"Motore {engine}: adapter da fare. "
+                "Nessun fallback automatico su llama.cpp."
+            )
         if engine not in self.ENGINE_BACKENDS:
             raise ValueError(f"Motore di inferenza non supportato: {engine}")
         if backend != "auto" and backend not in self.ENGINE_BACKENDS[engine].values():
