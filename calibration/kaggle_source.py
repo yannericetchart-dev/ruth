@@ -42,6 +42,18 @@ def classify_kaggle_cli_failure(stderr: str) -> tuple[str, str]:
     Only recognize fixed phrases and HTTP codes; keep everything else private.
     """
     details = stderr.casefold()
+    # A concrete refusal of model terms is stronger evidence than generic
+    # HTTP 403/404. Never treat "resource requiring consent" as proof that
+    # THIS user has not consented.
+    if re.search(
+        r"not consented|consent (?:is )?required|consent not (?:given|granted)"
+        r"|(?:must|need to) (?:accept|agree to) (?:the )?(?:license|terms)"
+        r"|(?:license|terms of use) (?:has |have )?not been accepted"
+        r"|user has not agreed to (?:the )?(?:license|terms)", details,
+    ):
+        return ("license_required",
+                "Kaggle segnala esplicitamente che l'account non ha "
+                "accettato i termini richiesti per questo modello.")
     # Distinguish absent credentials from an absent MODEL. The old broad
     # "not found" check incorrectly reported both as missing variations.
     if re.search(
