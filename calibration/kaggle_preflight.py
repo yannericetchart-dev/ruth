@@ -30,7 +30,15 @@ def inspect_transfer_plan(model_id: str = "qwen-2.5-7b-instruct",
     models = inventory_kaggle(
         spec["repository"], spec["gguf_prefix"], selected_handle=handle
     )
-    reference = read_architecture_reference(spec)
+    default_handle = spec.get("kaggle_handle")
+    canonical = (
+        isinstance(default_handle, str)
+        and (handle == default_handle or (
+            handle.startswith(default_handle + "/")
+            and handle[len(default_handle) + 1:].isdigit()
+        ))
+    )
+    reference = read_architecture_reference(spec) if canonical else None
     manager = ModelManager()
     dest = disk_path or manager.model_directory(
         model_id, "kaggle", spec["repository"]
