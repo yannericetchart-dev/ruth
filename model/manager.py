@@ -46,17 +46,6 @@ class ModelManager:
 
     # Optional alternative publishers; Hugging Face remains the default.
     SOURCE_OVERRIDES = {
-        "gemma-2-9b-it": {
-            "kaggle": {
-                "repository": "google/gemma-2",
-                # Version 2 currently returns 404 for file listing;
-                # version 1 was confirmed accessible for the configured account.
-                # Pin the exact snapshot to avoid silent version switching.
-                "kaggle_handle": "google/gemma-2/gguf/2.0-9b-it/1",
-                "access_requires_consent": True,
-                "access_page": "https://www.kaggle.com/models/google/gemma-2/license/consent",
-            },
-        },
         "qwen-2.5-7b-instruct": {
             "kaggle": {
                 "repository": "qwen-lm/qwen2.5",
