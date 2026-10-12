@@ -168,8 +168,10 @@ singole fasi rimangono disponibili per diagnosi e retrocompatibilita'.
 Il quarto modello è `mistral-7b-instruct-v0.3`, con fonte `kaggle`.
 Il catalogo iniziale punta alla pagina Kaggle pubblica
 `bond005/mistral-7b-instruct-v0.3`. **La pagina di un modello non è
-una prova che contenga file GGUF**: Ruth interroga le varianti Kaggle
-e accetta soltanto file .gguf esistenti, mai una sostituzione Hugging Face.
+una prova che contenga file GGUF**: Ruth accetta soltanto file .gguf
+confermati dal catalogo della variante Kaggle specificata, mai una
+sostituzione Hugging Face. La CLI Kaggle 2.2.4 non implementa
+\`models variations list\`, perciò l'handle di una variante reale è richiesto.
 
 Requisiti: `kaggle` CLI e `kagglehub` Python, installati con
 `./setup_env.sh`. Se Kaggle richiede l'accesso, configura credenziali
@@ -186,7 +188,7 @@ Prima prova (soltanto metadata, nessun file multi-GB):
   --until inventory
 ```
 
-Se una pubblicazione Kaggle non espone GGUF, Ruth segnala una fase
+Sostituisci OWNER/MODEL/FRAMEWORK/VARIATION/VERSION con un handle reale\nverificato nella pagina Kaggle. Non è un handle da eseguire letteralmente.\n\nSe una pubblicazione Kaggle non espone GGUF, Ruth segnala una fase
 `blocked` e non inventa una baseline. È possibile specificare un
 handle **reale**, rilevato dalla pagina Kaggle di una variante GGUF:
 
