@@ -2,7 +2,7 @@
 
 Source, model, engine and inference method are explicit user choices.
 GPU backend/VRAM and RAM are derived from the actual host; no user-supplied
-VRAM number or backend is trusted. Future adapters extend SUPPORTED_PAIRS.
+VRAM number or backend is trusted. Future adapters are declared but disabled until implemented.
 """
 
 from hashlib import sha256
@@ -13,6 +13,7 @@ from pathlib import Path
 
 from hardware import GPUManager
 from model import ModelManager
+from inference.engine_catalog import validate_engine_method
 
 
 SUPPORTED_PAIRS = {
@@ -52,6 +53,9 @@ def validate_choices(model_id: str, source: str = "bartowski",
                      method: str = "llama_cpp_python") -> dict:
     """Validate user options independently of hardware probing."""
     item = ModelManager.source_spec(model_id, source)
+    # Check declared future engines before testing the method combination:
+    # --engine vllm must say 'da fare', not accidentally use llama_cpp_python.
+    validate_engine_method(engine, method)
     if (engine, method) not in SUPPORTED_PAIRS:
         raise ValueError(
             f"Motore/metodo non implementati: {engine}/{method}. "
