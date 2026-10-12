@@ -126,6 +126,17 @@ class HeaderCatalogTests(unittest.TestCase):
                 )
                 target = Path(report["report_path"])
                 self.assertTrue(target.is_file())
+                for name in ("tensors_csv", "blocks_csv", "links_csv",
+                             "constraints_csv"):
+                    table = Path(report["table_paths"][name])
+                    self.assertTrue(table.is_file(), name)
+                    self.assertTrue(table.read_text(encoding="utf-8").strip())
+                self.assertIn(
+                    "exact_cpu_override_regex",
+                    Path(report["table_paths"]["tensors_csv"]).read_text(
+                        encoding="utf-8"
+                    ).splitlines()[0],
+                )
                 persisted = json.loads(target.read_text())
                 self.assertEqual(
                     len(persisted["tensor_index"]), persisted["tensor_count"]
