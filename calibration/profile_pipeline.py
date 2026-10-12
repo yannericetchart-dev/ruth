@@ -112,13 +112,27 @@ def brief_event(event: dict) -> str:
     if kind == "context_probe_start":
         return f"Test n_ctx={event['n_ctx']} (generazione={event['token_count']} token)"
     if kind == "context_probe_result":
+        worker = (
+            f" | worker exit={event.get('worker_returncode')}"
+            f", segnale={event.get('worker_signal')}"
+            if event.get("failure_class") == "worker_protocol_error"
+            else ""
+        )
         return (
             f"Risultato n_ctx={event['n_ctx']}: "
             f"{'OK' if event['success'] else 'NON RIUSCITO'} "
             f"| causa={event.get('failure_class')} "
             f"| VRAM picco={event.get('peak_mib')} MiB "
             f"| pesi CUDA={event.get('native_gpu_weights')} "
-            f"| KV CUDA={event.get('native_gpu_kv')}"
+            f"| KV CUDA={event.get('native_gpu_kv')}{worker}"
+        )
+    if kind == "context_worker_retry":
+        return (
+            f"Riprovo una sola volta n_ctx={event['n_ctx']} "
+            "dopo JSON worker non valido "
+            f"(exit={event.get('worker_returncode')}, "
+            f"segnale={event.get('worker_signal')}). "
+            "Nessuna assunzione OOM."
         )
     if kind == "context_candidate_limit":
         return (f"Massimo provvisorio n_ctx={event['n_ctx']} "
@@ -350,6 +364,8 @@ def _phase_call(name: str, identity: dict, previous: dict,
             "n_ctx": result,
             "peak_headroom_mib": report.get("confirmation_min_sampled_headroom_mib"),
             "attempts": len(report.get("attempts") or []),
+            "best_observed_n_ctx_not_confirmed":
+                report.get("highest_gpu_resident_n_ctx_observed"),
             "failure": report.get("error"),
         }
         return report, good, summary
