@@ -328,10 +328,11 @@ def search_gpu_context(
 ) -> dict:
     """Bounded doubling + token-granularity bisection, then confirmation.
 
-    Only explicit native CUDA OOM or GPU-resource allocation errors establish
-    a boundary for THIS runtime configuration. The latter is not called OOM.
-    All other inconclusive failures stop the search unless the caller
-    explicitly opts into treating ambiguous context errors as a boundary.
+    Native CUDA OOM/resource allocation errors establish measured failure
+    boundaries. A repeated SIGABRT with no native cause is treated as an
+    *uncertain* boundary for further search, never as proof of CUDA OOM.
+    The search still confirms a working lower bound but cannot claim a
+    maximum if any uncertain boundaries remain.
     """
     if model_id not in ModelManager.CATALOG:
         raise ValueError(f"Modello non supportato: {model_id}")
@@ -444,6 +445,9 @@ def search_gpu_context(
         "success": False,
         "measurement_completed": False,
         "highest_gpu_resident_n_ctx_observed": None,
+        "confirmed_gpu_resident_n_ctx": None,
+        "maximality_proven": False,
+        "uncertain_failure_boundaries": [],
         "note": (
             "Contesto diagnostico: mapping di tutti i pesi GPU invariato, "
             "KV in GPU e compute CUDA principale verificati da log, prefill vicino al "
@@ -510,8 +514,25 @@ def search_gpu_context(
                     failure.get("requested_n_ctx")
                 )
             return True
+        if cause == "worker_protocol_error" and failure.get("worker_signal") == "SIGABRT":
+            # The crash is reproducible at this particular context, but its
+            # cause is NOT known. Narrow towards proven working contexts and
+            # keep a permanent uncertainty marker. No OOM extrapolation.
+            result["uncertain_failure_boundaries"].append({
+                "n_ctx": failure.get("requested_n_ctx"),
+                "failure_class": cause,
+                "signal": "SIGABRT",
+                "reason": "no native resource/OOM evidence",
+            })
+            return True
         if cause == "ambiguous_context_initialization" and retry_ambiguous_context:
             result["ambiguous_boundary_used"] = True
+            result["uncertain_failure_boundaries"].append({
+                "n_ctx": failure.get("requested_n_ctx"),
+                "failure_class": cause,
+                "signal": failure.get("worker_signal"),
+                "reason": "operator opted in to uncertain boundary",
+            })
             return True
         result["error"] = (
             f"Prova inconclusiva a n_ctx={failure.get('requested_n_ctx')}: "
@@ -577,9 +598,10 @@ def search_gpu_context(
             )
             return result
 
-    result["confirmed_max_gpu_resident_n_ctx"] = low
-    result["success"] = True
-    result["measurement_completed"] = True
+    # Store the actually confirmed working context even if higher contexts
+    # aborted inconclusively. Never store it as "confirmed_max" in that case.
+    result["confirmed_gpu_resident_n_ctx"] = low
+    result["confirmation_completed"] = True
     result["highest_context_tested_and_failed"] = high
     result["search_reached_declared_limit"] = low == model_max
     result["confirmation_min_sampled_headroom_mib"] = round(
@@ -587,6 +609,20 @@ def search_gpu_context(
             for row in result["confirmation"]), 1
     )
     result["reference_is_operationally_safe"] = False
+    if result["uncertain_failure_boundaries"]:
+        result["error"] = (
+            "Contesto GPU-resident inferiore confermato, ma il massimo "
+            "NON e' dimostrato: uno o piu' n_ctx superiori hanno causato "
+            "SIGABRT/errore ambiguo senza evidenza nativa sufficiente. "
+            "Non attribuire automaticamente queste terminazioni alla VRAM."
+        )
+        result["measurement_completed"] = False
+        result["success"] = False
+        return result
+    result["confirmed_max_gpu_resident_n_ctx"] = low
+    result["maximality_proven"] = True
+    result["success"] = True
+    result["measurement_completed"] = True
     if not persist_reference:
         return result
     target = model.parent / "gpu_context_reference.json"
