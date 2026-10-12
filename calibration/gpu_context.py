@@ -293,6 +293,8 @@ def search_gpu_context(
     retry_ambiguous_context: bool = False,
     root: str | Path | None = None,
     baseline_selection: dict | None = None,
+    source: str | None = None,
+    kaggle_handle: str | None = None,
     persist_reference: bool = True,
     progress=None,
 ) -> dict:
@@ -316,7 +318,32 @@ def search_gpu_context(
     if not status["ready"]:
         raise RuntimeError(f"GPU non pronta: {status['errors']}")
     manager = ModelManager(root=root)
-    selection = baseline_selection if baseline_selection is not None else manager.selected_baseline(model_id)
+    baseline_source = (
+        (baseline_selection or {}).get("source")
+        or ModelManager.CATALOG[model_id]["source"]
+    )
+    selected_source = source or baseline_source
+    spec = ModelManager.source_spec(model_id, selected_source)
+    if baseline_selection is not None and baseline_source != selected_source:
+        raise RuntimeError("Fonte della baseline diversa da quella richiesta.")
+    if selected_source == "kaggle":
+        from .kaggle_source import validate_handle
+        handle = (kaggle_handle
+                  or (baseline_selection or {}).get("kaggle_handle")
+                  or spec.get("kaggle_handle"))
+        if not handle:
+            raise RuntimeError("Baseline Kaggle senza handle di variante.")
+        expected_repo = "/".join(handle.split("/")[:2])
+        validate_handle(handle, expected_repo)
+    else:
+        if kaggle_handle is not None:
+            raise RuntimeError("Handle Kaggle non valido per Hugging Face.")
+        expected_repo = spec["repository"]
+        handle = None
+    selection = (baseline_selection if baseline_selection is not None
+                 else manager.selected_baseline(
+                     model_id, source=selected_source, repository=expected_repo
+                 ))
     if selection is None:
         raise RuntimeError(
             f"Baseline full-GPU non selezionata per {model_id}. "
@@ -324,8 +351,11 @@ def search_gpu_context(
         )
     if (selection.get("native_verified_all_gpu") is not True
         or selection.get("model_id", model_id) != model_id
-        or selection.get("repository", ModelManager.CATALOG[model_id]["repository"])
-           != ModelManager.CATALOG[model_id]["repository"]):
+        or selection.get("source", ModelManager.CATALOG[model_id]["source"])
+           != selected_source
+        or selection.get("repository") != expected_repo
+        or (selected_source == "kaggle"
+            and selection.get("kaggle_handle") != handle)):
         raise RuntimeError("Baseline non verificata o di un'altra configurazione.")
     model = Path(selection["local_path"])
     if not model.is_file() or model.name != selection.get("filename"):
@@ -496,6 +526,7 @@ def main() -> None:
     parser.add_argument("--model", choices=sorted(ModelManager.CATALOG),
                         default="gemma-2-9b-it")
     parser.add_argument("--source", default=None)
+    parser.add_argument("--kaggle-handle", default=None)
     parser.add_argument("--engine", default="llama.cpp")
     parser.add_argument("--method", default="llama_cpp_python")
     parser.add_argument("--max-ctx", type=int)
@@ -533,6 +564,7 @@ def main() -> None:
                 tokens=args.tokens, batch=args.batch,
                 timeout=args.timeout, confirm_rounds=args.confirm_rounds,
                 retry_ambiguous_context=args.retry_ambiguous_context,
+                source=args.source, kaggle_handle=args.kaggle_handle,
             )
         except Exception as exc:
             output = {"success": False, "error": f"{type(exc).__name__}: {exc}"}
