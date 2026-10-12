@@ -17,6 +17,8 @@ def samples(cases, rounds=2):
                     "variant": variant, "success": True,
                     "mapping_verified": True if is_candidate else None,
                     "requested_tokens": 256, "generated_tokens": 256,
+                    "decode_first_quarter_tps": 20.0 + (0.2 if is_candidate else 0),
+                    "decode_last_quarter_tps": 19.0 + (0.3 if is_candidate else 0),
                     "decode_tps": 21.0 + idx + run / 10 + (0.15 if is_candidate else 0),
                     "prefill_tps": 600 + idx * 10 + (5 if is_candidate else 0),
                     "vram_peak_mib": 6000 + idx * 8 + (32 if is_candidate else 0),
@@ -47,6 +49,8 @@ class MappingEnvelopeTests(unittest.TestCase):
         self.assertEqual(summary[0]["paired_rounds"], 2)
         self.assertAlmostEqual(summary[0]["median_decode_delta_tps"], 0.15)
         self.assertEqual(summary[0]["decode_faster_pairs"], 2)
+        self.assertEqual(summary[0]["last_quarter_positive_pairs"], 2)
+        self.assertAlmostEqual(summary[0]["median_last_quarter_delta_tps"], 0.3)
         self.assertEqual(summary[0]["min_sampled_headroom_mib"], 109)
         self.assertEqual(summary[1]["min_sampled_headroom_mib"], 101)
 
@@ -90,6 +94,12 @@ class MappingEnvelopeTests(unittest.TestCase):
                 "measurements": {
                     "generated_tokens": 256,
                     "prompt_tokens": 315,
+                    "decode_windows": {
+                        "first_window_tps": 22.8 if variant else 22.5,
+                        "last_window_tps": 21.8 if variant else 21.4,
+                        "end_context_fraction": 0.75,
+                        "windows": [{"window": 1, "decode_tps": 22.5}],
+                    },
                     "decode_tokens_per_second": 22.1 if variant else 22.0,
                     "prefill_tokens_per_second": 620.0,
                     "vram_peak_sampled_mib": 6033.0 if variant else 6001.0,
@@ -122,6 +132,11 @@ class MappingEnvelopeTests(unittest.TestCase):
             [768,768,1024,1024,1024,1024,768,768]
         )
         self.assertEqual(report["summary"][0]["paired_rounds"], 2)
+        self.assertEqual(report["summary"][0]["last_quarter_positive_pairs"], 2)
+        self.assertTrue(all(
+            row["final_context_token_fraction"] == 0.75
+            for row in report["trials"]
+        ))
         self.assertEqual(report["summary"][1]["paired_rounds"], 2)
         self.assertEqual(manager.return_value.inspect.call_count, 2)
 

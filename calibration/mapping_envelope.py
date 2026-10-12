@@ -86,8 +86,22 @@ def summarize_envelope(trials: list[dict], cases: list[dict],
                 continue
             if not (base["success"] and candidate["success"]):
                 continue
+            first_base = base.get("decode_first_quarter_tps")
+            first_candidate = candidate.get("decode_first_quarter_tps")
+            last_base = base.get("decode_last_quarter_tps")
+            last_candidate = candidate.get("decode_last_quarter_tps")
             good_pairs.append({
                 "round": cycle,
+                "first_quarter_delta_tps": (
+                    round(first_candidate - first_base, 3)
+                    if isinstance(first_base, (int, float))
+                    and isinstance(first_candidate, (int, float)) else None
+                ),
+                "last_quarter_delta_tps": (
+                    round(last_candidate - last_base, 3)
+                    if isinstance(last_base, (int, float))
+                    and isinstance(last_candidate, (int, float)) else None
+                ),
                 "baseline_decode_tps": base["decode_tps"],
                 "candidate_decode_tps": candidate["decode_tps"],
                 "decode_delta_tps": round(
@@ -121,6 +135,17 @@ def summarize_envelope(trials: list[dict], cases: list[dict],
                 if good_pairs else None
             ),
             "decode_faster_pairs": sum(p["decode_delta_tps"] > 0 for p in good_pairs),
+            "last_quarter_positive_pairs": sum(
+                p["last_quarter_delta_tps"] > 0 for p in good_pairs
+                if p["last_quarter_delta_tps"] is not None
+            ),
+            "median_last_quarter_delta_tps": (
+                round(statistics.median(p["last_quarter_delta_tps"]
+                                        for p in good_pairs
+                                        if p["last_quarter_delta_tps"] is not None), 3)
+                if any(p["last_quarter_delta_tps"] is not None for p in good_pairs)
+                else None
+            ),
             "min_sampled_headroom_mib": (
                 round(gpu_total_mib - max(t["vram_peak_mib"] for t in successful), 1)
                 if successful else None
@@ -184,6 +209,8 @@ def envelope(cases: list[dict], rounds: int = 2, tokens: int = 256,
             "tra contesti: si misura soprattutto la capacita' KV allocata. "
             "Si eseguono prove isolate baseline e doppia promozione; "
             "i fallimenti vengono riportati senza interpolare allocazioni. "
+            "I quartili decode descrivono la velocita' in posizioni di contesto "
+            "crescenti e non sono una misura isolata del costo KV. "
             "Un picco NVML inferiore alla capacita' non dimostra stabilita' "
             "a contesti operativi o con carichi concorrenti."
         ),
@@ -219,6 +246,7 @@ def envelope(cases: list[dict], rounds: int = 2, tokens: int = 256,
                     collect_gpu_telemetry=True,
                 )
                 metrics = out.get("measurements") or {}
+                windows = metrics.get("decode_windows") or {}
                 verification = out.get("mapping_verification") or {}
                 verified = verification.get("verified") is True if variant == "candidate" else None
                 good = (
@@ -234,6 +262,10 @@ def envelope(cases: list[dict], rounds: int = 2, tokens: int = 256,
                     "prompt_tokens": metrics.get("prompt_tokens"),
                     "generated_tokens": metrics.get("generated_tokens"),
                     "requested_tokens": tokens,
+                    "decode_first_quarter_tps": windows.get("first_window_tps"),
+                    "decode_last_quarter_tps": windows.get("last_window_tps"),
+                    "final_context_token_fraction": windows.get("end_context_fraction"),
+                    "decode_window_details": windows.get("windows"),
                     "decode_tps": metrics.get("decode_tokens_per_second"),
                     "prefill_tps": metrics.get("prefill_tokens_per_second"),
                     "vram_peak_mib": metrics.get("vram_peak_sampled_mib"),

@@ -212,9 +212,11 @@ def _worker(gpu_layers: int, max_tokens: int, cpu_tensor: str | None = None,
             started_first = time.perf_counter()
             first = None
             end = None
+            generation_timestamps = []
             for _ in range(max_tokens):
                 token = next(generator)
                 now = time.perf_counter()
+                generation_timestamps.append(now)
                 if first is None:
                     first = now
                 end = now
@@ -234,6 +236,13 @@ def _worker(gpu_layers: int, max_tokens: int, cpu_tensor: str | None = None,
                 if generated > 1 and end > first else None
             )
             mem["vram_used_after_decode_mib"] = used_mib()
+            if generated >= 5:
+                from .decode_windows import summarize_decode_windows
+                mem["decode_windows"] = summarize_decode_windows(
+                    generation_timestamps, len(tokens), n_ctx
+                )
+            else:
+                mem["decode_windows"] = None
 
             # Un testo che finisce dopo pochi token non produce un dato di
             # throughput confrontabile. Non viene considerato benchmark valido.
@@ -282,6 +291,8 @@ def _worker(gpu_layers: int, max_tokens: int, cpu_tensor: str | None = None,
         "Prefill misurato con eval; decode misurato sugli step successivi "
         "al primo token con generate. Picchi NVML campionati ogni 50 ms "
         "sulla GPU intera, non garantiti come massimi assoluti. "
+        "I quartili decode indicano gli intervalli di token generati, "
+        "non la memoria KV assegnata. "
         "Non e' un test di qualita' e non determina il contesto operativo."
     )
     return report
