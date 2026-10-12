@@ -625,6 +625,7 @@ class KaggleSourceTests(unittest.TestCase):
                 "filename": local.name, "quantization": "Q5_K_M",
                 "quality_priority": 700, "kaggle_handle": handle,
                 "repo_id": repo, "source_file_path": local.name,
+                "reported_shard_sizes": [{"bytes": 1024, "estimated": False}],
             }]
             layout = {
                 "metadata": {"general.architecture": "qwen2", "qwen2.block_count": 32},
@@ -658,6 +659,7 @@ class KaggleSourceTests(unittest.TestCase):
                     root=Path(tmp), repo_id=repo,
                     model_id="qwen-2.5-7b-instruct", source="kaggle",
                     kaggle_handle=handle, persist_selection=False,
+                    kaggle_max_download_mib=1, kaggle_min_free_mib=0,
                 )
             self.assertTrue(result["success"])
             self.assertEqual(result["baseline"]["source"], "kaggle")
