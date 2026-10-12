@@ -117,6 +117,29 @@ class CatalogTests(unittest.TestCase):
             quantization_priority("Q3_K_L")["quality_priority"],
         )
 
+    def test_mistral_publisher_rare_iq_quantizations_ranked(self):
+        for label in ("IQ3_S", "IQ1_M", "IQ1_S"):
+            with self.subTest(quantization=label):
+                self.assertIsInstance(
+                    quantization_priority(label)["quality_priority"], int
+                )
+        self.assertLess(
+            quantization_priority("IQ3_M")["quality_priority"],
+            quantization_priority("IQ3_S")["quality_priority"],
+        )
+        self.assertLess(
+            quantization_priority("IQ3_S")["quality_priority"],
+            quantization_priority("Q3_K_S")["quality_priority"],
+        )
+        self.assertLess(
+            quantization_priority("IQ2_XXS")["quality_priority"],
+            quantization_priority("IQ1_M")["quality_priority"],
+        )
+        self.assertLess(
+            quantization_priority("IQ1_M")["quality_priority"],
+            quantization_priority("IQ1_S")["quality_priority"],
+        )
+
     def test_live_inventory_all_nine_extra_types_not_blocked(self):
         variant_list = (
             "IQ2_S", "IQ2_XS", "Q3_K_L-Q8", "Q3_K_XL",
