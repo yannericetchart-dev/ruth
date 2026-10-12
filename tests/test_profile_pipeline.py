@@ -207,8 +207,8 @@ class ProfileIdentityTests(unittest.TestCase):
 
 class ProfilePipelineTests(unittest.TestCase):
     def test_roadmap_lists_future_without_running_it(self):
-        self.assertEqual(IMPLEMENTED, ["inventory", "baseline", "context_gpu"])
-        self.assertEqual(len(ROADMAP), 7)
+        self.assertEqual(IMPLEMENTED, ["inventory", "baseline", "layer_matrix", "context_gpu"])
+        self.assertEqual(len(ROADMAP), 8)
         self.assertFalse(dict(ROADMAP)["mapping"])
         self.assertIn("Test n_ctx=128", brief_event({
             "event": "context_probe_start", "n_ctx": 128, "token_count": 8,
@@ -286,6 +286,21 @@ class ProfilePipelineTests(unittest.TestCase):
                     "profile_generated": False,
                 }
 
+            def fake_matrix(baseline, **kwargs):
+                self.assertTrue(baseline["native_verified_all_gpu"])
+                calls.append("layer_matrix")
+                return {
+                    "success": True, "status": "enumeration_only",
+                    "filename": baseline["filename"],
+                    "model_path": baseline["local_path"],
+                    "block_count": 1, "tensor_count": 2,
+                    "serialized_weight_bytes": 12345,
+                    "serialized_weight_mib": 0.012,
+                    "layers": [{"index": 0}],
+                    "cpu_prefix_scenarios": [],
+                    "cpu_offload_executed": False,
+                }
+
             config = identity()
             log = io.StringIO()
             with (
@@ -293,13 +308,15 @@ class ProfilePipelineTests(unittest.TestCase):
                       side_effect=fake_choose),
                 patch("calibration.gpu_context.search_gpu_context",
                       side_effect=fake_ctx),
+                patch("calibration.layer_matrix.analyze_layer_matrix",
+                      side_effect=fake_matrix),
                 redirect_stdout(log),
             ):
                 first = run_pipeline(config, output_root=root)
                 second = run_pipeline(config, output_root=root)
             self.assertTrue(first["success"])
             self.assertTrue(second["success"])
-            self.assertEqual(calls, ["inventory", "baseline", "context_gpu"])
+            self.assertEqual(calls, ["inventory", "baseline", "layer_matrix", "context_gpu"])
             self.assertIn("Test n_ctx=256", log.getvalue())
             self.assertIn("Decisione: Q4_K_M", log.getvalue())
             self.assertIn("RIUTILIZZO", log.getvalue())
@@ -308,7 +325,7 @@ class ProfilePipelineTests(unittest.TestCase):
             state = json.loads((directory / "state.json").read_text())
             self.assertEqual(
                 [state["phases"][p]["status"] for p in IMPLEMENTED],
-                ["completed"] * 3,
+                ["completed"] * 4,
             )
             self.assertFalse(state["profile_generated"])
             self.assertFalse(state["operationally_selected"])
@@ -356,12 +373,28 @@ class ProfilePipelineTests(unittest.TestCase):
                     "attempts": [{}] * 8,
                 }
 
+            def fake_matrix(baseline, **kwargs):
+                runs.append("layer_matrix")
+                return {
+                    "success": True, "status": "enumeration_only",
+                    "filename": baseline["filename"],
+                    "model_path": baseline["local_path"],
+                    "block_count": 1, "tensor_count": 1,
+                    "serialized_weight_bytes": 1024,
+                    "serialized_weight_mib": 0.001,
+                    "layers": [{"index": 0}],
+                    "cpu_prefix_scenarios": [],
+                    "cpu_offload_executed": False,
+                }
+
             config = identity("qwen-2.5-7b-instruct")
             with (
                 patch("calibration.baseline_discovery.choose_baseline",
                       side_effect=fake_choose),
                 patch("calibration.gpu_context.search_gpu_context",
                       side_effect=fake_context),
+                patch("calibration.layer_matrix.analyze_layer_matrix",
+                      side_effect=fake_matrix),
                 redirect_stdout(io.StringIO()),
             ):
                 first = run_pipeline(config, output_root=root)
@@ -369,7 +402,7 @@ class ProfilePipelineTests(unittest.TestCase):
             self.assertFalse(first["success"])
             self.assertEqual(first["blocked_phase"], "context_gpu")
             self.assertTrue(second["success"])
-            self.assertEqual(runs, ["inventory", "baseline", "context", "context"])
+            self.assertEqual(runs, ["inventory", "baseline", "layer_matrix", "context", "context"])
             state = json.loads((Path(second["run_directory"]) / "state.json").read_text())
             self.assertEqual(state["phases"]["context_gpu"]["status"], "completed")
 
