@@ -266,6 +266,8 @@ class ContextWorkerDiagnosticsTests(unittest.TestCase):
         self.assertIn(2304, calls)
         self.assertEqual(calls.count(2304), 1)
         self.assertIn(2176, calls)
+        self.assertEqual(calls.count(2176), 1)
+        self.assertEqual(calls.count(2560), 1)
         self.assertEqual(result["confirmed_gpu_resident_n_ctx"], 2048)
         self.assertIsNone(result["confirmed_max_gpu_resident_n_ctx"])
         self.assertFalse(result["maximality_proven"])
