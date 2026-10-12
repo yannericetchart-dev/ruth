@@ -59,8 +59,16 @@ def audit_pair(identity: dict, *, output_root: Path | None = None,
         errors.append("Nessun run per questo profilo hardware/config.")
         return result
     try:
-        journal = Journal(folder, identity)
-    except (OSError, ValueError, RuntimeError) as exc:
+        state = json.loads((folder / "state.json").read_text(encoding="utf-8"))
+        if state.get("identity") != identity:
+            raise ValueError("identity mismatch")
+        # Reuse Journal's cache verification without constructing it:
+        # its normal constructor updates the roadmap on disk.
+        journal = object.__new__(Journal)
+        journal.folder = folder
+        journal.identity = identity
+        journal.state = state
+    except (OSError, ValueError, TypeError, RuntimeError) as exc:
         errors.append(f"Stato profilo illeggibile/incompatibile: {type(exc).__name__}")
         return result
     inventory = journal.cached("inventory")
