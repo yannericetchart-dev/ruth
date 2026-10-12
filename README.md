@@ -218,6 +218,49 @@ distribuzione dei pesi **senza fare una nuova prova GPU**:
 
 La pipeline recupera `inventory` e `baseline` gia' verificate e crea
 `models/calibration_runs/<profile_key>/layer_matrix.json`.
+Se esiste un report della versione precedente, Ruth ricrea **soltanto**
+`layer_matrix` con schema 2, senza ritentare la baseline CUDA.
+
+Ogni voce in `tensor_index` contiene nome GGUF esatto, quantizzazione
+del tensore, forma, byte e MiB, categoria e blocco, `tensor_role`,
+selettore `exact_cpu_override_regex`, collegamenti con altri tensori
+dello stesso sottosistema, indici dei blocchi adiacenti e vincoli
+speciali (`placement_constraint`). Ogni blocco contiene inoltre
+`same_block_tensor_names`, `module_type`, `previous_block`,
+`next_block`. I rapporti di vicinanza e sottosistema sono **deduzioni
+dai nomi GGUF**, non connessioni del grafo computazionale dimostrate.
+La collocazione CPU indicata e' una **candidatura da provare**, mai una
+garanzia: `tensor_cpu_native_verified_count=0`.
+
+In Gemma 2, `token_embd.weight` puo' essere condiviso da embedding e
+proiezione d'uscita e non e' spostabile per uso in modo indipendente.
+In Llama, `rope_freqs.weight` puo' avere piu' istanze native da
+verificare separatamente. I vincoli sono esplicitati anche in
+`placement_constraints`.
+
+### Inventari dettagliati per tutti e quattro i modelli Hugging Face
+
+Per verificare **nomi, dimensioni, quantizzazione dei singoli tensori
+e struttura di tutti i blocchi** anche senza una baseline full-GPU:
+
+```bash
+.venv/bin/python -m calibration.layer_matrix \
+  --model all --source bartowski
+```
+
+Il comando usa l'elenco dei file e letture *ranged* dei **soli header**
+dei quattro GGUF di riferimento `Q4_K_M` dal catalogo. I report finiscono
+in `models/calibration_runs/remote_hf_matrices/<model-id>/<file>.json`.
+Ogni rapporto contiene `provenance=remote_gguf_header_only_no_runtime_verification`
+e `baseline_native_verified_all_gpu=false`: **non** prova che il
+modello sia caricabile integralmente su CUDA. Non scarica i pesi
+GGUF e non sposta layer; richiede l'accesso a Hugging Face.
+
+La matrice locale Qwen `Q5_K_L` e' invece ricavata dal GGUF della
+baseline gia' verificata e ha
+`provenance=local_cuda_baseline_verified`. I due file non si
+sovrascrivono. Le analisi con quantizzazioni differenti sono distinte
+anche se la topologia dei blocchi fosse identica.
 Per Qwen Q5_K_L questo report contiene:
 
 - tutti i tensori con nome, tipo GGUF, forma e byte serializzati;
