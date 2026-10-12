@@ -134,11 +134,17 @@ def brief_event(event: dict) -> str:
             f"segnale={event.get('worker_signal')}). "
             "Nessuna assunzione OOM."
         )
-    if kind == "context_sigabrt_boundary":
+    if kind == "context_gpu_validated":
+        maximum = (
+            "massimo verificato" if event.get("maximality_proven")
+            else "massimo ancora incerto"
+        )
         return (
-            f"SIGABRT a n_ctx={event['n_ctx']}: scarto subito questo valore "
-            "senza ripeterlo, continuo la bisezione su n_ctx inferiori; "
-            "limite incerto, non OOM dimostrato."
+            f"n_ctx={event['n_ctx']} VALIDATO full-CUDA "
+            f"| conferme={event['confirmation_rounds']}/"
+            f"{event['confirmation_rounds']} "
+            f"| margine VRAM campionato={event['peak_headroom_mib']} MiB "
+            f"| {maximum}"
         )
     if kind == "context_candidate_limit":
         uncertainty = (
@@ -380,8 +386,11 @@ def _phase_call(name: str, identity: dict, previous: dict,
             ),
             "peak_headroom_mib": report.get("confirmation_min_sampled_headroom_mib"),
             "attempts": len(report.get("attempts") or []),
-            "best_observed_n_ctx_not_confirmed":
+            "highest_gpu_resident_n_ctx_observed":
                 report.get("highest_gpu_resident_n_ctx_observed"),
+            "n_ctx_gpu_resident_validato":
+                report.get("confirmed_gpu_resident_n_ctx")
+                if report.get("confirmation_completed") is True else None,
             "failure": report.get("error"),
         }
         return report, good, summary
@@ -461,7 +470,17 @@ def run_pipeline(identity: dict, *, until: str = "context_gpu",
                 stage + ".json", summary,
             )
             if not good:
-                print(f"[{stage}] NON COMPLETATO: {summary}", flush=True)
+                if (stage == "context_gpu"
+                    and summary.get("n_ctx_gpu_resident_validato") is not None):
+                    print(
+                        f"[context_gpu] n_ctx="
+                        f"{summary['n_ctx_gpu_resident_validato']} "
+                        "VALIDATO full-CUDA; ricerca del massimo "
+                        "INCOMPLETA. Nessun profilo operativo generato.",
+                        flush=True,
+                    )
+                else:
+                    print(f"[{stage}] NON COMPLETATO: {summary}", flush=True)
                 return {
                     "success": False, "blocked_phase": stage, "detail": summary,
                     "run_directory": str(folder), "profile_key": identity["profile_key"],
