@@ -257,12 +257,14 @@ def main(argv: list[str] | None = None) -> int:
         inspect_local=not args.no_local_inspection
     )
     print(
-        "Modello/fonte | GGUF locale | Full CUDA | n_ctx GPU-resident | Fase 1"
+        "Modello/fonte | GGUF selezionato | Locale | Full CUDA | "
+        "n_ctx GPU-resident | Fase 1"
     )
     for r in reports:
         ctx = r["n_ctx_gpu_resident"]
         print(
             f"{r['model_id']} / {r['source']} | "
+            f"{r['quantization'] or '-'} | "
             f"{'SI' if r['downloaded_local_gguf_verified'] else 'NO'} | "
             f"{'SI' if r['full_gpu_baseline_verified'] else 'NO'} | "
             f"{ctx if r['context_gpu_resident_verified'] else 'NON VALIDATO'} | "
