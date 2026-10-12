@@ -196,49 +196,117 @@ def variation_files(handle: str) -> tuple[list[dict], str]:
         return rows, pinned
 
 
+_SPLIT_GGUF = re.compile(
+    r"^(?P<name>.+)-(?P<part>\d{5})-of-(?P<total>\d{5})\.gguf$",
+    re.IGNORECASE,
+)
+
+
+def _gguf_quantization(logical_name: str, gguf_prefix: str) -> tuple[str, bool]:
+    """Read the precision from a whole-model name, never from a split suffix."""
+    matched = logical_name.casefold().startswith(gguf_prefix.casefold())
+    quant = (logical_name[len(gguf_prefix):-5] if matched
+             else logical_name[:-5])
+    return quant, matched
+
+
 def inventory_kaggle(
     repository: str, gguf_prefix: str,
     selected_handle: str | None = None,
 ) -> list[dict]:
-    """List GGUF files actually returned by Kaggle, never invented variants."""
+    """Produce one logical candidate per COMPLETE sharded GGUF group.
+
+    Retain incomplete groups as unranked blockers: it is unsafe to treat
+    a single shard as an independently loadable model. No weight downloads.
+    """
     candidates = []
-    handles = variation_handles(repository, selected_handle)
-    for handle in handles:
+    for handle in variation_handles(repository, selected_handle):
         rows, resolved_handle = variation_files(handle)
+        splits = {}
+        singles = []
         for row in rows:
-            filename = _filename(row)
-            if not filename.casefold().endswith(".gguf"):
+            source_path = _filename(row)
+            if not source_path.casefold().endswith(".gguf"):
                 continue
-            base = Path(filename).name
-            matched_prefix = base.casefold().startswith(gguf_prefix.casefold())
-            # Official publishers can use a different GGUF naming convention.
-            # Report such files as unranked; never silently discard them or
-            # select an unknown derivative as a verified quality baseline.
-            quant = base[len(gguf_prefix):-5] if matched_prefix else base[:-5]
-            ranked = quantization_priority(quant) if matched_prefix else (
-                quantization_priority("")
-            )
-            candidates.append({
-                "repo_id": repository, "filename": base,
-                "filename_matches_model_prefix": matched_prefix,
-                "source_file_path": filename,
+            filename = Path(source_path).name
+            found = _SPLIT_GGUF.fullmatch(filename)
+            if found:
+                index = int(found["part"])
+                total = int(found["total"])
+                # Split numbering is 1-based and must never be trusted blindly.
+                if not (1 <= index <= total <= 99999):
+                    raise RuntimeError("Inventario Kaggle: indice GGUF split non valido.")
+                logical_name = found["name"] + ".gguf"
+                group = splits.setdefault(logical_name.casefold(), {
+                    "logical_name": logical_name, "parts": {}, "total": total,
+                })
+                if group["total"] != total or index in group["parts"]:
+                    raise RuntimeError(
+                        "Inventario Kaggle: shard duplicati o totale incoerente."
+                    )
+                group["parts"][index] = (filename, source_path)
+            else:
+                singles.append((filename, source_path))
+
+        def new_candidate(
+            filename: str, source_path: str, quant: str, matched: bool,
+            *, shard_filenames: list[str], shard_paths: list[str],
+            split_total: int = 1, split_complete: bool = True,
+            missing: list[int] | None = None,
+        ) -> dict:
+            ranked = (quantization_priority(quant) if matched and split_complete
+                      else quantization_priority(""))
+            return {
+                "repo_id": repository,
+                "filename": filename,
+                "source_file_path": source_path,
+                "filename_matches_model_prefix": matched,
                 "quantization": quant, **ranked,
                 "kaggle_handle": resolved_handle,
-                "file_bytes": None,  # Kaggle does not expose GGUF range header.
-                "cuda_baseline_eligible": True,
+                "shard_filenames": shard_filenames,
+                "shard_source_file_paths": shard_paths,
+                "shard_count": split_total,
+                "split_complete": split_complete,
+                "missing_shard_indices": missing or [],
+                "file_bytes": None,
+                "cuda_baseline_eligible": split_complete,
                 "weight_size_source": "unknown_until_local_gguf_download",
-                "ranking_basis": "same_quantization_family_prior_as_huggingface",
+                "ranking_basis": "coarse_quantization_family_prior_not_measured",
                 "source": "kaggle",
-            })
+            }
+
+        for filename, source_path in singles:
+            quant, matched = _gguf_quantization(filename, gguf_prefix)
+            candidates.append(new_candidate(
+                filename, source_path, quant, matched,
+                shard_filenames=[filename], shard_paths=[source_path],
+            ))
+        for group in splits.values():
+            total = group["total"]
+            parts = group["parts"]
+            missing = [i for i in range(1, total + 1) if i not in parts]
+            present = [parts[i] for i in sorted(parts)]
+            logical = group["logical_name"]
+            quant, matched = _gguf_quantization(logical, gguf_prefix)
+            # A valid split set must begin with shard 1; incomplete sets
+            # never proceed to downloads, native parsing, or baseline.
+            first_file, first_path = present[0]
+            candidates.append(new_candidate(
+                first_file, first_path, quant, matched,
+                shard_filenames=[pair[0] for pair in present],
+                shard_paths=[pair[1] for pair in present],
+                split_total=total, split_complete=not missing,
+                missing=missing,
+            ))
+
     if not candidates:
         raise RuntimeError(
             "Nessun file .gguf presente nelle "
             "varianti Kaggle interrogate. Nessun fallback a Hugging Face."
         )
-    # Do not silently choose between same-named files on different variants.
     duplicates = {}
-    for c in candidates:
-        duplicates.setdefault(c["filename"].casefold(), []).append(c)
+    for candidate in candidates:
+        duplicates.setdefault(candidate["filename"].casefold(), []).append(candidate)
     ambiguous = [name for name, group in duplicates.items() if len(group) > 1]
     if ambiguous:
         raise RuntimeError(
