@@ -234,6 +234,7 @@ class LayerMatrixTests(unittest.TestCase):
                         side_effect=choose) as selection,
                   patch("calibration.layer_matrix.analyze_layer_matrix",
                         side_effect=layer_matrix) as matrix,
+                  patch("calibration.layer_export.export_matrix_tables") as csv,
                   patch("calibration.gpu_context.search_gpu_context") as context,
                   redirect_stdout(io.StringIO())):
                 report = run_pipeline(ident, until="layer_matrix",
@@ -244,6 +245,7 @@ class LayerMatrixTests(unittest.TestCase):
             self.assertTrue(repeated["success"])
             self.assertEqual(selection.call_count, 2)
             self.assertEqual(matrix.call_count, 1)
+            csv.assert_called_once()
             context.assert_not_called()
             self.assertTrue(
                 (Path(report["run_directory"]) / "layer_matrix.json").is_file()
