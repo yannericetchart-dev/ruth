@@ -1,100 +1,154 @@
-"""Source-scoped, conservative tensor-size floors for standard Qwen2.5 7B.
+"""Data-driven conservative CUDA weight floors for standard dense decoder GGUFs.
 
-Architecture constants: official Qwen/Qwen2.5-7B-Instruct config.json
-https://huggingface.co/Qwen/Qwen2.5-7B-Instruct/blob/main/config.json
+No model-specific parameter counts: load an explicitly trusted upstream
+config.json declared by the Kaggle source and compute mandatory matrix
+parameters. Only known dense, gated-MLP/GQA decoder structures can use the
+bound; unsupported architectures and unrelated variants return None.
 
-This is NOT a GGUF header or a model-file-size heuristic. For canonical
-publisher Qwen 2.5 7B Instruct, count only necessarily present dense matrices:
-  - 28 blocks of gate/up/down projections,
-  - 28 blocks of Q/K/V/output attention projections,
-  - ONE token embedding matrix (even if the output head is tied).
-Ignore norms, biases, output head and all runtime memory, ensuring a
-conservative *lower* bound for standard FP16 and Q8_0 tensor storage.
-Never extrapolate this bound to arbitrary Kaggle publishers or quantizations.
-
-Even under the more conservative ONE embedding assumption, Q8_0 needs
-more than 6141 MiB of weight payload alone; FP16 needs far more.
+A source config is an *assumption* about the model in a GGUF: it is not a
+remote GGUF tensor header. The bound is deliberately limited to mandatory
+dense matrices and never uses Kaggle download size to infer CUDA viability.
 """
+
+import json
+from pathlib import Path
 
 from model import ModelManager
 
-_SOURCE_REPO = "qwen-lm/qwen2.5"
-_SOURCE_HANDLE_PREFIX = _SOURCE_REPO + "/gguf/7b-instruct"
-_MODEL_ID = "qwen-2.5-7b-instruct"
-_MIB = 1048576
+MIB = 1048576
 
-# Official Qwen2.5-7B-Instruct architecture, excluding all optional matrices.
-_NUM_LAYERS = 28
-_HIDDEN = 3584
-_MLP_INTERMEDIATE = 18944
-_ATTENTION_HEADS = 28
-_KV_HEADS = 4
-_VOCAB = 152064
-
-_MLP_MATRIX_PARAMS = _NUM_LAYERS * 3 * _HIDDEN * _MLP_INTERMEDIATE
-_HEAD_DIM = _HIDDEN // _ATTENTION_HEADS
-_ATTENTION_MATRIX_PARAMS = _NUM_LAYERS * (
-    2 * _HIDDEN * _HIDDEN + 2 * _HIDDEN * _KV_HEADS * _HEAD_DIM
-)
-_SINGLE_EMBEDDING_PARAMS = _VOCAB * _HIDDEN
-_MINIMUM_DENSE_PARAMS = (
-    _MLP_MATRIX_PARAMS + _ATTENTION_MATRIX_PARAMS + _SINGLE_EMBEDDING_PARAMS
-)
-
-# Bits/weight below actual Q8_0 block storage (which also needs scales).
-_MIN_BITS_BY_QUANTIZATION = {"fp16": 16, "q8_0": 8}
+# These are minimum bits per weight, not exact GGUF storage estimates.
+MIN_BITS_PER_WEIGHT = {"fp16": 16, "q8_0": 8}
+# Dense decoder families with Q/K/V/O and gated up/down MLP projections.
+DENSE_GATED_GQA = frozenset(("qwen2", "llama", "mistral"))
 
 
-def conservative_kaggle_weight_floor(model_id: str, candidate: dict,
-                                     total_vram_bytes: int) -> dict | None:
-    """Skip only recognized, canonical candidates whose tensor floor > VRAM.
+def read_architecture_reference(spec: dict) -> dict | None:
+    """Fetch only a small official config.json, never model weights.
 
-    This argument assumes the Qwen publisher's variant follows the standard
-    Qwen2.5-7B-Instruct model architecture and the named FP16/Q8_0 encoding.
-    On publisher/model/handle/format ambiguity, do not skip: return None.
+    Configuration is opt-in per registered Kaggle source. A broken declared
+    reference is an error, not permission to guess or download giant weights.
+    """
+    repo = spec.get("architecture_reference_repo")
+    if not repo:
+        return None
+    if not isinstance(repo, str) or repo.count("/") != 1:
+        raise ValueError("Repository di riferimento architetturale non valido.")
+    from huggingface_hub import hf_hub_download
+
+    path = Path(hf_hub_download(repo_id=repo, filename="config.json"))
+    if path.stat().st_size > 1_048_576:
+        raise ValueError("Config architetturale non ragionevolmente piccolo.")
+    config = json.loads(path.read_text(encoding="utf-8"))
+    if not isinstance(config, dict) or config.get("model_type") != spec["architecture"]:
+        raise ValueError("Config architetturale incompatibile con sorgente GGUF.")
+    return {"config": config, "repo": repo}
+
+
+def mandatory_dense_parameter_floor(config: dict) -> int | None:
+    """Count only mandatory tensor entries, ignoring optional parameters.
+
+    Valid for known dense decoder architectures, not MoE/multimodal/tied
+    special variants. Never extend the inference to an unknown model type.
+    """
+    if not isinstance(config, dict) or config.get("model_type") not in DENSE_GATED_GQA:
+        return None
+    if any(config.get(k) is not None for k in (
+        "num_local_experts", "num_experts", "num_experts_per_tok",
+        "vision_config", "audio_config", "text_config",
+    )):
+        return None
+    fields = (
+        "num_hidden_layers", "hidden_size", "intermediate_size",
+        "num_attention_heads", "num_key_value_heads", "vocab_size",
+    )
+    values = [config.get(name) for name in fields]
+    if any(not isinstance(x, int) or isinstance(x, bool) or x <= 0 for x in values):
+        return None
+    layers, hidden, intermediate, heads, kv_heads, vocab = values
+    if hidden % heads or kv_heads > heads or heads > 1024 or layers > 10000:
+        return None
+    head_dim = config.get("head_dim", hidden // heads)
+    if not isinstance(head_dim, int) or head_dim < 1 or head_dim > hidden:
+        return None
+    # Includes ONE embedding matrix and the gated up/down projections.
+    # Q and O are hidden x hidden; K and V are hidden x kv_heads*head_dim.
+    return (
+        vocab * hidden
+        + layers * (
+            3 * hidden * intermediate
+            + 2 * hidden * hidden
+            + 2 * hidden * kv_heads * head_dim
+        )
+    )
+
+
+def conservative_kaggle_weight_floor(
+    model_id: str, candidate: dict, total_vram_bytes: int, *,
+    reference: dict | None = None,
+) -> dict | None:
+    """For any configured Kaggle model, estimate a *minimum* tensor payload.
+
+    A reference must explicitly match the Kaggle source/variant. Missing
+    or ambiguous evidence returns None so the candidate is not excluded.
     """
     if not isinstance(total_vram_bytes, int) or total_vram_bytes <= 0:
         raise ValueError("Dimensione VRAM non valida.")
-    if model_id != _MODEL_ID:
+    if reference is None:
         return None
-    spec = ModelManager.source_spec(model_id, "kaggle")
-    if spec["repository"] != _SOURCE_REPO:
+    try:
+        spec = ModelManager.source_spec(model_id, "kaggle")
+    except ValueError:
         return None
-    if candidate.get("repo_id") != _SOURCE_REPO:
-        return None
+    source_handle = spec.get("kaggle_handle")
+    requested_handle = candidate.get("kaggle_handle")
     filename = candidate.get("filename")
-    if (not isinstance(filename, str)
-        or not filename.casefold().startswith(
-            spec["gguf_prefix"].casefold()
+    prefix = spec.get("gguf_prefix")
+    if (
+        candidate.get("repo_id") != spec.get("repository")
+        or reference.get("repo") != spec.get("architecture_reference_repo")
+        or not isinstance(source_handle, str)
+        or not isinstance(requested_handle, str)
+        or not (
+            requested_handle == source_handle
+            or (
+                requested_handle.startswith(source_handle + "/")
+                and requested_handle[len(source_handle) + 1:].isdigit()
+            )
         )
+        or not isinstance(filename, str)
+        or not isinstance(prefix, str)
+        or not filename.casefold().startswith(prefix.casefold())
         or not filename.casefold().endswith(".gguf")
         or candidate.get("filename_matches_model_prefix") is False
-        or candidate.get("split_complete") is False):
+        or candidate.get("split_complete") is False
+    ):
         return None
-    handle = candidate.get("kaggle_handle")
-    if (not isinstance(handle, str)
-        or not (handle == _SOURCE_HANDLE_PREFIX
-                or (handle.startswith(_SOURCE_HANDLE_PREFIX + "/")
-                    and handle[len(_SOURCE_HANDLE_PREFIX) + 1:].isdigit()))):
-        return None
-    quant = str(candidate.get("quantization") or "").casefold()
-    bits = _MIN_BITS_BY_QUANTIZATION.get(quant)
+    bits = MIN_BITS_PER_WEIGHT.get(
+        str(candidate.get("quantization") or "").casefold()
+    )
     if bits is None:
         return None
-    bound_bytes = _MINIMUM_DENSE_PARAMS * bits // 8
+    config = reference.get("config")
+    if not isinstance(config, dict) or config.get("model_type") != spec.get("architecture"):
+        return None
+    parameters = mandatory_dense_parameter_floor(config)
+    if parameters is None:
+        return None
+    bytes_floor = parameters * bits // 8
     return {
-        "evidence": "standard_qwen2_5_7b_architecture_dense_matrix_floor",
-        "source_architecture": "Qwen/Qwen2.5-7B-Instruct/config.json",
+        "evidence": "configured_reference_dense_decoder_mandatory_matrix_floor",
+        "source_architecture": reference["repo"] + "/config.json",
         "assumptions": (
-            "Standard Qwen2.5-7B-Instruct shapes and named GGUF "
-            "FP16 or Q8_0 encoding; one embedding matrix only; "
-            "no metadata or runtime CUDA allocation included."
+            "Kaggle model/variant matches configured upstream dense-decoder "
+            "config; standard FP16 or Q8_0 encoding; only necessary matrices "
+            "counted; GGUF tensor header not yet downloaded or verified."
         ),
-        "quantization": quant,
-        "minimum_dense_parameters": _MINIMUM_DENSE_PARAMS,
+        "quantization": str(candidate["quantization"]).casefold(),
+        "minimum_dense_parameters": parameters,
         "minimum_bits_per_weight": bits,
-        "minimum_weight_bytes": bound_bytes,
-        "minimum_weight_mib": round(bound_bytes / _MIB, 1),
-        "total_vram_mib": round(total_vram_bytes / _MIB, 1),
-        "exceeds_total_vram": bound_bytes > total_vram_bytes,
+        "minimum_weight_bytes": bytes_floor,
+        "minimum_weight_mib": round(bytes_floor / MIB, 1),
+        "total_vram_mib": round(total_vram_bytes / MIB, 1),
+        "exceeds_total_vram": bytes_floor > total_vram_bytes,
     }
