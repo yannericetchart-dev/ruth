@@ -290,6 +290,8 @@ def probe_context(model_path: Path, n_ctx: int,
         report["failure_class"] = None
     elif report.get("suspected_cuda_oom") is True:
         report["failure_class"] = "native_cuda_oom"
+    elif report.get("native_cuda_resource_allocation_failed") is True:
+        report["failure_class"] = "native_cuda_resource_allocation_failure"
     elif report.get("failure_hint") == "ambiguous_context_initialization":
         report["failure_class"] = "ambiguous_context_initialization"
     elif not valid_json:
@@ -326,9 +328,10 @@ def search_gpu_context(
 ) -> dict:
     """Bounded doubling + token-granularity bisection, then confirmation.
 
-    Failure modes other than a native OOM are not assumed to be memory
-    capacity limits. Inconclusive results stop the search unless explicitly
-    opted into treating ambiguous context errors as a search boundary.
+    Only explicit native CUDA OOM or GPU-resource allocation errors establish
+    a boundary for THIS runtime configuration. The latter is not called OOM.
+    All other inconclusive failures stop the search unless the caller
+    explicitly opts into treating ambiguous context errors as a boundary.
     """
     if model_id not in ModelManager.CATALOG:
         raise ValueError(f"Modello non supportato: {model_id}")
@@ -498,7 +501,14 @@ def search_gpu_context(
 
     def is_boundary(failure: dict) -> bool:
         cause = failure.get("failure_class")
-        if cause == "native_cuda_oom":
+        if cause in ("native_cuda_oom", "native_cuda_resource_allocation_failure"):
+            # A cuBLAS handle resource allocation failure is a measured
+            # inability to execute this context with the fixed GPU setup.
+            # It does not establish byte-accurate VRAM exhaustion.
+            if cause == "native_cuda_resource_allocation_failure":
+                result.setdefault("cuda_resource_failure_boundaries", []).append(
+                    failure.get("requested_n_ctx")
+                )
             return True
         if cause == "ambiguous_context_initialization" and retry_ambiguous_context:
             result["ambiguous_boundary_used"] = True
