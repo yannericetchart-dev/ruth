@@ -328,13 +328,26 @@ def search_gpu_context(
         raise RuntimeError("Fonte della baseline diversa da quella richiesta.")
     if selected_source == "kaggle":
         from .kaggle_source import validate_handle
-        handle = (kaggle_handle
-                  or (baseline_selection or {}).get("kaggle_handle")
-                  or spec.get("kaggle_handle"))
+        requested_handle = kaggle_handle or spec.get("kaggle_handle")
+        baseline_handle = (baseline_selection or {}).get("kaggle_handle")
+        handle = baseline_handle or requested_handle
         if not handle:
             raise RuntimeError("Baseline Kaggle senza handle di variante.")
         expected_repo = "/".join(handle.split("/")[:2])
         validate_handle(handle, expected_repo)
+        if requested_handle:
+            validate_handle(requested_handle,
+                            "/".join(requested_handle.split("/")[:2]))
+            # The Kaggle metadata endpoint can resolve an unversioned handle
+            # to a verified numeric version; this is not a publisher fallback.
+            allowed = (
+                handle == requested_handle
+                or (len(requested_handle.split("/")) == 4
+                    and handle.startswith(requested_handle + "/")
+                    and handle.rsplit("/", 1)[-1].isdigit())
+            )
+            if not allowed:
+                raise RuntimeError("Variante/versione Kaggle diversa dalla richiesta.")
     else:
         if kaggle_handle is not None:
             raise RuntimeError("Handle Kaggle non valido per Hugging Face.")
@@ -349,6 +362,20 @@ def search_gpu_context(
             f"Baseline full-GPU non selezionata per {model_id}. "
             "Eseguire prima calibration.baseline_discovery."
         )
+    if selected_source == "kaggle":
+        pinned_handle = selection.get("kaggle_handle")
+        if not pinned_handle:
+            raise RuntimeError("Baseline Kaggle senza handle registrato.")
+        if requested_handle:
+            matching = (
+                pinned_handle == requested_handle
+                or (len(requested_handle.split("/")) == 4
+                    and pinned_handle.startswith(requested_handle + "/")
+                    and pinned_handle.rsplit("/", 1)[-1].isdigit())
+            )
+            if not matching:
+                raise RuntimeError("Versione Kaggle non corrisponde al profilo.")
+        handle = pinned_handle
     if (selection.get("native_verified_all_gpu") is not True
         or selection.get("model_id", model_id) != model_id
         or selection.get("source", ModelManager.CATALOG[model_id]["source"])
