@@ -244,6 +244,7 @@ class Journal:
                 baseline is not None
                 and data.get("success") is True
                 and data.get("status") == "enumeration_only"
+                and data.get("schema_version", 0) >= 2
                 and data.get("cpu_offload_executed") is False
                 and data.get("filename") == selected.get("filename")
                 and data.get("model_path") == str(path.resolve())
