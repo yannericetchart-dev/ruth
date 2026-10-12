@@ -136,6 +136,85 @@ class PhaseOneAuditTests(unittest.TestCase):
             self.assertEqual(result["checks"]["tensor_count"], 339)
             self.assertEqual((run / "state.json").read_bytes(), state_before)
 
+    def test_blocked_context_preserves_verified_floor_but_not_max(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            manager, ident, run, gguf = self.prepare(root)
+            context_file = run / "context_gpu.json"
+            data = json.loads(context_file.read_text())
+            data.update({
+                "success": False, "measurement_completed": False,
+                "confirmation_completed": True,
+                "maximality_proven": False,
+                "confirmed_max_gpu_resident_n_ctx": None,
+                "confirmed_gpu_resident_n_ctx": 256,
+                "uncertain_failure_boundaries": [{
+                    "n_ctx": 300, "failure_class": "worker_protocol_error",
+                    "signal": "SIGABRT",
+                }],
+            })
+            context_file.write_text(json.dumps(data))
+            state_path = run / "state.json"
+            state = json.loads(state_path.read_text())
+            state["phases"]["context_gpu"]["status"] = "blocked"
+            state_path.write_text(json.dumps(state))
+            before = state_path.read_bytes()
+
+            with patch(
+                "calibration.phase1_audit.ModelManager",
+                side_effect=lambda: ModelManager(root=manager.root),
+            ):
+                result = audit_pair(
+                    ident, output_root=root / "runs", inspect_local=False
+                )
+            self.assertFalse(result["phase1_complete"])
+            self.assertFalse(result["context_gpu_resident_verified"])
+            self.assertIsNone(result["n_ctx_gpu_resident"])
+            self.assertEqual(
+                result["confirmed_lower_bound_gpu_resident_n_ctx"], 256
+            )
+            self.assertFalse(result["context_maximality_proven"])
+            self.assertIn("massimo inconclusivo", result["errors"][0])
+            self.assertEqual(state_path.read_bytes(), before)
+
+    def test_blocked_context_never_accepts_floor_without_native_proofs(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            manager, ident, run, gguf = self.prepare(root)
+            context_file = run / "context_gpu.json"
+            data = json.loads(context_file.read_text())
+            data.update({
+                "success": False, "measurement_completed": False,
+                "confirmation_completed": True,
+                "maximality_proven": False,
+                "confirmed_max_gpu_resident_n_ctx": None,
+                "confirmed_gpu_resident_n_ctx": 256,
+                "uncertain_failure_boundaries": [{"n_ctx": 300}],
+            })
+            data["attempts"][0]["gpu_runtime_validation"]["kv"][
+                "verified_gpu_resident"
+            ] = False
+            data["attempts"][1]["gpu_runtime_validation"]["kv"][
+                "verified_gpu_resident"
+            ] = False
+            context_file.write_text(json.dumps(data))
+            state_path = run / "state.json"
+            state = json.loads(state_path.read_text())
+            state["phases"]["context_gpu"]["status"] = "blocked"
+            state_path.write_text(json.dumps(state))
+            with patch(
+                "calibration.phase1_audit.ModelManager",
+                side_effect=lambda: ModelManager(root=manager.root),
+            ):
+                result = audit_pair(
+                    ident, output_root=root / "runs", inspect_local=False
+                )
+            self.assertIsNone(
+                result["confirmed_lower_bound_gpu_resident_n_ctx"]
+            )
+            self.assertFalse(result["phase1_complete"])
+            self.assertFalse(result["context_gpu_resident_verified"])
+
     def test_missing_context_is_incomplete_and_does_not_probe_cuda(self):
         with tempfile.TemporaryDirectory() as temp:
             root = Path(temp)
