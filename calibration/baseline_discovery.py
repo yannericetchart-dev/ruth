@@ -43,11 +43,11 @@ def all_gpu_rules(layout: dict) -> tuple[list[dict], dict]:
     if not names or len(names) != len(set(names)):
         raise ValueError("Inventario GGUF vuoto o duplicato.")
     architecture = layout["metadata"].get("general.architecture")
-    if architecture not in ("gemma2", "llama"):
+    if architecture not in ("gemma2", "llama", "qwen2"):
         raise ValueError(f"Architettura non validata per full-GPU: {architecture}")
     tied = architecture == "gemma2" and "token_embd.weight" in names
-    if architecture == "llama" and not {"token_embd.weight", "output.weight"}.issubset(names):
-        raise ValueError("Llama: embedding e output.weight indipendenti mancanti.")
+    if architecture in ("llama", "qwen2") and not {"token_embd.weight", "output.weight"}.issubset(names):
+        raise ValueError(f"{architecture}: embedding e output.weight indipendenti mancanti.")
     grouped = [n for n in names if re.fullmatch(r"blk\.\d+\..+", n)]
     other = [n for n in names if n not in grouped and (n != "token_embd.weight" or not tied)]
     rules = []
@@ -66,14 +66,14 @@ def all_gpu_rules(layout: dict) -> tuple[list[dict], dict]:
         raise RuntimeError("Copertura nativa di tutti i tensori incompleta.")
 
     occurrences = {"token_embd.weight": 2} if tied else {}
-    if architecture == "llama" and "rope_freqs.weight" in names:
+    if architecture in ("llama", "qwen2") and "rope_freqs.weight" in names:
         # llama.cpp materializes the one GGUF rope_freqs.weight tensor for
         # every transformer block. On Llama 3.1 8B it logs 32 native
         # override occurrences, all of which must use GPU VRAM.
-        block_count = layout["metadata"].get("llama.block_count")
+        block_count = layout["metadata"].get(f"{architecture}.block_count")
         if (not isinstance(block_count, int) or isinstance(block_count, bool)
             or block_count < 1):
-            raise ValueError("Llama: block_count non valido per rope_freqs.weight.")
+            raise ValueError(f"{architecture}: block_count non valido per rope_freqs.weight.")
         occurrences["rope_freqs.weight"] = block_count
 
     expected = {
@@ -116,6 +116,8 @@ def minimal_chat_prompt(architecture: str) -> str:
             "Ciao.<|eot_id|>"
             "<|start_header_id|>assistant<|end_header_id|>\n\n"
         )
+    if architecture == "qwen2":
+        return "<|im_start|>user\nCiao.<|im_end|>\n<|im_start|>assistant\n"
     raise ValueError(f"Chat template non validato: {architecture}")
 
 

@@ -14,6 +14,15 @@ class ModelManager:
             "gguf_prefix": "gemma-2-9b-it-",
             "architecture": "gemma2",
         },
+        "qwen-2.5-7b-instruct": {
+            "source": "bartowski",
+            "repository": "bartowski/Qwen2.5-7B-Instruct-GGUF",
+            "filename": "Qwen2.5-7B-Instruct-Q4_K_M.gguf",
+            "format": "gguf",
+            "quantization": "Q4_K_M",
+            "gguf_prefix": "Qwen2.5-7B-Instruct-",
+            "architecture": "qwen2",
+        },
         "llama-3.1-8b-instruct": {
             "source": "bartowski",
             "repository": "bartowski/Meta-Llama-3.1-8B-Instruct-GGUF",
