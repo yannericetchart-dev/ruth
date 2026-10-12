@@ -323,25 +323,45 @@ def inventory_kaggle(
 
 
 def download_kaggle(candidate: dict, destination: Path) -> Path:
-    """Download exactly one Kaggle GGUF and preserve a local source copy."""
+    """Download every required shard, return shard 1 for llama.cpp.
+
+    All remote paths originate from a concrete Kaggle inventory. Never
+    load an incomplete set, and never silently switch to Hugging Face.
+    """
     import kagglehub
 
-    filename = candidate["filename"]
-    source_file_path = candidate["source_file_path"]
-    if (not filename.casefold().endswith(".gguf")
-        or Path(source_file_path).name != filename):
-        raise ValueError("File GGUF Kaggle non sicuro o inatteso.")
     handle = validate_handle(candidate["kaggle_handle"], candidate["repo_id"])
-    downloaded = Path(kagglehub.model_download(handle, path=source_file_path))
-    if not downloaded.is_file() or downloaded.name != filename:
-        raise RuntimeError("Kaggle non ha restituito il GGUF richiesto.")
+    filenames = candidate.get("shard_filenames") or [candidate["filename"]]
+    paths = candidate.get("shard_source_file_paths") or [
+        candidate["source_file_path"]
+    ]
+    if (candidate.get("split_complete") is False
+        or not filenames or len(filenames) != len(paths)
+        or len(filenames) != candidate.get("shard_count", len(filenames))
+        or len(set(filenames)) != len(filenames)
+        or filenames[0] != candidate["filename"]):
+        raise ValueError("GGUF Kaggle: gruppo shard mancante o incoerente.")
+
+    for filename, source_file_path in zip(filenames, paths):
+        parts = Path(source_file_path).parts
+        if (not filename.casefold().endswith(".gguf")
+            or Path(source_file_path).name != filename
+            or any(part in (".", "..") for part in parts)
+            or Path(source_file_path).is_absolute()):
+            raise ValueError("Percorso GGUF Kaggle non sicuro o inatteso.")
+
     destination.mkdir(parents=True, exist_ok=True)
-    target = destination / filename
-    if not target.is_file():
+    for filename, source_file_path in zip(filenames, paths):
+        target = destination / filename
+        if target.is_file():
+            continue
+        downloaded = Path(kagglehub.model_download(handle, path=source_file_path))
+        if not downloaded.is_file() or downloaded.name != filename:
+            raise RuntimeError("Kaggle non ha restituito lo shard GGUF richiesto.")
         partial = target.with_suffix(target.suffix + ".part")
         try:
             shutil.copyfile(downloaded, partial)
             partial.replace(target)
         finally:
             partial.unlink(missing_ok=True)
-    return target
+    return destination / filenames[0]
