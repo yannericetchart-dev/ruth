@@ -207,3 +207,95 @@ def _matrix_from_layout(
 
     from .layer_dependencies import annotate_matrix
     return annotate_matrix(report)
+
+
+def remote_huggingface_matrices(
+    models: list[str], *, output_root: Path | None = None,
+    catalog_inventory=None, ranged_header=None,
+) -> list[dict]:
+    """Catalog four HF models at their published default Q4_K_M GGUF format.
+
+    Network operations fetch model listings and GGUF headers only.
+    Does NOT run baseline, perform CUDA probes, or download model weights.
+    """
+    from model import ModelManager
+    from .gguf_catalog import inventory, remote_header
+    from .profile_pipeline import atomic_json
+
+    catalog_inventory = catalog_inventory or inventory
+    ranged_header = ranged_header or remote_header
+    root = (Path(output_root).expanduser().resolve()
+            if output_root else
+            ModelManager().root / "calibration_runs" / "remote_hf_matrices")
+    reports = []
+    for model_id in models:
+        spec = ModelManager.source_spec(model_id, "bartowski")
+        name = spec["filename"]
+        candidates = catalog_inventory(spec["repository"])
+        matches = [item for item in candidates if item["filename"] == name]
+        if len(matches) != 1:
+            raise RuntimeError(
+                f"{model_id}: GGUF di riferimento {name} non presente nel catalogo."
+            )
+        candidate = matches[0]
+        if candidate.get("quantization") != spec["quantization"]:
+            raise RuntimeError(
+                f"{model_id}: quantizzazione della variante non coerente."
+            )
+        layout = ranged_header(
+            spec["repository"], name, candidate["file_bytes"],
+            include_tensors=True,
+        )
+        if layout["metadata"].get("general.architecture") != spec["architecture"]:
+            raise RuntimeError(
+                f"{model_id}: architettura remota diversa dalla dichiarata."
+            )
+        if layout["tensor_count"] != len(layout["tensors"]):
+            raise RuntimeError(f"{model_id}: conteggio tensori remoto incoerente.")
+        report = analyze_remote_header_layout(
+            layout, model_id=model_id, repository=spec["repository"],
+            filename=name, quantization=spec["quantization"],
+        )
+        path = root / model_id / (name + ".json")
+        atomic_json(path, report)
+        report["report_path"] = str(path)
+        reports.append(report)
+    return reports
+
+
+def main(argv: list[str] | None = None) -> int:
+    import argparse
+    from model import ModelManager
+
+    parser = argparse.ArgumentParser(
+        description="Matrice GGUF via header Hugging Face, senza download pesi/GPU."
+    )
+    parser.add_argument("--model", default="all",
+                        choices=["all", *sorted(ModelManager.CATALOG)])
+    parser.add_argument("--source", default="bartowski", choices=["bartowski"])
+    parser.add_argument("--output-root", type=Path, default=None)
+    args = parser.parse_args(argv)
+    models = sorted(ModelManager.CATALOG) if args.model == "all" else [args.model]
+    errors = 0
+    for model_id in models:
+        try:
+            reports = remote_huggingface_matrices(
+                [model_id], output_root=args.output_root
+            )
+        except Exception as exc:
+            errors += 1
+            print(f"[{model_id}] BLOCCATO: {type(exc).__name__}: {exc}")
+            continue
+        for report in reports:
+            print(
+                f"[{report['model_id']}] HEADER HF: "
+                f"{report['block_count']} layer, {report['tensor_count']} tensori "
+                f"| {report['serialized_weight_mib']} MiB serializzati "
+                f"| {report['report_path']}"
+            )
+    print("Nessun peso GGUF scaricato o trasferimento CPU/GPU eseguito.")
+    return 1 if errors else 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
