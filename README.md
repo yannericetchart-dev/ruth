@@ -294,43 +294,56 @@ Su Qwen Hugging Face Q5_K_L, un test a \`n_ctx=2048\` ha misurato
 non una riserva operativa sicura. Ruth non modifica automaticamente
 batch, KV, mapping o quantizzazione per far risultare la prova valida.
 
-Per Qwen Kaggle si usa una pipeline distinta, protetta da un limite
-di trasferimento cumulativo. **Senza autorizzazione esplicita, Ruth
-non scarica alcun nuovo GGUF Kaggle** (riutilizza soltanto shard
-gia' presenti). Una esecuzione deliberatamente autorizzata e':
+Per Qwen Kaggle Ruth parte dalla migliore quantizzazione potenzialmente
+full-CUDA, **senza scaricare GGUF che hanno gia' un limite inferiore
+architetturale dei pesi superiore alla VRAM totale**. Questo vale
+per la variante ufficiale Qwen2.5 7B con FP16 e Q8_0:
+
+- FP16: minimo 13.485,5 MiB di pesi densi obbligatori;
+- Q8_0: minimo 6.742,8 MiB (almeno 8 bit per peso);
+- GPU RTX 4050: 6.141 MiB di VRAM totale.
+
+Il limite deriva dalle dimensioni ufficiali dei layer Qwen2.5 7B
+(28 blocchi, hidden 3584, MLP 18944, vocabolario 152064,
+28 attention head di cui 4 KV): comprende MLP, attention
+e **una sola** matrice embedding. Esclude output head, layernorm,
+metadata, KV e buffer compute, quindi e' un limite conservativo
+per i **GGUF standard FP16 e Q8_0**. Fonte architettura:
+https://huggingface.co/Qwen/Qwen2.5-7B-Instruct/blob/main/config.json
+Per file con provenienza o quantizzazione diversa non si assume la
+stessa prova. Q6_K e le quantizzazioni inferiori restano da testare.
+
+Il **primo candidato non escluso** per la RTX 4050 e' Q6_K
+(catalogo Kaggle ~5.964 MiB, 2 shard), ma il catalogo da solo non
+dimostra che i pesi e la KV entrino in VRAM. La baseline esegue
+l'ispezione GGUF e la prova CUDA nativa solo dopo un download
+esplicitamente autorizzato.
 
 ```bash
+.venv/bin/python -m calibration.kaggle_preflight \
+  --model qwen-2.5-7b-instruct
+
+# Approva fino a 6400 MiB di shard Kaggle mancanti: Q6_K,
+# non FP16 o Q8_0. I 6400 MiB sono un budget catalogo,
+# non un limite rigoroso al traffico di rete.
 .venv/bin/python -m calibration.profile_pipeline \
   --model qwen-2.5-7b-instruct --source kaggle \
-  --until baseline --kaggle-max-download-mib 16000
+  --until baseline --kaggle-max-download-mib 6400
 ```
 
-Il numero **16000 e' un esempio di budget approvato**, non un valore
-automatico: il catalogo attuale riporta il primo FP16 a circa
-14532 MiB (4 shard). Questa esecuzione potrebbe quindi avviare
-un download di circa 14,5 GiB prima di conoscere i byte esatti
-dei tensori GGUF. Il budget si consuma **cumulativamente per run**
-solo sugli shard mancanti. Se la candidata migliore supera il
-budget residuo, ha dimensione non nota o manca spazio disco,
-Ruth interrompe la baseline **prima di KaggleHub**, senza saltare
-silenziosamente verso quantizzazioni inferiori.
+**Senza opzione `--kaggle-max-download-mib` non viene autorizzato
+alcun nuovo download Kaggle.** Il budget e' cumulativo nella stessa
+esecuzione; se Q6_K viene escluso e il budget residuo non copre
+Q5_K_M, Ruth blocca la baseline senza saltare il miglior candidato
+non verificato. Per autorizzare anche Q5_K_M occorrerebbe un budget
+cumulativo maggiore, approvato esplicitamente.
 
-La riserva disco predefinita e' 8192 MiB oltre alla stima della
-cache KaggleHub e della copia locale; su uno stesso volume la
-previsione include due copie e un 5% aggiuntivo per arrotondamenti.
-Il cache root predefinito di KaggleHub e' ~/.cache/kagglehub e puo'
-essere impostato con KAGGLEHUB_CACHE. Le dimensioni catalogo sono
-spesso arrotondate: il budget non e' un limite di rete esatto.
-Rieseguire la baseline in un secondo momento riutilizza gli shard
-locali e applica una nuova autorizzazione soltanto ai download
-ancora necessari. Non utilizzare --rerun se si desidera conservare
-inventario e baseline gia' confermati.
-
-**Il preflight non e' una prova GPU:** non basta che il file
-superi o rientri nella VRAM per escludere o convalidare un
-modello. L'eventuale impossibilita' della baseline full-CUDA va
-verificata con pesi locali e runtime nativo, e i profili Kaggle
-e Bartowski rimangono separati.
+Ruth riserva per impostazione predefinita altri 8192 MiB sul disco,
+oltre al costo stimato della cache KaggleHub e della copia locale.
+Sullo stesso volume stima due copie e un +5% per arrotondamenti.
+Le dimensioni catalogo possono differire dai byte effettivamente
+trasferiti e non costituiscono prova di residenza CUDA. I profili
+Kaggle e Bartowski rimangono indipendenti.
 
 Il **preflight Kaggle senza download** raggruppa le dimensioni
 riportate dalla CLI per ogni quantizzazione e per tutti gli shard:
