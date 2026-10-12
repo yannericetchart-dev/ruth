@@ -1,0 +1,171 @@
+"""Unit coverage for five-pair phase 1 auditing, no GPU model loads."""
+
+import json
+from pathlib import Path
+import tempfile
+import unittest
+from unittest.mock import patch
+
+from calibration.phase1_audit import audit_pair, model_source_pairs
+from model import ModelManager
+
+
+class PhaseOneAuditTests(unittest.TestCase):
+    def test_registry_has_exactly_five_model_source_pairs(self):
+        pairs = model_source_pairs()
+        self.assertEqual(len(pairs), 5)
+        self.assertEqual(
+            len(model_source_pairs(source="bartowski")), 4
+        )
+        self.assertEqual(
+            model_source_pairs(source="kaggle"),
+            [("qwen-2.5-7b-instruct", "kaggle")]
+        )
+
+    def identity(self, model="qwen-2.5-7b-instruct",
+                 source="bartowski"):
+        spec = ModelManager.source_spec(model, source)
+        return {
+            "profile_key": "synthetic-identity-audit",
+            "choices": {
+                "model_id": model, "source": source,
+                "repository": spec["repository"],
+                "kaggle_handle": spec.get("kaggle_handle"),
+            },
+            "reference_runtime": {
+                "context_confirm_rounds": 2,
+            },
+        }
+
+    def prepare(self, root, *, with_context=True):
+        manager = ModelManager(root=root / "models")
+        ident = self.identity()
+        model = "qwen-2.5-7b-instruct"
+        spec = ModelManager.source_spec(model, "bartowski")
+        weights = manager.model_directory(model, "bartowski")
+        weights.mkdir(parents=True)
+        gguf = weights / "selected.gguf"
+        gguf.write_bytes(b"simulated weights")
+        run = root / "runs" / ident["profile_key"]
+        run.mkdir(parents=True)
+        baseline_selected = {
+            "model_id": model, "source": "bartowski",
+            "repository": spec["repository"], "architecture": "qwen2",
+            "filename": gguf.name, "local_path": str(gguf),
+            "quantization": "Q4_K_M", "native_verified_all_gpu": True,
+            "baseline_probe_n_ctx": 64,
+        }
+        baseline = {
+            "success": True,
+            "baseline": baseline_selected,
+            "attempts": [{
+                "status": "selected_full_gpu_baseline",
+                "filename": gguf.name,
+                "test": {
+                    "success": True,
+                    "full_gpu_native_verification": {"verified": True},
+                    "measurements": {
+                        "minimal_inference_completed": True,
+                        "vram_peak_sampled_mib": 5900,
+                    },
+                },
+            }],
+        }
+        def good_probe():
+            return {
+                "requested_n_ctx": 256, "success": True,
+                "full_gpu_native_verification": {"verified": True},
+                "gpu_runtime_validation": {
+                    "verified": True,
+                    "kv": {"verified_gpu_resident": True},
+                },
+            }
+        context = {
+            "success": True, "measurement_completed": True,
+            "model_id": model, "filename": gguf.name,
+            "quantization": "Q4_K_M",
+            "confirmed_max_gpu_resident_n_ctx": 256,
+            "confirmation": [{"success": True}, {"success": True}],
+            "attempts": [good_probe(), good_probe()],
+            "confirmation_min_sampled_headroom_mib": 50,
+            "search_ceiling": 8192,
+        }
+        files = {
+            "inventory": {"inventory_only": True,
+                          "inventory": [{"filename": gguf.name}],
+                          "unranked_quantizations": []},
+            "baseline": baseline,
+        }
+        if with_context:
+            files["context_gpu"] = context
+        phases = {}
+        for key, data in files.items():
+            (run / (key + ".json")).write_text(json.dumps(data))
+            phases[key] = {
+                "status": "completed",
+                "result_file": key + ".json"
+            }
+        state = {"identity": ident, "phases": phases}
+        (run / "state.json").write_text(json.dumps(state))
+        return manager, ident, run, gguf
+
+    def test_complete_profile_requires_cuda_verified_baseline_and_context(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            manager, ident, run, gguf = self.prepare(root)
+            state_before = (run / "state.json").read_bytes()
+            layout = {
+                "metadata": {"general.architecture": "qwen2"},
+                "shard_count": 1, "tensor_count": 339,
+                "weights_bytes": 10000,
+            }
+            real_manager = ModelManager
+            with (
+                patch("calibration.phase1_audit.ModelManager",
+                      side_effect=lambda: real_manager(root=manager.root)),
+                patch("calibration.phase1_audit.inspect_gguf",
+                      return_value=layout) as inspection,
+            ):
+                result = audit_pair(ident, output_root=root / "runs")
+            inspection.assert_called_once()
+            self.assertTrue(result["phase1_complete"])
+            self.assertTrue(result["downloaded_local_gguf_verified"])
+            self.assertTrue(result["full_gpu_baseline_verified"])
+            self.assertTrue(result["context_gpu_resident_verified"])
+            self.assertEqual(result["n_ctx_gpu_resident"], 256)
+            self.assertEqual(result["checks"]["tensor_count"], 339)
+            self.assertEqual((run / "state.json").read_bytes(), state_before)
+
+    def test_missing_context_is_incomplete_and_does_not_probe_cuda(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            manager, ident, run, gguf = self.prepare(
+                root, with_context=False
+            )
+            with patch("calibration.phase1_audit.ModelManager",
+                       side_effect=lambda: ModelManager(root=manager.root)):
+                result = audit_pair(
+                    ident, output_root=root / "runs",
+                    inspect_local=False,
+                )
+            self.assertTrue(result["full_gpu_baseline_verified"])
+            self.assertFalse(result["phase1_complete"])
+            self.assertFalse(result["context_gpu_resident_verified"])
+            self.assertIsNone(result["n_ctx_gpu_resident"])
+            self.assertIn("non ancora completato", result["errors"][0])
+
+    def test_missing_shard_or_empty_local_file_is_not_reported_as_downloaded(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            manager, ident, run, gguf = self.prepare(root)
+            gguf.write_bytes(b"")
+            with patch("calibration.phase1_audit.ModelManager",
+                       side_effect=lambda: ModelManager(root=manager.root)):
+                result = audit_pair(ident, output_root=root / "runs")
+            self.assertFalse(result["downloaded_local_gguf_verified"])
+            self.assertFalse(result["full_gpu_baseline_verified"])
+            self.assertFalse(result["phase1_complete"])
+
+
+if __name__ == "__main__":
+    unittest.main()
