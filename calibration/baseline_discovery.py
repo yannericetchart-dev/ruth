@@ -584,6 +584,7 @@ def choose_baseline(
             # don't mislabel broken adapter or missing logs as a bad GGUF.
             if measured.get("failure_hint") not in (
                 "explicit_cuda_oom_evidence",
+                "explicit_cuda_resource_allocation_failure",
                 "ambiguous_context_initialization",
             ) and measured.get("suspected_cuda_oom") is not True:
                 record["needs_diagnostic_review"] = True
