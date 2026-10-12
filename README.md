@@ -249,6 +249,21 @@ tutte le prove. La prova di contesto avvia worker CUDA isolati e
 puo' richiedere numerose iterazioni/tempo. Il massimo riportato
 e' diagnostico: non implica un margine operativo sicuro.
 
+Quando un worker di contesto non produce JSON valido, Ruth registra
+\`worker_returncode\`, \`worker_signal\` e lo stato del protocollo,
+poi riprova **una sola volta** in un nuovo processo CUDA. Un segnale
+come SIGKILL da solo **non dimostra** un OOM CUDA: senza indizi nativi
+espliciti la ricerca rimane inconclusiva. Il report fallito conserva
+\`highest_gpu_resident_n_ctx_observed\`, che e' soltanto il miglior
+contesto passato durante la ricerca: **non** e' un massimo confermato
+e non soddisfa la fase 1. Una ripresa senza \`--rerun\` riutilizza
+la baseline salvata e ripete la sola ricerca del contesto.
+
+Su Qwen Hugging Face Q5_K_L, un test a \`n_ctx=2048\` ha misurato
+6139,3 MiB su 6141 MiB: appena 1,7 MiB di margine campionato,
+non una riserva operativa sicura. Ruth non modifica automaticamente
+batch, KV, mapping o quantizzazione per far risultare la prova valida.
+
 Per Qwen Kaggle si usa una pipeline distinta:
 
 \`\`\`bash
