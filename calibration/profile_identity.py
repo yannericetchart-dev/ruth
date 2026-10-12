@@ -51,15 +51,7 @@ def validate_choices(model_id: str, source: str = "bartowski",
                      engine: str = "llama.cpp",
                      method: str = "llama_cpp_python") -> dict:
     """Validate user options independently of hardware probing."""
-    catalog = ModelManager.CATALOG
-    if model_id not in catalog:
-        raise ValueError(f"Modello non registrato: {model_id}")
-    item = catalog[model_id]
-    if source != item["source"]:
-        raise ValueError(
-            f"Fonte '{source}' non disponibile per {model_id}; "
-            f"configurata '{item['source']}'."
-        )
+    item = ModelManager.source_spec(model_id, source)
     if (engine, method) not in SUPPORTED_PAIRS:
         raise ValueError(
             f"Motore/metodo non implementati: {engine}/{method}. "
@@ -79,14 +71,15 @@ def resolve_identity(model_id: str, source: str | None = None,
     source = source or ModelManager.CATALOG[model_id]["source"]
     item = validate_choices(model_id, source, engine, method)
     selected_repository = item["repository"]
-    if kaggle_handle is not None:
-        if source != "kaggle":
-            raise ValueError("--kaggle-handle richiede la fonte kaggle.")
+    if source == "kaggle":
+        kaggle_handle = kaggle_handle or item.get("kaggle_handle")
+        if not kaggle_handle:
+            raise ValueError("Fonte Kaggle senza handle GGUF verificabile.")
         from .kaggle_source import validate_handle
-        # Kaggle hosts multiple publishers. A full versioned handle may
-        # identify a different publisher of this model family.
         selected_repository = "/".join(kaggle_handle.split("/")[:2])
         validate_handle(kaggle_handle, selected_repository)
+    elif kaggle_handle is not None:
+        raise ValueError("--kaggle-handle richiede la fonte kaggle.")
     support = SUPPORTED_PAIRS[(engine, method)]
     if status is None:
         status = GPUManager.calibration_status()
