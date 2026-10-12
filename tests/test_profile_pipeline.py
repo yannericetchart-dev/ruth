@@ -85,7 +85,7 @@ class ProfileIdentityTests(unittest.TestCase):
                   return_value="0.3.36"),
         ):
             for model, handle in (
-                ("gemma-2-9b-it", "google/gemma-2/gguf/2.0-9b-it"),
+                ("gemma-2-9b-it", "google/gemma-2/gguf/2.0-9b-it/1"),
                 ("qwen-2.5-7b-instruct",
                  "qwen-lm/qwen2.5/gguf/7b-instruct"),
             ):
@@ -188,6 +188,24 @@ class ProfileIdentityTests(unittest.TestCase):
                 "ACCESSO DA VERIFICARE",
                 result["detail"]["access_notice"],
             )
+
+    def test_gemma_kaggle_pinning_creates_distinct_profile_from_unpinned(self):
+        with (
+            patch("calibration.profile_identity._ram_total_mib",
+                  return_value=32000),
+            patch("calibration.profile_identity._cpu_model",
+                  return_value="Test CPU"),
+        ):
+            pinned = resolve_identity(
+                "gemma-2-9b-it", source="kaggle", status=GPU_STATUS
+            )
+            unpinned = resolve_identity(
+                "gemma-2-9b-it", source="kaggle", status=GPU_STATUS,
+                kaggle_handle="google/gemma-2/gguf/2.0-9b-it"
+            )
+        self.assertNotEqual(pinned["profile_key"], unpinned["profile_key"])
+        self.assertEqual(pinned["choices"]["kaggle_handle"],
+                         "google/gemma-2/gguf/2.0-9b-it/1")
 
     def test_source_specific_model_directories_are_isolated(self):
         from model import ModelManager
