@@ -13,6 +13,16 @@ from calibration.baseline_discovery import choose_baseline
 MODEL = "qwen-2.5-7b-instruct"
 REPO = "qwen-lm/qwen2.5"
 HANDLE = REPO + "/gguf/7b-instruct/1"
+ARCH_REF = {
+    "repo": "Qwen/Qwen2.5-7B-Instruct",
+    "config": {
+        "model_type": "qwen2", "num_hidden_layers": 28,
+        "hidden_size": 3584, "intermediate_size": 18944,
+        "num_attention_heads": 28, "num_key_value_heads": 4,
+        "vocab_size": 152064,
+    },
+}
+
 GPU = {
     "ready": True, "errors": [], "foreign_processes": [],
     "gpu": {"vendor": "nvidia", "name": "Mock RTX 4050",
@@ -44,7 +54,7 @@ class KaggleTransferGuardTests(unittest.TestCase):
             with patch("calibration.kaggle_transfer_guard.shutil.disk_usage") as disk:
                 outcome = assess_kaggle_transfer(
                     candidate("fp16", 15_000_000_000, 0),
-                    Path(temp), remaining_budget_bytes=None,
+                    Path(temp), candidate_budget_bytes=None,
                 )
             disk.assert_not_called()
         self.assertFalse(outcome["allowed"])
@@ -57,14 +67,14 @@ class KaggleTransferGuardTests(unittest.TestCase):
             root = Path(temp)
             insufficient = assess_kaggle_transfer(
                 candidate("fp16", 15_000_000_000, 0),
-                root, remaining_budget_bytes=10_000_000_000,
+                root, candidate_budget_bytes=10_000_000_000,
             )
             self.assertEqual(
                 insufficient["status"], "blocked_kaggle_download_budget"
             )
             missing_size = assess_kaggle_transfer(
                 candidate("Q8_0", None, 100),
-                root, remaining_budget_bytes=10_000_000_000,
+                root, candidate_budget_bytes=10_000_000_000,
             )
             self.assertEqual(
                 missing_size["status"], "blocked_kaggle_unknown_transfer_size"
@@ -80,7 +90,7 @@ class KaggleTransferGuardTests(unittest.TestCase):
             ):
                 blocked = assess_kaggle_transfer(
                     item, root / "model",
-                    remaining_budget_bytes=6_000_000_000,
+                    candidate_budget_bytes=6_000_000_000,
                     min_free_mib=0, cache_root=root / "cache",
                 )
             self.assertFalse(blocked["allowed"])
@@ -93,7 +103,7 @@ class KaggleTransferGuardTests(unittest.TestCase):
             ):
                 allowed = assess_kaggle_transfer(
                     item, root / "model",
-                    remaining_budget_bytes=6_000_000_000,
+                    candidate_budget_bytes=6_000_000_000,
                     min_free_mib=1024, cache_root=root / "cache",
                 )
             self.assertTrue(allowed["allowed"])
@@ -117,14 +127,14 @@ class KaggleTransferGuardTests(unittest.TestCase):
                 return_value=SimpleNamespace(free=25_000_000_000),
             ):
                 approved = assess_kaggle_transfer(
-                    item, root, remaining_budget_bytes=2_500_000_000,
+                    item, root, candidate_budget_bytes=2_500_000_000,
                     min_free_mib=0, cache_root=root / "cache",
                 )
             self.assertTrue(approved["allowed"])
             self.assertEqual(approved["missing_shards"], 1)
             self.assertEqual(approved["catalog_transfer_bytes"], 2_000_000_000)
             self.assertEqual(
-                approved["remaining_budget_after_bytes"], 500_000_000
+                approved["candidate_budget_unused_bytes"], 500_000_000
             )
 
 
@@ -136,6 +146,8 @@ class KaggleBudgetPipelineTests(unittest.TestCase):
                   return_value=GPU),
             patch("calibration.kaggle_source.inventory_kaggle",
                   return_value=inventory),
+            patch("calibration.kaggle_architecture_bound.read_architecture_reference",
+                  return_value=ARCH_REF),
             patch("calibration.kaggle_source.download_kaggle") as downloader,
             patch("calibration.baseline_discovery.inspect_gguf",
                   return_value={"weights_bytes": weights_bytes}),
@@ -225,25 +237,28 @@ class KaggleBudgetPipelineTests(unittest.TestCase):
             )
             self.assertIsNone(result["baseline"])
 
-    def test_cumulative_budget_stops_at_next_high_quality_candidate(self):
+    def test_budget_resets_per_quantization_not_cumulatively(self):
         with tempfile.TemporaryDirectory() as tmp:
             inventory = [
                 candidate("Q6_K", 1_000_000, 200),
                 candidate("Q5_K_M", 1_000_000, 300),
-                candidate("Q4_K_M", 500_000, 400),
+                candidate("Q4_K_M", 2_000_000, 400),
             ]
             result, downloaded, probed = self.run_baseline(
                 Path(tmp), inventory, approval=1,
             )
             self.assertFalse(result["success"])
-            self.assertEqual(downloaded, 1)
+            # Two independently affordable candidates, then a single
+            # candidate larger than the 1 MiB per-candidate limit.
+            self.assertEqual(downloaded, 2)
             self.assertEqual(probed, 0)
             self.assertEqual(
                 [a["status"] for a in result["attempts"]],
                 ["excluded_weight_payload_exceeds_total_vram",
+                 "excluded_weight_payload_exceeds_total_vram",
                  "blocked_kaggle_download_budget"],
             )
-            self.assertEqual(result["blocked_candidate"]["quantization"], "Q5_K_M")
+            self.assertEqual(result["blocked_candidate"]["quantization"], "Q4_K_M")
 
     def test_unknown_size_blocks_even_with_large_explicit_budget(self):
         with tempfile.TemporaryDirectory() as tmp:
