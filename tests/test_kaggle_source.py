@@ -233,6 +233,108 @@ class KaggleSourceTests(unittest.TestCase):
             kaggle.assert_called_once_with(HANDLE, path=source.name)
             hf.assert_not_called()
 
+    def test_sharded_gguf_inventory_groups_whole_quantizations(self):
+        from calibration.kaggle_source import inventory_kaggle
+        files = [
+            {"Name": f"qwen2.5-7b-instruct-q5_k_m-{i:05d}-of-00002.gguf"}
+            for i in (1, 2)
+        ] + [
+            {"Name": f"qwen2.5-7b-instruct-fp16-{i:05d}-of-00004.gguf"}
+            for i in (1, 2, 3, 4)
+        ] + [{"Name": "Qwen2.5-7B-Instruct-Q4_K_M.gguf"}]
+        with patch("calibration.kaggle_source.variation_files",
+                   return_value=(files, HANDLE)):
+            found = inventory_kaggle(
+                REPOSITORY, "Qwen2.5-7B-Instruct-",
+                selected_handle=HANDLE,
+            )
+        self.assertEqual(len(found), 3)
+        by_quant = {record["quantization"].casefold(): record for record in found}
+        self.assertEqual(set(by_quant), {"fp16", "q5_k_m", "q4_k_m"})
+        fp16 = by_quant["fp16"]
+        self.assertEqual(fp16["shard_count"], 4)
+        self.assertEqual(len(fp16["shard_filenames"]), 4)
+        self.assertTrue(fp16["split_complete"])
+        self.assertEqual(fp16["shard_filenames"][0],
+                         "qwen2.5-7b-instruct-fp16-00001-of-00004.gguf")
+        self.assertTrue(all(
+            record["quality_priority"] is not None for record in found
+        ))
+        self.assertLess(fp16["quality_priority"],
+                        by_quant["q5_k_m"]["quality_priority"])
+
+    def test_incomplete_split_remains_unranked_without_download(self):
+        files = [
+            {"Name": "qwen2.5-7b-instruct-q5_k_m-00002-of-00003.gguf"},
+            {"Name": "qwen2.5-7b-instruct-q5_k_m-00003-of-00003.gguf"},
+        ]
+        with patch("calibration.kaggle_source.variation_files",
+                   return_value=(files, HANDLE)):
+            found = inventory_kaggle(
+                REPOSITORY, "Qwen2.5-7B-Instruct-",
+                selected_handle=HANDLE,
+            )
+        self.assertEqual(len(found), 1)
+        self.assertFalse(found[0]["split_complete"])
+        self.assertEqual(found[0]["missing_shard_indices"], [1])
+        self.assertIsNone(found[0]["quality_priority"])
+        self.assertFalse(found[0]["cuda_baseline_eligible"])
+        with patch("kagglehub.model_download") as download:
+            with self.assertRaisesRegex(ValueError, "shard"):
+                download_kaggle(found[0], Path("/not-used"))
+            download.assert_not_called()
+
+    def test_split_inventory_rejects_conflicting_totals_and_duplicates(self):
+        cases = (
+            [{"Name": "qwen-q4-00001-of-00002.gguf"},
+             {"Name": "qwen-q4-00002-of-00003.gguf"}],
+            [{"Name": "qwen-q4-00001-of-00002.gguf"},
+             {"Name": "qwen-q4-00001-of-00002.gguf"}],
+        )
+        for rows in cases:
+            with self.subTest(rows=rows):
+                with patch("calibration.kaggle_source.variation_files",
+                           return_value=(rows, HANDLE)):
+                    with self.assertRaisesRegex(RuntimeError, "shard"):
+                        inventory_kaggle(
+                            REPOSITORY, "Qwen2.5-7B-Instruct-",
+                            selected_handle=HANDLE,
+                        )
+
+    def test_download_multiple_shards_before_returning_first(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            source = root / "cache"
+            source.mkdir()
+            names = [
+                f"qwen2.5-7b-instruct-q4_k_m-{i:05d}-of-00002.gguf"
+                for i in (1, 2)
+            ]
+            for name in names:
+                (source / name).write_bytes(b"fake-GGUF")
+            candidate = {
+                "filename": names[0], "source_file_path": names[0],
+                "repo_id": REPOSITORY, "kaggle_handle": HANDLE,
+                "shard_filenames": names,
+                "shard_source_file_paths": names,
+                "shard_count": 2, "split_complete": True,
+            }
+            def fetch(handle, path):
+                self.assertEqual(handle, HANDLE)
+                return str(source / path)
+            with patch("kagglehub.model_download",
+                       side_effect=fetch) as download:
+                first = download_kaggle(candidate, root / "models")
+            self.assertEqual(first.name, names[0])
+            self.assertEqual(download.call_count, 2)
+            self.assertTrue(all((root / "models" / n).is_file()
+                                for n in names))
+            with patch("kagglehub.model_download") as cached:
+                self.assertEqual(
+                    download_kaggle(candidate, root / "models"), first
+                )
+                cached.assert_not_called()
+
     def test_mistral_uses_inst_not_llama3_special_header(self):
         prompt = minimal_chat_prompt("llama", "mistral-7b-instruct-v0.3")
         self.assertEqual(prompt, "[INST] Ciao. [/INST]")
