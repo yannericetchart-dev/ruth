@@ -25,7 +25,8 @@ def mock_kaggle_call(argv, **kwargs):
             argv, 0,
             "Framework,Variation\nGGUF,quantizations\n", ""
         )
-    if argv[2:4] == ["variations", "files"]:
+    if (argv[2:4] == ["variations", "files"] or
+        argv[2:5] == ["variations", "versions", "files"]):
         return subprocess.CompletedProcess(
             argv, 0,
             "Name,Size\n"
@@ -37,27 +38,24 @@ def mock_kaggle_call(argv, **kwargs):
 
 
 class KaggleSourceTests(unittest.TestCase):
-    def test_kaggle_variant_inventory_without_huggingface_requests(self):
-        with (
-            patch("calibration.kaggle_source.subprocess.run",
-                  side_effect=mock_kaggle_call) as cmd,
-            patch("huggingface_hub.HfApi") as hub,
-            patch("huggingface_hub.hf_hub_download") as download,
-        ):
-            inventory = inventory_kaggle(
-                REPOSITORY, "Mistral-7B-Instruct-v0.3-"
+    def test_missing_handle_does_not_call_unsupported_cli(self):
+        with patch("calibration.kaggle_source.subprocess.run") as cmd:
+            with self.assertRaisesRegex(RuntimeError, "non supporta"):
+                inventory_kaggle(
+                    REPOSITORY, "Mistral-7B-Instruct-v0.3-"
+                )
+        cmd.assert_not_called()
+
+    def test_versioned_handle_uses_version_files_subcommand(self):
+        with patch("calibration.kaggle_source.subprocess.run",
+                   side_effect=mock_kaggle_call) as call:
+            result = inventory_kaggle(
+                REPOSITORY, "Mistral-7B-Instruct-v0.3-",
+                selected_handle=HANDLE,
             )
-        self.assertEqual([x["quantization"] for x in inventory],
-                         ["Q5_K_M", "Q4_K_M"])
-        self.assertTrue(all(x["source"] == "kaggle" for x in inventory))
-        self.assertTrue(all(x["file_bytes"] is None for x in inventory))
-        self.assertEqual(
-            {x["kaggle_handle"] for x in inventory},
-            {REPOSITORY + "/GGUF/quantizations"},
-        )
-        self.assertEqual(cmd.call_count, 2)
-        hub.assert_not_called()
-        download.assert_not_called()
+        self.assertTrue(result)
+        self.assertEqual(call.call_args.args[0][2:5],
+                         ["variations", "versions", "files"])
 
     def test_explicit_pinned_handle_bypasses_variation_discovery(self):
         with patch("calibration.kaggle_source.subprocess.run",
