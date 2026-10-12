@@ -7,6 +7,13 @@ from unittest.mock import patch
 
 from calibration.kaggle_preflight import inspect_transfer_plan
 
+REFERENCE = {"repo": "Qwen/Qwen2.5-7B-Instruct", "config": {
+    "model_type": "qwen2", "num_hidden_layers": 28,
+    "hidden_size": 3584, "intermediate_size": 18944,
+    "num_attention_heads": 28, "num_key_value_heads": 4,
+    "vocab_size": 152064,
+}}
+
 
 class KaggleTransferPreflightTests(unittest.TestCase):
     def test_reported_sizes_not_confused_with_native_cuda_verification(self):
@@ -45,6 +52,8 @@ class KaggleTransferPreflightTests(unittest.TestCase):
             with (
                 patch("calibration.kaggle_preflight.inventory_kaggle",
                       return_value=candidates) as listed,
+                patch("calibration.kaggle_preflight.read_architecture_reference",
+                      return_value=REFERENCE),
                 patch("kagglehub.model_download") as download,
                 patch("calibration.gpu_context.probe_context") as probe,
             ):
@@ -98,6 +107,8 @@ class KaggleTransferPreflightTests(unittest.TestCase):
             with (
                 patch("calibration.kaggle_preflight.inventory_kaggle",
                       return_value=candidates),
+                patch("calibration.kaggle_preflight.read_architecture_reference",
+                      return_value=REFERENCE),
                 patch("kagglehub.model_download") as download,
             ):
                 report = inspect_transfer_plan(
@@ -123,8 +134,12 @@ class KaggleTransferPreflightTests(unittest.TestCase):
                 "quality_priority": None,
                 "reported_download_bytes": 200_000_000,
             }]
-            with patch("calibration.kaggle_preflight.inventory_kaggle",
-                       return_value=rows):
+            with (
+                patch("calibration.kaggle_preflight.inventory_kaggle",
+                      return_value=rows),
+                patch("calibration.kaggle_preflight.read_architecture_reference",
+                      return_value=REFERENCE),
+            ):
                 result = inspect_transfer_plan(
                     gpu_status={"ready": True, "memory": {"total_mib": 6141}},
                     disk_path=Path(directory)
