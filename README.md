@@ -357,11 +357,15 @@ Scrive `models/calibration_runs/kaggle_preflight.json` e visualizza
 dimensione cumulativa da catalogo, conteggio degli shard, VRAM e
 spazio disco libero. Alcune dimensioni della CLI sono arrotondate:
 non sono i byte dei tensori GGUF e **non provano** che un modello
-entrera' o non entrera' in VRAM. Il preflight non avvia il download,
-non conferma la compatibilita' CUDA e **non salta automaticamente**
-le quantizzazioni piu' qualitative. Per un vero preflight di
-fattibilita' servira' accesso all'header GGUF attendibile o una
-prova locale; non bisogna inventare soglie di VRAM dai file.
+entrera' o non entrera' in VRAM. Il preflight non avvia download
+o probe GPU. Per FP16 e Q8_0 nella variante Qwen ufficiale,
+puo' tuttavia attestare un'esclusione full-GPU prima del download
+tramite il limite inferiore matematico dei tensori obbligatori.
+Per Q6_K/Q5 e per altri publisher o varianti non c'e' una prova
+altrettanto forte: non devono essere esclusi solo per dimensione
+del file. Occorrono l'header GGUF attendibile oppure una prova
+locale GPU. Nessun candidato escluso e' eliminato per tuning
+CPU/GPU in fasi future.
 
 Dopo aver completato le pipeline, rieseguire \`phase1_audit\`.
 Solo cinque righe \`COMPLETA\` permettono di dichiarare
