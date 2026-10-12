@@ -210,9 +210,9 @@ class ContextWorkerDiagnosticsTests(unittest.TestCase):
             e["event"] == "context_worker_retry" for e in events
         ))
 
-    def test_repeated_sigabrt_continues_bisection_below_crash(self):
+    def test_one_sigabrt_continues_bisection_below_crash(self):
         # Qwen: 2048 OK; 2560 native resource failure; 2304 SIGABRT
-        # twice without an OOM line. Must search 2176, etc., and confirm
+        # once without an OOM line. Must search 2176, etc., and confirm
         # a lower bound without inventing an exact maximum.
         calls = []
         from model import ModelManager
@@ -264,7 +264,7 @@ class ContextWorkerDiagnosticsTests(unittest.TestCase):
                     progress=lambda event: None,
                 )
         self.assertIn(2304, calls)
-        self.assertEqual(calls.count(2304), 2)
+        self.assertEqual(calls.count(2304), 1)
         self.assertIn(2176, calls)
         self.assertEqual(result["confirmed_gpu_resident_n_ctx"], 2048)
         self.assertIsNone(result["confirmed_max_gpu_resident_n_ctx"])
@@ -277,7 +277,7 @@ class ContextWorkerDiagnosticsTests(unittest.TestCase):
         self.assertIn("massimo", result["error"])
         self.assertEqual(result["highest_gpu_resident_n_ctx_observed"], 2048)
 
-    def test_sigabrt_after_two_attempts_confirms_floor_not_max(self):
+    def test_one_sigabrt_confirms_floor_not_max(self):
         calls = []
 
         def fake_probe(path, ctx, **kwargs):
@@ -291,7 +291,7 @@ class ContextWorkerDiagnosticsTests(unittest.TestCase):
             return self.success(ctx)
 
         result, events = self.run_fake_search(fake_probe)
-        self.assertEqual(calls, [64, 128, 129, 129, 128, 128])
+        self.assertEqual(calls, [64, 128, 129, 128, 128])
         self.assertEqual(result["confirmed_gpu_resident_n_ctx"], 128)
         self.assertIsNone(result["confirmed_max_gpu_resident_n_ctx"])
         self.assertEqual(len(result["uncertain_failure_boundaries"]), 1)
@@ -299,6 +299,40 @@ class ContextWorkerDiagnosticsTests(unittest.TestCase):
         self.assertEqual(len(result["confirmation"]), 2)
         self.assertFalse(result["success"])
         self.assertFalse(result["maximality_proven"])
+        self.assertFalse(any(
+            event.get("event") == "context_worker_retry" for event in events
+        ))
+        self.assertEqual(len([
+            event for event in events
+            if event.get("event") == "context_sigabrt_boundary"
+        ]), 1)
+
+    def test_sigabrt_in_other_worker_failure_class_also_skips_retry(self):
+        calls = []
+
+        def fake_probe(path, ctx, **kwargs):
+            calls.append(ctx)
+            if ctx == 129:
+                return {
+                    "success": False,
+                    "failure_class": "inference_or_worker_error",
+                    "worker_returncode": -6, "worker_signal": "SIGABRT",
+                    "error": "uncategorized native abort",
+                }
+            return self.success(ctx)
+
+        result, events = self.run_fake_search(fake_probe)
+        self.assertEqual(calls, [64, 128, 129, 128, 128])
+        self.assertEqual(result["confirmed_gpu_resident_n_ctx"], 128)
+        self.assertIsNone(result["confirmed_max_gpu_resident_n_ctx"])
+        self.assertFalse(result["maximality_proven"])
+        self.assertEqual(
+            result["uncertain_failure_boundaries"][0]["failure_class"],
+            "inference_or_worker_error",
+        )
+        self.assertFalse(any(
+            event.get("event") == "context_worker_retry" for event in events
+        ))
 
     def test_two_protocol_failures_stop_without_inventing_maximum(self):
         calls = []
