@@ -110,6 +110,8 @@ class KaggleSourceTests(unittest.TestCase):
             "bond005/qwen-2.5-7b-instruct",
             "other/qwen-2.5-7b-instruct/gguf/quantizations",
             "../etc/passwd/gguf/quantizations",
+            "../../gguf/quantizations",
+            "other/../gguf/quantizations",
             REPOSITORY + "/gguf/../../bad",
         ):
             with self.subTest(invalid=invalid):
