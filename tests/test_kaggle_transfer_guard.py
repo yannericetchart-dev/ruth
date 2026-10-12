@@ -260,6 +260,69 @@ class KaggleBudgetPipelineTests(unittest.TestCase):
             )
             self.assertEqual(result["blocked_candidate"]["quantization"], "Q4_K_M")
 
+    def test_q6_oom_then_q5_full_cuda_selected_with_same_per_candidate_budget(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            models = [
+                candidate("Q6_K", 1_000_000, 200),
+                candidate("Q5_K_M", 1_000_000, 300),
+            ]
+            downloaded = []
+            tested = []
+
+            def download(item, dest):
+                downloaded.append(item["quantization"])
+                path = Path(dest) / item["filename"]
+                path.parent.mkdir(parents=True, exist_ok=True)
+                path.write_bytes(b"mock GGUF")
+                return path
+
+            def probe(path, **kwargs):
+                tested.append(path.name)
+                if "Q6_K" in path.name:
+                    return {
+                        "success": False,
+                        "failure_hint": "explicit_cuda_oom_evidence",
+                        "suspected_cuda_oom": True,
+                        "error": "native CUDA OOM",
+                    }
+                return {
+                    "success": True, "architecture": "qwen2",
+                    "full_gpu_native_verification": {"verified": True},
+                    "measurements": {"minimal_inference_completed": True},
+                }
+
+            with (
+                patch("calibration.baseline_discovery.GPUManager.calibration_status",
+                      return_value=GPU),
+                patch("calibration.kaggle_source.inventory_kaggle",
+                      return_value=models),
+                patch("calibration.kaggle_architecture_bound.read_architecture_reference",
+                      return_value=ARCH_REF),
+                patch("calibration.kaggle_source.download_kaggle",
+                      side_effect=download),
+                patch("calibration.baseline_discovery.inspect_gguf",
+                      return_value={"weights_bytes": 5_000_000_000}),
+                patch("calibration.baseline_discovery.probe_gpu_candidate",
+                      side_effect=probe),
+            ):
+                report = choose_baseline(
+                    root=root, model_id=MODEL, source="kaggle",
+                    kaggle_handle=HANDLE, repo_id=REPO,
+                    persist_selection=False,
+                    kaggle_max_download_mib=1,
+                    kaggle_min_free_mib=0,
+                )
+            self.assertTrue(report["success"])
+            self.assertEqual(
+                [a["status"] for a in report["attempts"]],
+                ["failed_full_gpu_native_probe", "selected_full_gpu_baseline"],
+            )
+            self.assertEqual(downloaded, ["Q6_K", "Q5_K_M"])
+            self.assertEqual(len(tested), 2)
+            self.assertEqual(report["baseline"]["quantization"], "Q5_K_M")
+            self.assertEqual(report["kaggle_budget_scope"], "per_candidate")
+
     def test_unknown_size_blocks_even_with_large_explicit_budget(self):
         with tempfile.TemporaryDirectory() as tmp:
             result, downloaded, probed = self.run_baseline(
