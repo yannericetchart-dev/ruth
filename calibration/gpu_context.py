@@ -12,6 +12,7 @@ import argparse
 import json
 import math
 import os
+import signal
 from pathlib import Path
 import subprocess
 import sys
@@ -225,8 +226,28 @@ def probe_context(model_path: Path, n_ctx: int,
                 "n_ctx": n_ctx, "error": f"Timeout dopo {timeout}s"}
     try:
         report = json.loads(child.stdout)
+        valid_json = isinstance(report, dict)
     except (ValueError, TypeError):
-        report = {"success": False, "error": "JSON worker non valido."}
+        report, valid_json = {}, False
+    worker_signal = None
+    if child.returncode < 0:
+        try:
+            worker_signal = signal.Signals(-child.returncode).name
+        except ValueError:
+            worker_signal = "UNKNOWN_SIGNAL"
+    report["worker_json_valid"] = valid_json
+    report["worker_stdout_chars"] = len(child.stdout or "")
+    report["worker_stderr_chars"] = len(child.stderr or "")
+    report["worker_signal"] = worker_signal
+    if not valid_json:
+        state = ("vuoto" if not (child.stdout or "").strip()
+                 else "malformato/non oggetto")
+        report["success"] = False
+        report["error"] = (
+            f"JSON worker {state}; exit={child.returncode}; "
+            f"signal={worker_signal or 'nessuno'}. "
+            "Verificare worker e log nativi, non assumere OOM CUDA."
+        )
     report["worker_returncode"] = child.returncode
     if child.returncode != 0:
         report["success"] = False
@@ -268,6 +289,8 @@ def probe_context(model_path: Path, n_ctx: int,
         report["failure_class"] = "native_cuda_oom"
     elif report.get("failure_hint") == "ambiguous_context_initialization":
         report["failure_class"] = "ambiguous_context_initialization"
+    elif not valid_json:
+        report["failure_class"] = "worker_protocol_error"
     elif not placement["verified"]:
         report["failure_class"] = "native_weights_not_verified"
     elif not runtime["verified"]:
@@ -414,6 +437,7 @@ def search_gpu_context(
         "attempts": [],
         "success": False,
         "measurement_completed": False,
+        "highest_gpu_resident_n_ctx_observed": None,
         "note": (
             "Contesto diagnostico: mapping di tutti i pesi GPU invariato, "
             "KV in GPU e compute CUDA principale verificati da log, prefill vicino al "
@@ -426,25 +450,48 @@ def search_gpu_context(
         if progress is not None:
             progress({"event": "context_probe_start", "n_ctx": ctx,
                       "model": model_id, "token_count": tokens})
-        candidate = probe_context(
-            model, ctx, generated_tokens=tokens, batch=min(batch, ctx),
-            timeout=timeout, model_id=model_id,
-        )
-        candidate["requested_n_ctx"] = ctx
-        result["attempts"].append(candidate)
-        if progress is not None:
-            progress({"event": "context_probe_result", "n_ctx": ctx,
-                      "model": model_id,
-                      "success": candidate.get("success") is True,
-                      "failure_class": candidate.get("failure_class"),
-                      "peak_mib": (candidate.get("measurements") or {}).get(
-                          "vram_peak_sampled_mib"),
-                      "native_gpu_weights": (candidate.get(
-                          "full_gpu_native_verification") or {}).get("verified"),
-                      "native_gpu_kv": (candidate.get(
-                          "gpu_runtime_validation") or {}).get("kv", {}).get(
-                              "verified_gpu_resident")})
-        return candidate
+        # A truncated/absent JSON frame may be a transient process failure.
+        # Retry only this protocol failure, once, in a fresh worker.
+        # Do NOT reinterpret a persistent failure as a CUDA OOM boundary.
+        for attempt in range(2):
+            candidate = probe_context(
+                model, ctx, generated_tokens=tokens, batch=min(batch, ctx),
+                timeout=timeout, model_id=model_id,
+            )
+            candidate["requested_n_ctx"] = ctx
+            candidate["worker_protocol_retry_index"] = attempt
+            result["attempts"].append(candidate)
+            if candidate.get("success") is True:
+                previous = result["highest_gpu_resident_n_ctx_observed"]
+                if previous is None or ctx > previous:
+                    result["highest_gpu_resident_n_ctx_observed"] = ctx
+            if progress is not None:
+                progress({"event": "context_probe_result", "n_ctx": ctx,
+                          "model": model_id,
+                          "success": candidate.get("success") is True,
+                          "failure_class": candidate.get("failure_class"),
+                          "worker_returncode": candidate.get("worker_returncode"),
+                          "worker_signal": candidate.get("worker_signal"),
+                          "peak_mib": (candidate.get("measurements") or {}).get(
+                              "vram_peak_sampled_mib"),
+                          "native_gpu_weights": (candidate.get(
+                              "full_gpu_native_verification") or {}).get("verified"),
+                          "native_gpu_kv": (candidate.get(
+                              "gpu_runtime_validation") or {}).get("kv", {}).get(
+                                  "verified_gpu_resident")})
+            if (
+                candidate.get("failure_class") == "worker_protocol_error"
+                and attempt == 0
+            ):
+                if progress is not None:
+                    progress({
+                        "event": "context_worker_retry", "n_ctx": ctx,
+                        "worker_returncode": candidate.get("worker_returncode"),
+                        "worker_signal": candidate.get("worker_signal"),
+                    })
+                continue
+            return candidate
+        raise AssertionError("Retry del worker non raggiungibile.")
 
     def is_boundary(failure: dict) -> bool:
         cause = failure.get("failure_class")
