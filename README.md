@@ -190,60 +190,65 @@ non promuove mai un errore inconclusivo a OOM. I comandi manuali delle
 singole fasi rimangono disponibili per diagnosi e retrocompatibilita'.
 
 
-## Fonte Kaggle: Mistral 7B Instruct v0.3
+## Modelli e fonti disponibili
 
-Il quarto modello è `mistral-7b-instruct-v0.3`, con fonte `kaggle`.
-Il catalogo iniziale punta alla pagina Kaggle pubblica
-`bond005/mistral-7b-instruct-v0.3`. **La pagina di un modello non è
-una prova che contenga file GGUF**: Ruth accetta soltanto file .gguf
-confermati dal catalogo della variante Kaggle specificata, mai una
-sostituzione Hugging Face. La CLI Kaggle 2.2.4 non implementa
-`models variations list`, percio' l'handle di una variante reale e' richiesto.
+Ruth espone quattro **modelli logici** e sei combinazioni modello/fonte.
+La fonte `bartowski` identifica le quantizzazioni GGUF pubblicate su
+**Hugging Face**. Le fonti disponibili sono:
 
-Requisiti: `kaggle` CLI e `kagglehub` Python, installati con
-`./setup_env.sh`. Per inserire il valore del token gia' creato su Kaggle
-usa `.venv/bin/python -m model.kaggle_auth --force`. In alternativa
-la CLI Kaggle supporta OAuth con `kaggle auth login`. Non inserire mai
-token negli argomenti, nel repository Git o nei report diagnostici.
-I token Hugging Face non autenticano Kaggle.
+| Modello | Hugging Face (`bartowski`) | Kaggle (`kaggle`) |
+| --- | --- | --- |
+| `gemma-2-9b-it` | `bartowski/gemma-2-9b-it-GGUF` | `google/gemma-2/gguf/2.0-9b-it` |
+| `llama-3.1-8b-instruct` | `bartowski/Meta-Llama-3.1-8B-Instruct-GGUF` | Non disponibile |
+| `qwen-2.5-7b-instruct` | `bartowski/Qwen2.5-7B-Instruct-GGUF` | `qwen-lm/qwen2.5/gguf/7b-instruct` |
+| `mistral-7b-instruct-v0.3` | `bartowski/Mistral-7B-Instruct-v0.3-GGUF` | Non disponibile |
 
-Prima prova (soltanto metadata, nessun file multi-GB):
+`--source` seleziona **una sola fonte per esecuzione**, senza fallback da
+Kaggle a Hugging Face o viceversa. Per ciascun modello, Hugging Face e'
+la fonte predefinita per mantenere la compatibilita' con i download e
+i profili locali preesistenti.
 
-```bash
-.venv/bin/python -m calibration.profile_pipeline \
-  --model mistral-7b-instruct-v0.3 \
-  --source kaggle --engine llama.cpp --method llama_cpp_python \
-  --kaggle-handle OWNER/MODEL/FRAMEWORK/VARIATION/VERSION \
-  --until inventory
-```
+### Inventari senza download
 
-Sostituisci `OWNER/MODEL/FRAMEWORK/VARIATION/VERSION` con un
-handle reale verificato nella pagina Kaggle: e' un segnaposto,
-non un handle pronto da eseguire.
-
-Se una pubblicazione Kaggle non espone GGUF, Ruth segnala una fase
-`blocked` e non inventa una baseline. È possibile specificare un
-handle **reale**, rilevato dalla pagina Kaggle di una variante GGUF:
+Le due varianti Kaggle sono preimpostate nel catalogo a partire dagli URL
+forniti dall'utente: non serve piu' copiare un `--kaggle-handle` per esse.
+La presenza di una pagina Kaggle **non conferma ancora i nomi o le
+quantizzazioni dei file GGUF**: e' l'inventario remoto a controllarli.
 
 ```bash
+# Quattro modelli su Hugging Face
 .venv/bin/python -m calibration.profile_pipeline \
-  --model mistral-7b-instruct-v0.3 --source kaggle \
-  --kaggle-handle OWNER/MODEL/FRAMEWORK/VARIATION/VERSION \
-  --until inventory
+  --model all --source bartowski --until inventory
+
+# Solo Gemma e Qwen da Kaggle, con i rispettivi handle predefiniti
+.venv/bin/python -m calibration.profile_pipeline \
+  --model all --source kaggle --until inventory
+
+# Una sola combinazione, ad esempio Gemma su Kaggle
+.venv/bin/python -m calibration.profile_pipeline \
+  --model gemma-2-9b-it --source kaggle --until inventory
 ```
 
-Il valore nel comando sopra è solo il formato, **non un handle verificato**.
-Puoi specificare anche una pubblicazione di un altro autore su Kaggle:
-Ruth ricava `owner/model` dall'handle reale e lo inserisce
-nell'identita' del profilo, mantenendo invariato il modello logico
-Mistral 7B Instruct v0.3. L'eventuale GGUF deve comunque essere
-presente in Kaggle e avere un nome coerente con il modello.
-Dopo la conferma dell'inventario, riesegui senza `--until inventory`
-per la selezione GPU e il contesto diagnostico.
+Il token Kaggle puo' essere configurato con
+`.venv/bin/python -m model.kaggle_auth --force` (input nascosto e cache
+personale). Alcuni modelli, incluso Gemma 2, possono richiedere
+l'accettazione delle condizioni d'accesso sul sito Kaggle prima della
+prima interrogazione.
 
-La preselezione di memoria usa il numero esatto di byte dei tensori
-GGUF. Per Kaggle, non avendo al momento lo stesso accesso remoto
-parziale all'header usato dal provider Hugging Face, tale verifica
-viene effettuata **dopo il download del candidato**. Non vengono
-scartati GGUF sulla sola base della dimensione del file, né inventati
-margini VRAM. La fonte e l'handle Kaggle sono inclusi nei profili.
+La CLI Kaggle non offre `models variations list`; Ruth usa direttamente
+gli handle di variante registrati nel catalogo. E' possibile sostituire
+la variante con `--kaggle-handle OWNER/MODEL/FRAMEWORK/VARIATION[/VERSION]`
+soltanto per Gemma o Qwen con `--source kaggle`. L'handle alternativo
+viene incluso nell'identita' della calibrazione.
+
+Se il nome GGUF ottenuto da Kaggle non consente di classificare la
+quantizzazione in modo affidabile, il file resta nell'inventario come
+**non classificato** e la pipeline non seleziona una baseline di qualita'
+presunta. Una baseline richiede la verifica nativa CUDA di tutti i pesi
+e un'inferenza minima riuscita.
+
+Le due fonti mantengono identita' e risultati diversi:
+`models/calibration_runs/<profile_key>/` per i report; i pesi Kaggle
+sono salvati sotto `models/<model-id>/sources/kaggle/<owner>/<model>/`,
+senza sovrascrivere i GGUF Hugging Face gia' presenti in
+`models/<model-id>/`. I profili non modificano il modello operativo.
