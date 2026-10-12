@@ -72,6 +72,49 @@ class KaggleTransferPreflightTests(unittest.TestCase):
                 result["candidates"][2]["reported_file_total_above_vram"]
             )
 
+    def test_canonical_fp16_q8_excluded_by_architecture_without_download(self):
+        gpu = {"ready": True, "memory": {"total_mib": 6141}}
+        common = {
+            "repo_id": "qwen-lm/qwen2.5",
+            "kaggle_handle": "qwen-lm/qwen2.5/gguf/7b-instruct/1",
+            "shard_count": 2,
+            "split_complete": True,
+        }
+        candidates = [
+            {**common, "quantization": "fp16",
+             "filename": "Qwen2.5-7B-Instruct-fp16.gguf",
+             "quality_priority": 900,
+             "reported_download_bytes": 15_000_000_000},
+            {**common, "quantization": "q8_0",
+             "filename": "Qwen2.5-7B-Instruct-q8_0.gguf",
+             "quality_priority": 800,
+             "reported_download_bytes": 8_000_000_000},
+            {**common, "quantization": "q6_k",
+             "filename": "Qwen2.5-7B-Instruct-q6_k.gguf",
+             "quality_priority": 700,
+             "reported_download_bytes": 6_000_000_000},
+        ]
+        with tempfile.TemporaryDirectory() as directory:
+            with (
+                patch("calibration.kaggle_preflight.inventory_kaggle",
+                      return_value=candidates),
+                patch("kagglehub.model_download") as download,
+            ):
+                report = inspect_transfer_plan(
+                    disk_path=Path(directory), gpu_status=gpu,
+                )
+            download.assert_not_called()
+        rows = report["candidates"]
+        self.assertTrue(rows[0]["pre_download_full_cuda_exclusion"])
+        self.assertTrue(rows[1]["pre_download_full_cuda_exclusion"])
+        self.assertFalse(rows[2]["pre_download_full_cuda_exclusion"])
+        self.assertGreater(
+            rows[0]["architecture_weight_floor"]["minimum_weight_mib"], 6141
+        )
+        self.assertGreater(
+            rows[1]["architecture_weight_floor"]["minimum_weight_mib"], 6141
+        )
+
     def test_incomplete_shards_are_recorded_not_promoted(self):
         with tempfile.TemporaryDirectory() as directory:
             rows = [{
