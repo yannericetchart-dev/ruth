@@ -374,7 +374,7 @@ class KaggleSourceTests(unittest.TestCase):
 
     def test_unrecognized_gguf_name_is_reported_but_not_ranked(self):
         unknown = subprocess.CompletedProcess(
-            [], 0, "Name,Size\\nunknown-format.gguf,3GB\\n", ""
+            [], 0, "Name,Size\nunknown-format.gguf,3GB\n", ""
         )
         with patch("calibration.kaggle_source.subprocess.run",
                    return_value=unknown):
