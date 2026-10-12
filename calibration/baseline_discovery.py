@@ -670,7 +670,7 @@ def main():
     parser.add_argument("--kaggle-handle", default=None,
                         help="Variante Kaggle completa (framework/variation[/version])")
     parser.add_argument("--kaggle-max-download-mib", type=int,
-                        help="Budget cumulativo MiB catalogo per nuovi download Kaggle")
+                        help="Budget MiB catalogo per singolo GGUF candidato Kaggle")
     parser.add_argument("--kaggle-min-free-mib", type=int, default=8192,
                         help="Riserva disco Kaggle oltre cache e copie")
     parser.add_argument("--repository", default=None,
