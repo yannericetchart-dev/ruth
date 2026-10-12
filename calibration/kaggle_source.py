@@ -199,12 +199,18 @@ def variation_files(handle: str) -> tuple[list[dict], str]:
                 f"{original} La risposta Kaggle non contiene numeri "
                 "di versione verificabili."
             ) from None
-        pinned = f"{handle}/{max(numeric_versions)}"
+        version = max(numeric_versions)
+        pinned = f"{handle}/{version}"
         try:
             rows = _csv_call("variations", "versions", "files", pinned,
                              "--page-size", "100")
-        except RuntimeError:
-            raise original from None
+        except RuntimeError as secondary:
+            # Both errors were sanitized by _csv_call: keep their separate
+            # API outcomes so a gated 403 is not hidden by an initial 404.
+            raise RuntimeError(
+                f"{original} Versione {version} confermata dal catalogo, "
+                f"ma lettura dei file fallita: {secondary}"
+            ) from None
         return rows, pinned
 
 
