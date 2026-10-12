@@ -44,9 +44,14 @@ class KaggleSourceTests(unittest.TestCase):
         )
 
         examples = (
+            ("Kaggle credentials not found", "credentials_missing"),
+            ("API token missing", "credentials_missing"),
+            ("Authentication required", "credentials_missing"),
             ("HTTPError 401", "unauthorized"),
             ("HTTP 403 Forbidden", "forbidden"),
             ("404 Not Found", "not_found"),
+            ("Model variation not found", "not_found"),
+            ("File not found", "unknown"),
             ("429 Too Many Requests", "rate_limited"),
             ("500 Internal Server Error", "server_error"),
             ("usage: kaggle models variations", "cli_syntax"),
