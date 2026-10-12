@@ -24,9 +24,11 @@ _HANDLE = re.compile(
 
 def validate_handle(handle: str, repository: str) -> str:
     """Accept a real variation handle, never an unchecked model-only path."""
-    if not isinstance(handle, str) or not _HANDLE.fullmatch(handle):
+    if (not isinstance(handle, str) or not _HANDLE.fullmatch(handle)
+        or any(part in (".", "..") for part in handle.split("/"))):
         raise ValueError(
-            "Kaggle richiede owner/model/framework/variation[/version]."
+            "Kaggle richiede owner/model/framework/variation[/version] "
+            "senza segmenti di percorso relativi."
         )
     if "/".join(handle.split("/")[:2]) != repository:
         raise ValueError("La variante Kaggle non appartiene al modello selezionato.")
