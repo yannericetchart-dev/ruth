@@ -199,6 +199,8 @@ def gguf_payload_bytes(stream, file_bytes: int, *, include_tensors: bool = False
                 "name": name, "shape": shape,
                 "type": quant_type.name, "elements": elements,
                 "bytes": nbytes, "offset": relative_offset,
+                "offset_source": "gguf_tensor_data_relative",
+                "shard_index": 0, "shard_file": None,
                 "group": group, "block": block,
             })
     if alignment < 1 or alignment > 4096 or alignment & (alignment - 1):
