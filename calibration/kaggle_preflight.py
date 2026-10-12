@@ -145,7 +145,10 @@ def main(argv: list[str] | None = None) -> int:
         print(f"  {item['quantization']:10} | "
               f"{item['shard_count']} shard | "
               f"dimensione catalogo={size} | {risk}")
-    print(f"Report: {dest} | Nessun download o caricamento GPU.")
+    print(
+        f"Report: {dest} | Nessun GGUF scaricato o caricato su GPU. "
+        "Possibile lettura del piccolo config.json architetturale."
+    )
     return 0
 
 
