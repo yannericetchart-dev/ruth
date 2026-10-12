@@ -117,13 +117,17 @@ def inventory_kaggle(
             if not filename.casefold().endswith(".gguf"):
                 continue
             base = Path(filename).name
-            if not base.casefold().startswith(gguf_prefix.casefold()):
-                # Do not confuse another derivative with the chosen model.
-                continue
-            quant = base[len(gguf_prefix):-5]
-            ranked = quantization_priority(quant)
+            matched_prefix = base.casefold().startswith(gguf_prefix.casefold())
+            # Official publishers can use a different GGUF naming convention.
+            # Report such files as unranked; never silently discard them or
+            # select an unknown derivative as a verified quality baseline.
+            quant = base[len(gguf_prefix):-5] if matched_prefix else base[:-5]
+            ranked = quantization_priority(quant) if matched_prefix else (
+                quantization_priority("")
+            )
             candidates.append({
                 "repo_id": repository, "filename": base,
+                "filename_matches_model_prefix": matched_prefix,
                 "source_file_path": filename,
                 "quantization": quant, **ranked,
                 "kaggle_handle": handle,
@@ -135,7 +139,7 @@ def inventory_kaggle(
             })
     if not candidates:
         raise RuntimeError(
-            "Nessun file .gguf di Mistral 7B Instruct v0.3 presente nelle "
+            "Nessun file .gguf presente nelle "
             "varianti Kaggle interrogate. Nessun fallback a Hugging Face."
         )
     # Do not silently choose between same-named files on different variants.
