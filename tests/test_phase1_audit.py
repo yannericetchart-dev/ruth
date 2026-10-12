@@ -168,7 +168,7 @@ class PhaseOneAuditTests(unittest.TestCase):
                     ident, output_root=root / "runs", inspect_local=False
                 )
             self.assertFalse(result["phase1_complete"])
-            self.assertFalse(result["context_gpu_resident_verified"])
+            self.assertTrue(result["context_gpu_resident_verified"])
             self.assertIsNone(result["n_ctx_gpu_resident"])
             self.assertEqual(
                 result["confirmed_lower_bound_gpu_resident_n_ctx"], 256
