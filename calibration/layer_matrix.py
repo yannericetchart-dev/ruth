@@ -282,7 +282,10 @@ def local_baseline_matrices(
     from .phase1_audit import audit_all
 
     reports = []
-    inspected = audit_all(model="all", source=source, output_root=output_root)
+    inspected = audit_all(
+        model=models[0] if len(models) == 1 else "all",
+        source=source, output_root=output_root,
+    )
     for state in inspected:
         if state["model_id"] not in models:
             continue
