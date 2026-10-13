@@ -240,9 +240,41 @@ def probe_load_only(model_path: Path, model_id: str, trial: dict,
     }
 
 
+def _median_native_load_mib(row: dict, *, label: str) -> float:
+    """True post-load NVML usage, not inference peak or GGUF tensor size.
+
+    Each independent source sample must have an actual load measurement
+    and valid native GPU-KV evidence; aggregates do not expose load-only
+    VRAM and must not be inferred from inference peaks.
+    """
+    import statistics
+
+    if row.get("success") is not True:
+        raise ValueError(f"{label}: profilo nativo non riuscito.")
+    samples = row.get("samples")
+    if (not isinstance(samples, list) or len(samples) < 2
+        or row.get("repetitions") != len(samples)):
+        raise ValueError(f"{label}: campioni di caricamento insufficienti.")
+    values = []
+    for sample in samples:
+        if (sample.get("success") is not True
+            or sample.get("native_placement_verified") is not True
+            or sample.get("gpu_kv_verified") is not True
+            or sample.get("native_kv_type_verified") is not True
+            or sample.get("nvml_errors")):
+            raise ValueError(f"{label}: placement o KV GPU non verificata.")
+        load = sample.get("vram_after_load_mib")
+        if (not isinstance(load, (int, float))
+            or isinstance(load, bool) or
+            not math.isfinite(load) or load <= 0):
+            raise ValueError(f"{label}: vram_after_load_mib non verificabile.")
+        values.append(load)
+    return float(statistics.median(values))
+
+
 def order_single_candidates(census: dict, *, target_ctx: int,
                             allow_partial: bool = False) -> list[dict]:
-    """A ranking from same-256 measured NVML deltas, NOT hard pruning."""
+    """Rank by observed post-load GPU relief at 256; NO hard pruning."""
     params = census.get("parameters") or {}
     if census.get("schema") != CENSUS_SCHEMA:
         raise ValueError("Schema census incompatibile.")
@@ -259,41 +291,58 @@ def order_single_candidates(census: dict, *, target_ctx: int,
             "silenziosamente scartato. Terminare prima il census."
         )
     baseline = census.get("baseline_control") or {}
-    if not baseline.get("success") or not isinstance(baseline.get("metrics"), dict):
+    if not isinstance(baseline.get("metrics"), dict):
         raise ValueError("Baseline n_ctx di origine non verificata.")
+    baseline_load = _median_native_load_mib(baseline, label="baseline")
     baseline_peak = baseline["metrics"]["vram_peak_mib"]
+    reused = census.get("reused_from_greedy") or {}
+    new = census.get("new_measurements") or {}
     ranked = []
     for name, data in result.items():
         if not data.get("success") or not isinstance(data.get("metrics"), dict):
             if not allow_partial:
-                raise ValueError(
-                    "Misura mancante/non valida per: " + name
-                )
+                raise ValueError("Misura mancante/non valida per: " + name)
+            continue
+        source = reused if data.get("source") == "greedy_v3" else new
+        raw = source.get(name)
+        if not isinstance(raw, dict):
+            if not allow_partial:
+                raise ValueError("Campioni nativi mancanti per: " + name)
+            continue
+        try:
+            load = _median_native_load_mib(raw, label=name)
+        except ValueError:
+            if not allow_partial:
+                raise
             continue
         peak = data["metrics"]["vram_peak_mib"]
-        saving = round(baseline_peak - peak, 3)
+        gain_load = round(baseline_load - load, 3)
+        gain_peak = round(baseline_peak - peak, 3)
         ranked.append({
             "tensor": name,
             "source_n_ctx": ctx,
-            "measured_gain_256_mib": saving,
+            "measured_load_256_mib": load,
+            "baseline_load_256_mib": baseline_load,
+            "measured_load_gain_256_mib": gain_load,
             "measured_peak_256_mib": peak,
+            "measured_peak_gain_256_mib": gain_peak,
             "measured_prefill_256_tok_s":
                 data["metrics"]["prefill_tok_s"],
             "measured_decode_256_tok_s":
                 data["metrics"]["decode_tok_s"],
             "hard_excluded": False,
             "reason": (
-                "La misura NVML a contesto minore non costituisce "
-                "un upper bound rigoroso sul risparmio al target."
+                "La misura NVML dopo load a 256 non e un limite "
+                "superiore dimostrato del risparmio al target."
             ),
         })
     ranked.sort(key=lambda row: (
-        -row["measured_gain_256_mib"], row["tensor"]
+        -row["measured_load_gain_256_mib"],
+        -row["measured_peak_gain_256_mib"], row["tensor"]
     ))
     for rank, item in enumerate(ranked, start=1):
         item["rank"] = rank
     return ranked
-
 
 def _valid_loaded_configuration(row: dict, *,
                                 n_ctx: int, trial: dict) -> bool:
@@ -364,7 +413,7 @@ def run_single_to_512(
         "flash_attn": False, "type_k": "f16", "type_v": "f16",
         "benchmark_repeats": benchmark_repeats, "timeout": timeout,
         "candidate_count": len(ranked),
-        "selection_rule": "all_verifiable_singles_descending_observed_256_saving",
+        "selection_rule": "all_singles_descending_verified_post_load_256_gain_peak_tiebreak_v2",
     }
     initial = {}
     if output.exists():
