@@ -29,7 +29,7 @@ ROADMAP = (
     ("baseline", True),
     ("layer_matrix", True),
     ("context_gpu", True),
-    ("mapping", False),
+    ("mapping", True),
     ("runtime", False),
     ("context_tuned", False),
     ("capacity", False),
@@ -40,7 +40,7 @@ MESSAGES = {
     "baseline": "Caricamento del miglior GGUF interamente su GPU",
     "layer_matrix": "Enumerazione tensori/layer (nessun offload CPU)",
     "context_gpu": "Ricerca del massimo contesto GPU-resident",
-    "mapping": "Ricerca placement layer/tensori",
+    "mapping": "Prove diagnostiche di placement CPU/GPU (blocco e tensore)",
     "runtime": "Ottimizzazione parametri llama.cpp",
     "context_tuned": "Contesto GPU con mapping ottimizzato",
     "capacity": "Contesto esteso con RAM di sistema",
@@ -110,6 +110,19 @@ def brief_event(event: dict) -> str:
         if event.get("error"):
             info.append("errore=" + str(event["error"])[:160])
         return " | ".join(info)
+    if kind == "mapping_probe_start":
+        return (
+            f"Mapping avvio: {event['mode']} "
+            f"| tensori CPU={event['host_tensors']} "
+            f"| GPU={event['gpu_tensors']}"
+        )
+    if kind == "mapping_probe_result":
+        return (
+            f"Mapping {event['mode']}: "
+            f"{'VALIDATO' if event.get('success') else 'NON VALIDATO'} "
+            f"| causa={event.get('failure_class')} "
+            f"| VRAM picco={event.get('vram_peak_mib')} MiB"
+        )
     if kind == "layer_matrix_ready":
         return (f"Matrice: {event['layers']} layer, {event['tensors']} tensori "
                 f"| pesi serializzati={event['weights_mib']} MiB")
@@ -343,6 +356,37 @@ class Journal:
                 and len(data["layers"]) == data.get("block_count")
                 and data.get("serialized_weight_bytes", 0) > 0
             ) else None
+        if phase == "mapping":
+            baseline = self.cached("baseline")
+            context = self.cached("context_gpu")
+            selected = (baseline or {}).get("baseline") or {}
+            trials = data.get("trials")
+            return data if (
+                baseline is not None
+                and context is not None
+                and data.get("schema_version") == 1
+                and data.get("success") is True
+                and data.get("status") == "diagnostic_native_placement_validated"
+                and data.get("selected_mapping") is None
+                and data.get("profile_generated") is False
+                and data.get("model_id") == self.identity["choices"]["model_id"]
+                and data.get("source") == self.identity["choices"]["source"]
+                and data.get("filename") == selected.get("filename")
+                and data.get("quantization") == selected.get("quantization")
+                and data.get("model_path") == str(
+                    Path(selected.get("local_path") or "/NONEXISTENT").resolve()
+                )
+                and isinstance(trials, list)
+                and len(trials) == 2
+                and [x.get("mode") for x in trials if isinstance(x, dict)]
+                    == ["block0_host", "attention_tensor_host"]
+                and all(
+                    item.get("success") is True
+                    and (item.get("native_placement") or {}).get("verified") is True
+                    and (item.get("gpu_runtime_validation") or {}).get("verified") is True
+                    for item in trials if isinstance(item, dict)
+                )
+            ) else None
         if phase == "context_gpu":
             return data if (
                 data.get("success") is True
@@ -457,6 +501,26 @@ def _phase_call(name: str, identity: dict, previous: dict,
             "failure": report.get("error"),
         }
         return report, good, summary
+
+    if name == "mapping":
+        from .mapping_phase import run_mapping_phase
+        report = run_mapping_phase(
+            previous["baseline"]["baseline"],
+            previous["layer_matrix"],
+            previous["context_gpu"],
+            model_id=model,
+            progress=reporter,
+        )
+        summary = {
+            "status": report.get("status"),
+            "trials_validated": sum(
+                t.get("success") is True for t in report.get("trials", [])
+            ),
+            "trials_required": 2,
+            "selected_mapping": None,
+            "failure": report.get("error"),
+        }
+        return report, report.get("success") is True, summary
 
     raise NotImplementedError(f"Fase non implementata: {name}")
 
