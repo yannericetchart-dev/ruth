@@ -101,12 +101,9 @@ class GroupRankingTests(unittest.TestCase):
         self.assertEqual(attn["native_duplicate_uses"], 0)
         self.assertEqual(attn["compute_proxy_ops_per_token"], 4 * 1024**2)
         self.assertTrue(attn["eligible_for_trial"])
-        self.assertFalse(by_id["group:attn_norm.weight"]["eligible_for_trial"])
-        self.assertEqual(
-            by_id["group:attn_norm.weight"]["skip_reason"],
-            "below_minimum_memory_benefit",
-        )
-        self.assertEqual(len(choose_group_trials(groups)), 3)
+        self.assertTrue(by_id["group:attn_norm.weight"]["eligible_for_trial"])
+        self.assertIsNone(by_id["group:attn_norm.weight"]["skip_reason"])
+        self.assertEqual(len(choose_group_trials(groups)), 4)
         self.assertTrue(all(
             row["id"].startswith("group:") for row in choose_group_trials(groups)
         ))
@@ -166,11 +163,9 @@ class GroupRankingTests(unittest.TestCase):
         structure = layout()
         structure["tensors"][1]["shape"] = None
         groups = {g["id"]: g for g in group_inventory(structure)}
-        self.assertFalse(groups["group:attn_k.weight"]["eligible_for_trial"])
-        self.assertEqual(
-            groups["group:attn_k.weight"]["skip_reason"],
-            "incomplete_shape_metadata",
-        )
+        self.assertTrue(groups["group:attn_k.weight"]["eligible_for_trial"])
+        self.assertIsNone(groups["group:attn_k.weight"]["compute_proxy_ops_per_token"])
+        self.assertIsNone(groups["group:attn_k.weight"]["ranking_score_heuristic"])
 
 
 class NativeBenchmarkTests(unittest.TestCase):
@@ -304,13 +299,13 @@ class MappingEvaluationTests(unittest.TestCase):
                     baseline, matrix, context, model_id=baseline["model_id"]
                 )
         self.assertTrue(report["success"])
-        self.assertEqual(report["schema_version"], 2)
+        self.assertEqual(report["schema_version"], 3)
         self.assertEqual(report["status"],
                          "diagnostic_group_comparison_completed")
         self.assertEqual(calls[:3], ["baseline"] * 3)
-        self.assertEqual(len(calls), 12)
-        self.assertEqual(len(report["group_evaluations"]), 3)
-        self.assertEqual(len(report["promising_group_ids"]), 3)
+        self.assertEqual(len(calls), 15)
+        self.assertEqual(len(report["group_evaluations"]), 4)
+        self.assertEqual(len(report["promising_group_ids"]), 4)
         self.assertIsNone(report["selected_mapping"])
         self.assertFalse(report["profile_generated"])
 
@@ -341,7 +336,7 @@ class MappingEvaluationTests(unittest.TestCase):
             for row in report["group_evaluations"]
         ))
 
-    def test_native_failure_blocks_mapping(self):
+    def test_native_failure_skips_one_group_but_continues_all_remaining(self):
         with tempfile.TemporaryDirectory() as tmp:
             path, structure, baseline, matrix, context = self.setup(tmp)
             called = []
@@ -365,11 +360,15 @@ class MappingEvaluationTests(unittest.TestCase):
                 report = run_mapping_phase(
                     baseline, matrix, context, model_id=baseline["model_id"]
                 )
-        self.assertFalse(report["success"])
-        self.assertEqual(len(called), 4)
+        self.assertTrue(report["success"])
+        self.assertEqual(len(called), 13)
         self.assertEqual(
-            report["status"], "blocked_unverified_native_mapping"
+            report["status"], "diagnostic_group_comparison_completed"
         )
+        self.assertEqual(report["native_failed_group_count"], 1)
+        self.assertEqual(len(report["group_evaluations"]), 4)
+        self.assertEqual(report["group_evaluations"][0]["status"],
+                         "native_probe_failed")
 
 
 if __name__ == "__main__":
