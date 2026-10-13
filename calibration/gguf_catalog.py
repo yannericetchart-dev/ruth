@@ -35,6 +35,13 @@ QUALITY_ORDER = (
     "IQ1_M", "IQ1_S",
 )
 _QUALITY_RANK = {q.casefold(): i for i, q in enumerate(QUALITY_ORDER)}
+# Standard llama-quantize *command* aliases, NOT equivalent GGUF bytes.
+# Bare Q5_K means Q5_K_M, never Bartowski's mixed Q5_K_L recipe.
+_STANDARD_QUANTIZATION_ALIASES = {
+    "q3_k": "Q3_K_M",
+    "q4_k": "Q4_K_M",
+    "q5_k": "Q5_K_M",
+}
 # Mixed-precision variants inherit their principal weight format's quality
 # tier and are tried before the plain version of the SAME tier. The suffix
 # alone cannot quantify any actual perplexity/accuracy gain.
@@ -60,6 +67,14 @@ def quantization_priority(label: str) -> dict:
         }
     folded = label.casefold()
     folded = {"fp16": "f16", "fp32": "f32"}.get(folded, folded)
+    canonical = _STANDARD_QUANTIZATION_ALIASES.get(folded)
+    if canonical is not None:
+        return {
+            "quality_priority": _QUALITY_RANK[canonical.casefold()] * 100,
+            "quality_rank_confidence": "standard_llama_quantize_alias",
+            "quality_base": canonical,
+            "quality_modifier": "alias",
+        }
     rank = _QUALITY_RANK.get(folded)
     if rank is not None:
         return {
@@ -71,6 +86,9 @@ def quantization_priority(label: str) -> dict:
     for suffix, boost in _PRECISION_SUFFIX_PRIORITY:
         if folded.endswith(suffix):
             parent = folded[:-len(suffix)]
+            parent = _STANDARD_QUANTIZATION_ALIASES.get(
+                parent, parent
+            ).casefold()
             parent_rank = _QUALITY_RANK.get(parent)
             if parent_rank is not None:
                 return {
