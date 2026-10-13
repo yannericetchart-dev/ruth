@@ -1,15 +1,12 @@
-"""Phase 2: measured homologous GGUF tensor-group offload search.
+"""Phase 2: test CPU KV baseline against selective CPU weight offload.
 
-Baseline: all weights on CUDA, measured repeatedly with identical prompt,
-context and batch. Screen all block.N.<tensor-role> families using unique
-GGUF bytes and a deliberately approximate compute proxy; test at most three
-eligible groups, each in three independent native CUDA workers.
-
-Only group tensor sets move to host. Every other weight, including tied
-Gemma embedding/output, remains CUDA; native logs must verify all occurrences.
-The goal is usable VRAM without a reproducible performance regression.
-This phase does NOT tune context, select a production profile or overwrite
-phase-1 baseline/context reports.
+All weights reside on CUDA during the *reference*, while host KV lets
+inference run beyond the phase-1 all-GPU context. Each candidate moves
+one homologous block-tensor group to CPU to attempt GPU-resident KV at
+the EXACT same enlarged context, prompt length and 128 decode tokens.
+Native placement and KV residency are mandatory; CPU vs GPU throughput
+is measured, not inferred. No phase-1 reports or operational profiles
+are changed.
 """
 
 import argparse
@@ -28,7 +25,8 @@ import time
 from hardware import GPUManager
 from model.inspect import inspect_gguf, gguf_file_set
 
-from .gpu_context import verify_gpu_runtime, make_context_tokens
+from .gpu_context import verify_gpu_runtime
+from .baseline_discovery import minimal_chat_prompt
 from .mapping_grouping import (
     group_inventory, choose_group_trials, native_group_trial,
 )
@@ -37,23 +35,88 @@ from .native_memory import parse_native_memory
 from .worker_failure import analyze_worker_failure
 
 
-SCHEMA_VERSION = 3
+SCHEMA_VERSION = 4
 WORKER_REPETITIONS = 3
-MIN_N_CTX = 128
-MAX_N_CTX = 512
 PROBE_BATCH = 32
-PROBE_TOKENS_CAP = 32
+PROBE_GENERATED_TOKENS = 128
+BASELINE_MODE = "baseline_host_kv"
 PERFORMANCE_TOLERANCE = 0.03
 MAX_MEDIAN_RELATIVE_DEVIATION = 0.05
 
 
-def benchmark_context(reference_ctx: int) -> tuple[int, int]:
-    """Fixed fair workload for the same model/quantization and all trials."""
-    if not isinstance(reference_ctx, int) or reference_ctx < MIN_N_CTX:
-        raise ValueError("Mapping: riferimento n_ctx full-CUDA insufficiente.")
-    n_ctx = min(MAX_N_CTX, max(MIN_N_CTX, reference_ctx // 2))
-    tokens = min(PROBE_TOKENS_CAP, max(12, n_ctx // 8))
-    return n_ctx, tokens
+def benchmark_context(reference_ctx: int,
+                      model_context_limit: int | None = None) -> tuple[int, int]:
+    """First strictly larger power-of-two context, bounded by GGUF limit."""
+    if (not isinstance(reference_ctx, int) or isinstance(reference_ctx, bool)
+        or reference_ctx < 64):
+        raise ValueError("Mapping: riferimento contesto non valido.")
+    if (model_context_limit is not None
+        and (not isinstance(model_context_limit, int)
+             or model_context_limit < 1)):
+        raise ValueError("Mapping: limite contesto GGUF non valido.")
+    next_power = 1 << reference_ctx.bit_length()
+    upper = model_context_limit if model_context_limit else next_power
+    chosen = min(next_power, upper)
+    if chosen <= reference_ctx or chosen <= PROBE_GENERATED_TOKENS + 16:
+        raise ValueError(
+            "Mapping: impossibile provare un contesto superiore al massimo "
+            "full-GPU entro il limite architetturale."
+        )
+    return chosen, PROBE_GENERATED_TOKENS
+
+
+def make_mapping_tokens(llm, architecture: str, n_ctx: int,
+                        generated_tokens: int, model_id: str) -> list[int]:
+    """Same prompt length across host-KV baseline and mapped GPU-KV trials."""
+    if (generated_tokens < 1 or generated_tokens > 128
+        or n_ctx - generated_tokens < 17):
+        raise ValueError("Mapping: prompt e generazione non entrano in n_ctx.")
+    target = n_ctx - generated_tokens - 1
+    base = minimal_chat_prompt(architecture, model_id)
+    reps = max(1, n_ctx // 4)
+    while reps <= n_ctx * 64:
+        prompt = base + (
+            " Analizza la sequenza ed esponi il ragionamento con precisione."
+            * reps
+        )
+        ids = llm.tokenize(
+            prompt.encode("utf-8"), add_bos=True, special=True
+        )
+        if len(ids) >= target:
+            return list(ids[:target])
+        reps *= 2
+    raise RuntimeError("Mapping: impossibile costruire prompt richiesto.")
+
+
+def verify_mapping_kv_runtime(native: dict, *, host_kv: bool) -> dict:
+    """Verify host-KV baseline or GPU-KV candidate from actual native logs."""
+    if not host_kv:
+        return verify_gpu_runtime(native)
+    records = native.get("native_buffer_records") or []
+    cache = [r for r in records if r.get("category") == "kv"]
+    compute = [r for r in records if r.get("category") == "compute"]
+    host = [r for r in cache if r.get("domain") in (
+        "host_cpu", "host_cuda_pinned"
+    )]
+    other = [r for r in cache if r.get("domain") not in (
+        "host_cpu", "host_cuda_pinned"
+    )]
+    valid = bool(cache) and len(host) == len(cache) and bool(compute)
+    return {
+        "verified": valid,
+        "kv": {
+            "verified_host_resident": bool(host) and not other,
+            "host_buffer_records": len(host),
+            "other_buffer_records": len(other),
+        },
+        "compute": {
+            "verified_present": bool(compute),
+            "gpu_buffer_records": sum(
+                r.get("domain") == "gpu_vram" for r in compute
+            ),
+        },
+        "note": "KV nativa RAM/CPU verificata; GPU model weights checked separately.",
+    }
 
 
 def _worker(model_path: Path, model_id: str, group_id: str,
