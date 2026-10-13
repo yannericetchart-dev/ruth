@@ -354,8 +354,9 @@ def _compare_with_baseline(reference: dict, current: dict) -> dict:
 def run_mapping_phase(baseline: dict, matrix: dict, context: dict,
                       *, model_id: str, progress=None,
                       timeout: int = 300) -> dict:
-    """Bounded phase-2 pilot only; never select or persist an operational map."""
-    if (not isinstance(baseline, dict)
+    """Baseline repeated then up to three ranked homologous group experiments."""
+    if (
+        not isinstance(baseline, dict)
         or baseline.get("model_id") != model_id
         or baseline.get("native_verified_all_gpu") is not True
         or not isinstance(matrix, dict)
@@ -363,98 +364,187 @@ def run_mapping_phase(baseline: dict, matrix: dict, context: dict,
         or matrix.get("status") != "enumeration_only"
         or not isinstance(context, dict)
         or context.get("success") is not True
-        or not isinstance(context.get("confirmed_max_gpu_resident_n_ctx"), int)):
+        or not isinstance(context.get("confirmed_max_gpu_resident_n_ctx"), int)
+    ):
         raise RuntimeError(
-            "Mapping: fase 1 non completamente verificata per questo modello."
+            "Mapping: fase 1 full-CUDA incompleta per questo modello."
         )
-    path = Path(baseline["local_path"])
-    if (not path.is_file()
+    path = Path(baseline["local_path"]).resolve()
+    if (
+        not path.is_file()
         or path.name != baseline["filename"]
         or matrix.get("filename") != baseline["filename"]
-        or Path(matrix["model_path"]) != path.resolve()
+        or Path(matrix.get("model_path", "/invalid")).resolve() != path
         or matrix.get("block_count", 0) < 1
         or context.get("filename") != baseline["filename"]
-        or context.get("quantization") != baseline.get("quantization")):
-        raise RuntimeError("Mapping: baseline, matrice e contesto non coerenti.")
-    layout = inspect_gguf(path, n_ctx=PROBE_N_CTX)
-    if (layout["metadata"].get("general.architecture") != baseline["architecture"]
-        or layout["metadata"].get(
-            baseline["architecture"] + ".block_count"
-        ) != matrix["block_count"]
-        or layout.get("weights_bytes") != matrix.get("serialized_weight_bytes")):
-        raise RuntimeError("Mapping: struttura GGUF diversa dalla fase 1.")
-    trials = native_mapping_trials(layout)
+        or context.get("quantization") != baseline.get("quantization")
+    ):
+        raise RuntimeError(
+            "Mapping: baseline, matrice e contesto non coerenti."
+        )
+    shard_names = [p.name for p in gguf_file_set(path)]
+    if (baseline.get("shard_filenames")
+        and shard_names != baseline["shard_filenames"]):
+        raise RuntimeError("Mapping: shard GGUF diversi dalla fase 1.")
+    n_ctx, tokens = benchmark_context(
+        context["confirmed_max_gpu_resident_n_ctx"]
+    )
+    layout = inspect_gguf(path, n_ctx=n_ctx)
+    arch = baseline.get("architecture")
+    if (
+        layout["metadata"].get("general.architecture") != arch
+        or layout["metadata"].get(f"{arch}.block_count")
+            != matrix["block_count"]
+        or layout.get("weights_bytes")
+            != matrix.get("serialized_weight_bytes")
+    ):
+        raise RuntimeError("Mapping: struttura GGUF modificata dalla fase 1.")
+
+    groups = group_inventory(layout)
+    selected = choose_group_trials(groups)
+    plan = [native_group_trial(layout, None)]
+    plan.extend(native_group_trial(layout, group) for group in selected)
     report = {
         "schema_version": SCHEMA_VERSION, "phase": "mapping",
-        "status": "diagnostic_native_placement_pending",
-        "model_id": model_id, "source": baseline.get("source"),
+        "status": "benchmark_in_progress",
+        "success": False, "model_id": model_id,
+        "source": baseline.get("source"),
         "repository": baseline.get("repository"),
         "quantization": baseline.get("quantization"),
-        "filename": path.name, "model_path": str(path.resolve()),
+        "filename": path.name, "model_path": str(path),
+        "shard_filenames": shard_names,
         "block_count": matrix["block_count"],
         "tensor_count": len(layout["tensors"]),
-        "probe_n_ctx": PROBE_N_CTX, "probe_tokens": PROBE_TOKENS,
-        "reference_full_cuda_n_ctx": context["confirmed_max_gpu_resident_n_ctx"],
-        "trials": [], "selected_mapping": None,
+        "probe_n_ctx": n_ctx, "probe_tokens": tokens,
+        "n_batch": PROBE_BATCH,
+        "reference_full_cuda_n_ctx": context[
+            "confirmed_max_gpu_resident_n_ctx"
+        ],
+        "workload": "fixed_context_prompt_prefill_and_greedy_decode",
+        "repeat_processes_per_variant": WORKER_REPETITIONS,
+        "min_gguf_group_mib_to_test": MIN_GROUP_MIB,
+        "max_group_trials": MAX_TRIAL_GROUPS,
+        "groups": groups,
+        "screened_group_count": len(groups),
+        "eligible_group_count": sum(
+            g["eligible_for_trial"] for g in groups
+        ),
+        "tested_group_ids": [g["id"] for g in selected],
+        "baseline_trials": [],
+        "baseline_statistics": None,
+        "group_evaluations": [],
+        "promising_group_ids": [],
+        "selected_mapping": None,
+        "profile_generated": False,
         "runtime_optimized": False, "context_tuned": False,
-        "profile_generated": False, "success": False,
         "note": (
-            "Due prove diagnostiche reali: prefisso CPU di un blocco "
-            "e singolo tensore attention su CPU, tutti gli altri pesi "
-            "sulla GPU, KV e compute CUDA. I tempi non sono benchmark. "
-            "Nessun mapping operativo selezionato."
+            "Byte GGUF unici e shape FLOP proxy ordinano gruppi omologhi "
+            "ma non dimostrano risparmio VRAM o velocita'. Baseline e "
+            "prove usano lo stesso workload, CUDA/KV e 3 processi ciascuna. "
+            "Nessuna combinazione o configurazione operativa viene scelta."
         ),
     }
-    for trial in trials:
-        if progress is not None:
-            progress({
-                "event": "mapping_probe_start", "mode": trial["id"],
-                "host_tensors": trial["host_tensor_count"],
-                "gpu_tensors": trial["gpu_tensor_count"],
-            })
-        outcome = probe_native_mapping(
-            path, model_id, trial, timeout=timeout,
-        )
-        report["trials"].append(outcome)
-        if progress is not None:
-            progress({
-                "event": "mapping_probe_result", "mode": trial["id"],
-                "success": outcome.get("success"),
-                "failure_class": outcome.get("failure_class"),
-                "vram_peak_mib": (outcome.get("measurements") or {}).get(
-                    "vram_peak_sampled_mib"
-                ),
-            })
-        if not outcome.get("success"):
-            report["status"] = "blocked_unverified_native_mapping"
-            report["error"] = (
-                f"Mapping {trial['id']} non validato: "
-                f"{outcome.get('failure_class')}; {outcome.get('error')}"
+    for position, trial in enumerate(plan):
+        samples = []
+        for repetition in range(1, WORKER_REPETITIONS + 1):
+            if progress is not None:
+                progress({
+                    "event": "mapping_probe_start", "mode": trial["id"],
+                    "repetition": repetition,
+                    "repetitions": WORKER_REPETITIONS,
+                    "host_tensors": trial["host_tensor_count"],
+                    "gpu_tensors": trial["gpu_tensor_count"],
+                })
+            outcome = probe_native_mapping(
+                path, model_id, trial,
+                n_ctx=n_ctx, tokens=tokens, timeout=timeout,
             )
-            return report
+            samples.append(outcome)
+            if position == 0:
+                report["baseline_trials"] = samples
+            if progress is not None:
+                progress({
+                    "event": "mapping_probe_result", "mode": trial["id"],
+                    "repetition": repetition,
+                    "success": outcome.get("success"),
+                    "failure_class": outcome.get("failure_class"),
+                    "vram_peak_mib": (
+                        outcome.get("measurements") or {}
+                    ).get("vram_peak_sampled_mib"),
+                })
+            if not outcome.get("success"):
+                report["status"] = "blocked_unverified_native_mapping"
+                report["error"] = (
+                    f"Mapping {trial['id']} ripetizione {repetition} "
+                    f"non validata: {outcome.get('failure_class')}; "
+                    f"{outcome.get('error')}"
+                )
+                if position:
+                    report["group_evaluations"].append({
+                        "group_id": trial["id"], "trials": samples,
+                        "status": "blocked_unverified_native_mapping",
+                    })
+                return report
+        stats = _median_stats(samples)
+        if position == 0:
+            report["baseline_statistics"] = stats
+            if progress is not None:
+                progress({
+                    "event": "mapping_baseline_complete",
+                    "prefill_tok_s": stats["prefill_tokens_per_s"]["median"],
+                    "decode_tok_s": stats["decode_tokens_per_s"]["median"],
+                    "vram_peak_mib": stats["vram_peak_sampled_mib"]["median"],
+                })
+            continue
+        evaluation = _compare_with_baseline(
+            report["baseline_statistics"], stats
+        )
+        report["group_evaluations"].append({
+            "group_id": trial["id"], "trials": samples,
+            "statistics": stats, "comparison": evaluation,
+            "status": evaluation["verdict"],
+        })
+        if evaluation["verdict"] == "promising_needs_operational_confirmation":
+            report["promising_group_ids"].append(trial["id"])
+        if progress is not None:
+            progress({
+                "event": "mapping_group_comparison",
+                "mode": trial["id"],
+                "verdict": evaluation["verdict"],
+                "freed_mib": evaluation["measured_vram_recovered_mib"],
+                "prefill_percent": evaluation["prefill_change_percent"],
+                "decode_percent": evaluation["decode_change_percent"],
+            })
+
     report["success"] = True
-    report["status"] = "diagnostic_native_placement_validated"
+    report["status"] = "diagnostic_group_comparison_completed"
     return report
 
 
 def main(argv=None) -> int:
     parser = argparse.ArgumentParser(
-        description="Worker diagnostico mapping CPU/GPU, non profilo operativo"
+        description="Worker isolato di benchmark mapping Ruth (fase 2)"
     )
     parser.add_argument("--worker", action="store_true",
                         help=argparse.SUPPRESS)
-    parser.add_argument("--model-path", default=None)
-    parser.add_argument("--model", default=None)
-    parser.add_argument("--mode", choices=MODES)
+    parser.add_argument("--model-path")
+    parser.add_argument("--model")
+    parser.add_argument("--mode")
+    parser.add_argument("--ctx", type=int)
+    parser.add_argument("--tokens", type=int)
     args = parser.parse_args(argv)
-    if not args.worker or not args.model_path or not args.model or not args.mode:
-        parser.error("Modulo riservato al worker di mapping fase 2.")
+    if (not args.worker or not args.model_path or not args.model
+        or not args.mode or not args.ctx or not args.tokens):
+        parser.error("Modulo riservato al worker nativo della fase mapping.")
     resource.setrlimit(resource.RLIMIT_CORE, (0, 0))
     try:
-        report = _worker(Path(args.model_path), args.model, args.mode)
+        report = _worker(
+            Path(args.model_path), args.model, args.mode,
+            args.ctx, args.tokens,
+        )
     except Exception as exc:
         report = {
-            "worker_ok": False,
+            "worker_ok": False, "mode": args.mode,
             "error": f"{type(exc).__name__}: {exc}",
         }
     print(json.dumps(report, ensure_ascii=False))
