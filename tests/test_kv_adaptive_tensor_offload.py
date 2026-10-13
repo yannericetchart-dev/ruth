@@ -469,6 +469,61 @@ class GreedyLogicTests(unittest.TestCase):
                 report["stages"][0]["anchor_diagnostics"]["fallback_probed"]
             )
 
+    def test_budget_can_increase_without_repeating_cached_cuda_measurements(self):
+        with tempfile.TemporaryDirectory() as folder:
+            root = Path(folder)
+            model, phase, steps = prepare_reports(root)
+            checkpoint = root / "resume.json"
+            calls = []
+            def measured(*args, **kwargs):
+                calls.append((kwargs["n_ctx"],
+                              tuple(args[2]["host_tensor_names"])))
+                return fake_native_probe(*args, **kwargs)
+            with patch("calibration.kv_adaptive_tensor_offload.inspect_gguf",
+                       return_value=layout_fixture()):
+                first = run_adaptive_tensor_search(
+                    model_path=model, phase1_report=phase,
+                    memory_steps_report=steps, targets=(512,),
+                    max_tests=1, output=checkpoint, probe=measured,
+                )
+                self.assertFalse(first["completed"])
+                self.assertEqual(len(first["measured_configs"]), 1)
+                cached_first = set(first["measured_configs"])
+                self.assertEqual(calls.count((257, ())), 2)
+
+                extended = run_adaptive_tensor_search(
+                    model_path=model, phase1_report=phase,
+                    memory_steps_report=steps, targets=(512,),
+                    max_tests=250, output=checkpoint, probe=measured,
+                )
+                self.assertTrue(extended["completed"])
+                self.assertEqual(calls.count((257, ())), 2,
+                                 "Il CUDA anchor gia misurato non va ripetuto.")
+                self.assertTrue(
+                    cached_first.issubset(extended["measured_configs"])
+                )
+                self.assertEqual(extended["parameters"]["max_tests"], 250)
+                self.assertTrue(extended["learned_groups"])
+
+    def test_budget_decrease_still_rejects_same_checkpoint(self):
+        with tempfile.TemporaryDirectory() as folder:
+            root = Path(folder)
+            model, phase, steps = prepare_reports(root)
+            checkpoint = root / "budget.json"
+            with patch("calibration.kv_adaptive_tensor_offload.inspect_gguf",
+                       return_value=layout_fixture()):
+                run_adaptive_tensor_search(
+                    model_path=model, phase1_report=phase,
+                    memory_steps_report=steps, targets=(512,),
+                    max_tests=2, output=checkpoint, probe=fake_native_probe,
+                )
+                with self.assertRaisesRegex(ValueError, "aumentare --max-tests"):
+                    run_adaptive_tensor_search(
+                        model_path=model, phase1_report=phase,
+                        memory_steps_report=steps, targets=(512,),
+                        max_tests=1, output=checkpoint, probe=fake_native_probe,
+                    )
+
     def test_insufficient_probe_budget_never_promotes_configuration(self):
         with tempfile.TemporaryDirectory() as folder:
             root = Path(folder)
