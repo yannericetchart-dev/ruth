@@ -143,6 +143,8 @@ class SingleTensorCensusTests(unittest.TestCase):
             def fail_specific(*args, **kwargs):
                 result = fake_native_probe(*args, **kwargs)
                 if args[2]["host_tensor_names"] == [bad_name]:
+                    result["success"] = False
+                    result["failure_class"] = "native_placement_unverified"
                     result["gpu_runtime_validation"]["verified"] = False
                 return result
             with patch("calibration.kv_single_tensor_census.inspect_gguf",
