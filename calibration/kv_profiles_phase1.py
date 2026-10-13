@@ -29,7 +29,8 @@ def run_profiles(*, model_id: str = "gemma-2-9b-it",
                  batch: int = 32, timeout: int = 300,
                  confirm_rounds: int = 2,
                  output: Path = Path("phase1_kv_profiles.json"),
-                 rerun: bool = False, search=search_gpu_context) -> dict:
+                 rerun: bool = False, search=search_gpu_context,
+                 progress=None) -> dict:
     """Each profile has its own context search, evidence, and failure status."""
     if not 1 <= tokens <= 32 or min_ctx < 64 or batch < 1:
         raise ValueError("Parametri Fase 1 KV non validi.")
@@ -71,10 +72,10 @@ def run_profiles(*, model_id: str = "gemma-2-9b-it",
     cached = {row["id"]: row for row in report["profiles"]}
     report["profiles"] = []
     for identifier, flash, k, v in PROFILES:
+        if progress is not None:
+            progress({"event": "profile_start", "profile": identifier})
         old = cached.get(identifier)
-        if old is not None and old.get("status") in (
-            "confirmed", "unsupported_or_inconclusive",
-        ):
+        if old is not None and old.get("status") == "confirmed":
             report["profiles"].append(old)
             continue
         try:
@@ -83,6 +84,8 @@ def run_profiles(*, model_id: str = "gemma-2-9b-it",
                 tokens=tokens, batch=batch, timeout=timeout,
                 confirm_rounds=confirm_rounds, flash_attn=flash,
                 type_k=k, type_v=v, persist_reference=False,
+                progress=(lambda event: progress({"profile": identifier, **event}))
+                if progress is not None else None,
             )
             state = ("confirmed" if result.get("success") is True
                      else "unsupported_or_inconclusive")
@@ -99,6 +102,10 @@ def run_profiles(*, model_id: str = "gemma-2-9b-it",
             "result": result,
         })
         atomic_json(output, report)
+        if progress is not None:
+            progress({"event": "profile_end", "profile": identifier,
+                      "status": state,
+                      "n_ctx": report["profiles"][-1]["max_gpu_n_ctx"]})
     report["all_profiles_completed"] = len(report["profiles"]) == len(PROFILES)
     atomic_json(output, report)
     return report
@@ -126,6 +133,11 @@ def main() -> int:
             batch=args.batch, timeout=args.timeout,
             confirm_rounds=args.confirm_rounds, output=args.output,
             rerun=args.rerun,
+            progress=lambda event: print(
+                event.get("profile", "?"), event.get("event", "?"),
+                event.get("n_ctx", ""),
+                event.get("failure_class", ""), flush=True,
+            ),
         )
         print("Profilo KV | esito | massimo n_ctx")
         for row in report["profiles"]:
