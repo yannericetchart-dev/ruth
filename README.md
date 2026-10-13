@@ -710,35 +710,64 @@ sotto `models/<model-id>/sources/kaggle/<owner>/<model>/`,
 senza sovrascrivere i GGUF Hugging Face nella directory del modello.
 
 
-### Esperimento Fase 1: quantizzazione KV e Flash Attention
+### Esperimento Fase 1: matrice completa KV e Flash Attention
 
-Per misurare **separatamente** il massimo `n_ctx` con pesi interamente CUDA e
-KV cache interamente CUDA nelle sette configurazioni concordate:
+La ricerca comprende le **12 combinazioni ammissibili** di K e V in
+`f16`, `q8_0`, `q4_0`: tre con Flash Attention OFF (V=f16)
+e nove con Flash Attention ON. La configurazione FA OFF/K=f16/V=f16
+è la baseline storica `n_ctx=257`: è riportata, ma non rieseguita.
 
 ```bash
 python -m calibration.kv_profiles_phase1 \
   --model gemma-2-9b-it \
   --baseline-ctx 257 \
   --tokens 16 --batch 32 --confirm-rounds 2 \
-  --output phase1_kv_profiles_from_258.json
+  --output phase1_kv_profiles_complete.json
 ```
 
-I profili sono, nell'ordine: FA off K=q8_0/V=f16; FA off K=q4_0/V=f16;
-FA on K=f16/V=f16; FA on K=q8_0/V=q8_0; FA on K=q8_0/V=q4_0;
-FA on K=q4_0/V=q8_0; FA on K=q4_0/V=q4_0.
-La configurazione di riferimento FA off K=f16/V=f16 (`n_ctx=257`) rimane
-invariata e non viene rieseguita dalla sweep. Ciascun profilo avvia la prima
-prova a `n_ctx=258` (baseline + 1). Se fallisce, interrompe **quel profilo**
-senza tentare contesti maggiori; un errore non CUDA non viene etichettato
-come OOM. Per una nuova baseline si puo' specificare `--baseline-ctx`.
-Ogni ricerca esegue inferenza reale,
-`prompt_tokens + generated_tokens = n_ctx`, e verifica buffer, placement
-dei pesi, formati KV e Flash Attention dai log del backend.
+La sequenza di test è:
 
-Il report JSON è aggiornato dopo ogni profilo. Le configurazioni non supportate
-o i limiti non dimostrati rimangono esplicitamente inconclusivi, senza essere
-scambiati automaticamente per esaurimento VRAM. Rieseguire con `--rerun`
-per forzare nuove misurazioni; senza di esso i profili già confermati sono
-riutilizzati. Questo esperimento non altera `gpu_context_reference.json`,
-lo stato della pipeline o le scelte operative di Fase 2. La CLI restituisce
-codice diverso da zero se almeno una configurazione non è confermata.
+| Flash Attention | K | V | Note |
+|---|---|---|---|
+| OFF | f16 | f16 | baseline già misurata |
+| OFF | q8_0 | f16 | |
+| OFF | q4_0 | f16 | |
+| ON | f16 | f16 | |
+| ON | f16 | q8_0 | |
+| ON | q8_0 | f16 | |
+| ON | q8_0 | q8_0 | |
+| ON | f16 | q4_0 | |
+| ON | q4_0 | f16 | |
+| ON | q8_0 | q4_0 | |
+| ON | q4_0 | q8_0 | |
+| ON | q4_0 | q4_0 | |
+
+Ogni configurazione parte da `n_ctx=258`. Un fallimento iniziale
+interrompe solo quella configurazione; la causa dell'errore resta
+registrata. I limiti reali derivano dal metadato GGUF
+`<arch>.context_length`: la ricerca e i worker rifiutano
+contesti maggiori (Gemma-2: **8192**).
+
+Quando un profilo **confermato** raggiunge esattamente il limite del
+modello, vengono saltati i profili ancora non misurati che usano lo
+**stesso stato Flash Attention** e precisioni K e V entrambe uguali
+o inferiori, con almeno una strettamente inferiore. Ad esempio, se
+ON/q8_0/q8_0 arriva a 8192, saltiamo ON/q8_0/q4_0,
+ON/q4_0/q8_0 e ON/q4_0/q4_0. ON/f16/q4_0 non è
+dominato, quindi resta da testare. Le prestazioni non sono deducibili
+dalla sola dominanza di precisione: questo filtro serve a evitare
+test superflui **di capacità di contesto**, non a scegliere il profilo
+più rapido.
+
+Il report è salvato dopo ogni profilo e contiene il motivo del salto
+(`skipped_dominated_at_model_limit`) e il profilo dominante.
+Il parametro `--max-ctx` può restringere la ricerca, ma non
+aumentare il limite del GGUF: raggiungere una soglia `--max-ctx`
+inferiore al limite **non** giustifica alcun salto.
+
+Il nuovo report ha schema v3 ed è separato dai precedenti. I risultati
+già confermati vengono riutilizzati con parametri identici; usare
+`--rerun` per ricominciare. La baseline originale e i profili
+operativi rimangono invariati. Codice d'uscita 0 indica profili
+confermati, baseline riutilizzata o salti per dominanza; un profilo
+fallito o inconclusivo produce uscita diversa da zero.
