@@ -291,7 +291,7 @@ def native_tensor_trial(layout: dict, host_tensor_names: list[str]) -> dict:
         domains = {placement[name] for name in names}
         if len(domains) == 1:
             rules.append({
-                "pattern": r"^blk\\.[0-9]+\\." + re.escape(suffix) + "$",
+                "pattern": r"^blk\.[0-9]+\." + re.escape(suffix) + "$",
                 "device": domains.pop(),
             })
         else:
