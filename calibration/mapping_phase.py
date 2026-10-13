@@ -30,7 +30,7 @@ from .gpu_context import (verify_gpu_runtime, verify_native_kv_config,
 from .baseline_discovery import minimal_chat_prompt
 from .mapping_grouping import (
     group_inventory, choose_group_trials, native_group_trial,
-    native_multi_group_trial,
+    native_multi_group_trial, native_tensor_trial,
 )
 from .mapping_native_validation import verify_override_logs
 from .native_memory import parse_native_memory
@@ -123,6 +123,7 @@ def verify_mapping_kv_runtime(native: dict, *, host_kv: bool) -> dict:
 
 def _worker(model_path: Path, model_id: str, group_id: str,
             n_ctx: int, token_count: int, *, group_ids: list[str] | None = None,
+            tensor_names: list[str] | None = None,
             flash_attn: bool = False, type_k: str = "f16",
             type_v: str = "f16") -> dict:
     """Fixed workload in isolated worker, native stderr retained externally."""
@@ -148,7 +149,13 @@ def _worker(model_path: Path, model_id: str, group_id: str,
     arch = layout["metadata"]["general.architecture"]
     groups = group_inventory(layout)
     selected = next((g for g in groups if g["id"] == group_id), None)
-    if group_ids is not None:
+    if tensor_names is not None:
+        if group_ids is not None or not group_id.startswith("tensors:"):
+            raise ValueError("Mapping: configurazione individuale incoerente.")
+        trial = native_tensor_trial(layout, tensor_names)
+        if group_id != trial["id"]:
+            raise ValueError("Mapping: hash identità dei tensori non corrisponde.")
+    elif group_ids is not None:
         if group_id != "groups:" + "+".join(sorted(group_ids)):
             raise ValueError("Mapping: identificativo gruppi non coerente.")
         inventory = {g["id"]: g for g in groups if g["eligible_for_trial"]}
@@ -174,7 +181,8 @@ def _worker(model_path: Path, model_id: str, group_id: str,
         "kv_target": "host" if group_id == BASELINE_MODE else "gpu",
         "flash_attn": flash_attn, "kv_type_k": type_k, "kv_type_v": type_v,
         "host_group_ids": sorted(group_ids) if group_ids is not None else
-            ([group_id] if group_id != BASELINE_MODE else []),
+            ([group_id] if group_id.startswith("group:") else []),
+        "host_tensor_names": trial["host_tensor_names"],
         "host_tensor_count": trial["host_tensor_count"],
         "gpu_tensor_count": trial["gpu_tensor_count"],
         "measurements": {}, "error": None,
@@ -291,6 +299,7 @@ def probe_native_mapping(model_path: Path, model_id: str, trial: dict,
     group_id = trial["id"]
     if group_id != BASELINE_MODE and not (
         group_id.startswith("group:") or group_id.startswith("groups:")
+        or group_id.startswith("tensors:")
     ):
         raise ValueError("Mapping: ID gruppo non valido.")
     command = [
@@ -303,6 +312,10 @@ def probe_native_mapping(model_path: Path, model_id: str, trial: dict,
     ]
     if group_id.startswith("groups:"):
         command.extend(["--group-ids", json.dumps(trial["group_ids"])])
+    if group_id.startswith("tensors:"):
+        command.extend([
+            "--tensor-names", json.dumps(trial["host_tensor_names"])
+        ])
     try:
         child = subprocess.run(
             command, capture_output=True, text=True, timeout=timeout,
@@ -848,6 +861,7 @@ def main(argv=None) -> int:
     parser.add_argument("--ctx", type=int)
     parser.add_argument("--tokens", type=int)
     parser.add_argument("--group-ids", default=None)
+    parser.add_argument("--tensor-names", default=None)
     parser.add_argument("--flash-attn", choices=("on", "off"), default="off")
     parser.add_argument("--type-k", choices=("f16", "q8_0", "q4_0"), default="f16")
     parser.add_argument("--type-v", choices=("f16", "q8_0", "q4_0"), default="f16")
@@ -858,6 +872,15 @@ def main(argv=None) -> int:
     resource.setrlimit(resource.RLIMIT_CORE, (0, 0))
     try:
         group_ids = json.loads(args.group_ids) if args.group_ids else None
+        tensor_names = (
+            json.loads(args.tensor_names) if args.tensor_names is not None
+            else None
+        )
+        if tensor_names is not None and (
+            not isinstance(tensor_names, list)
+            or any(not isinstance(name, str) for name in tensor_names)
+        ):
+            raise ValueError("Lista tensori individuali non valida.")
         if group_ids is not None and (
             not isinstance(group_ids, list)
             or any(not isinstance(gid, str) for gid in group_ids)
@@ -866,6 +889,7 @@ def main(argv=None) -> int:
         report = _worker(
             Path(args.model_path), args.model, args.mode,
             args.ctx, args.tokens, group_ids=group_ids,
+            tensor_names=tensor_names,
             flash_attn=args.flash_attn == "on",
             type_k=args.type_k, type_v=args.type_v,
         )
