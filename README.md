@@ -716,10 +716,10 @@ Per misurare **separatamente** il massimo `n_ctx` con pesi interamente CUDA e
 KV cache interamente CUDA nelle sette configurazioni concordate:
 
 ```bash
-python -m calibration.kv_profiles_phase1 \\
-  --model gemma-2-9b-it \\
+python -m calibration.kv_profiles_phase1 \
+  --model gemma-2-9b-it \
   --baseline-ctx 257 \
-  --tokens 16 --batch 32 --confirm-rounds 2 \\
+  --tokens 16 --batch 32 --confirm-rounds 2 \
   --output phase1_kv_profiles_from_258.json
 ```
 
