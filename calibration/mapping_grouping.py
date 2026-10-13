@@ -15,9 +15,6 @@ from .baseline_discovery import all_gpu_rules
 
 BLOCK_TENSOR = re.compile(r"^blk\.(\d+)\.(.+)$")
 MIB = 1048576
-MIN_GROUP_MIB = 16.0
-MAX_TRIAL_GROUPS = 3
-
 
 def group_inventory(layout: dict) -> list[dict]:
     metadata = layout.get("metadata") or {}
@@ -84,10 +81,13 @@ def group_inventory(layout: dict) -> list[dict]:
             if any(occurrences.get(name, 1) > 1 for name in names)
             else "none_detected"
         )
-        eligible = (
-            in_blocks and shape_known and score is not None
-            and coupling == "none_detected" and mib >= MIN_GROUP_MIB
-        )
+        # Every homologous block tensor family is safe to TRY when
+        # native placement can be checked: neither a small GGUF payload,
+        # unknown FLOP proxy nor repeated native uses is a reason to skip.
+        # Repeated occurrences are verified individually in native logs.
+        # Non-block/tied tensors remain separately inventoried rather than
+        # silently moving a coupled input/output together.
+        eligible = in_blocks
         results.append({
             "id": ("group:" + suffix if in_blocks else suffix),
             "tensor_suffix": suffix if in_blocks else None,
@@ -115,15 +115,16 @@ def group_inventory(layout: dict) -> list[dict]:
             "eligible_for_trial": eligible,
             "skip_reason": (
                 None if eligible else
-                "shared_or_non_block" if not in_blocks or coupling != "none_detected"
-                else "incomplete_shape_metadata" if not shape_known
-                else "below_minimum_memory_benefit"
+                "non_block_or_coupled_tensor" if not in_blocks else None
             ),
         })
     eligible = sorted(
         (g for g in results if g["eligible_for_trial"]),
-        key=lambda g: (-g["ranking_score_heuristic"],
-                       -g["gguf_unique_weight_bytes"], g["id"]),
+        key=lambda g: (
+            g["ranking_score_heuristic"] is None,
+            -(g["ranking_score_heuristic"] or 0),
+            -g["gguf_unique_weight_bytes"], g["id"],
+        ),
     )
     for position, group in enumerate(eligible, 1):
         group["priority_rank"] = position
@@ -134,11 +135,9 @@ def group_inventory(layout: dict) -> list[dict]:
     )
 
 
-def choose_group_trials(groups: list[dict],
-                        max_groups: int = MAX_TRIAL_GROUPS) -> list[dict]:
-    if not isinstance(max_groups, int) or max_groups < 1:
-        raise ValueError("Mapping: massimo numero prove non valido.")
-    return [g for g in groups if g["eligible_for_trial"]][:max_groups]
+def choose_group_trials(groups: list[dict]) -> list[dict]:
+    """Try EVERY eligible homologous block family in ranked order."""
+    return [g for g in groups if g["eligible_for_trial"]]
 
 
 def native_group_trial(layout: dict, group: dict | None) -> dict:
