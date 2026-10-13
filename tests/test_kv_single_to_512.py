@@ -36,6 +36,9 @@ def fake_load(path, model_id, trial, *, n_ctx, timeout):
     return {
         "success": ok, "n_ctx": n_ctx,
         "host_tensor_names": names, "mapping_id": trial["id"],
+        "native_placement_verified": ok,
+        "gpu_kv_verified": ok,
+        "native_kv_type_verified": ok,
         "failure_class": None if ok else "native_cuda_oom",
         "measurements": {
             "vram_before_mib": 300., "vram_after_load_mib": peak-30,
@@ -110,6 +113,14 @@ class SingleTo512Tests(unittest.TestCase):
                 5800.,
             )
             self.assertEqual(result["hard_pruning"]["count"], 0)
+            self.assertEqual(
+                result["summary"]["minimum_observed_successful_load_peak_mib"],
+                6100.,
+            )
+            self.assertEqual(
+                result["summary"]["minimum_observed_successful_load_increment_mib"],
+                5800.,
+            )
 
     def test_resume_between_load_and_inference_does_not_repeat_successful_load(self):
         with tempfile.TemporaryDirectory() as d:
