@@ -89,6 +89,8 @@ def probe_result(group_id, peak=5000, prefill=100, decode=50):
         },
         "measurements": {
             "vram_peak_sampled_mib": peak,
+            "vram_total_mib": 6141,
+            "vram_headroom_min_mib": 6141 - peak,
             "host_peak_rss_mib": 1500,
             "prefill_tokens_per_s": prefill,
             "decode_tokens_per_s": decode,
@@ -214,6 +216,8 @@ class NativeBenchmarkTests(unittest.TestCase):
             "measurements": {
                 "prompt_tokens": 383, "generated_tokens": 128,
                 "vram_peak_sampled_mib": 5000,
+                "vram_total_mib": 6141,
+                "vram_headroom_min_mib": 1141,
                 "host_peak_rss_mib": 1500,
                 "prefill_tokens_per_s": 100,
                 "decode_tokens_per_s": 50,
@@ -249,6 +253,8 @@ class NativeBenchmarkTests(unittest.TestCase):
             "measurements": {
                 "prompt_tokens": 383, "generated_tokens": 128,
                 "vram_peak_sampled_mib": 5000,
+                "vram_total_mib": 6141,
+                "vram_headroom_min_mib": 1141,
                 "host_peak_rss_mib": 1500,
                 "prefill_tokens_per_s": 100,
                 "decode_tokens_per_s": 50,
