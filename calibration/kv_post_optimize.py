@@ -176,6 +176,11 @@ def run_post_optimize(
         raise ValueError("Target assente o ambiguo nel report iniziale.")
     seed = _valid_seed(source, matching_stages[0], target=target_ctx,
                        confirmation_runs=3)
+    if confirm_repeats != seed["repetitions"]:
+        raise ValueError(
+            "Il numero di ripetizioni deve coincidere con le conferme "
+            "native della configurazione iniziale."
+        )
     if params.get("confirm_repeats", 0) < 3:
         raise ValueError("Riferimento con meno di tre conferme CUDA.")
     model_id = params["model_id"]
@@ -235,13 +240,40 @@ def run_post_optimize(
         )
         if not comparable or max_tests < prior_params.get("max_tests", 0):
             raise ValueError("Checkpoint incompatibile; consentito solo aumentare --max-tests.")
-        if prior.get("status") == "complete":
+        if prior.get("completed") is True:
             return prior
         measured = prior.get("measured_configs") or {}
     else:
         measured = {}
     if not isinstance(measured, dict) or len(measured) > max_tests:
         raise ValueError("Checkpoint non valido.")
+    # Reuse target-context observations from the verified greedy run.
+    # An earlier native CUDA OOM is a documented failed configuration,
+    # not a positive benchmark. Do not consume new trials replaying it.
+    old_measurements = {}
+    for row in source.get("measured_configs", {}).values():
+        if (not isinstance(row, dict)
+            or row.get("n_ctx") != target_ctx
+            or not isinstance(row.get("host_tensor_names"), list)
+            or not row.get("host_tensor_names")):
+            continue
+        names = sorted(row["host_tensor_names"])
+        if native_tensor_trial(layout, names)["id"] != row.get("mapping_id"):
+            continue
+        success = row.get("success") is True
+        if success and (
+            row.get("repetitions") != confirm_repeats
+            or not all(sample.get("success") is True
+                       and sample.get("native_placement_verified") is True
+                       and sample.get("gpu_kv_verified") is True
+                       for sample in row.get("samples", []))
+        ):
+            continue
+        if not success and row.get("failure_class") != "native_cuda_oom":
+            continue
+        key = _measurement_key(target_ctx, params["generated_tokens"],
+                               confirm_repeats, names)
+        old_measurements[key] = row
 
     report = {
         "schema": SCHEMA, "parameters": identity,
@@ -257,6 +289,7 @@ def run_post_optimize(
         },
         "seed": seed, "candidate_tensor_pool": pool,
         "measured_configs": measured,
+        "reused_source_configs": len(old_measurements),
         "rounds": [],
         "best_host_tensor_names": baseline_names,
         "best": seed,
@@ -277,6 +310,8 @@ def run_post_optimize(
             return seed
         if key in measured:
             return measured[key]
+        if key in old_measurements:
+            return old_measurements[key]
         if len(measured) >= max_tests:
             return {"success": False, "budget_exhausted": True}
         placement = native_tensor_trial(layout, sorted(names))
