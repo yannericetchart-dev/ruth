@@ -12,7 +12,7 @@ from calibration.gpu_context import probe_context, search_gpu_context
 
 class ContextWorkerDiagnosticsTests(unittest.TestCase):
     def test_signal_killed_worker_with_no_json_is_inconclusive(self):
-        layout = {"tensors": [], "metadata": {"general.architecture": "qwen2"}}
+        layout = {"tensors": [], "metadata": {"general.architecture": "qwen2", "qwen2.context_length": 32768}}
         native_confirmation = {
             "verified": False, "tensor_count": 0,
             "unverified_names": [],
@@ -41,7 +41,7 @@ class ContextWorkerDiagnosticsTests(unittest.TestCase):
         self.assertIn("non assumere OOM CUDA", report["error"])
 
     def test_non_object_json_is_rejected_without_type_error(self):
-        layout = {"tensors": [], "metadata": {"general.architecture": "qwen2"}}
+        layout = {"tensors": [], "metadata": {"general.architecture": "qwen2", "qwen2.context_length": 32768}}
         native_confirmation = {
             "verified": False, "tensor_count": 0,
             "unverified_names": [],
@@ -68,7 +68,7 @@ class ContextWorkerDiagnosticsTests(unittest.TestCase):
                 self.assertIn("malformato/non oggetto", report["error"])
 
     def test_cublas_abort_has_native_boundary_not_json_protocol_cause(self):
-        layout = {"tensors": [], "metadata": {"general.architecture": "qwen2"}}
+        layout = {"tensors": [], "metadata": {"general.architecture": "qwen2", "qwen2.context_length": 32768}}
         placement = {
             "verified": True, "tensor_count": 339,
             "unverified_names": [],
