@@ -16,6 +16,18 @@ _NATIVE_BUFFER_LINE = re.compile(
 )
 
 
+# llama.cpp may also print a K/V composition line alongside its
+# allocation buffer lines. Keep it as independent evidence: the K/V payload
+# totals can differ from allocator-rounded native buffer sizes.
+_KV_COMPONENT_LINE = re.compile(
+    r"\\bK\\s*\\((?P<type_k>f16|q8_0|q4_0)\\)\\s*:\\s*"
+    r"(?P<k_mib>\\d+(?:\\.\\d+)?)\\s*MiB"
+    r".*?\\bV\\s*\\((?P<type_v>f16|q8_0|q4_0)\\)\\s*:\\s*"
+    r"(?P<v_mib>\\d+(?:\\.\\d+)?)\\s*MiB",
+    re.I,
+)
+
+
 def buffer_domain(name: str) -> str:
     label = name.upper()
     if label == "CUDA_HOST":
@@ -29,8 +41,17 @@ def buffer_domain(name: str) -> str:
 
 def parse_native_memory(native_stderr: str) -> dict:
     entries = []
+    components = []
     totals = defaultdict(lambda: defaultdict(float))
     for line in native_stderr.splitlines():
+        kv_match = _KV_COMPONENT_LINE.search(line)
+        if kv_match:
+            components.append({
+                "type_k": kv_match.group("type_k").lower(),
+                "type_v": kv_match.group("type_v").lower(),
+                "k_mib": float(kv_match.group("k_mib")),
+                "v_mib": float(kv_match.group("v_mib")),
+            })
         match = _NATIVE_BUFFER_LINE.search(line)
         if match is None:
             continue
@@ -51,6 +72,7 @@ def parse_native_memory(native_stderr: str) -> dict:
     }
     return {
         "native_buffer_records": entries,
+        "native_kv_component_records": components,
         "record_count": len(entries),
         "totals_mib_by_category_and_domain": groups,
         "gpu_model_buffer_mib": groups.get("model", {}).get("gpu_vram", 0.0),
