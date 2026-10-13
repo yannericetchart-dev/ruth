@@ -207,15 +207,16 @@ class ProfileIdentityTests(unittest.TestCase):
 
 class ProfilePipelineTests(unittest.TestCase):
     def test_roadmap_lists_future_without_running_it(self):
-        self.assertEqual(IMPLEMENTED, ["inventory", "baseline", "layer_matrix", "context_gpu"])
+        self.assertEqual(IMPLEMENTED, ["inventory", "baseline", "layer_matrix", "context_gpu", "mapping"])
         self.assertEqual(len(ROADMAP), 8)
-        self.assertFalse(dict(ROADMAP)["mapping"])
+        self.assertTrue(dict(ROADMAP)["mapping"])
+        self.assertFalse(dict(ROADMAP)["runtime"])
         self.assertIn("Test n_ctx=128", brief_event({
             "event": "context_probe_start", "n_ctx": 128, "token_count": 8,
         }))
         with tempfile.TemporaryDirectory() as temp:
             with self.assertRaisesRegex(ValueError, "non implementata"):
-                run_pipeline(identity(), until="mapping", output_root=Path(temp))
+                run_pipeline(identity(), until="runtime", output_root=Path(temp))
 
     def test_full_run_persists_per_configuration_and_resumes(self):
         with tempfile.TemporaryDirectory() as temp:
@@ -331,7 +332,7 @@ class ProfilePipelineTests(unittest.TestCase):
             self.assertEqual(directory.name, config["profile_key"])
             state = json.loads((directory / "state.json").read_text())
             self.assertEqual(
-                [state["phases"][p]["status"] for p in IMPLEMENTED],
+                [state["phases"][p]["status"] for p in IMPLEMENTED[:4]],
                 ["completed"] * 4,
             )
             self.assertFalse(state["profile_generated"])
