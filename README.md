@@ -1181,3 +1181,67 @@ PY
 I dati singoli raccolti serviranno al successivo planner per
 ordinare combinazioni tra famiglie: il planner esistente che utilizza
 solo `ffn_down.weight` non viene automaticamente allargato.
+
+
+### Fase successiva al census: singoli tensori a n_ctx=512 (load-only → inferenza)
+
+La ricerca `calibration.kv_single_to_512` è separata dal
+greedy e dalla post-ottimizzazione di gruppi. Parte dal censimento
+**completato** `phase2_single_tensor_census_256.json`.
+
+**Non è matematicamente sicuro eliminare un tensore solo perché a 256
+libera meno memoria del deficit stimato a 512.** Le misure NVML a
+256 non costituiscono un limite superiore del risparmio a 512,
+e il costo del contesto CUDA può variare in modo non additivo.
+La fase conserva perciò tutti i tensori misurati, ordinati per
+**VRAM netta liberata a 256: decrescente**; non usa soglie arbitrarie
+di memoria libera né classificazioni speculative di idoneità.
+
+**Per ogni tensore**:
+
+1. Worker CUDA isolato **solo caricamento**: inizializza modello,
+   placement pesi, contesto `n_ctx=512` e KV FP16 CUDA, controlla
+   tutti i log nativi e chiude subito il modello **senza eval o
+   generazione**.
+2. Memorizza l'occupazione VRAM prima e subito dopo il load, il
+   massimo durante il load, il **delta di picco osservato**,
+   i MiB GPU allocati secondo i log nativi, l'esito e la causa
+   degli eventuali fallimenti. È la richiesta di memoria
+   osservata in **questa esecuzione**; la memoria minima teorica
+   necessaria su qualunque macchina non è inferibile da un solo
+   campionamento.
+3. **Solo se il caricamento è confermato** esegue il benchmark
+   di inferenza del mapping a `n_ctx=512`, con 496 token prompt
+   e 16 generati, due ripetizioni e validazione KV CUDA/placement.
+4. Salva checkpoint dopo ogni load e dopo ogni benchmark;
+   un load fallito rimane registrato e non viene passato
+   all'inferenza, ma **non** esclude quel tensore dalla
+   successiva esplorazione di coppie e terne.
+
+Prima di tutto esegue anche un tentativo all-GPU senza spostamenti,
+**solo caricamento a 512**: registra la fattibilità nativa
+del contesto e gli eventuali errori, separata dai candidati.
+
+```bash
+python -m calibration.kv_single_to_512 \
+  --census phase2_single_tensor_census_256.json \
+  --target-ctx 512 --benchmark-repeats 2 \
+  --output phase2_single_to_512.json
+```
+
+Per suddividere la ricerca: `--max-new-loads 50` limita
+solo i nuovi load della singola esecuzione; ripetere il comando
+senza tale opzione riparte dagli step già completati.
+`--max-new-benchmarks 50` limita analogamente la quantità
+di nuovi benchmark; nessuna misura completata viene ripetuta.
+
+Il JSON conserva `candidate_order`, `control_load_only`,
+`results[tensor].load_only`, `results[tensor].inference`,
+`summary`, `hard_pruning`. Quando tutte le prove di
+caricamento e inferenza ammissibili sono completate,
+`summary.ready_for_phase3 = true`; se non esiste alcun
+singolo tensore con inferenza funzionante,
+`status = completed_no_singleton_inference`.
+Questa è una **consegna dati alla fase 3**, il cui algoritmo
+deve ancora essere definito; non avvia automaticamente
+esplorazioni di coppie/terne.
