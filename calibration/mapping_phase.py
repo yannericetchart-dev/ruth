@@ -165,6 +165,9 @@ def _worker(model_path: Path, model_id: str, group_id: str,
     pynvml.nvmlInit()
     try:
         device = pynvml.nvmlDeviceGetHandleByUUID(gpu["uuid"])
+        report["measurements"]["vram_total_mib"] = round(
+            pynvml.nvmlDeviceGetMemoryInfo(device).total / 1048576, 2
+        )
 
         def used_mib():
             return round(
@@ -234,6 +237,10 @@ def _worker(model_path: Path, model_id: str, group_id: str,
             thread.join(timeout=3)
             report["measurements"]["vram_peak_sampled_mib"] = max(
                 [report["measurements"]["vram_before_mib"]] + samples
+            )
+            report["measurements"]["vram_headroom_min_mib"] = round(
+                report["measurements"]["vram_total_mib"]
+                - report["measurements"]["vram_peak_sampled_mib"], 2
             )
             report["measurements"]["host_peak_rss_mib"] = round(
                 resource.getrusage(resource.RUSAGE_SELF).ru_maxrss / 1024, 2
@@ -305,7 +312,8 @@ def probe_native_mapping(model_path: Path, model_id: str, trial: dict,
     report["gpu_runtime_validation"] = runtime
     measured = report.get("measurements") or {}
     metrics = ("prefill_tokens_per_s", "decode_tokens_per_s",
-               "vram_peak_sampled_mib", "host_peak_rss_mib")
+               "vram_peak_sampled_mib", "host_peak_rss_mib",
+               "vram_total_mib")
     finite = all(
         isinstance(measured.get(k), (int, float))
         and not isinstance(measured[k], bool)
@@ -323,7 +331,11 @@ def probe_native_mapping(model_path: Path, model_id: str, trial: dict,
         and report.get("kv_target") == ("host" if host_kv else "gpu")
         and measured.get("prompt_tokens") == n_ctx - tokens - 1
         and measured.get("generated_tokens") == tokens
-        and finite and not measured.get("nvml_errors")
+        and finite
+        and isinstance(measured.get("vram_headroom_min_mib"), (int, float))
+        and measured["vram_headroom_min_mib"] > 0
+        and measured["vram_headroom_min_mib"] <= measured["vram_total_mib"]
+        and not measured.get("nvml_errors")
     )
     report["success"] = success
     if success:
@@ -351,6 +363,7 @@ def _median_stats(trials: list[dict]) -> dict:
     metrics = (
         "vram_peak_sampled_mib", "host_peak_rss_mib",
         "prefill_tokens_per_s", "decode_tokens_per_s",
+        "vram_headroom_min_mib",
     )
     values = {}
     for key in metrics:
@@ -410,6 +423,9 @@ def _compare_with_baseline(reference: dict, current: dict) -> dict:
         verdict = "no_measurable_speed_gain"
     return {
         "vram_delta_vs_host_kv_baseline_mib": vram_delta,
+        "candidate_gpu_headroom_mib": current[
+            "vram_headroom_min_mib"
+        ]["median"],
         "prefill_change_percent": deltas["prefill_tokens_per_s"],
         "decode_change_percent": deltas["decode_tokens_per_s"],
         "host_peak_rss_change_mib": round(
@@ -469,6 +485,7 @@ def _reusable_trials(
         for key in (
             "vram_peak_sampled_mib", "host_peak_rss_mib",
             "prefill_tokens_per_s", "decode_tokens_per_s",
+            "vram_total_mib", "vram_headroom_min_mib",
         ):
             value = measured.get(key)
             if (
@@ -754,6 +771,7 @@ def run_mapping_phase(baseline: dict, matrix: dict, context: dict,
                 "mode": group_id,
                 "verdict": comparison["verdict"],
                 "vram_delta_mib": comparison["vram_delta_vs_host_kv_baseline_mib"],
+                "candidate_headroom_mib": comparison["candidate_gpu_headroom_mib"],
                 "prefill_percent": comparison["prefill_change_percent"],
                 "decode_percent": comparison["decode_change_percent"],
             })
