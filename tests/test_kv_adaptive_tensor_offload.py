@@ -240,6 +240,99 @@ class GreedyLogicTests(unittest.TestCase):
                 self.assertTrue(resumed["completed"])
                 self.assertEqual(len(calls), snapshot_count)
 
+    def test_discrete_allocator_group_fallback_when_single_tensors_save_zero(self):
+        # A CUDA allocator may only release a native buffer when two
+        # tiny tensors are moved together; the singleton rule must not
+        # permanently discard a verified group-level saving.
+        def quantized_saving(*args, **kwargs):
+            selected = args[2]["host_tensor_names"]
+            both_norms = sum("attn_norm.weight" in name for name in selected) == 2
+            gain = 20. if both_norms else 0.
+            ctx = kwargs["n_ctx"]
+            success = (ctx == 257) or (ctx == 512 and both_norms)
+            return {
+                "success": success,
+                "failure_class": None if success else "native_cuda_oom",
+                "native_placement": {"verified": success},
+                "gpu_runtime_validation": {"verified": success},
+                "kv_config_native_verification": {"verified": success},
+                "measurements": {
+                    "prompt_tokens": ctx - kwargs["tokens"],
+                    "generated_tokens": kwargs["tokens"],
+                    "total_tokens": ctx,
+                    "prefill_tokens_per_s": 500.,
+                    "decode_tokens_per_s": 25.,
+                    "vram_peak_sampled_mib": 6100. - gain,
+                    "vram_total_mib": 6141.,
+                    "host_peak_rss_mib": 400.,
+                },
+            }
+        with tempfile.TemporaryDirectory() as folder:
+            root = Path(folder)
+            model, phase, steps = prepare_reports(root)
+            with patch("calibration.kv_adaptive_tensor_offload.inspect_gguf",
+                       return_value=layout_fixture()):
+                result = run_adaptive_tensor_search(
+                    model_path=model, phase1_report=phase,
+                    memory_steps_report=steps,
+                    targets=(512,), max_tests=250, max_frozen=5,
+                    output=root / "bundle.json", probe=quantized_saving,
+                )
+            self.assertTrue(result["completed"])
+            frozen = result["stages"][0]["frozen_tensors"]
+            self.assertEqual(len(frozen), 1)
+            self.assertEqual(frozen[0]["mode"], "atomic_group_fallback")
+            self.assertEqual(len(frozen[0]["tensors"]), 2)
+
+    def test_native_probe_accepts_individual_tensor_mapping_protocol(self):
+        from types import SimpleNamespace
+        from calibration.mapping_phase import probe_native_mapping
+        layout = layout_fixture()
+        trial = native_tensor_trial(layout, ["blk.0.attn_k.weight"])
+        payload = {
+            "worker_ok": True, "mode": trial["id"],
+            "model_id": "gemma-2-9b-it", "n_ctx": 512,
+            "requested_tokens": 16, "offload_kqv": True,
+            "kv_target": "gpu", "flash_attn": False,
+            "kv_type_k": "f16", "kv_type_v": "f16",
+            "measurements": {
+                "prompt_tokens": 496, "generated_tokens": 16,
+                "total_tokens": 512,
+                "prefill_tokens_per_s": 250.,
+                "decode_tokens_per_s": 20.,
+                "vram_peak_sampled_mib": 6000.,
+                "vram_total_mib": 6141.,
+                "vram_headroom_min_mib": 141.,
+                "host_peak_rss_mib": 250.,
+                "nvml_errors": [],
+            },
+        }
+        stderr = (
+            native_evidence(trial) + "\\n"
+            "llama_kv_cache: CUDA0 KV buffer size = 25.00 MiB\\n"
+            "llama_context: CUDA0 compute buffer size = 10.00 MiB\\n"
+        )
+        with (
+            patch("calibration.mapping_phase.inspect_gguf",
+                  return_value=layout),
+            patch("calibration.mapping_phase.subprocess.run",
+                  return_value=SimpleNamespace(
+                      returncode=0, stdout=json.dumps(payload), stderr=stderr,
+                  )) as called,
+        ):
+            result = probe_native_mapping(
+                Path("/fake/model.gguf"), "gemma-2-9b-it", trial,
+                n_ctx=512, tokens=16,
+            )
+        self.assertTrue(result["success"])
+        self.assertTrue(result["native_placement"]["verified"])
+        command = called.call_args[0][0]
+        self.assertIn("--tensor-names", command)
+        self.assertEqual(
+            json.loads(command[command.index("--tensor-names") + 1]),
+            trial["host_tensor_names"],
+        )
+
     def test_insufficient_probe_budget_never_promotes_configuration(self):
         with tempfile.TemporaryDirectory() as folder:
             root = Path(folder)
