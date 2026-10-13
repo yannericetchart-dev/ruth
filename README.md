@@ -243,9 +243,11 @@ git pull --ff-only
 .venv/bin/python -m calibration.profile_pipeline \
   --model qwen-2.5-7b-instruct --source kaggle --until mapping
 
-# Dopo conferma delle due prove, estendere alle altre fonti:
+# Dopo conferma delle due prove, tutte le combinazioni registrate:
 .venv/bin/python -m calibration.profile_pipeline \
-  --model all --source all --until mapping
+  --model all --source bartowski --until mapping
+.venv/bin/python -m calibration.profile_pipeline \
+  --model qwen-2.5-7b-instruct --source kaggle --until mapping
 ```
 
 La fase 1 viene sempre riutilizzata quando la cache e' valida.
