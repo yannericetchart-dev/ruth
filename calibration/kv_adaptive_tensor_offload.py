@@ -418,11 +418,14 @@ def run_adaptive_tensor_search(
                     # instead of declaring the greedy branch globally optimal.
                     if history and backtracks < max_backtracks:
                         last = history.pop()
-                        rejected.add((
-                            tuple(sorted(last["before"])), last["tensor"]
-                        ))
+                        if last.get("tensor") is not None:
+                            rejected.add((
+                                tuple(sorted(last["before"])), last["tensor"]
+                            ))
                         stage["rejected_branches"].append({
                             "tensor": last["tensor"],
+                            "source_group": last["group_id"],
+                            "mode": last.get("mode", "single"),
                             "host_tensor_names_before": last["before"],
                             "reason": "no_more_positive_marginal_candidates",
                         })
@@ -435,7 +438,11 @@ def run_adaptive_tensor_search(
                             frozen, anchor, scouting_repeats
                         )
                         active_group = None
-                        ignored_groups = set()
+                        ignored_groups = (
+                            {(tuple(sorted(frozen)), last["group_id"])}
+                            if last.get("mode") == "atomic_group_fallback"
+                            else set()
+                        )
                         backtracks += 1
                         save()
                         continue
@@ -477,6 +484,45 @@ def run_adaptive_tensor_search(
                         )
                     save()
                 if not individual_candidates:
+                    # A coarse CUDA allocator may show ZERO incremental
+                    # saving per individual tensor but a positive saving
+                    # after moving the whole family. Preserve that measured
+                    # interaction as an atomic learned bundle rather than
+                    # erroneously rejecting all of its members.
+                    bundled_names = sorted(set(frozen) | set(pending))
+                    bundle_probe = (
+                        measurement(bundled_names, anchor, scouting_repeats)
+                        if (len(pending) > 1 and
+                            len(bundled_names) <= max_frozen) else
+                        {"success": False}
+                    )
+                    bundle_delta = marginal_value(
+                        current, bundle_probe, min_gain_mib=min_gain_mib
+                    )
+                    if bundle_delta["eligible"]:
+                        before = list(frozen)
+                        history.append({
+                            "before": before, "tensor": None,
+                            "group_id": active_group["id"],
+                            "mode": "atomic_group_fallback",
+                        })
+                        frozen = bundled_names
+                        current = bundle_probe
+                        stage["frozen_tensors"].append({
+                            "step_index": len(history),
+                            "mode": "atomic_group_fallback",
+                            "tensors": pending,
+                            "source_group": active_group["id"],
+                            "anchor_n_ctx": anchor,
+                            "measured_marginal": bundle_delta,
+                            "host_tensor_names": list(frozen),
+                            "measured_peak_vram_mib":
+                                current["metrics"]["vram_peak_mib"],
+                        })
+                        active_group = None
+                        ignored_groups = set()
+                        save()
+                        continue
                     ignored_groups.add((
                         tuple(sorted(frozen)), active_group["id"]
                     ))
