@@ -48,12 +48,15 @@ def blocked_profiles(report: dict, *, current: int = 257,
             search = p.get("result") or {}
             attempts = search.get("attempts", [])
             # Include only the specific tested first frontier (baseline+1).
-            if any(a.get("requested_n_ctx") == current + 1 and
-                   a.get("success") is False and
-                   a.get("failure_class") in (
-                       "native_cuda_oom",
-                       "native_cuda_resource_allocation_failure",
-                   ) for a in attempts):
+            if any(
+                a.get("requested_n_ctx") == current + 1
+                and a.get("success") is False
+                and (a.get("failure_class") in (
+                    "native_cuda_oom",
+                    "native_cuda_resource_allocation_failure",
+                ) or a.get("worker_signal") == "SIGABRT")
+                for a in attempts
+            ):
                 result.append(p)
     return result
 
