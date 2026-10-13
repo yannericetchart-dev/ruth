@@ -976,7 +976,27 @@ essere causato da un'allocazione successiva non riuscita.
 
 Il ranking è **greedy**, dunque non garantisce la migliore soluzione
 globale. `--max-tests` limita il numero di configurazioni distinte;
-ogni configurazione può avere più ripetizioni. I valori NVML
+ogni configurazione può avere più ripetizioni.
+
+**Riprendere dopo aver esaurito il budget**: mantenere lo stesso
+`--output`, gli stessi parametri di misurazione e aumentare soltanto
+`--max-tests` (esempio `250 → 500`). Ruth riutilizza le configurazioni
+già salvate in `measured_configs`, ricostruisce le selezioni greedy
+dalle misure persistenti e avvia nuovi worker CUDA soltanto per le
+configurazioni mancanti. Non serve `--rerun`: quella opzione ricomincia
+e sovrascrive il checkpoint. Non diminuire `--max-tests` e non modificare
+profili, contesti o altri parametri, altrimenti la ripresa viene bloccata.
+
+```bash
+python -m calibration.kv_adaptive_tensor_offload \\
+  --phase1-report phase1_kv_profiles_complete.json \\
+  --memory-steps-report phase1_kv_memory_steps.json \\
+  --benchmark-report kv_quality_speed_benchmarks.json \\
+  --corpus calibration/corpora/kv_eval_it_v1.txt \\
+  --targets 512 --max-tests 500 \\
+  --output phase2_adaptive_tensor_groups_v3.json
+```
+ I valori NVML
 sono misure campionate del picco del processo, non dimensioni
 di singoli buffer né certificazioni di stabilità operativa.
 
