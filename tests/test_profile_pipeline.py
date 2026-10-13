@@ -322,6 +322,11 @@ class ProfilePipelineTests(unittest.TestCase):
             self.assertIn("Test n_ctx=256", log.getvalue())
             self.assertIn("Decisione: Q4_K_M", log.getvalue())
             self.assertIn("RIUTILIZZO", log.getvalue())
+            self.assertIn(
+                "RIUTILIZZO baseline full-CUDA gia' validata: Q4_K_M",
+                log.getvalue(),
+            )
+            self.assertIn("GGUF=Q4_K_M.gguf", log.getvalue())
             directory = Path(first["run_directory"])
             self.assertEqual(directory.name, config["profile_key"])
             state = json.loads((directory / "state.json").read_text())
