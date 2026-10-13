@@ -210,10 +210,10 @@ class ContextWorkerDiagnosticsTests(unittest.TestCase):
             e["event"] == "context_worker_retry" for e in events
         ))
 
-    def test_one_sigabrt_continues_bisection_below_crash(self):
+    def test_one_sigabrt_confirms_empirical_max_after_bisection(self):
         # Qwen: 2048 OK; 2560 native resource failure; 2304 SIGABRT
         # once without an OOM line. Must search 2176, etc., and confirm
-        # a lower bound without inventing an exact maximum.
+        # a maximum for the fixed runtime, WITHOUT claiming CUDA OOM.
         calls = []
         from model import ModelManager
         with tempfile.TemporaryDirectory() as folder:
@@ -269,14 +269,17 @@ class ContextWorkerDiagnosticsTests(unittest.TestCase):
         self.assertEqual(calls.count(2176), 1)
         self.assertEqual(calls.count(2560), 1)
         self.assertEqual(result["confirmed_gpu_resident_n_ctx"], 2048)
-        self.assertIsNone(result["confirmed_max_gpu_resident_n_ctx"])
-        self.assertFalse(result["maximality_proven"])
-        self.assertFalse(result["success"])
-        self.assertFalse(result["measurement_completed"])
+        self.assertEqual(result["confirmed_max_gpu_resident_n_ctx"], 2048)
+        self.assertTrue(result["maximality_proven"])
+        self.assertTrue(result["success"])
+        self.assertTrue(result["measurement_completed"])
+        self.assertEqual(result["maximality_basis"], "empirical_fixed_runtime_search")
+        self.assertTrue(result["failure_cause_unresolved"])
+        self.assertEqual(result["boundary_n_ctx"], 2049)
         self.assertTrue(result["confirmation_completed"])
         self.assertEqual(len(result["confirmation"]), 2)
         self.assertTrue(result["uncertain_failure_boundaries"])
-        self.assertIn("massimo", result["error"])
+        self.assertIsNone(result.get("error"))
         self.assertEqual(result["highest_gpu_resident_n_ctx_observed"], 2048)
         self.assertEqual(
             result["validated_gpu_resident_context"]["n_ctx"], 2048
@@ -289,7 +292,7 @@ class ContextWorkerDiagnosticsTests(unittest.TestCase):
             result["validated_gpu_resident_context"]["operationally_safe"]
         )
 
-    def test_one_sigabrt_confirms_floor_not_max(self):
+    def test_one_sigabrt_confirms_empirical_max_not_oom(self):
         calls = []
 
         def fake_probe(path, ctx, **kwargs):
@@ -305,12 +308,13 @@ class ContextWorkerDiagnosticsTests(unittest.TestCase):
         result, events = self.run_fake_search(fake_probe)
         self.assertEqual(calls, [64, 128, 129, 128, 128])
         self.assertEqual(result["confirmed_gpu_resident_n_ctx"], 128)
-        self.assertIsNone(result["confirmed_max_gpu_resident_n_ctx"])
+        self.assertEqual(result["confirmed_max_gpu_resident_n_ctx"], 128)
         self.assertEqual(len(result["uncertain_failure_boundaries"]), 1)
         self.assertTrue(result["confirmation_completed"])
         self.assertEqual(len(result["confirmation"]), 2)
-        self.assertFalse(result["success"])
-        self.assertFalse(result["maximality_proven"])
+        self.assertTrue(result["success"])
+        self.assertTrue(result["maximality_proven"])
+        self.assertTrue(result["failure_cause_unresolved"])
         self.assertFalse(any(
             event.get("event") == "context_worker_retry" for event in events
         ))
@@ -325,7 +329,7 @@ class ContextWorkerDiagnosticsTests(unittest.TestCase):
         self.assertEqual(len(validated), 1)
         self.assertEqual(validated[0]["n_ctx"], 128)
         self.assertEqual(validated[0]["confirmation_rounds"], 2)
-        self.assertIs(validated[0]["maximality_proven"], False)
+        self.assertIs(validated[0]["maximality_proven"], True)
         self.assertTrue(result["validated_gpu_resident_context"][
             "native_cuda_validation"
         ])
@@ -348,8 +352,8 @@ class ContextWorkerDiagnosticsTests(unittest.TestCase):
         result, events = self.run_fake_search(fake_probe)
         self.assertEqual(calls, [64, 128, 129, 128, 128])
         self.assertEqual(result["confirmed_gpu_resident_n_ctx"], 128)
-        self.assertIsNone(result["confirmed_max_gpu_resident_n_ctx"])
-        self.assertFalse(result["maximality_proven"])
+        self.assertEqual(result["confirmed_max_gpu_resident_n_ctx"], 128)
+        self.assertTrue(result["maximality_proven"])
         self.assertEqual(
             result["uncertain_failure_boundaries"][0]["failure_class"],
             "inference_or_worker_error",
