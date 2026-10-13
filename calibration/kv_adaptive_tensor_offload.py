@@ -286,14 +286,41 @@ def run_adaptive_tensor_search(
     }
     if output.exists() and not rerun:
         previous = json.loads(output.read_text("utf-8"))
+        prior_params = previous.get("parameters")
+        previous_limit = (
+            prior_params.get("max_tests")
+            if isinstance(prior_params, dict) else None
+        )
+        # The number of permitted trials is an execution BUDGET, not
+        # part of the experimental identity. Allow raising the budget
+        # without invalidating prior measurements or rerunning CUDA.
+        # Keep every other comparison-critical parameter unchanged.
+        matching_experiment = (
+            isinstance(previous_limit, int)
+            and not isinstance(previous_limit, bool)
+            and previous_limit >= 1
+            and isinstance(prior_params, dict)
+            and {key: value for key, value in prior_params.items()
+                 if key != "max_tests"}
+                == {key: value for key, value in identity.items()
+                    if key != "max_tests"}
+        )
         if (previous.get("schema") != SCHEMA
-            or previous.get("parameters") != identity):
-            raise ValueError("Checkpoint incompatibile; usare --rerun.")
+            or not matching_experiment
+            or max_tests < previous_limit):
+            raise ValueError(
+                "Checkpoint incompatibile: puoi solo aumentare --max-tests "
+                "mantenendo invariati gli altri parametri. "
+                "Per cambiare esperimento usa un altro --output o --rerun."
+            )
+        cached = previous.get("measured_configs") or {}
+        if not isinstance(cached, dict) or len(cached) > previous_limit:
+            raise ValueError("Checkpoint misure incoerente o danneggiato.")
         if previous.get("completed"):
             return previous
-        # Incomplete searches are deterministically replayed from saved
-        # measured configs; no saved success is silently reinterpreted.
-        cached = previous.get("measured_configs") or {}
+        # Reconstruct the same greedy path from saved measurements.
+        # Cached configurations do not count as new CUDA work.
+        # Only newly encountered configurations consume the added budget.
     else:
         cached = {}
     report = {
