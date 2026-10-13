@@ -297,6 +297,46 @@ class KaggleSourceTests(unittest.TestCase):
         self.assertLess(fp16["quality_priority"],
                         by_quant["q5_k_m"]["quality_priority"])
 
+    def test_kaggle_bare_q5_k_is_ranked_as_m_not_l(self):
+        from calibration.kaggle_source import inventory_kaggle
+        files = [
+            {"Name": "qwen2.5-7b-instruct-q5_k-00001-of-00002.gguf",
+             "Size": "2.5GB"},
+            {"Name": "qwen2.5-7b-instruct-q5_k-00002-of-00002.gguf",
+             "Size": "2.5GB"},
+            {"Name": "qwen2.5-7b-instruct-q5_k_m-00001-of-00002.gguf",
+             "Size": "2.5GB"},
+            {"Name": "qwen2.5-7b-instruct-q5_k_m-00002-of-00002.gguf",
+             "Size": "2.5GB"},
+            {"Name": "qwen2.5-7b-instruct-q5_k_l.gguf",
+             "Size": "5.8GB"},
+        ]
+        with patch(
+            "calibration.kaggle_source.variation_files",
+            return_value=(files, HANDLE),
+        ):
+            found = inventory_kaggle(
+                REPOSITORY, "Qwen2.5-7B-Instruct-",
+                selected_handle=HANDLE,
+            )
+        by_name = {row["quantization"]: row for row in found}
+        self.assertEqual(len(found), 3)
+        self.assertEqual(
+            by_name["q5_k"]["quality_priority"],
+            by_name["q5_k_m"]["quality_priority"],
+        )
+        self.assertLess(
+            by_name["q5_k_l"]["quality_priority"],
+            by_name["q5_k"]["quality_priority"],
+        )
+        self.assertEqual(by_name["q5_k"]["quality_base"], "Q5_K_M")
+        self.assertEqual(
+            by_name["q5_k"]["quality_rank_confidence"],
+            "standard_llama_quantize_alias",
+        )
+        self.assertEqual(by_name["q5_k"]["reported_download_bytes"],
+                         5_000_000_000)
+
     def test_multi_shard_kaggle_sizes_are_summed_without_download(self):
         from calibration.kaggle_source import parse_kaggle_file_size
         self.assertEqual(
