@@ -302,7 +302,10 @@ Il codice distingue la convenzione dei nomi dalla qualita' misurata.
 In `llama-quantize`, i nomi brevi `Q3_K`, `Q4_K` e `Q5_K`
 sono alias rispettivamente di `Q3_K_M`, `Q4_K_M` e `Q5_K_M`.
 Quindi `Q5_K` viene ordinato **nella stessa fascia di
-`Q5_K_M`**, non come `Q5_K_L`. Le versioni `_L` sono
+`Q5_K_M`**, non come `Q5_K_L`. Se entrambi sono presenti,
+a parita' di fascia si prova prima il nome canonico `Q5_K_M`
+e poi l'alias `Q5_K`: e' un criterio deterministico di
+ordinamento, non una superiorita' misurata. Le versioni `_L` sono
 ricette miste diverse; non esiste la regola generale
 `Q?_K == Q?_K_L`. L'alias si applica alla classificazione
 nominale, **non** dimostra che due GGUF prodotti da editori
