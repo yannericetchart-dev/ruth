@@ -1026,6 +1026,60 @@ Il file contiene `scanned_families`, `measured_configs`,
 `final_host_tensor_names`, oltre ai dati dei ripetuti test CUDA.
 
 
+### Pianificare le combinazioni PRIMA di eseguire CUDA
+
+Se `phase2_adaptive_tensor_groups_v3.json` esiste, il programma
+`calibration.kv_offload_candidate_plan` crea **offline** un elenco
+ordinato delle combinazioni da verificare, usando quanto già misurato
+su ogni singolo tensore e sulle configurazioni con 2 o 3 tensori.
+Calibra il cambiamento di allocazione e velocità tra 256 e 512 con
+la seed già validata. Non avvia worker CUDA.
+
+```bash
+python -m calibration.kv_offload_candidate_plan \
+  --source-report phase2_adaptive_tensor_groups_v3.json \
+  --target-ctx 512 --min-tensors 2 --max-tensors 4 \
+  --shortlist 100 --decode-weight 0.7 \
+  --output phase2_candidate_plan_512.json
+```
+
+Nel report iniziale di Gemma-2 9B, esistono 42 misure individuali
+di `ffn_down.weight`, 41 coppie e 40 terne misurate a 256 token.
+Enumerando 2–4 tensori della famiglia con dati individuali disponibili
+si ottengono **124.271 combinazioni**, ordinate offline e ridotte ai
+100 candidati più promettenti. Non vengono inventati costi individuali
+per famiglie sulle quali mancano prove singole.
+
+**La somma dei MiB dei singoli tensori non è sempre uguale al risparmio
+cumulativo**. Il ranking corregge questo effetto usando le deviazioni
+mediane osservate su coppie e terne; inoltre trasferisce le stime
+prefill/decode da 256 a 512 con il rapporto osservato per la seed
+verificata. Sono **previsioni**, non misure CUDA a 512.
+Nessun margine minimo VRAM è richiesto. Il piano ordina prima le
+configurazioni con una probabilità di rientrare nella memoria fisica
+suggerita dalle stime, senza applicare una riserva di 64 MiB.
+
+Il piano può essere passato direttamente alla post-ottimizzazione:
+
+```bash
+python -m calibration.kv_post_optimize \
+  --source-report phase2_adaptive_tensor_groups_v3.json \
+  --candidate-plan phase2_candidate_plan_512.json \
+  --target-ctx 512 --decode-weight 0.7 \
+  --max-tests 100 --confirm-repeats 3 \
+  --benchmark-report kv_quality_speed_benchmarks.json \
+  --corpus calibration/corpora/kv_eval_it_v1.txt \
+  --output phase2_post_optimize_preplanned_512.json
+```
+
+L'ottimizzatore verifica che il piano provenga **esattamente dallo
+stesso report sorgente** (SHA-256), GGUF, n_ctx e peso decode.
+Ogni candidato selezionato viene poi provato a 512 con verifica
+GPU-KV nativa, senza alcuna soglia arbitraria VRAM. Il report originale
+e il piano offline rimangono invariati, mentre il checkpoint salva
+i test CUDA realmente eseguiti. Se il budget si esaurisce, può essere
+incrementato nello stesso `--output`.
+
 ### Ottimizzare il bundle confermato senza soglie VRAM
 
 Dopo che `phase2_adaptive_tensor_groups_v3.json` ha confermato
