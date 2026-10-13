@@ -205,3 +205,39 @@ def native_group_trial(layout: dict, group: dict | None) -> dict:
         "host_gguf_bytes": (group["gguf_unique_weight_bytes"] if group else 0),
         "group": group["id"] if group else None,
     }
+
+
+def native_multi_group_trial(layout: dict, groups: list[dict]) -> dict:
+    """One native mapping with the union of disjoint homologous CPU groups.
+
+    Serialized GGUF bytes are only a prioritization proxy, never measured
+    VRAM freed. Uses native_group_trial's exhaustive GPU/CPU rule coverage.
+    """
+    if not groups:
+        raise ValueError("Combinazione gruppi vuota.")
+    ids = [g.get("id") for g in groups]
+    if len(ids) != len(set(ids)) or any(
+        not isinstance(gid, str) or not gid.startswith("group:") for gid in ids
+    ):
+        raise ValueError("Gruppi duplicati o ID non validi.")
+    if any(g.get("eligible_for_trial") is not True for g in groups):
+        raise ValueError("Gruppo non idoneo a spostamento CPU.")
+    names = [name for group in groups for name in group["tensor_names"]]
+    if len(names) != len(set(names)):
+        raise ValueError("Gruppi con tensori sovrapposti.")
+    merged = {
+        "id": "groups:" + "+".join(sorted(ids)),
+        "tensor_names": names,
+        "gguf_unique_weight_bytes": sum(
+            g["gguf_unique_weight_bytes"] for g in groups
+        ),
+    }
+    trial = native_group_trial(layout, merged)
+    trial["group_ids"] = sorted(ids)
+    trial["groups"] = [{
+        "id": g["id"],
+        "gguf_unique_weight_mib": g["gguf_unique_weight_mib"],
+        "tensor_count": g["tensor_count"],
+        "tensor_names": g["tensor_names"],
+    } for g in groups]
+    return trial
