@@ -250,44 +250,44 @@ puo' richiedere numerose iterazioni/tempo. Il massimo riportato
 e' diagnostico: non implica un margine operativo sicuro.
 
 Quando un worker di contesto non produce JSON valido, Ruth registra
-\`worker_returncode\`, \`worker_signal\` e lo stato del protocollo.
-**Un solo SIGABRT e' sufficiente a scartare immediatamente quel n_ctx**:
-nessun secondo tentativo sullo stesso valore; Ruth prosegue con la
-bisezione sui contesti inferiori. Se nei log manca una causa CUDA nativa
-esplicita, il punto scartato resta un **limite incerto** e non e'
-etichettato OOM. La ricerca continua ugualmente, conservando la
-distinzione tra massimo osservato, contesto confermato e massimo
-rigorosamente verificato. Solo un errore JSON senza SIGABRT puo'
-essere ritentato una volta per escludere un'anomalia transitoria.
-Neppure SIGKILL, preso isolatamente, prova esaurimento VRAM.
+`worker_returncode`, `worker_signal` e lo stato del protocollo.
+**Un SIGABRT scarta quel n_ctx senza un secondo tentativo**;
+la bisezione prosegue verso contesti inferiori. Per la calibrazione
+si distingue ora il **massimo empirico** dal motivo del fallimento:
+se la ricerca raggiunge due valori adiacenti `N` funzionante
+e `N+1` fallito con SIGABRT o fallimento nativo di risorse,
+e `N` supera le due conferme full-CUDA, `N` e' il massimo
+empirico per il runtime e i parametri fissati. La ricerca e'
+completa e `confirmed_max_gpu_resident_n_ctx=N`, con
+`maximality_proven=true` e
+`maximality_basis=empirical_fixed_runtime_search`.
+Questo **non e' una dimostrazione matematica** della capacita'
+fisica della VRAM o della causa di ogni crash. Un SIGABRT generico
+rimane `failure_cause_unresolved=true`, mai OOM inventato.
+Per errori ambigui che non sono SIGABRT e non hanno evidenza
+CUDA esplicita rimane invece la prudenza: tali casi non
+certificano automaticamente il massimo.
 
-Dopo aver esplorato i punti inferiori, il candidato funzionante e'
-verificato con due conferme CUDA native. Al termine Ruth stampa
-`n_ctx=N VALIDATO full-CUDA | conferme=2/2` e salva anche
-`validated_gpu_resident_context` con il margine VRAM campionato.
-**Questo valore e' realmente validato** anche se esistono limiti
-superiori incerti: in tal caso `confirmed_gpu_resident_n_ctx=N`,
-`confirmed_max_gpu_resident_n_ctx=null`, `maximality_proven=false`
-e `success=false`. La fase 1 resta incompleta **rispetto alla prova
-del massimo**, non rispetto alla validazione di N.
-L'audit non invasivo mostra `N VALIDATO full-CUDA (massimo incerto)`;
-non serve rieseguire CUDA per rendere esplicita la prova gia' registrata.
-Questa validazione non rende automaticamente sicuro il contesto per
-un profilo operativo. Una ripresa senza `--rerun` riutilizza la
-baseline e ripete soltanto la ricerca del massimo se desiderato.
+I report diagnostici delle vecchie ricerche gia' concluse vengono
+riconciliati **senza eseguire nuovi probe GPU** quando i log salvati
+provano il contesto inferiore full-CUDA, le conferme native,
+il crash SIGABRT al token immediatamente successivo e la
+coerenza con la baseline. La pipeline conserva una copia
+`context_gpu.pre_empirical_reconciliation.json` del report
+originale, aggiorna il journal e permette all'audit di mostrare
+`VALIDATO (massimo empirico)` e la fase 1 completata.
+Eseguire la pipeline fino a `context_gpu` senza `--rerun`
+per effettuare questa riconciliazione; l'audit resta di sola lettura.
+Nessuna quantizzazione o profilo operativo viene cambiato.
 
-Se i log di un worker abortito riportano esplicitamente
-`CUDA error: the resource allocation failed` (ad esempio durante
-`cublasCreate_v2`), Ruth registra
-`native_cuda_resource_allocation_failure`: e' una prova di fallita
-allocazione di risorse CUDA **per la configurazione corrente**, distinta
-dall'errore `native_cuda_oom`. Tale fallimento delimita la ricerca
-e permette la bisezione; non afferma di conoscere la causa fisica
-esatta ne' i byte di VRAM mancanti. SIGABRT privo di questa
-evidenza **scarta subito il singolo n_ctx** e permette la ricerca
-di contesti inferiori, ma non dimostra che il massimo assoluto
-sia stato trovato. Solo i probe riusciti di pesi/KV/compute in
-CUDA e le ripetizioni di conferma validano il contesto inferiore.
+Se un worker segnala esplicitamente
+`CUDA error: the resource allocation failed` durante
+`cublasCreate_v2`, Ruth conserva la categoria
+`native_cuda_resource_allocation_failure`, distinta da un OOM CUDA.
+La ricerca di contesto verifica pesi, KV e compute principale in GPU;
+piccoli buffer ausiliari CUDA_Host non equivalgono a KV CPU.
+Il massimo diagnostico appena allocabile non e' necessariamente
+sicuro nell'uso operativo: occorre margine VRAM sufficiente.
 
 Su Qwen Hugging Face Q5_K_L, un test a \`n_ctx=2048\` ha misurato
 6139,3 MiB su 6141 MiB: appena 1,7 MiB di margine campionato,
