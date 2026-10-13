@@ -213,7 +213,8 @@ def score_context(rows: list[dict], *, vram_total_mib: float,
             key: round(value, 5) for key, value in metrics.items()
         }
         row["vram_headroom_mib"] = round(headroom, 2)
-        row["operationally_safe"] = headroom >= target_headroom_mib
+        # A sampled margin target is not proof of operational stability.
+        row["headroom_target_met"] = headroom >= target_headroom_mib
 
 
 def run_benchmark(*, phase1_report: Path, corpus: Path,
@@ -248,9 +249,11 @@ def run_benchmark(*, phase1_report: Path, corpus: Path,
             )
         model_path = Path(baseline["local_path"])
     model_path = Path(model_path).resolve()
+    if not contexts:
+        raise ValueError("Nessun contesto richiesto.")
     layout = inspect_gguf(model_path, n_ctx=min(contexts))
     limit = context_limit(layout)
-    if not contexts or any(
+    if any(
         type(ctx) is not int or ctx < 64 or ctx > limit
         for ctx in contexts
     ):
