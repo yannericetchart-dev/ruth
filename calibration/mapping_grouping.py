@@ -149,14 +149,50 @@ def native_group_trial(layout: dict, group: dict | None) -> dict:
     if not set(host).issubset(set(all_names)) or len(host) != len(set(host)):
         raise ValueError("Mapping: gruppo non corrisponde al GGUF.")
     name_to_device = {name: "cpu" if name in host else "gpu" for name in all_names}
-    # Exact names prevent overlap between CPU and GPU and permit native
-    # occurrence-count validation, including tied Gemma and repeated rope.
-    rules = [{
-        "pattern": "^" + re.escape(name) + "$",
-        "device": name_to_device[name],
-    } for name in all_names]
-    # Gemma tied output + input use one physical tensor with two native
-    # occurrences; both must remain GPU in this initial group experiment.
+    # Efficient native regex: ONE expression per homologous tensor family
+    # across all transformer blocks, not hundreds of regexes per model.
+    # Non-block tensors remain independently addressable, including the
+    # physical Gemma tied embedding which has TWO native uses.
+    arch = layout["metadata"]["general.architecture"]
+    blocks = layout["metadata"][f"{arch}.block_count"]
+    by_suffix = defaultdict(list)
+    non_block = []
+    for name in all_names:
+        match = BLOCK_TENSOR.fullmatch(name)
+        if match and int(match.group(1)) < blocks:
+            by_suffix[match.group(2)].append(name)
+        else:
+            non_block.append(name)
+    rules = []
+    for suffix, names in sorted(by_suffix.items()):
+        targets = {name_to_device[name] for name in names}
+        if len(targets) != 1:
+            raise RuntimeError(
+                "Mapping: gruppo omologo diviso tra CPU e GPU: " + suffix
+            )
+        rules.append({
+            "pattern": r"^blk\.[0-9]+\." + re.escape(suffix) + "$",
+            "device": targets.pop(),
+        })
+    for name in sorted(non_block):
+        rules.append({
+            "pattern": "^" + re.escape(name) + "$",
+            "device": "gpu",
+        })
+    covered = {}
+    for rule in rules:
+        matching = [name for name in all_names
+                    if re.search(rule["pattern"], name)]
+        if not matching:
+            raise RuntimeError("Mapping: override nativo senza tensori.")
+        for name in matching:
+            if name in covered:
+                raise RuntimeError("Mapping: override nativi sovrapposti.")
+            covered[name] = rule["device"]
+    if covered != name_to_device:
+        raise RuntimeError("Mapping: copertura fisica tensori incompleta.")
+    # All instances of a repeated GGUF name must appear in the native
+    # logs and be placed on the same requested device.
     return {
         "id": group["id"] if group else "baseline",
         "rules": rules,
