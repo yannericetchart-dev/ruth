@@ -950,16 +950,29 @@ scegliere i target.
 8. Salva le misure a ogni prova e riutilizza il checkpoint con
    parametri identici. `--rerun` ricomincia.
 
-**Correzione baseline (schema greedy v2).** Il primo test con
-`host_tensor_names=[]` riutilizza le **identiche regole native all-GPU**
-di `calibration.gpu_context`, anziché generare una regola separata per
-ogni famiglia di blocchi. Se una ricerca precedente si è interrotta con
-`anchor_not_reproducible`, riavviare da un **nuovo file output**
-(`phase2_adaptive_tensor_groups_v2.json`) oppure passare `--rerun`
-per invalidare il checkpoint v1. Gli errori dell'anchor conservano ora
-anche VRAM prima/dopo il load e i record nativi della KV. Se anche il
-controllo canonico della Fase 1 a 257 fallisce, verificare l'ambiente
-CUDA/VRAM prima di attribuire il problema all'algoritmo greedy.
+**Anchor di profiling (schema greedy v3).** Se l'anchor
+storico `n_ctx=257` con FA OFF / K=V=FP16 fallisce per una causa di
+risorse CUDA, Ruth controlla se il report KV contiene una **misura
+nativa reale** del salto `256 → 257`. Soltanto quando quel salto
+esiste e corrisponde a memoria KV aggiuntiva, tenta automaticamente
+`n_ctx=256` con tutti i pesi e KV in GPU, verificandolo due volte.
+Se 256 non viene confermato, si arresta. Se viene confermato,
+profilazione di gruppi e singoli tensori avvengono a **256**; il target
+**512** resta invariato e richiede tre conferme indipendenti.
+Il report registra `historical_baseline_ctx=257`,
+`actual_profiling_start_ctx=256`, il fallimento iniziale, le due
+conferme, e il proxy CPU-KV `256 → 512` (quando misurabile).
+Non equivale a promuovere un nuovo massimo Fase 1 né garantisce che
+256 sia stabile in ogni condizione.
+
+L'anchor vuoto usa esattamente le regole native originali all-GPU.
+Il nuovo schema invalida il checkpoint v2: usare un file diverso,
+per esempio `phase2_adaptive_tensor_groups_v3.json`, o `--rerun`.
+I diagnostici conservano i record nativi KV e le misure NVML.
+Se anche 256 fallisce, confrontare il worker originale
+`calibration.gpu_context`, la VRAM già occupata prima del caricamento
+e gli errori nativi. Un OOM con margine NVML campionato positivo può
+essere causato da un'allocazione successiva non riuscita.
 
 Il ranking è **greedy**, dunque non garantisce la migliore soluzione
 globale. `--max-tests` limita il numero di configurazioni distinte;
