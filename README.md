@@ -898,3 +898,85 @@ Non si modifica nessun profilo operativo. I risultati possono
 includere `CUDA_Host` (pinned host): la collocazione del tensore
 sul lato host non dimostra che il calcolo venga eseguito dalla CPU;
 l'effetto prestazionale è misurato e non presunto.
+
+
+### Ricerca adattiva: gruppi, blocchi, singoli tensori e bundle appresi
+
+Il nuovo esperimento `calibration.kv_adaptive_tensor_offload` parte
+**esclusivamente dalla baseline storica FA OFF / K=FP16 / V=FP16,
+n_ctx=257**. Riutilizza le misure di `kv_memory_steps` per annotare
+il passo osservato, senza usare il proxy in RAM come prova del
+risparmio effettivo di VRAM.
+
+```bash
+python -m calibration.kv_adaptive_tensor_offload \
+  --phase1-report phase1_kv_profiles_complete.json \
+  --memory-steps-report phase1_kv_memory_steps.json \
+  --targets 512 \
+  --scouting-repeats 2 --confirm-repeats 3 \
+  --max-tests 250 --max-frozen 40 --max-backtracks 2 \
+  --output phase2_adaptive_tensor_groups.json
+```
+
+Per esplorare più tappe in una sola ricerca, usare
+`--targets 512,768,1024`, sempre entro il limite architetturale GGUF.
+La lista dei target è **esplicita**: il passo non viene assunto
+universale come 256 e il report KV deve essere consultato prima di
+scegliere i target.
+
+**Algoritmo sperimentale:**
+
+1. Misura la baseline con tutti i pesi e KV in GPU a `n_ctx=257`.
+2. Confronta a **pari n_ctx** tutte le famiglie omologhe e tutti i
+   blocchi completi (resto della configurazione fissato).
+3. Seleziona il gruppo con il migliore risparmio NVML rispetto alle
+   perdite misurate di prefill e decode.
+4. Dentro al gruppo selezionato prova ogni **singolo tensore** in
+   isolamento rispetto ai tensori già congelati. Memorizza
+   `ΔVRAM`, `Δprefill`, `Δdecode` e tempo combinato
+   prompt+generazione. Sposta provvisoriamente il migliore.
+5. Dopo ogni scelta tenta il target, ripetendolo **tre volte in worker
+   distinti** prima di confermarlo. Se è ancora OOM continua
+   costruendo il bundle. I sottoinsiemi sono validati dai log nativi
+   tensore per tensore: la KV deve restare in GPU.
+6. Se nessun tensore del gruppo libera VRAM misurabile singolarmente,
+   ma il **gruppo intero** sì, permette l'offloading del gruppo come
+   bundle atomico: la memoria allocata per blocchi può mascherare
+   l'effetto delle singole rimozioni.
+7. Se un ramo resta senza mosse utili, può annullare fino a
+   `--max-backtracks` scelte; se raggiunge il target salva un
+   `learned_group` contenente tutti i nomi fisici dei tensori
+   spostati e prosegue dal nuovo n_ctx confermato.
+8. Salva le misure a ogni prova e riutilizza il checkpoint con
+   parametri identici. `--rerun` ricomincia.
+
+Il ranking è **greedy**, dunque non garantisce la migliore soluzione
+globale. `--max-tests` limita il numero di configurazioni distinte;
+ogni configurazione può avere più ripetizioni. I valori NVML
+sono misure campionate del picco del processo, non dimensioni
+di singoli buffer né certificazioni di stabilità operativa.
+
+È possibile confrontare i bundle finalisti anche per PPL/KL campionata
+e punteggio contro le misure full-GPU già ottenute a pari contesto:
+
+```bash
+python -m calibration.kv_adaptive_tensor_offload \
+  --phase1-report phase1_kv_profiles_complete.json \
+  --memory-steps-report phase1_kv_memory_steps.json \
+  --benchmark-report kv_quality_speed_benchmarks.json \
+  --corpus calibration/corpora/kv_eval_it_v1.txt \
+  --targets 512,768 \
+  --output phase2_adaptive_tensor_groups_512_768.json
+```
+
+La qualità è misurata con KV CPU **sia nel riferimento che nel
+candidato**, mentre il test di velocità e capacità usa KV GPU;
+questi due risultati restano distinti. I benchmark tra diverse
+impostazioni FA/KV sono confronti multiobiettivo esplorativi,
+non misure isolate della sola quantizzazione. Il profilo operativo,
+la baseline e la Fase 1 storica non vengono modificati.
+
+Il file contiene `scanned_families`, `measured_configs`,
+`stages[].group_screenings`, `stages[].individual_screenings`,
+`stages[].frozen_tensors`, `learned_groups` e
+`final_host_tensor_names`, oltre ai dati dei ripetuti test CUDA.
