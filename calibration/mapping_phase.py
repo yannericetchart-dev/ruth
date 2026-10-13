@@ -25,10 +25,12 @@ import time
 from hardware import GPUManager
 from model.inspect import inspect_gguf, gguf_file_set
 
-from .gpu_context import verify_gpu_runtime
+from .gpu_context import (verify_gpu_runtime, verify_native_kv_config,
+                          validate_kv_config, context_limit)
 from .baseline_discovery import minimal_chat_prompt
 from .mapping_grouping import (
     group_inventory, choose_group_trials, native_group_trial,
+    native_multi_group_trial,
 )
 from .mapping_native_validation import verify_override_logs
 from .native_memory import parse_native_memory
@@ -120,8 +122,11 @@ def verify_mapping_kv_runtime(native: dict, *, host_kv: bool) -> dict:
 
 
 def _worker(model_path: Path, model_id: str, group_id: str,
-            n_ctx: int, token_count: int) -> dict:
+            n_ctx: int, token_count: int, *, group_ids: list[str] | None = None,
+            flash_attn: bool = False, type_k: str = "f16",
+            type_v: str = "f16") -> dict:
     """Fixed workload in isolated worker, native stderr retained externally."""
+    validate_kv_config(flash_attn, type_k, type_v)
     import pynvml
     from llama_cpp.llama_cpp import llama_supports_gpu_offload
     from inference.adapters.llama_cpp_python import LlamaCppPythonMappingAdapter
@@ -138,14 +143,27 @@ def _worker(model_path: Path, model_id: str, group_id: str,
     os.environ.setdefault("CUDA_VISIBLE_DEVICES", gpu["uuid"])
 
     layout = inspect_gguf(model_path, n_ctx=n_ctx)
+    if n_ctx > context_limit(layout) or n_ctx < 64 or not 1 <= token_count <= 128:
+        raise ValueError("n_ctx o token di generazione oltre i limiti.")
     arch = layout["metadata"]["general.architecture"]
     groups = group_inventory(layout)
     selected = next((g for g in groups if g["id"] == group_id), None)
-    if group_id != BASELINE_MODE and (
-        selected is None or not selected["eligible_for_trial"]
-    ):
-        raise ValueError("Mapping: gruppo non valido o non ammesso alla prova.")
-    trial = native_group_trial(layout, selected)
+    if group_ids is not None:
+        if group_id != "groups:" + "+".join(sorted(group_ids)):
+            raise ValueError("Mapping: identificativo gruppi non coerente.")
+        inventory = {g["id"]: g for g in groups if g["eligible_for_trial"]}
+        if (not group_ids or len(set(group_ids)) != len(group_ids)
+            or any(gid not in inventory for gid in group_ids)):
+            raise ValueError("Mapping: combinazione gruppi non valida.")
+        trial = native_multi_group_trial(
+            layout, [inventory[gid] for gid in group_ids]
+        )
+    else:
+        if group_id != BASELINE_MODE and (
+            selected is None or not selected["eligible_for_trial"]
+        ):
+            raise ValueError("Mapping: gruppo non valido o non ammesso alla prova.")
+        trial = native_group_trial(layout, selected)
     block_count = layout["metadata"][f"{arch}.block_count"]
     report = {
         "worker_ok": False, "mode": group_id, "model_id": model_id,
@@ -154,6 +172,9 @@ def _worker(model_path: Path, model_id: str, group_id: str,
         "n_gpu_layers": block_count + 1,
         "offload_kqv": group_id != BASELINE_MODE,
         "kv_target": "host" if group_id == BASELINE_MODE else "gpu",
+        "flash_attn": flash_attn, "kv_type_k": type_k, "kv_type_v": type_v,
+        "host_group_ids": sorted(group_ids) if group_ids is not None else
+            ([group_id] if group_id != BASELINE_MODE else []),
         "host_tensor_count": trial["host_tensor_count"],
         "gpu_tensor_count": trial["gpu_tensor_count"],
         "measurements": {}, "error": None,
@@ -194,6 +215,7 @@ def _worker(model_path: Path, model_id: str, group_id: str,
                 rules=trial["rules"], n_ctx=n_ctx, n_batch=PROBE_BATCH,
                 n_ubatch=PROBE_BATCH,
                 offload_kqv=(group_id != BASELINE_MODE),
+                flash_attn=flash_attn, type_k=type_k, type_v=type_v,
             )
             report["measurements"]["load_s"] = round(
                 time.perf_counter() - t0, 5
@@ -258,17 +280,29 @@ def _worker(model_path: Path, model_id: str, group_id: str,
 
 def probe_native_mapping(model_path: Path, model_id: str, trial: dict,
                          *, n_ctx: int, tokens: int,
-                         timeout: int = 300) -> dict:
+                         timeout: int = 300, flash_attn: bool = False,
+                         type_k: str = "f16", type_v: str = "f16") -> dict:
     """Execute exactly one baseline or group trial in a fresh CUDA process."""
+    validate_kv_config(flash_attn, type_k, type_v)
+    layout = inspect_gguf(model_path, n_ctx=n_ctx)
+    if (n_ctx > context_limit(layout) or n_ctx < 64
+        or tokens < 1 or tokens > 128 or tokens >= n_ctx):
+        raise ValueError("Probe mapping oltre limite architetturale GGUF.")
     group_id = trial["id"]
-    if group_id != BASELINE_MODE and not group_id.startswith("group:"):
+    if group_id != BASELINE_MODE and not (
+        group_id.startswith("group:") or group_id.startswith("groups:")
+    ):
         raise ValueError("Mapping: ID gruppo non valido.")
     command = [
         sys.executable, "-m", "calibration.mapping_phase",
         "--worker", "--model-path", str(model_path),
         "--model", model_id, "--mode", group_id,
         "--ctx", str(n_ctx), "--tokens", str(tokens),
+        "--flash-attn", "on" if flash_attn else "off",
+        "--type-k", type_k, "--type-v", type_v,
     ]
+    if group_id.startswith("groups:"):
+        command.extend(["--group-ids", json.dumps(trial["group_ids"])])
     try:
         child = subprocess.run(
             command, capture_output=True, text=True, timeout=timeout,
@@ -312,6 +346,10 @@ def probe_native_mapping(model_path: Path, model_id: str, trial: dict,
     host_kv = group_id == BASELINE_MODE
     runtime = verify_mapping_kv_runtime(memory, host_kv=host_kv)
     report["gpu_runtime_validation"] = runtime
+    kv_config = verify_native_kv_config(
+        child.stderr, flash_attn=flash_attn, type_k=type_k, type_v=type_v,
+    )
+    report["kv_config_native_verification"] = kv_config
     measured = report.get("measurements") or {}
     metrics = ("prefill_tokens_per_s", "decode_tokens_per_s",
                "vram_peak_sampled_mib", "host_peak_rss_mib",
@@ -325,6 +363,11 @@ def probe_native_mapping(model_path: Path, model_id: str, trial: dict,
     )
     success = (
         worker_ok and evidence["verified"] and runtime["verified"]
+        and (kv_config["verified"] or
+             (not flash_attn and type_k == type_v == "f16"))
+        and report.get("flash_attn", False) is flash_attn
+        and report.get("kv_type_k", type_k) == type_k
+        and report.get("kv_type_v", type_v) == type_v
         and report.get("n_ctx") == n_ctx
         and report.get("requested_tokens") == tokens
         and report.get("model_id") == model_id
@@ -353,6 +396,8 @@ def probe_native_mapping(model_path: Path, model_id: str, trial: dict,
         report["failure_class"] = "tensor_placement_not_verified"
     elif not runtime["verified"]:
         report["failure_class"] = "gpu_kv_compute_not_verified"
+    elif not kv_config["verified"] and (flash_attn or type_k != "f16" or type_v != "f16"):
+        report["failure_class"] = "native_kv_profile_not_verified"
     else:
         report["failure_class"] = "native_mapping_runtime_failure"
     if not success and not report.get("error"):
@@ -802,15 +847,27 @@ def main(argv=None) -> int:
     parser.add_argument("--mode")
     parser.add_argument("--ctx", type=int)
     parser.add_argument("--tokens", type=int)
+    parser.add_argument("--group-ids", default=None)
+    parser.add_argument("--flash-attn", choices=("on", "off"), default="off")
+    parser.add_argument("--type-k", choices=("f16", "q8_0", "q4_0"), default="f16")
+    parser.add_argument("--type-v", choices=("f16", "q8_0", "q4_0"), default="f16")
     args = parser.parse_args(argv)
     if (not args.worker or not args.model_path or not args.model
         or not args.mode or not args.ctx or not args.tokens):
         parser.error("Modulo riservato al worker nativo della fase mapping.")
     resource.setrlimit(resource.RLIMIT_CORE, (0, 0))
     try:
+        group_ids = json.loads(args.group_ids) if args.group_ids else None
+        if group_ids is not None and (
+            not isinstance(group_ids, list)
+            or any(not isinstance(gid, str) for gid in group_ids)
+        ):
+            raise ValueError("Argomento gruppi non valido.")
         report = _worker(
             Path(args.model_path), args.model, args.mode,
-            args.ctx, args.tokens,
+            args.ctx, args.tokens, group_ids=group_ids,
+            flash_attn=args.flash_attn == "on",
+            type_k=args.type_k, type_v=args.type_v,
         )
     except Exception as exc:
         report = {
