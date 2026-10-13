@@ -103,6 +103,7 @@ class KvProfileTests(unittest.TestCase):
                 )
                 self.assertFalse(kw["persist_reference"])
                 self.assertEqual(kw["tokens"], 16)
+                self.assertEqual(kw["min_ctx"], 258)
             self.assertTrue(output.exists())
             self.assertTrue(all(r["max_gpu_n_ctx"] == 900
                                 for r in report["profiles"]))
@@ -127,6 +128,75 @@ class KvProfileTests(unittest.TestCase):
             self.assertEqual(report["profiles"][1]["status"],
                              "unsupported_or_inconclusive")
             self.assertEqual(report["profiles"][2]["max_gpu_n_ctx"], 512)
+
+
+    def test_baseline_ctx_changes_start_and_report_identity(self):
+        observed = []
+        def fake_search(model_id, **kwargs):
+            observed.append(kwargs["min_ctx"])
+            return {"success": False, "attempts": [{
+                "requested_n_ctx": kwargs["min_ctx"],
+                "success": False,
+                "failure_class": "native_cuda_oom",
+            }]}
+        with tempfile.TemporaryDirectory() as directory:
+            result = run_profiles(
+                baseline_ctx=300, output=Path(directory) / "kv.json",
+                search=fake_search,
+            )
+        self.assertEqual(observed, [301] * 7)
+        self.assertEqual(result["parameters"]["baseline_ctx"], 300)
+        self.assertEqual(result["parameters"]["min_ctx"], 301)
+        self.assertEqual(result["original_reference"]["n_ctx"], 300)
+        self.assertEqual(len(result["profiles"]), 7)
+        self.assertTrue(all(p["max_gpu_n_ctx"] is None
+                            for p in result["profiles"]))
+
+    def test_first_failed_probe_does_not_search_higher_context(self):
+        from calibration.gpu_context import search_gpu_context
+        from model import ModelManager
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "mock.gguf"
+            path.write_bytes(b"mock")
+            model_id = "gemma-2-9b-it"
+            source = "bartowski"
+            spec = ModelManager.source_spec(model_id, source)
+            baseline = {
+                "native_verified_all_gpu": True,
+                "model_id": model_id,
+                "source": source,
+                "repository": spec["repository"],
+                "filename": path.name,
+                "local_path": str(path),
+                "architecture": "gemma2",
+                "quantization": "Q4_K_M",
+            }
+            status = {"ready": True, "errors": [],
+                      "memory": {"total_mib": 6141}}
+            calls = []
+            def failed_probe(model_path, n_ctx, **kwargs):
+                calls.append(n_ctx)
+                return {
+                    "success": False,
+                    "failure_class": "native_cuda_oom",
+                    "error": "CUDA out of memory",
+                }
+            with (patch("calibration.gpu_context.GPUManager.calibration_status",
+                        return_value=status),
+                  patch("calibration.gpu_context.inspect_gguf",
+                        return_value={"metadata": {
+                            "general.architecture": "gemma2",
+                            "gemma2.context_length": 8192,
+                        }}),
+                  patch("calibration.gpu_context.probe_context",
+                        side_effect=failed_probe)):
+                result = search_gpu_context(
+                    model_id, source=source, min_ctx=258, tokens=16,
+                    baseline_selection=baseline, persist_reference=False,
+                )
+        self.assertFalse(result["success"])
+        self.assertEqual(calls, [258])
+        self.assertEqual(result["attempts"][0]["requested_n_ctx"], 258)
 
 
 if __name__ == "__main__":
