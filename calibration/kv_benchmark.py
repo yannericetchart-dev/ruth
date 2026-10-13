@@ -23,6 +23,8 @@ from .baseline_discovery import native_confirmation
 from .gpu_context import context_limit, probe_context, verify_native_kv_config
 from .mapping_phase import verify_mapping_kv_runtime
 from .native_memory import parse_native_memory
+from .mapping_grouping import (group_inventory, native_multi_group_trial)
+from .mapping_native_validation import verify_override_logs
 from .profile_pipeline import atomic_json
 from .worker_failure import analyze_worker_failure
 
@@ -109,7 +111,8 @@ def measure_speed(model_path: Path, model_id: str, profile: dict,
 def quality_subprocess(*, model_path: Path, corpus: Path, n_ctx: int,
                        flash_attn: bool, type_k: str, type_v: str,
                        points: int, reference: Path | None,
-                       output: Path, timeout: int) -> dict:
+                       output: Path, timeout: int,
+                       group_ids: list[str] | None = None) -> dict:
     command = [
         sys.executable, "-m", "calibration.kv_quality_worker",
         "--model-path", str(model_path), "--corpus", str(corpus),
@@ -119,6 +122,8 @@ def quality_subprocess(*, model_path: Path, corpus: Path, n_ctx: int,
     ]
     if reference:
         command.extend(["--reference", str(reference)])
+    if group_ids:
+        command.extend(["--group-ids", json.dumps(sorted(group_ids))])
     try:
         proc = subprocess.run(
             command, capture_output=True, text=True, timeout=timeout,
@@ -136,7 +141,19 @@ def quality_subprocess(*, model_path: Path, corpus: Path, n_ctx: int,
         }
 
     layout = inspect_gguf(model_path, n_ctx=n_ctx)
-    placement = native_confirmation(layout, proc.stderr)
+    if group_ids:
+        inventory = {g["id"]: g for g in group_inventory(layout)
+                     if g["eligible_for_trial"]}
+        if len(set(group_ids)) != len(group_ids) or any(
+            gid not in inventory for gid in group_ids
+        ):
+            raise ValueError("Lista gruppi qualità incoerente con GGUF.")
+        trial = native_multi_group_trial(
+            layout, [inventory[gid] for gid in group_ids]
+        )
+        placement = verify_override_logs(trial, proc.stderr)
+    else:
+        placement = native_confirmation(layout, proc.stderr)
     native = parse_native_memory(proc.stderr)
     kv_residency = verify_mapping_kv_runtime(native, host_kv=True)
     kv_type = verify_native_kv_config(
