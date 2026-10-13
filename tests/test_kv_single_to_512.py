@@ -62,7 +62,7 @@ def fake_infer(path, model_id, trial, *, n_ctx, tokens, timeout,
 
 
 class SingleTo512Tests(unittest.TestCase):
-    def test_rank_uses_real_256_vram_without_hard_exclusion(self):
+    def test_rank_uses_verified_post_load_256_vram_without_hard_exclusion(self):
         with tempfile.TemporaryDirectory() as d:
             root = Path(d)
             layout, census_path = make_census(root)
@@ -71,12 +71,44 @@ class SingleTo512Tests(unittest.TestCase):
             self.assertEqual(len(ranked), 6)
             self.assertEqual([x["rank"] for x in ranked], list(range(1, 7)))
             self.assertTrue(all(x["hard_excluded"] is False for x in ranked))
-            self.assertEqual(ranked[0]["measured_gain_256_mib"], 40.)
-            self.assertEqual(ranked[-1]["measured_gain_256_mib"], 6.)
+            self.assertEqual(ranked[0]["measured_load_gain_256_mib"], 40.)
+            self.assertEqual(ranked[-1]["measured_load_gain_256_mib"], 6.)
             self.assertEqual(
-                [x["measured_gain_256_mib"] for x in ranked],
-                sorted((x["measured_gain_256_mib"] for x in ranked), reverse=True)
+                [x["measured_load_gain_256_mib"] for x in ranked],
+                sorted((x["measured_load_gain_256_mib"] for x in ranked),
+                       reverse=True)
             )
+
+    def test_peak_inference_cannot_override_post_load_savings(self):
+        with tempfile.TemporaryDirectory() as d:
+            root = Path(d)
+            _, census_path = make_census(root)
+            source = json.loads(census_path.read_text())
+            # attn_norm saves just 6 MiB after loading, attn_k 15 MiB.
+            # Forge a much lower inference peak for norm: its position
+            # MUST remain below attn_k because this phase is about load.
+            source["tensor_results"]["blk.0.attn_norm.weight"][
+                "metrics"]["vram_peak_mib"] = 4900.
+            ranked = order_single_candidates(source, target_ctx=512)
+            names = [r["tensor"] for r in ranked]
+            self.assertLess(
+                names.index("blk.0.attn_k.weight"),
+                names.index("blk.0.attn_norm.weight"),
+            )
+            self.assertEqual(
+                ranked[0]["measured_load_gain_256_mib"], 40.
+            )
+
+    def test_missing_or_unverified_native_load_samples_are_not_silently_used(self):
+        with tempfile.TemporaryDirectory() as d:
+            root = Path(d)
+            _, census_path = make_census(root)
+            source = json.loads(census_path.read_text())
+            name = "blk.0.ffn_down.weight"
+            source["reused_from_greedy"][name]["samples"][0][
+                "vram_after_load_mib"] = None
+            with self.assertRaisesRegex(ValueError, "vram_after_load"):
+                order_single_candidates(source, target_ctx=512)
 
     def test_load_only_precedes_benchmark_and_negative_load_skips_inference(self):
         with tempfile.TemporaryDirectory() as d:
