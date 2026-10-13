@@ -950,6 +950,17 @@ scegliere i target.
 8. Salva le misure a ogni prova e riutilizza il checkpoint con
    parametri identici. `--rerun` ricomincia.
 
+**Correzione baseline (schema greedy v2).** Il primo test con
+`host_tensor_names=[]` riutilizza le **identiche regole native all-GPU**
+di `calibration.gpu_context`, anziché generare una regola separata per
+ogni famiglia di blocchi. Se una ricerca precedente si è interrotta con
+`anchor_not_reproducible`, riavviare da un **nuovo file output**
+(`phase2_adaptive_tensor_groups_v2.json`) oppure passare `--rerun`
+per invalidare il checkpoint v1. Gli errori dell'anchor conservano ora
+anche VRAM prima/dopo il load e i record nativi della KV. Se anche il
+controllo canonico della Fase 1 a 257 fallisce, verificare l'ambiente
+CUDA/VRAM prima di attribuire il problema all'algoritmo greedy.
+
 Il ranking è **greedy**, dunque non garantisce la migliore soluzione
 globale. `--max-tests` limita il numero di configurazioni distinte;
 ogni configurazione può avere più ripetizioni. I valori NVML
