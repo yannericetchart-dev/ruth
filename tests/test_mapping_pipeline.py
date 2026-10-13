@@ -34,7 +34,15 @@ def evidence(group_id):
     return {
         "mode": group_id, "success": True,
         "native_placement": {"verified": True},
-        "gpu_runtime_validation": {"verified": True},
+        "gpu_runtime_validation": {
+            "verified": True,
+            "kv": {
+                "verified_host_resident": group_id == "baseline_host_kv",
+                "verified_gpu_resident": group_id != "baseline_host_kv",
+            },
+        },
+        "kv_target": "host" if group_id == "baseline_host_kv" else "gpu",
+        "offload_kqv": group_id != "baseline_host_kv",
         "measurements": {
             "vram_peak_sampled_mib": 5300,
             "host_peak_rss_mib": 1200,
@@ -47,19 +55,24 @@ def evidence(group_id):
 def fake_mapping(selection):
     ids = ["group:attn_k.weight", "group:ffn_down.weight"]
     return {
-        "schema_version": 3, "phase": "mapping",
+        "schema_version": 4, "phase": "mapping",
         "model_id": selection["model_id"],
         "source": selection["source"],
         "filename": selection["filename"],
         "quantization": selection["quantization"],
         "model_path": str(Path(selection["local_path"]).resolve()),
         "reference_full_cuda_n_ctx": 2048,
+        "probe_n_ctx": 4096, "probe_tokens": 128,
+        "baseline_kv_target": "host", "candidate_kv_target": "gpu",
+        "baseline_offload_kqv": False, "candidate_offload_kqv": True,
         "repeat_processes_per_variant": 3,
         "tested_group_ids": ids,
         "groups": [
             {"id": name, "eligible_for_trial": True} for name in ids
         ],
-        "baseline_trials": [evidence("baseline") for _ in range(3)],
+        "baseline_trials": [
+            evidence("baseline_host_kv") for _ in range(3)
+        ],
         "baseline_statistics": {"prefill_tokens_per_s": {"median": 80}},
         "group_evaluations": [
             {
