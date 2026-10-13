@@ -1,6 +1,7 @@
 """Measure the diagnostic maximal context with ALL GGUF weights and KV on CUDA.
 
-No offload changes, no quantization changes, no KV-type or runtime tuning.
+All weights and KV stay on CUDA; K/V precision and Flash Attention are
+explicitly selected for each isolated reference experiment.
 A loading success alone is insufficient: each isolated worker executes
 near the requested context length and verifies native CUDA buffer logs.
 Small auxiliary CUDA_Host compute/output buffers may still be required
@@ -12,6 +13,7 @@ import argparse
 import json
 import math
 import os
+import re
 import signal
 from pathlib import Path
 import subprocess
@@ -67,6 +69,45 @@ def verify_gpu_runtime(native: dict) -> dict:
     }
 
 
+KV_TYPES = ("f16", "q8_0", "q4_0")
+
+
+def validate_kv_config(flash_attn: bool, type_k: str, type_v: str) -> None:
+    if type(flash_attn) is not bool or type_k not in KV_TYPES or type_v not in KV_TYPES:
+        raise ValueError("Profilo KV non valido (FA boolean, K/V f16|q8_0|q4_0).")
+    if not flash_attn and type_v != "f16":
+        raise ValueError("KV V quantizzata richiede Flash Attention.")
+
+
+def verify_native_kv_config(stderr: str, *, flash_attn: bool,
+                            type_k: str, type_v: str) -> dict:
+    """Verify realized KV precision and Flash Attention from llama.cpp logs.
+
+    A requested configuration is not automatically evidence that the backend
+    accepted it; missing native diagnostics must remain unverified.
+    """
+    key = re.search(r"\bK\s*\((f16|q8_0|q4_0)\)\s*:", stderr, re.I)
+    value = re.search(r"\bV\s*\((f16|q8_0|q4_0)\)\s*:", stderr, re.I)
+    fa = re.search(
+        r"\bflash_attn\s*=\s*(enabled|disabled|true|false|on|off|1|0)\b",
+        stderr, re.I,
+    )
+    observed_fa = None if fa is None else fa.group(1).lower() in (
+        "enabled", "true", "on", "1",
+    )
+    observed_k = key.group(1).lower() if key else None
+    observed_v = value.group(1).lower() if value else None
+    return {
+        "verified": (observed_k == type_k and observed_v == type_v
+                     and observed_fa is flash_attn),
+        "requested": {"flash_attn": flash_attn, "type_k": type_k,
+                      "type_v": type_v},
+        "native_observed": {"flash_attn": observed_fa, "type_k": observed_k,
+                            "type_v": observed_v},
+        "note": "I tipi e lo stato Flash Attention devono essere presenti nei log nativi.",
+    }
+
+
 def make_context_tokens(llm, architecture: str, n_ctx: int,
                         generated_tokens: int,
                         model_id: str | None = None) -> list[int]:
@@ -92,7 +133,10 @@ def make_context_tokens(llm, architecture: str, n_ctx: int,
 
 
 def _worker(model_path: Path, n_ctx: int, generated_tokens: int,
-            batch: int = 32, model_id: str | None = None) -> dict:
+            batch: int = 32, model_id: str | None = None,
+            flash_attn: bool = False, type_k: str = "f16",
+            type_v: str = "f16") -> dict:
+    validate_kv_config(flash_attn, type_k, type_v)
     import pynvml
     from llama_cpp.llama_cpp import llama_supports_gpu_offload
     from inference.adapters.llama_cpp_python import LlamaCppPythonMappingAdapter
@@ -119,8 +163,8 @@ def _worker(model_path: Path, n_ctx: int, generated_tokens: int,
         "success": False, "architecture": architecture,
         "n_ctx": n_ctx, "n_gpu_layers": n_blocks + 1,
         "all_gpu_tensor_count": len(layout["tensors"]),
-        "offload_kqv": True, "flash_attn": False,
-        "kv_type_k": "default_f16", "kv_type_v": "default_f16",
+        "offload_kqv": True, "flash_attn": flash_attn,
+        "kv_type_k": type_k, "kv_type_v": type_v,
         "n_batch": batch, "n_ubatch": batch,
         "generated_tokens_requested": generated_tokens,
         "measurements": {}, "error": None,
@@ -154,6 +198,7 @@ def _worker(model_path: Path, n_ctx: int, generated_tokens: int,
             llm, mapping = LlamaCppPythonMappingAdapter().load(
                 model_path, n_gpu_layers=n_blocks + 1, rules=rules,
                 n_ctx=n_ctx, n_batch=batch, n_ubatch=batch,
+                flash_attn=flash_attn, type_k=type_k, type_v=type_v,
             )
             result["measurements"]["model_load_s"] = round(
                 time.perf_counter() - start, 3
@@ -217,14 +262,19 @@ def _worker(model_path: Path, n_ctx: int, generated_tokens: int,
 def probe_context(model_path: Path, n_ctx: int,
                   generated_tokens: int = 8, batch: int = 32,
                   timeout: int = 300,
-                  model_id: str | None = None) -> dict:
+                  model_id: str | None = None,
+                  flash_attn: bool = False, type_k: str = "f16",
+                  type_v: str = "f16") -> dict:
     """One new CUDA process per point; no inherited cached CUDA allocations."""
+    validate_kv_config(flash_attn, type_k, type_v)
     layout = inspect_gguf(model_path, n_ctx=n_ctx)
     cmd = [
         sys.executable, "-m", "calibration.gpu_context",
         "--worker", "--model-path", str(model_path),
         "--probe-n-ctx", str(n_ctx), "--tokens", str(generated_tokens),
         "--batch", str(batch),
+        "--flash-attn", "on" if flash_attn else "off",
+        "--type-k", type_k, "--type-v", type_v,
     ]
     if model_id:
         cmd.extend(["--model", model_id])
@@ -272,6 +322,10 @@ def probe_context(model_path: Path, n_ctx: int,
     report["native_memory"] = native
     runtime = verify_gpu_runtime(native)
     report["gpu_runtime_validation"] = runtime
+    kv_config = verify_native_kv_config(
+        child.stderr, flash_attn=flash_attn, type_k=type_k, type_v=type_v,
+    )
+    report["kv_config_native_verification"] = kv_config
     placement = native_confirmation(layout, child.stderr)
     report["full_gpu_native_verification"] = {
         "verified": placement["verified"],
@@ -286,6 +340,10 @@ def probe_context(model_path: Path, n_ctx: int,
         report.get("success") is True
         and placement["verified"]
         and runtime["verified"]
+        and (kv_config["verified"] or not (flash_attn or type_k != "f16" or type_v != "f16"))
+        and report.get("flash_attn", False) is flash_attn
+        and report.get("kv_type_k", type_k) == type_k
+        and report.get("kv_type_v", type_v) == type_v
         and report.get("n_ctx") == n_ctx
         and measured.get("generated_tokens") == generated_tokens
         and measured.get("prompt_tokens") == n_ctx - generated_tokens
@@ -310,6 +368,8 @@ def probe_context(model_path: Path, n_ctx: int,
         report["failure_class"] = "native_weights_not_verified"
     elif not runtime["verified"]:
         report["failure_class"] = "runtime_not_proven_gpu_resident"
+    elif not kv_config["verified"] and (flash_attn or type_k != "f16" or type_v != "f16"):
+        report["failure_class"] = "native_kv_profile_not_verified"
     else:
         report["failure_class"] = "inference_or_worker_error"
     return report
@@ -434,6 +494,7 @@ def search_gpu_context(
     model_id: str, *, max_ctx: int | None = None,
     min_ctx: int = 64, tokens: int = 8,
     batch: int = 32, timeout: int = 300,
+    flash_attn: bool = False, type_k: str = "f16", type_v: str = "f16",
     confirm_rounds: int = 2,
     retry_ambiguous_context: bool = False,
     root: str | Path | None = None,
@@ -452,6 +513,7 @@ def search_gpu_context(
     The CAUSE of a generic SIGABRT remains unknown and is not called OOM.
     This is not a proof of the theoretical physical maximum VRAM capacity.
     """
+    validate_kv_config(flash_attn, type_k, type_v)
     if model_id not in ModelManager.CATALOG:
         raise ValueError(f"Modello non supportato: {model_id}")
     if (not isinstance(tokens, int) or not 1 <= tokens <= 32
@@ -556,6 +618,7 @@ def search_gpu_context(
         "search_ceiling": ceiling,
         "tokens_per_probe": tokens,
         "batch": batch,
+        "flash_attn": flash_attn, "kv_type_k": type_k, "kv_type_v": type_v,
         "confirmed_max_gpu_resident_n_ctx": None,
         "profile_generated": False,
         "selected_operational_n_ctx": None,
@@ -585,6 +648,7 @@ def search_gpu_context(
             candidate = probe_context(
                 model, ctx, generated_tokens=tokens, batch=min(batch, ctx),
                 timeout=timeout, model_id=model_id,
+                flash_attn=flash_attn, type_k=type_k, type_v=type_v,
             )
             candidate["requested_n_ctx"] = ctx
             candidate["worker_protocol_retry_index"] = attempt
@@ -792,13 +856,16 @@ def search_gpu_context(
     result["measurement_completed"] = True
     if not persist_reference:
         return result
-    target = model.parent / "gpu_context_reference.json"
-    temp = model.parent / "gpu_context_reference.json.tmp"
+    suffix = ("" if not flash_attn and type_k == type_v == "f16"
+              else f"_fa{int(flash_attn)}_k{type_k}_v{type_v}")
+    target = model.parent / f"gpu_context_reference{suffix}.json"
+    temp = model.parent / f"gpu_context_reference{suffix}.json.tmp"
     temp.write_text(json.dumps({
         "model_id": model_id,
         "filename": selection["filename"],
         "quantization": selection["quantization"],
         "n_ctx": low,
+        "flash_attn": flash_attn, "kv_type_k": type_k, "kv_type_v": type_v,
         "gpu_total_mib": total_mib,
         "confirmation": result["confirmation"],
         "profile_generated": False,
@@ -823,6 +890,9 @@ def main() -> None:
     parser.add_argument("--min-ctx", type=int, default=64)
     parser.add_argument("--tokens", type=int, default=8)
     parser.add_argument("--batch", type=int, default=32)
+    parser.add_argument("--flash-attn", choices=("off", "on"), default="off")
+    parser.add_argument("--type-k", choices=KV_TYPES, default="f16")
+    parser.add_argument("--type-v", choices=KV_TYPES, default="f16")
     parser.add_argument("--confirm-rounds", type=int, default=2)
     parser.add_argument("--timeout", type=int, default=300)
     parser.add_argument("--retry-ambiguous-context", action="store_true")
@@ -838,6 +908,8 @@ def main() -> None:
                 Path(args.model_path), args.probe_n_ctx,
                 generated_tokens=args.tokens, batch=args.batch,
                 model_id=args.model,
+                flash_attn=args.flash_attn == "on",
+                type_k=args.type_k, type_v=args.type_v,
             )
         except Exception as exc:
             output = {"success": False, "error": f"{type(exc).__name__}: {exc}"}
@@ -852,6 +924,8 @@ def main() -> None:
             output = search_gpu_context(
                 args.model, max_ctx=args.max_ctx, min_ctx=args.min_ctx,
                 tokens=args.tokens, batch=args.batch,
+                flash_attn=args.flash_attn == "on",
+                type_k=args.type_k, type_v=args.type_v,
                 timeout=args.timeout, confirm_rounds=args.confirm_rounds,
                 retry_ambiguous_context=args.retry_ambiguous_context,
                 source=args.source, kaggle_handle=args.kaggle_handle,
