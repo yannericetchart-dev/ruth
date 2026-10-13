@@ -107,7 +107,7 @@ def native_sample_logits(llm, ids: list[int], positions: list[int],
 def quality_worker(*, model_path: Path, corpus: Path, n_ctx: int,
                    flash_attn: bool, type_k: str, type_v: str,
                    points: int, output: Path, reference: Path | None,
-                   batch: int = 32) -> dict:
+                   batch: int = 32, group_ids: list[str] | None = None) -> dict:
     validate_kv_config(flash_attn, type_k, type_v)
     from inference.adapters.llama_cpp_python import LlamaCppPythonMappingAdapter
 
@@ -116,7 +116,20 @@ def quality_worker(*, model_path: Path, corpus: Path, n_ctx: int,
     if n_ctx > limit:
         raise ValueError(f"n_ctx={n_ctx} oltre limite GGUF={limit}.")
     arch = layout["metadata"]["general.architecture"]
-    rules, _ = all_gpu_rules(layout)
+    if group_ids:
+        from .mapping_grouping import group_inventory, native_multi_group_trial
+        inventory = {g["id"]: g for g in group_inventory(layout)
+                     if g["eligible_for_trial"]}
+        if len(group_ids) != len(set(group_ids)) or any(
+            gid not in inventory for gid in group_ids
+        ):
+            raise ValueError("Gruppi qualità CPU non validi.")
+        trial = native_multi_group_trial(
+            layout, [inventory[gid] for gid in group_ids]
+        )
+        rules = trial["rules"]
+    else:
+        rules, _ = all_gpu_rules(layout)
     blocks = layout["metadata"][f"{arch}.block_count"]
     payload = corpus.read_bytes()
     if not payload or len(payload) > 10_000_000:
@@ -148,6 +161,7 @@ def quality_worker(*, model_path: Path, corpus: Path, n_ctx: int,
             "success": True, "quality_kv_location": "cpu",
             "n_ctx": n_ctx, "flash_attn": flash_attn,
             "type_k": type_k, "type_v": type_v, "points": len(positions),
+            "host_group_ids": sorted(group_ids or []),
             "corpus_sha256": sha, "token_prefix_sha256": digest,
             "score_positions": positions,
             "target_tokens_sha256": hashlib.sha256(
@@ -190,15 +204,21 @@ def main() -> int:
     parser.add_argument("--batch", type=int, default=32)
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--reference", type=Path)
+    parser.add_argument("--group-ids", default=None)
     args = parser.parse_args()
     try:
         if args.batch < 1 or args.points < 2:
             raise ValueError("batch o punti non validi.")
+        group_ids = json.loads(args.group_ids) if args.group_ids else None
+        if group_ids is not None and (not isinstance(group_ids, list)
+                                      or any(not isinstance(x, str) for x in group_ids)):
+            raise ValueError("Lista gruppi qualità malformata.")
         result = quality_worker(
             model_path=args.model_path, corpus=args.corpus, n_ctx=args.n_ctx,
             flash_attn=args.flash_attn == "on", type_k=args.type_k,
             type_v=args.type_v, points=args.points, output=args.output,
             reference=args.reference, batch=args.batch,
+            group_ids=group_ids,
         )
         print(json.dumps(result, ensure_ascii=False))
         return 0
