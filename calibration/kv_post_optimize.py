@@ -152,6 +152,7 @@ def run_post_optimize(
     max_candidates: int = 48, confirm_repeats: int = 3,
     decode_weight: float = .7, timeout: int = 600,
     benchmark_report: Path | None = None, corpus: Path | None = None,
+    candidate_plan: Path | None = None,
     quality_points: int = 64, rerun: bool = False,
     progress=None, probe=probe_native_mapping,
 ) -> dict:
@@ -217,6 +218,49 @@ def run_post_optimize(
 
     base_hash = hashlib.sha256(source_path.read_bytes()).hexdigest()
     pool = candidate_pool(layout, source, max_candidates=max_candidates)
+    planned_neighbors = None
+    candidate_plan_sha = None
+    if candidate_plan is not None:
+        plan_path = Path(candidate_plan).expanduser().resolve()
+        if plan_path == output or plan_path == source_path:
+            raise ValueError("Piano, checkpoint e sorgente devono essere distinti.")
+        raw_plan = plan_path.read_bytes()
+        plan = json.loads(raw_plan)
+        candidate_plan_sha = hashlib.sha256(raw_plan).hexdigest()
+        if (plan.get("schema") != "ruth-phase2-offload-candidate-plan-v1"
+            or plan.get("source_greedy_sha256") != base_hash
+            or plan.get("model_id") != model_id
+            or plan.get("model_path") != str(model_path)
+            or plan.get("target_n_ctx") != target_ctx
+            or plan.get("planning_parameters", {}).get("decode_weight")
+                != decode_weight):
+            raise ValueError("Il piano stimato non corrisponde al report e all'obiettivo.")
+        planned_neighbors = []
+        seen = set()
+        for item in plan.get("candidates", []):
+            names = item.get("host_tensor_names")
+            if (not isinstance(names, list) or not names or
+                any(not isinstance(n, str) for n in names) or
+                len(names) != len(set(names))):
+                raise ValueError("Piano con lista tensori non valida.")
+            names = sorted(names)
+            if names == baseline_names:
+                continue
+            if tuple(names) in seen:
+                raise ValueError("Il piano contiene combinazioni duplicate.")
+            seen.add(tuple(names))
+            native_tensor_trial(layout, names)
+            planned_neighbors.append({
+                "operation": "planned", "removed": None, "added": None,
+                "host_tensor_names": names,
+                "planner_rank": item.get("rank"),
+                "estimated_peak_vram_at_target_mib":
+                    item.get("estimated_peak_vram_at_target_mib"),
+                "estimated_decode_tok_s_at_target":
+                    item.get("estimated_decode_tok_s_at_target"),
+            })
+        if not planned_neighbors:
+            raise ValueError("Il piano non contiene configurazioni alternative.")
     identity = {
         "source_sha256": base_hash, "model_path": str(model_path),
         "target_n_ctx": target_ctx,
@@ -227,6 +271,7 @@ def run_post_optimize(
         "generated_tokens": params["generated_tokens"],
         "benchmark_sha256": benchmark_sha,
         "quality_points": quality_points,
+        "candidate_plan_sha256": candidate_plan_sha,
         "max_tests": max_tests,
     }
     prior = None
@@ -291,6 +336,13 @@ def run_post_optimize(
         "measured_configs": measured,
         "reused_source_configs": len(old_measurements),
         "rounds": [],
+        "planning_mode": (
+            "precomputed_ranked_candidate_list" if planned_neighbors is not None
+            else "adaptive_local_neighborhood"
+        ),
+        "planned_candidate_count": (
+            len(planned_neighbors) if planned_neighbors is not None else None
+        ),
         "best_host_tensor_names": baseline_names,
         "best": seed,
         "pareto_front": [],
@@ -340,7 +392,7 @@ def run_post_optimize(
 
     best = seed
     current = seed
-    for iteration in range(max_rounds):
+    for iteration in range(1 if planned_neighbors is not None else max_rounds):
         record = {
             "iteration": iteration + 1,
             "start_host_tensor_names": current["host_tensor_names"],
@@ -350,7 +402,8 @@ def run_post_optimize(
         report["rounds"].append(record)
         contender = current
         contender_score = objective(current["metrics"], decode_weight=decode_weight)
-        for neighbor in neighbors(current["host_tensor_names"], pool):
+        for neighbor in (planned_neighbors if planned_neighbors is not None
+                         else neighbors(current["host_tensor_names"], pool)):
             sample = evaluate(neighbor["host_tensor_names"])
             if sample.get("budget_exhausted"):
                 record["completed_scan"] = False
@@ -361,6 +414,11 @@ def run_post_optimize(
                 "host_tensor_names": neighbor["host_tensor_names"],
                 "success": sample.get("success") is True,
                 "failure_class": sample.get("failure_class"),
+                "planner_rank": neighbor.get("planner_rank"),
+                "estimated_peak_vram_at_target_mib":
+                    neighbor.get("estimated_peak_vram_at_target_mib"),
+                "estimated_decode_tok_s_at_target":
+                    neighbor.get("estimated_decode_tok_s_at_target"),
             }
             if sample.get("success"):
                 score = objective(sample["metrics"],
@@ -400,6 +458,9 @@ def run_post_optimize(
         save()
         if not record["completed_scan"]:
             report["status"] = "budget_exhausted_best_valid"
+            break
+        if planned_neighbors is not None:
+            report["status"] = "precomputed_plan_scanned"
             break
         if contender["host_tensor_names"] == record["start_host_tensor_names"]:
             report["status"] = "local_optimum_found"
@@ -483,6 +544,8 @@ def main():
     parser.add_argument("--confirm-repeats", type=int, default=3)
     parser.add_argument("--decode-weight", type=float, default=.7)
     parser.add_argument("--timeout", type=int, default=600)
+    parser.add_argument("--candidate-plan", type=Path,
+                        help="Lista predeterminata di configurazioni, costruita dai dati 256.")
     parser.add_argument("--benchmark-report", type=Path)
     parser.add_argument("--corpus", type=Path)
     parser.add_argument("--quality-points", type=int, default=64)
@@ -497,7 +560,8 @@ def main():
             confirm_repeats=args.confirm_repeats,
             decode_weight=args.decode_weight, timeout=args.timeout,
             benchmark_report=args.benchmark_report,
-            corpus=args.corpus, quality_points=args.quality_points,
+            corpus=args.corpus, candidate_plan=args.candidate_plan,
+            quality_points=args.quality_points,
             rerun=args.rerun,
             progress=lambda data: print(json.dumps(data), flush=True),
         )
