@@ -124,6 +124,16 @@ def brief_event(event: dict) -> str:
             f"| causa={event.get('failure_class')} "
             f"| VRAM picco={event.get('vram_peak_mib')} MiB"
         )
+    if kind == "mapping_trial_reused":
+        return (
+            f"Mapping: {event['mode']} | riutilizzo "
+            f"{event['native_trials']} prove native gia' verificate"
+        )
+    if kind == "mapping_group_failed":
+        return (
+            f"Mapping {event['mode']}: prova nativa fallita "
+            f"({event.get('failure_class')}); passo al gruppo successivo"
+        )
     if kind == "mapping_baseline_complete":
         return (
             "Baseline mapping full-GPU: "
@@ -399,7 +409,7 @@ class Journal:
             return data if (
                 baseline is not None
                 and context is not None
-                and data.get("schema_version") == 2
+                and data.get("schema_version") == 3
                 and data.get("success") is True
                 and data.get("status") == "diagnostic_group_comparison_completed"
                 and data.get("selected_mapping") is None
@@ -419,7 +429,12 @@ class Journal:
                         for row in reference)
                 and isinstance(data.get("baseline_statistics"), dict)
                 and isinstance(group_ids, list)
-                and len(group_ids) <= 3
+                and isinstance(data.get("groups"), list)
+                and group_ids == [
+                    group.get("id") for group in data["groups"]
+                    if isinstance(group, dict)
+                    and group.get("eligible_for_trial") is True
+                ]
                 and len(set(group_ids)) == len(group_ids)
                 and all(isinstance(g, str) and g.startswith("group:")
                         for g in group_ids)
@@ -429,14 +444,33 @@ class Journal:
                      if isinstance(entry, dict)] == group_ids
                 and all(
                     isinstance(entry, dict)
-                    and isinstance(entry.get("comparison"), dict)
-                    and entry.get("status") == entry["comparison"].get("verdict")
                     and isinstance(entry.get("trials"), list)
-                    and len(entry["trials"]) == repetitions
-                    and all(
-                        _native_verified(row)
-                        and row.get("mode") == entry["group_id"]
-                        for row in entry["trials"]
+                    and (
+                        (
+                            isinstance(entry.get("comparison"), dict)
+                            and entry.get("status") ==
+                                entry["comparison"].get("verdict")
+                            and len(entry["trials"]) == repetitions
+                            and all(
+                                _native_verified(row)
+                                and row.get("mode") == entry["group_id"]
+                                for row in entry["trials"]
+                            )
+                        )
+                        or (
+                            entry.get("status") == "native_probe_failed"
+                            and 1 <= len(entry["trials"]) <= repetitions
+                            and all(
+                                isinstance(row, dict)
+                                and row.get("mode") == entry["group_id"]
+                                for row in entry["trials"]
+                            )
+                            and any(
+                                row.get("success") is False
+                                for row in entry["trials"]
+                            )
+                            and isinstance(entry.get("failure_class"), str)
+                        )
                     )
                     for entry in evaluations
                 )
