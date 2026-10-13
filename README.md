@@ -254,7 +254,8 @@ senza ridurre materialmente le prestazioni di inferenza.
    l'inferenza**. Il placement KV host deve risultare nei log
    nativi; non ci si affida a un fallback automatico.
    La baseline deve eseguire l'intero prompt esteso e 128 token
-   di decode, misurando tempo, throughput, VRAM e RSS del processo.
+   di decode, misurando tempo, throughput, VRAM totale,
+   margine VRAM minimo campionato e RSS del processo.
 
 5. **Gruppi di tensori con KV GPU**. Uno alla volta, Ruth
    sposta soltanto i tensori omologhi del gruppo sulla CPU,
@@ -273,7 +274,8 @@ senza ridurre materialmente le prestazioni di inferenza.
    il 3% e la dispersione resta limitata, il gruppo viene
    considerato promettente. Un gruppo senza guadagno misurabile
    non viene promosso. La differenza di VRAM fra i due casi e'
-   registrata come **delta**: il candidato puo' usare **piu'
+   registrata come **delta**, insieme al margine VRAM
+   realmente disponibile: il candidato puo' usare **piu'
    VRAM** della baseline perche' ospita la KV su GPU, e questo
    non e' di per se' un fallimento. I MiB GGUF del gruppo
    non sono un risparmio VRAM nativo automaticamente garantito.
