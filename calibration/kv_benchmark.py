@@ -23,7 +23,8 @@ from .baseline_discovery import native_confirmation
 from .gpu_context import context_limit, probe_context, verify_native_kv_config
 from .mapping_phase import verify_mapping_kv_runtime
 from .native_memory import parse_native_memory
-from .mapping_grouping import (group_inventory, native_multi_group_trial)
+from .mapping_grouping import (group_inventory, native_multi_group_trial,
+                               native_tensor_trial)
 from .mapping_native_validation import verify_override_logs
 from .profile_pipeline import atomic_json
 from .worker_failure import analyze_worker_failure
@@ -112,7 +113,8 @@ def quality_subprocess(*, model_path: Path, corpus: Path, n_ctx: int,
                        flash_attn: bool, type_k: str, type_v: str,
                        points: int, reference: Path | None,
                        output: Path, timeout: int,
-                       group_ids: list[str] | None = None) -> dict:
+                       group_ids: list[str] | None = None,
+                       tensor_names: list[str] | None = None) -> dict:
     command = [
         sys.executable, "-m", "calibration.kv_quality_worker",
         "--model-path", str(model_path), "--corpus", str(corpus),
@@ -122,8 +124,12 @@ def quality_subprocess(*, model_path: Path, corpus: Path, n_ctx: int,
     ]
     if reference:
         command.extend(["--reference", str(reference)])
+    if group_ids and tensor_names is not None:
+        raise ValueError("Gruppi e tensori individuali mutuamente esclusivi.")
     if group_ids:
         command.extend(["--group-ids", json.dumps(sorted(group_ids))])
+    if tensor_names is not None:
+        command.extend(["--tensor-names", json.dumps(sorted(tensor_names))])
     try:
         proc = subprocess.run(
             command, capture_output=True, text=True, timeout=timeout,
@@ -141,7 +147,10 @@ def quality_subprocess(*, model_path: Path, corpus: Path, n_ctx: int,
         }
 
     layout = inspect_gguf(model_path, n_ctx=n_ctx)
-    if group_ids:
+    if tensor_names is not None:
+        trial = native_tensor_trial(layout, tensor_names)
+        placement = verify_override_logs(trial, proc.stderr)
+    elif group_ids:
         inventory = {g["id"]: g for g in group_inventory(layout)
                      if g["eligible_for_trial"]}
         if len(set(group_ids)) != len(group_ids) or any(
