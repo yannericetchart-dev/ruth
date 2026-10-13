@@ -1193,9 +1193,13 @@ greedy e dalla post-ottimizzazione di gruppi. Parte dal censimento
 libera meno memoria del deficit stimato a 512.** Le misure NVML a
 256 non costituiscono un limite superiore del risparmio a 512,
 e il costo del contesto CUDA può variare in modo non additivo.
-La fase conserva perciò tutti i tensori misurati, ordinati per
-**VRAM netta liberata a 256: decrescente**; non usa soglie arbitrarie
-di memoria libera né classificazioni speculative di idoneità.
+La fase conserva perciò tutti i tensori misurati, ordinati
+per **VRAM liberata immediatamente dopo il caricamento a 256: decrescente**
+(calcolata dalla mediana dei due campioni `vram_after_load_mib`
+rispetto alla medesima baseline). Solo a parità usa il risparmio
+sul picco d'inferenza per stabilire la priorità; **non** utilizza
+quest'ultimo come criterio di esclusione. Non applica soglie
+arbitrarie di memoria libera né classificazioni speculative di idoneità.
 
 **Per ogni tensore**:
 
@@ -1250,3 +1254,46 @@ singolo tensore con inferenza funzionante,
 Questa è una **consegna dati alla fase 3**, il cui algoritmo
 deve ancora essere definito; non avvia automaticamente
 esplorazioni di coppie/terne.
+
+
+### Fase 2 progressiva: incremento n_ctx di 256 fino al primo target senza singoli validi
+
+Quando si desidera eseguire automaticamente tutta la **fase 2**, in
+luogo del comando per il singolo contesto si usa il nuovo orchestratore:
+
+```bash
+python -m calibration.kv_single_context_sweep \
+  --census phase2_single_tensor_census_256.json \
+  --start-ctx 512 --step 256 \
+  --benchmark-repeats 2 \
+  --output-dir phase2_single_contexts
+```
+
+L'orchestratore ripete **esattamente** lo stesso protocollo
+load-only → benchmark per ciascuno dei 462 singoli a
+512, 768, 1024, ... rispettando il limite dichiarato nel GGUF
+(8192 per Gemma-2 9B). Si arresta al primo contesto **completamente
+testato** con zero configurazioni a inferenza nativa GPU-KV valida,
+senza confondere un run interrotto con zero candidati utili.
+
+Ogni contesto ha un checkpoint proprio:
+`phase2_single_contexts/phase2_single_to_512.json`,
+`phase2_single_contexts/phase2_single_to_768.json`, ecc.
+Lo stato complessivo è
+`phase2_single_contexts/phase2_single_context_sweep.json`
+con `last_valid_target_ctx`,
+`first_target_without_valid_inference`, `contexts` e
+`ready_for_phase3`.
+
+Il comando si può ripetere dopo qualunque interruzione: i benchmark
+completati non vengono eseguiti di nuovo. `--max-new-loads 50`
+e `--max-new-benchmarks 50` permettono di fermare ogni
+esecuzione dopo una quota di nuove prove, **senza interpretare il
+checkpoint parziale come fallimento della fase**.
+
+Con il censimento Gemma-2 9B completato, 126 tensori della famiglia
+FFN hanno un risparmio after-load positivo di 24–28 MiB,
+mentre gli altri 336 restano comunque testabili e non sono
+esclusi a priori. La fase 3 (coppie) non parte automaticamente:
+l'orchestratore consegna esclusivamente i risultati e i contesti
+verificati, utili per progettare i filtri preliminari certi.
