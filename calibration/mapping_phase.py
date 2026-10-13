@@ -349,9 +349,75 @@ def _compare_with_baseline(reference: dict, current: dict) -> dict:
 
 
 
+def _reusable_trials(
+    samples: object, group_id: str, *, model_id: str,
+    n_ctx: int, tokens: int,
+) -> bool:
+    """Reuse only complete, positive native and throughput evidence."""
+    if not isinstance(samples, list) or len(samples) != WORKER_REPETITIONS:
+        return False
+    for row in samples:
+        if not isinstance(row, dict):
+            return False
+        measured = row.get("measurements") or {}
+        if (
+            row.get("success") is not True
+            or row.get("mode") != group_id
+            or row.get("model_id") != model_id
+            or row.get("n_ctx") != n_ctx
+            or row.get("requested_tokens") != tokens
+            or row.get("worker_returncode") != 0
+            or (row.get("native_placement") or {}).get("verified") is not True
+            or (row.get("gpu_runtime_validation") or {}).get("verified") is not True
+            or measured.get("prompt_tokens") != n_ctx - tokens - 1
+            or measured.get("generated_tokens") != tokens
+            or measured.get("nvml_errors")
+        ):
+            return False
+        for key in (
+            "vram_peak_sampled_mib", "host_peak_rss_mib",
+            "prefill_tokens_per_s", "decode_tokens_per_s",
+        ):
+            value = measured.get(key)
+            if (
+                not isinstance(value, (int, float))
+                or isinstance(value, bool)
+                or not math.isfinite(value)
+                or value <= 0
+            ):
+                return False
+    return True
+
+
+def _compatible_previous_report(previous: object, current: dict) -> bool:
+    """Schema2 and schema3 have the same native measurement workload."""
+    if not isinstance(previous, dict):
+        return False
+    if previous.get("schema_version") not in (2, 3):
+        return False
+    if previous.get("status") not in (
+        "diagnostic_group_comparison_completed", "benchmark_in_progress",
+    ):
+        return False
+    if previous.get("schema_version") == 2 and previous.get("success") is not True:
+        return False
+    for key in (
+        "model_id", "source", "repository", "quantization", "filename",
+        "model_path", "shard_filenames", "block_count", "tensor_count",
+        "probe_n_ctx", "probe_tokens", "n_batch",
+        "reference_full_cuda_n_ctx", "workload",
+        "repeat_processes_per_variant",
+    ):
+        if previous.get(key) != current.get(key):
+            return False
+    return True
+
+
 def run_mapping_phase(baseline: dict, matrix: dict, context: dict,
                       *, model_id: str, progress=None,
-                      timeout: int = 300) -> dict:
+                      timeout: int = 300,
+                      previous_report: dict | None = None,
+                      checkpoint=None) -> dict:
     """Repeated baseline, then every eligible homologous block tensor group."""
     if (
         not isinstance(baseline, dict)
