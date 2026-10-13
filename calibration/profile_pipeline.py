@@ -40,7 +40,7 @@ MESSAGES = {
     "baseline": "Caricamento del miglior GGUF interamente su GPU",
     "layer_matrix": "Enumerazione tensori/layer (nessun offload CPU)",
     "context_gpu": "Ricerca del massimo contesto GPU-resident",
-    "mapping": "Prove diagnostiche di placement CPU/GPU (blocco e tensore)",
+    "mapping": "Classifica gruppi tensori e benchmark nativi GPU/CPU rispetto a baseline",
     "runtime": "Ottimizzazione parametri llama.cpp",
     "context_tuned": "Contesto GPU con mapping ottimizzato",
     "capacity": "Contesto esteso con RAM di sistema",
@@ -112,16 +112,31 @@ def brief_event(event: dict) -> str:
         return " | ".join(info)
     if kind == "mapping_probe_start":
         return (
-            f"Mapping avvio: {event['mode']} "
+            f"Mapping: {event['mode']} "
+            f"prova {event.get('repetition')}/{event.get('repetitions')} "
             f"| tensori CPU={event['host_tensors']} "
             f"| GPU={event['gpu_tensors']}"
         )
     if kind == "mapping_probe_result":
         return (
-            f"Mapping {event['mode']}: "
-            f"{'VALIDATO' if event.get('success') else 'NON VALIDATO'} "
+            f"Mapping {event['mode']} prova {event.get('repetition')}: "
+            f"{'VALIDATA' if event.get('success') else 'NON VALIDATA'} "
             f"| causa={event.get('failure_class')} "
             f"| VRAM picco={event.get('vram_peak_mib')} MiB"
+        )
+    if kind == "mapping_baseline_complete":
+        return (
+            "Baseline mapping full-GPU: "
+            f"prefill={event['prefill_tok_s']} tok/s "
+            f"| decode={event['decode_tok_s']} tok/s "
+            f"| picco={event['vram_peak_mib']} MiB"
+        )
+    if kind == "mapping_group_comparison":
+        return (
+            f"Gruppo {event['mode']}: {event['verdict']} "
+            f"| VRAM liberata={event['freed_mib']} MiB "
+            f"| prefill={event['prefill_percent']}% "
+            f"| decode={event['decode_percent']}%"
         )
     if kind == "layer_matrix_ready":
         return (f"Matrice: {event['layers']} layer, {event['tensors']} tensori "
@@ -360,13 +375,23 @@ class Journal:
             baseline = self.cached("baseline")
             context = self.cached("context_gpu")
             selected = (baseline or {}).get("baseline") or {}
-            trials = data.get("trials")
+            reference = data.get("baseline_trials")
+            evaluations = data.get("group_evaluations")
+            group_ids = data.get("tested_group_ids")
+            repetitions = data.get("repeat_processes_per_variant")
+            def _native_verified(trial):
+                return (
+                    isinstance(trial, dict)
+                    and trial.get("success") is True
+                    and (trial.get("native_placement") or {}).get("verified") is True
+                    and (trial.get("gpu_runtime_validation") or {}).get("verified") is True
+                )
             return data if (
                 baseline is not None
                 and context is not None
-                and data.get("schema_version") == 1
+                and data.get("schema_version") == 2
                 and data.get("success") is True
-                and data.get("status") == "diagnostic_native_placement_validated"
+                and data.get("status") == "diagnostic_group_comparison_completed"
                 and data.get("selected_mapping") is None
                 and data.get("profile_generated") is False
                 and data.get("model_id") == self.identity["choices"]["model_id"]
@@ -376,15 +401,29 @@ class Journal:
                 and data.get("model_path") == str(
                     Path(selected.get("local_path") or "/NONEXISTENT").resolve()
                 )
-                and isinstance(trials, list)
-                and len(trials) == 2
-                and [x.get("mode") for x in trials if isinstance(x, dict)]
-                    == ["block0_host", "attention_tensor_host"]
+                and data.get("reference_full_cuda_n_ctx") ==
+                    context.get("confirmed_max_gpu_resident_n_ctx")
+                and isinstance(repetitions, int) and repetitions == 3
+                and isinstance(reference, list) and len(reference) == repetitions
+                and all(_native_verified(row) for row in reference)
+                and isinstance(data.get("baseline_statistics"), dict)
+                and isinstance(group_ids, list)
+                and len(group_ids) <= 3
+                and len(set(group_ids)) == len(group_ids)
+                and all(isinstance(g, str) and g.startswith("group:")
+                        for g in group_ids)
+                and isinstance(evaluations, list)
+                and len(evaluations) == len(group_ids)
+                and [entry.get("group_id") for entry in evaluations
+                     if isinstance(entry, dict)] == group_ids
                 and all(
-                    item.get("success") is True
-                    and (item.get("native_placement") or {}).get("verified") is True
-                    and (item.get("gpu_runtime_validation") or {}).get("verified") is True
-                    for item in trials if isinstance(item, dict)
+                    isinstance(entry, dict)
+                    and isinstance(entry.get("comparison"), dict)
+                    and entry.get("status") == entry["comparison"].get("verdict")
+                    and isinstance(entry.get("trials"), list)
+                    and len(entry["trials"]) == repetitions
+                    and all(_native_verified(row) for row in entry["trials"])
+                    for entry in evaluations
                 )
             ) else None
         if phase == "context_gpu":
@@ -513,10 +552,12 @@ def _phase_call(name: str, identity: dict, previous: dict,
         )
         summary = {
             "status": report.get("status"),
-            "trials_validated": sum(
-                t.get("success") is True for t in report.get("trials", [])
-            ),
-            "trials_required": 2,
+            "screened_groups": report.get("screened_group_count"),
+            "eligible_groups": report.get("eligible_group_count"),
+            "tested_groups": len(report.get("tested_group_ids") or []),
+            "promising_groups": report.get("promising_group_ids") or [],
+            "reference_n_ctx": report.get("probe_n_ctx"),
+            "repetitions": report.get("repeat_processes_per_variant"),
             "selected_mapping": None,
             "failure": report.get("error"),
         }
