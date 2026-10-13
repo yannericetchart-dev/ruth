@@ -380,11 +380,21 @@ class Journal:
             group_ids = data.get("tested_group_ids")
             repetitions = data.get("repeat_processes_per_variant")
             def _native_verified(trial):
+                metrics = (trial.get("measurements") or {}) if isinstance(trial, dict) else {}
                 return (
                     isinstance(trial, dict)
                     and trial.get("success") is True
                     and (trial.get("native_placement") or {}).get("verified") is True
                     and (trial.get("gpu_runtime_validation") or {}).get("verified") is True
+                    and all(
+                        isinstance(metrics.get(field), (int, float))
+                        and not isinstance(metrics.get(field), bool)
+                        and metrics[field] > 0
+                        for field in (
+                            "prefill_tokens_per_s", "decode_tokens_per_s",
+                            "vram_peak_sampled_mib", "host_peak_rss_mib",
+                        )
+                    )
                 )
             return data if (
                 baseline is not None
@@ -405,7 +415,8 @@ class Journal:
                     context.get("confirmed_max_gpu_resident_n_ctx")
                 and isinstance(repetitions, int) and repetitions == 3
                 and isinstance(reference, list) and len(reference) == repetitions
-                and all(_native_verified(row) for row in reference)
+                and all(_native_verified(row) and row.get("mode") == "baseline"
+                        for row in reference)
                 and isinstance(data.get("baseline_statistics"), dict)
                 and isinstance(group_ids, list)
                 and len(group_ids) <= 3
@@ -422,7 +433,11 @@ class Journal:
                     and entry.get("status") == entry["comparison"].get("verdict")
                     and isinstance(entry.get("trials"), list)
                     and len(entry["trials"]) == repetitions
-                    and all(_native_verified(row) for row in entry["trials"])
+                    and all(
+                        _native_verified(row)
+                        and row.get("mode") == entry["group_id"]
+                        for row in entry["trials"]
+                    )
                     for entry in evaluations
                 )
             ) else None
