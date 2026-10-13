@@ -86,13 +86,15 @@ def enumerate_group_candidates(groups: list[dict], *, proxy_mib: float | None,
                 "groups": list(picked), "mib": mib,
                 "compute": compute, "fits_proxy": mib >= needed,
             })
-    preferred = [c for c in combos if c["fits_proxy"]]
-    candidates = preferred if preferred else combos
-    candidates.sort(key=lambda c: (
-        len(c["groups"]), c["compute"], max(0, c["mib"] - needed),
+    # Never permanently reject a combination because serialized GGUF
+    # bytes appear too small. Rank proxy-matching candidates first, then
+    # retain sub-threshold choices when the trial budget permits.
+    combos.sort(key=lambda c: (
+        not c["fits_proxy"], len(c["groups"]), c["compute"],
+        abs(c["mib"] - needed),
         [g["id"] for g in c["groups"]],
     ))
-    return [c["groups"] for c in candidates[:max_candidates]]
+    return [c["groups"] for c in combos[:max_candidates]]
 
 
 def speed_trial(model_path: Path, model_id: str, trial: dict,
