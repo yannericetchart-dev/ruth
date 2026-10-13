@@ -80,7 +80,7 @@ class KvBenchmarkTests(unittest.TestCase):
         )
         self.assertGreater(rows[0]["diagnostic_score"],
                            rows[1]["diagnostic_score"])
-        self.assertFalse(rows[1]["operationally_safe"])
+        self.assertFalse(rows[1]["headroom_target_met"])
         self.assertEqual(rows[1]["vram_headroom_mib"], 3)
 
     def test_runner_selects_9_3_1_profiles_and_both_quality_controls(self):
