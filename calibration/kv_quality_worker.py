@@ -107,7 +107,8 @@ def native_sample_logits(llm, ids: list[int], positions: list[int],
 def quality_worker(*, model_path: Path, corpus: Path, n_ctx: int,
                    flash_attn: bool, type_k: str, type_v: str,
                    points: int, output: Path, reference: Path | None,
-                   batch: int = 32, group_ids: list[str] | None = None) -> dict:
+                   batch: int = 32, group_ids: list[str] | None = None,
+                   tensor_names: list[str] | None = None) -> dict:
     validate_kv_config(flash_attn, type_k, type_v)
     from inference.adapters.llama_cpp_python import LlamaCppPythonMappingAdapter
 
@@ -116,7 +117,12 @@ def quality_worker(*, model_path: Path, corpus: Path, n_ctx: int,
     if n_ctx > limit:
         raise ValueError(f"n_ctx={n_ctx} oltre limite GGUF={limit}.")
     arch = layout["metadata"]["general.architecture"]
-    if group_ids:
+    if tensor_names is not None:
+        if group_ids is not None:
+            raise ValueError("Usare gruppi o tensori espliciti, non entrambi.")
+        from .mapping_grouping import native_tensor_trial
+        rules = native_tensor_trial(layout, tensor_names)["rules"]
+    elif group_ids:
         from .mapping_grouping import group_inventory, native_multi_group_trial
         inventory = {g["id"]: g for g in group_inventory(layout)
                      if g["eligible_for_trial"]}
@@ -162,6 +168,7 @@ def quality_worker(*, model_path: Path, corpus: Path, n_ctx: int,
             "n_ctx": n_ctx, "flash_attn": flash_attn,
             "type_k": type_k, "type_v": type_v, "points": len(positions),
             "host_group_ids": sorted(group_ids or []),
+            "host_tensor_names": sorted(tensor_names or []),
             "corpus_sha256": sha, "token_prefix_sha256": digest,
             "score_positions": positions,
             "target_tokens_sha256": hashlib.sha256(
@@ -205,6 +212,7 @@ def main() -> int:
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--reference", type=Path)
     parser.add_argument("--group-ids", default=None)
+    parser.add_argument("--tensor-names", default=None)
     args = parser.parse_args()
     try:
         if args.batch < 1 or args.points < 2:
@@ -213,12 +221,21 @@ def main() -> int:
         if group_ids is not None and (not isinstance(group_ids, list)
                                       or any(not isinstance(x, str) for x in group_ids)):
             raise ValueError("Lista gruppi qualità malformata.")
+        tensor_names = (
+            json.loads(args.tensor_names) if args.tensor_names is not None
+            else None
+        )
+        if tensor_names is not None and (
+            not isinstance(tensor_names, list)
+            or any(not isinstance(x, str) for x in tensor_names)
+        ):
+            raise ValueError("Lista tensori qualità malformata.")
         result = quality_worker(
             model_path=args.model_path, corpus=args.corpus, n_ctx=args.n_ctx,
             flash_attn=args.flash_attn == "on", type_k=args.type_k,
             type_v=args.type_v, points=args.points, output=args.output,
             reference=args.reference, batch=args.batch,
-            group_ids=group_ids,
+            group_ids=group_ids, tensor_names=tensor_names,
         )
         print(json.dumps(result, ensure_ascii=False))
         return 0
