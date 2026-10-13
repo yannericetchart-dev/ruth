@@ -136,7 +136,7 @@ def brief_event(event: dict) -> str:
         )
     if kind == "mapping_baseline_complete":
         return (
-            "Baseline mapping full-GPU: "
+            "Baseline contesto esteso (pesi GPU, KV CPU): "
             f"prefill={event['prefill_tok_s']} tok/s "
             f"| decode={event['decode_tok_s']} tok/s "
             f"| picco={event['vram_peak_mib']} MiB"
@@ -144,7 +144,7 @@ def brief_event(event: dict) -> str:
     if kind == "mapping_group_comparison":
         return (
             f"Gruppo {event['mode']}: {event['verdict']} "
-            f"| VRAM liberata={event['freed_mib']} MiB "
+            f"| delta VRAM vs KV host={event['vram_delta_mib']} MiB "
             f"| prefill={event['prefill_percent']}% "
             f"| decode={event['decode_percent']}%"
         )
@@ -409,7 +409,7 @@ class Journal:
             return data if (
                 baseline is not None
                 and context is not None
-                and data.get("schema_version") == 3
+                and data.get("schema_version") == 4
                 and data.get("success") is True
                 and data.get("status") == "diagnostic_group_comparison_completed"
                 and data.get("selected_mapping") is None
@@ -423,10 +423,25 @@ class Journal:
                 )
                 and data.get("reference_full_cuda_n_ctx") ==
                     context.get("confirmed_max_gpu_resident_n_ctx")
+                and data.get("baseline_kv_target") == "host"
+                and data.get("candidate_kv_target") == "gpu"
+                and data.get("baseline_offload_kqv") is False
+                and data.get("candidate_offload_kqv") is True
+                and data.get("probe_n_ctx", 0) >
+                    context.get("confirmed_max_gpu_resident_n_ctx", 10**9)
+                and data.get("probe_tokens") == 128
                 and isinstance(repetitions, int) and repetitions == 3
                 and isinstance(reference, list) and len(reference) == repetitions
-                and all(_native_verified(row) and row.get("mode") == "baseline"
-                        for row in reference)
+                and all(
+                    _native_verified(row)
+                    and row.get("mode") == "baseline_host_kv"
+                    and row.get("kv_target") == "host"
+                    and row.get("offload_kqv") is False
+                    and (row.get("gpu_runtime_validation") or {}).get(
+                        "kv", {}
+                    ).get("verified_host_resident") is True
+                    for row in reference
+                )
                 and isinstance(data.get("baseline_statistics"), dict)
                 and isinstance(group_ids, list)
                 and isinstance(data.get("groups"), list)
@@ -454,6 +469,11 @@ class Journal:
                             and all(
                                 _native_verified(row)
                                 and row.get("mode") == entry["group_id"]
+                                and row.get("kv_target") == "gpu"
+                                and row.get("offload_kqv") is True
+                                and (row.get("gpu_runtime_validation") or {}).get(
+                                    "kv", {}
+                                ).get("verified_gpu_resident") is True
                                 for row in entry["trials"]
                             )
                         )
@@ -463,6 +483,11 @@ class Journal:
                             and all(
                                 isinstance(row, dict)
                                 and row.get("mode") == entry["group_id"]
+                                and row.get("kv_target") == "gpu"
+                                and row.get("offload_kqv") is True
+                                and (row.get("gpu_runtime_validation") or {}).get(
+                                    "kv", {}
+                                ).get("verified_gpu_resident") is True
                                 for row in entry["trials"]
                             )
                             and any(
@@ -693,8 +718,11 @@ def run_pipeline(identity: dict, *, until: str = "context_gpu",
                         old_mapping = json.loads(
                             saved_path.read_text(encoding="utf-8")
                         )
-                        if old_mapping.get("schema_version") == 2:
-                            preserved = folder / "mapping.prior_schema2.json"
+                        if old_mapping.get("schema_version") in (2, 3):
+                            preserved = folder / (
+                                "mapping.prior_schema"
+                                + str(old_mapping["schema_version"]) + ".json"
+                            )
                             if not preserved.exists():
                                 atomic_json(preserved, old_mapping)
                     except (ValueError, OSError):
