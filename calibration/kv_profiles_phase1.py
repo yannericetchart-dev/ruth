@@ -24,35 +24,41 @@ PROFILES = (
 
 
 def run_profiles(*, model_id: str = "gemma-2-9b-it",
-                 source: str | None = None, min_ctx: int = 64,
+                 source: str | None = None, baseline_ctx: int = 257,
                  max_ctx: int | None = None, tokens: int = 16,
                  batch: int = 32, timeout: int = 300,
                  confirm_rounds: int = 2,
                  output: Path = Path("phase1_kv_profiles.json"),
                  rerun: bool = False, search=search_gpu_context,
                  progress=None) -> dict:
-    """Each profile has its own context search, evidence, and failure status."""
-    if not 1 <= tokens <= 32 or min_ctx < 64 or batch < 1:
+    """Start each profile at baseline_ctx + 1; stop if that first probe fails."""
+    if (not isinstance(baseline_ctx, int) or isinstance(baseline_ctx, bool)
+        or baseline_ctx < 63 or not 1 <= tokens <= 32 or batch < 1):
         raise ValueError("Parametri Fase 1 KV non validi.")
+    min_ctx = baseline_ctx + 1
     if max_ctx is not None and max_ctx < min_ctx:
         raise ValueError("max_ctx deve essere almeno min_ctx.")
     if model_id not in ModelManager.CATALOG:
         raise ValueError(f"Modello non supportato: {model_id}")
     output = Path(output).expanduser().resolve()
     identity = {
-        "model_id": model_id, "source": source, "min_ctx": min_ctx,
+        "model_id": model_id, "source": source,
+        "baseline_ctx": baseline_ctx, "min_ctx": min_ctx,
         "max_ctx": max_ctx, "tokens": tokens, "batch": batch,
         "timeout": timeout, "confirm_rounds": confirm_rounds,
     }
     report = {
-        "schema": "ruth-phase1-gpu-kv-profiles-v1",
+        "schema": "ruth-phase1-gpu-kv-profiles-v2",
         "parameters": identity,
         "original_reference": {
             "flash_attn": False, "type_k": "f16", "type_v": "f16",
-            "note": "Riferimento storico non rieseguito; non si assume n_ctx dai profili.",
+            "n_ctx": baseline_ctx,
+            "note": "Riferimento storico non rieseguito; ogni nuovo profilo parte da baseline + 1.",
         },
         "profiles": [], "all_profiles_completed": False,
         "note": ("Full GPU weights + GPU KV, token prompt + output = n_ctx. "
+                 "Prima prova sempre a baseline_ctx + 1; fallimento iniziale "
+                 "arresta il profilo, senza ulteriori n_ctx. "
                  "Configurazioni non supportate sono riportate separatamente. "
                  "Nessun profilo operativo o reference originale viene sovrascritto."),
     }
@@ -117,18 +123,20 @@ def main() -> int:
     )
     parser.add_argument("--model", default="gemma-2-9b-it")
     parser.add_argument("--source")
-    parser.add_argument("--min-ctx", type=int, default=64)
+    parser.add_argument("--baseline-ctx", type=int, default=257,
+                        help="Riferimento full-GPU FP16/FP16 senza FA; primo probe = valore + 1")
     parser.add_argument("--max-ctx", type=int)
     parser.add_argument("--tokens", type=int, default=16)
     parser.add_argument("--batch", type=int, default=32)
     parser.add_argument("--timeout", type=int, default=300)
     parser.add_argument("--confirm-rounds", type=int, default=2)
-    parser.add_argument("--output", type=Path, default=Path("phase1_kv_profiles.json"))
+    parser.add_argument("--output", type=Path,
+                        default=Path("phase1_kv_profiles_from_258.json"))
     parser.add_argument("--rerun", action="store_true")
     args = parser.parse_args()
     try:
         report = run_profiles(
-            model_id=args.model, source=args.source, min_ctx=args.min_ctx,
+            model_id=args.model, source=args.source, baseline_ctx=args.baseline_ctx,
             max_ctx=args.max_ctx, tokens=args.tokens,
             batch=args.batch, timeout=args.timeout,
             confirm_rounds=args.confirm_rounds, output=args.output,
