@@ -149,6 +149,20 @@ class NativeTensorMappingTests(unittest.TestCase):
             and rule["device"] == "gpu" for rule in trial["rules"]
         ))
 
+    def test_empty_tensor_control_reuses_exact_phase1_rules(self):
+        from calibration.baseline_discovery import all_gpu_rules
+        fixture = layout_fixture()
+        expected_rules, _ = all_gpu_rules(fixture)
+        trial = native_tensor_trial(fixture, [])
+        self.assertEqual(trial["rules"], expected_rules)
+        self.assertEqual(
+            trial["mapping_kind"], "exact_phase1_all_gpu_control"
+        )
+        self.assertEqual(trial["host_tensor_names"], [])
+        self.assertTrue(
+            verify_override_logs(trial, native_evidence(trial))["verified"]
+        )
+
     def test_reject_duplicate_unknown_and_tied_output(self):
         fixture = layout_fixture()
         cases = [
@@ -332,6 +346,48 @@ class GreedyLogicTests(unittest.TestCase):
             json.loads(command[command.index("--tensor-names") + 1]),
             trial["host_tensor_names"],
         )
+
+    def test_failed_initial_baseline_has_diagnostics_and_no_tensor_tests(self):
+        with tempfile.TemporaryDirectory() as folder:
+            root = Path(folder)
+            model, phase, steps = prepare_reports(root)
+            called = []
+            def oom(*args, **kwargs):
+                called.append(tuple(args[2]["host_tensor_names"]))
+                return {
+                    "success": False,
+                    "failure_class": "native_cuda_oom",
+                    "error": "Failed to create llama_context",
+                    "native_placement": {"verified": True},
+                    "gpu_runtime_validation": {"verified": False},
+                    "kv_config_native_verification": {"verified": True},
+                    "measurements": {
+                        "vram_peak_sampled_mib": 5951.31,
+                        "vram_total_mib": 6141,
+                    },
+                }
+            with patch("calibration.kv_adaptive_tensor_offload.inspect_gguf",
+                       return_value=layout_fixture()):
+                report = run_adaptive_tensor_search(
+                    model_path=model, phase1_report=phase,
+                    memory_steps_report=steps, targets=(512,),
+                    output=root / "failed.json", probe=oom,
+                )
+            self.assertEqual(called, [()])
+            self.assertEqual(len(report["stages"]), 1)
+            stage = report["stages"][0]
+            self.assertEqual(stage["status"], "anchor_not_reproducible")
+            self.assertEqual(stage["group_screenings"], [])
+            self.assertEqual(stage["individual_screenings"], [])
+            self.assertEqual(report["learned_groups"], [])
+            self.assertEqual(
+                stage["anchor_diagnostics"]["baseline_mapping_kind"],
+                "exact_phase1_all_gpu_control",
+            )
+            self.assertEqual(
+                stage["anchor_diagnostics"]["samples"][0]["failure_class"],
+                "native_cuda_oom",
+            )
 
     def test_insufficient_probe_budget_never_promotes_configuration(self):
         with tempfile.TemporaryDirectory() as folder:
