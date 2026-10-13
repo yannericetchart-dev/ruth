@@ -290,8 +290,9 @@ class MappingEvaluationTests(unittest.TestCase):
             calls = []
             def success(path, model_id, trial, **kwargs):
                 calls.append(trial["id"])
-                peak = 5000 if trial["id"] == "baseline" else 4950
-                return probe_result(trial["id"], peak)
+                if trial["id"] == "baseline_host_kv":
+                    return probe_result(trial["id"], 5000, 100, 50)
+                return probe_result(trial["id"], 5400, 105, 55)
             with (
                 patch("calibration.mapping_phase.inspect_gguf",
                       return_value=structure),
@@ -314,7 +315,7 @@ class MappingEvaluationTests(unittest.TestCase):
         self.assertIsNone(report["selected_mapping"])
         self.assertFalse(report["profile_generated"])
 
-    def test_reuses_previous_schema2_baseline_and_three_ffn_groups(self):
+    def test_reuses_schema4_checkpoint_and_skips_completed_groups(self):
         from copy import deepcopy
 
         with tempfile.TemporaryDirectory() as tmp:
@@ -322,13 +323,17 @@ class MappingEvaluationTests(unittest.TestCase):
             def measured(path, model_id, trial, **kwargs):
                 row = probe_result(
                     trial["id"],
-                    5000 if trial["id"] == "baseline" else 4950,
+                    5000 if trial["id"] == "baseline_host_kv" else 5400,
+                    100 if trial["id"] == "baseline_host_kv" else 105,
+                    50 if trial["id"] == "baseline_host_kv" else 55,
                 )
                 row.update({
                     "model_id": model_id,
                     "n_ctx": kwargs["n_ctx"],
                     "requested_tokens": kwargs["tokens"],
                     "worker_returncode": 0,
+                    "offload_kqv": trial["id"] != "baseline_host_kv",
+                    "kv_target": "host" if trial["id"] == "baseline_host_kv" else "gpu",
                 })
                 row["measurements"].update({
                     "prompt_tokens": kwargs["n_ctx"] - kwargs["tokens"] - 1,
@@ -348,7 +353,9 @@ class MappingEvaluationTests(unittest.TestCase):
                     baseline, matrix, context, model_id=baseline["model_id"]
                 )
             old = deepcopy(first)
-            old["schema_version"] = 2
+            old["schema_version"] = 4
+            old["status"] = "benchmark_in_progress"
+            old["success"] = False
             old["group_evaluations"] = old["group_evaluations"][:3]
             old["tested_group_ids"] = old["tested_group_ids"][:3]
             calls = []
@@ -372,7 +379,7 @@ class MappingEvaluationTests(unittest.TestCase):
                     ),
                 )
         self.assertTrue(resumed["success"])
-        self.assertEqual(resumed["schema_version"], 3)
+        self.assertEqual(resumed["schema_version"], 4)
         self.assertEqual(resumed["reused_native_trial_count"], 12)
         self.assertEqual(len(calls), 3)
         self.assertEqual(len(set(calls)), 1)
@@ -384,20 +391,28 @@ class MappingEvaluationTests(unittest.TestCase):
     def test_rejects_reuse_of_other_gguf_runtime(self):
         from calibration.mapping_phase import _compatible_previous_report
         current = {
-            "schema_version": 3, "model_id": "qwen",
+            "schema_version": 4, "model_id": "qwen",
             "source": "kaggle", "repository": "a/b",
             "filename": "model.gguf", "model_path": "/models/model.gguf",
             "shard_filenames": ["model.gguf"], "quantization": "Q5_K_M",
             "block_count": 28, "tensor_count": 339,
-            "probe_n_ctx": 512, "probe_tokens": 32, "n_batch": 32,
+            "probe_n_ctx": 8192, "probe_tokens": 128, "n_batch": 32,
             "reference_full_cuda_n_ctx": 7424,
-            "workload": "fixed_context_prompt_prefill_and_greedy_decode",
+            "workload": "extended_context_host_kv_baseline_vs_gpu_kv_group_128_decode",
+            "native_model_context_limit": 8192,
+            "baseline_kv_target": "host",
+            "candidate_kv_target": "gpu",
+            "baseline_offload_kqv": False,
+            "candidate_offload_kqv": True,
             "repeat_processes_per_variant": 3,
         }
         old = {**current,
-               "schema_version": 2, "success": True,
+               "schema_version": 4, "success": True,
                "status": "diagnostic_group_comparison_completed"}
         self.assertTrue(_compatible_previous_report(old, current))
+        self.assertFalse(_compatible_previous_report({
+            **old, "schema_version": 3
+        }, current))
         for name, value in (
             ("filename", "different.gguf"),
             ("probe_n_ctx", 128),
@@ -414,8 +429,8 @@ class MappingEvaluationTests(unittest.TestCase):
             def slow(path, mid, trial, **kwargs):
                 return probe_result(
                     trial["id"],
-                    5000 if trial["id"] == "baseline" else 4900,
-                    100, 50 if trial["id"] == "baseline" else 30,
+                    5000 if trial["id"] == "baseline_host_kv" else 5300,
+                    100, 50 if trial["id"] == "baseline_host_kv" else 30,
                 )
             with (
                 patch("calibration.mapping_phase.inspect_gguf",
