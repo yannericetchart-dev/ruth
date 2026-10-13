@@ -503,10 +503,18 @@ def run_single_to_512(
     # It is NOT a benchmark and never promotes an invalid GPU configuration.
     if control is None:
         base_trial = native_tensor_trial(layout, [])
-        control = load_probe(
-            model_path, model_id, base_trial, n_ctx=target_ctx,
-            timeout=timeout,
-        )
+        try:
+            control = load_probe(
+                model_path, model_id, base_trial, n_ctx=target_ctx,
+                timeout=timeout,
+            )
+        except Exception as exc:
+            control = {
+                "success": False, "n_ctx": target_ctx,
+                "host_tensor_names": [], "mapping_id": base_trial["id"],
+                "failure_class": "load_probe_exception",
+                "error": f"{type(exc).__name__}: {exc}",
+            }
         report["control_load_only"] = control
         save()
         if progress:
@@ -525,10 +533,18 @@ def run_single_to_512(
         if "load_only" not in entry:
             if max_new_loads is not None and new_loads >= max_new_loads:
                 break
-            entry["load_only"] = load_probe(
-                model_path, model_id, trial, n_ctx=target_ctx,
-                timeout=timeout,
-            )
+            try:
+                entry["load_only"] = load_probe(
+                    model_path, model_id, trial, n_ctx=target_ctx,
+                    timeout=timeout,
+                )
+            except Exception as exc:
+                entry["load_only"] = {
+                    "success": False, "n_ctx": target_ctx,
+                    "host_tensor_names": [name], "mapping_id": trial["id"],
+                    "failure_class": "load_probe_exception",
+                    "error": f"{type(exc).__name__}: {exc}",
+                }
             new_loads += 1
             save()
             if progress:
@@ -556,13 +572,19 @@ def run_single_to_512(
             continue
         observations = []
         for _ in range(benchmark_repeats):
-            raw_result = inference_probe(
-                model_path, model_id, trial,
-                n_ctx=target_ctx, tokens=p["generated_tokens"],
-                timeout=timeout, flash_attn=False,
-                type_k="f16", type_v="f16",
-            )
-            observations.append(_probe_summary(raw_result))
+            try:
+                raw_result = inference_probe(
+                    model_path, model_id, trial,
+                    n_ctx=target_ctx, tokens=p["generated_tokens"],
+                    timeout=timeout, flash_attn=False,
+                    type_k="f16", type_v="f16",
+                )
+                observations.append(_probe_summary(raw_result))
+            except Exception as exc:
+                observations.append({
+                    "success": False, "failure_class": "inference_probe_exception",
+                    "error": f"{type(exc).__name__}: {exc}",
+                })
             if observations[-1]["success"] is not True:
                 break
         aggregate = summarize_probe_repeats(observations, benchmark_repeats)
