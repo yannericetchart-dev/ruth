@@ -1,12 +1,15 @@
-"""Phase 2 pilot: native CPU/GPU GGUF weight placement verification.
+"""Phase 2: measured homologous GGUF tensor-group offload search.
 
-Two intentionally bounded experiments per verified baseline:
-1. move transformer block 0 to host, retain every other GGUF tensor on CUDA;
-2. move one small attention tensor in the last block to host, keep the
-   remaining weights on CUDA.
-This is evidence collection, not mapping optimization, context tuning,
-or a production profile. All workers are isolated and never persist model
-configuration changes. The original phase-1 results are read-only.
+Baseline: all weights on CUDA, measured repeatedly with identical prompt,
+context and batch. Screen all block.N.<tensor-role> families using unique
+GGUF bytes and a deliberately approximate compute proxy; test at most three
+eligible groups, each in three independent native CUDA workers.
+
+Only group tensor sets move to host. Every other weight, including tied
+Gemma embedding/output, remains CUDA; native logs must verify all occurrences.
+The goal is usable VRAM without a reproducible performance regression.
+This phase does NOT tune context, select a production profile or overwrite
+phase-1 baseline/context reports.
 """
 
 import argparse
@@ -14,146 +17,50 @@ import json
 import math
 import os
 from pathlib import Path
-import re
 import resource
 import signal
+import statistics
 import subprocess
 import sys
 import threading
 import time
 
 from hardware import GPUManager
-from model.inspect import inspect_gguf
+from model.inspect import inspect_gguf, gguf_file_set
 
-from .baseline_discovery import all_gpu_rules, minimal_chat_prompt
-from .gpu_context import verify_gpu_runtime
+from .baseline_discovery import minimal_chat_prompt
+from .gpu_context import verify_gpu_runtime, make_context_tokens
+from .mapping_grouping import (
+    group_inventory, choose_group_trials, native_group_trial,
+    MAX_TRIAL_GROUPS, MIN_GROUP_MIB,
+)
 from .mapping_native_validation import verify_override_logs
 from .native_memory import parse_native_memory
 from .worker_failure import analyze_worker_failure
 
 
-SCHEMA_VERSION = 1
-PROBE_N_CTX = 64
+SCHEMA_VERSION = 2
+WORKER_REPETITIONS = 3
+MIN_N_CTX = 128
+MAX_N_CTX = 512
 PROBE_BATCH = 32
-PROBE_TOKENS = 2
-MODES = ("block0_host", "attention_tensor_host")
+PROBE_TOKENS_CAP = 32
+PERFORMANCE_TOLERANCE = 0.03
+MAX_MEDIAN_RELATIVE_DEVIATION = 0.05
 
 
-def native_mapping_trials(layout: dict) -> list[dict]:
-    """Build fully covered, non-overlapping exact native GGUF placements."""
-    metadata = layout.get("metadata") or {}
-    arch = metadata.get("general.architecture")
-    blocks = metadata.get(f"{arch}.block_count")
-    if (not isinstance(blocks, int) or isinstance(blocks, bool)
-        or blocks < 1):
-        raise ValueError("Mapping: numero di blocchi GGUF non valido.")
-
-    inventory = layout.get("tensors") or []
-    all_names = [t.get("name") for t in inventory]
-    if not all_names or len(all_names) != len(set(all_names)):
-        raise ValueError("Mapping: inventario GGUF duplicato o vuoto.")
-    by_block = {
-        n: sorted(
-            t["name"] for t in inventory
-            if t.get("block") == n
-            and isinstance(t.get("name"), str)
-            and t["name"].startswith(f"blk.{n}.")
-        )
-        for n in range(blocks)
-    }
-    if not all(by_block.values()):
-        raise ValueError("Mapping: almeno un blocco GGUF privo di tensori.")
-    _, expected_all_gpu = all_gpu_rules(layout)
-    selected = [
-        t for t in inventory
-        if isinstance(t.get("name"), str)
-        and t["name"] in by_block[blocks - 1]
-        and ".attn_" in t["name"]
-        and isinstance(t.get("bytes"), int)
-        and t["bytes"] > 0
-    ]
-    if not selected:
-        raise ValueError("Mapping: nessun tensore attention nell'ultimo blocco.")
-    smallest = min(selected, key=lambda t: (t["bytes"], t["name"]))
-
-    def build(mode: str, host_set: set[str]) -> dict:
-        if not host_set or not host_set.issubset(all_names):
-            raise ValueError("Mapping: host tensor list non valida.")
-        rules = []
-        for block, names in by_block.items():
-            host = [n for n in names if n in host_set]
-            gpu = [n for n in names if n not in host_set]
-            if len(host) == len(names):
-                rules.append({
-                    "pattern": rf"^blk\.{block}\..+$",
-                    "device": "cpu",
-                })
-            elif not host:
-                rules.append({
-                    "pattern": rf"^blk\.{block}\..+$",
-                    "device": "gpu",
-                })
-            else:
-                for name in host:
-                    rules.append({
-                        "pattern": "^" + re.escape(name) + "$",
-                        "device": "cpu",
-                    })
-                for name in gpu:
-                    rules.append({
-                        "pattern": "^" + re.escape(name) + "$",
-                        "device": "gpu",
-                    })
-        assigned_block = {name for names in by_block.values() for name in names}
-        for name in sorted(set(all_names) - assigned_block):
-            pattern = (
-                r"^(token_embd\.weight)$"
-                if arch == "gemma2" and name == "token_embd.weight"
-                else "^" + re.escape(name) + "$"
-            )
-            rules.append({"pattern": pattern, "device": "gpu"})
-
-        matches = {}
-        for rule in rules:
-            names = [n for n in all_names if re.search(rule["pattern"], n)]
-            if not names:
-                raise RuntimeError("Mapping: regex senza tensori: " + rule["pattern"])
-            for name in names:
-                if name in matches:
-                    raise RuntimeError("Mapping: tensor regex sovrapposte: " + name)
-                matches[name] = rule["device"]
-        if set(matches) != set(all_names):
-            raise RuntimeError("Mapping: copertura tensori incompleta.")
-        expected_host = sorted(n for n, device in matches.items()
-                               if device == "cpu")
-        expected_gpu = sorted(n for n, device in matches.items()
-                              if device == "gpu")
-        if expected_host != sorted(host_set):
-            raise RuntimeError("Mapping: piano host non coerente.")
-        return {
-            "id": mode, "rules": rules,
-            "host_tensor_names": expected_host,
-            "gpu_tensor_names": expected_gpu,
-            "expected_native_log_occurrences":
-                expected_all_gpu["expected_native_log_occurrences"],
-            "output_weight_target": "gpu",
-            "host_tensor_count": len(expected_host),
-            "gpu_tensor_count": len(expected_gpu),
-            "host_gguf_bytes": sum(
-                t["bytes"] for t in inventory if t["name"] in host_set
-            ),
-            "all_tensor_count": len(all_names),
-            "block_count": blocks,
-        }
-
-    return [
-        build("block0_host", set(by_block[0])),
-        build("attention_tensor_host", {smallest["name"]}),
-    ]
+def benchmark_context(reference_ctx: int) -> tuple[int, int]:
+    """Fixed fair workload for the same model/quantization and all trials."""
+    if not isinstance(reference_ctx, int) or reference_ctx < MIN_N_CTX:
+        raise ValueError("Mapping: riferimento n_ctx full-CUDA insufficiente.")
+    n_ctx = min(MAX_N_CTX, max(MIN_N_CTX, reference_ctx // 2))
+    tokens = min(PROBE_TOKENS_CAP, max(12, n_ctx // 8))
+    return n_ctx, tokens
 
 
-def _worker(model_path: Path, model_id: str, mode: str) -> dict:
-    """Isolated native worker; result is JSON, DEBUG placement stays stderr."""
+def _worker(model_path: Path, model_id: str, group_id: str,
+            n_ctx: int, token_count: int) -> dict:
+    """Fixed workload in isolated worker, native stderr retained externally."""
     import pynvml
     from llama_cpp.llama_cpp import llama_supports_gpu_offload
     from inference.adapters.llama_cpp_python import LlamaCppPythonMappingAdapter
@@ -163,24 +70,27 @@ def _worker(model_path: Path, model_id: str, mode: str) -> dict:
     status = GPUManager.calibration_status()
     if not status.get("ready"):
         raise RuntimeError("Mapping: GPU non pronta.")
-    visible = os.environ.get("CUDA_VISIBLE_DEVICES")
     gpu = status["gpu"]
+    visible = os.environ.get("CUDA_VISIBLE_DEVICES")
     if visible and visible not in (gpu["uuid"], str(gpu["index"])):
         raise RuntimeError("Mapping: CUDA_VISIBLE_DEVICES diversa dalla GPU.")
     os.environ.setdefault("CUDA_VISIBLE_DEVICES", gpu["uuid"])
 
-    layout = inspect_gguf(model_path, n_ctx=PROBE_N_CTX)
-    trial = next(
-        (t for t in native_mapping_trials(layout) if t["id"] == mode),
-        None,
-    )
-    if trial is None:
-        raise ValueError("Mapping: esperimento sconosciuto.")
+    layout = inspect_gguf(model_path, n_ctx=n_ctx)
     arch = layout["metadata"]["general.architecture"]
+    groups = group_inventory(layout)
+    selected = next((g for g in groups if g["id"] == group_id), None)
+    if group_id != "baseline" and (
+        selected is None or not selected["eligible_for_trial"]
+    ):
+        raise ValueError("Mapping: gruppo non valido o non ammesso alla prova.")
+    trial = native_group_trial(layout, selected)
+    block_count = layout["metadata"][f"{arch}.block_count"]
     report = {
-        "worker_ok": False, "mode": mode, "model_id": model_id,
-        "n_ctx": PROBE_N_CTX, "n_batch": PROBE_BATCH,
-        "n_gpu_layers": trial["block_count"] + 1,
+        "worker_ok": False, "mode": group_id, "model_id": model_id,
+        "n_ctx": n_ctx, "n_batch": PROBE_BATCH,
+        "requested_tokens": token_count,
+        "n_gpu_layers": block_count + 1,
         "host_tensor_count": trial["host_tensor_count"],
         "gpu_tensor_count": trial["gpu_tensor_count"],
         "measurements": {}, "error": None,
@@ -191,15 +101,19 @@ def _worker(model_path: Path, model_id: str, mode: str) -> dict:
     llm = None
     pynvml.nvmlInit()
     try:
-        handle = pynvml.nvmlDeviceGetHandleByUUID(gpu["uuid"])
-        def usage():
-            return round(pynvml.nvmlDeviceGetMemoryInfo(handle).used / 1048576, 1)
-        report["measurements"]["vram_before_mib"] = usage()
+        device = pynvml.nvmlDeviceGetHandleByUUID(gpu["uuid"])
+
+        def used_mib():
+            return round(
+                pynvml.nvmlDeviceGetMemoryInfo(device).used / 1048576, 2
+            )
+
+        report["measurements"]["vram_before_mib"] = used_mib()
 
         def monitor():
             while not stop.is_set():
                 try:
-                    samples.append(usage())
+                    samples.append(used_mib())
                 except pynvml.NVMLError as exc:
                     errors.append(type(exc).__name__)
                     break
@@ -208,41 +122,45 @@ def _worker(model_path: Path, model_id: str, mode: str) -> dict:
         thread = threading.Thread(target=monitor, daemon=True)
         thread.start()
         try:
-            start = time.perf_counter()
-            llm, applied = LlamaCppPythonMappingAdapter().load(
-                model_path,
-                n_gpu_layers=trial["block_count"] + 1,
-                rules=trial["rules"], n_ctx=PROBE_N_CTX,
-                n_batch=PROBE_BATCH, n_ubatch=PROBE_BATCH,
+            t0 = time.perf_counter()
+            llm, _ = LlamaCppPythonMappingAdapter().load(
+                model_path, n_gpu_layers=block_count + 1,
+                rules=trial["rules"], n_ctx=n_ctx, n_batch=PROBE_BATCH,
+                n_ubatch=PROBE_BATCH,
             )
             report["measurements"]["load_s"] = round(
-                time.perf_counter() - start, 3
+                time.perf_counter() - t0, 5
             )
-            report["measurements"]["vram_after_load_mib"] = usage()
-            prompt = minimal_chat_prompt(arch, model_id)
-            tokens = llm.tokenize(prompt.encode(), add_bos=True, special=True)
-            if len(tokens) + PROBE_TOKENS + 1 >= PROBE_N_CTX:
-                raise RuntimeError("Mapping: prompt oltre il contesto diagnostico.")
+            report["measurements"]["vram_after_load_mib"] = used_mib()
+            tokens = make_context_tokens(
+                llm, arch, n_ctx, token_count, model_id=model_id
+            )
+            report["measurements"]["prompt_tokens"] = len(tokens)
             llm.reset()
-            start = time.perf_counter()
+            t0 = time.perf_counter()
             llm.eval(tokens)
-            report["measurements"]["prefill_s"] = round(
-                time.perf_counter() - start, 3
-            )
-            generated = llm.generate([], reset=False, temp=0.0, top_k=1)
-            start = time.perf_counter()
-            completed = 0
+            prefill_s = time.perf_counter() - t0
+            output = llm.generate([], reset=False, temp=0.0, top_k=1)
+            t0 = time.perf_counter()
+            generated = 0
             try:
-                for _ in range(PROBE_TOKENS):
-                    next(generated)
-                    completed += 1
+                for _ in range(token_count):
+                    next(output)
+                    generated += 1
             finally:
-                generated.close()
-            report["measurements"]["decode_s"] = round(
-                time.perf_counter() - start, 3
-            )
-            report["measurements"]["generated_tokens"] = completed
-            report["worker_ok"] = completed == PROBE_TOKENS
+                output.close()
+            decode_s = time.perf_counter() - t0
+            metrics = report["measurements"]
+            metrics["prefill_s"] = round(prefill_s, 5)
+            metrics["decode_s"] = round(decode_s, 5)
+            metrics["generated_tokens"] = generated
+            metrics["prefill_tokens_per_s"] = round(
+                len(tokens) / prefill_s, 3
+            ) if prefill_s > 0 else None
+            metrics["decode_tokens_per_s"] = round(
+                generated / decode_s, 3
+            ) if decode_s > 0 else None
+            report["worker_ok"] = generated == token_count
         except Exception as exc:
             report["error"] = f"{type(exc).__name__}: {exc}"
         finally:
@@ -252,6 +170,9 @@ def _worker(model_path: Path, model_id: str, mode: str) -> dict:
             thread.join(timeout=3)
             report["measurements"]["vram_peak_sampled_mib"] = max(
                 [report["measurements"]["vram_before_mib"]] + samples
+            )
+            report["measurements"]["host_peak_rss_mib"] = round(
+                resource.getrusage(resource.RUSAGE_SELF).ru_maxrss / 1024, 2
             )
             report["measurements"]["nvml_errors"] = errors
             if errors:
