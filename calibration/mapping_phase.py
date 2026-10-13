@@ -371,9 +371,16 @@ def _median_stats(trials: list[dict]) -> dict:
 
 
 def _compare_with_baseline(reference: dict, current: dict) -> dict:
+    """Same enlarged context: host KV full weights vs GPU KV + CPU tensors.
+
+    A higher candidate VRAM peak is not a failure: GPU KV deliberately
+    occupies VRAM that the host-KV baseline leaves free. Acceptance is
+    governed by throughput and stability, not an irrelevant negative
+    'VRAM saved relative to host-KV' requirement.
+    """
     baseline_vram = reference["vram_peak_sampled_mib"]["median"]
     trial_vram = current["vram_peak_sampled_mib"]["median"]
-    freed = round(baseline_vram - trial_vram, 3)
+    vram_delta = round(trial_vram - baseline_vram, 3)
     deltas = {}
     stable = True
     for label in ("prefill_tokens_per_s", "decode_tokens_per_s"):
@@ -389,17 +396,20 @@ def _compare_with_baseline(reference: dict, current: dict) -> dict:
         percent >= -100 * PERFORMANCE_TOLERANCE
         for percent in deltas.values()
     )
-    recovered = freed >= 8.0
+    speed_benefit = any(
+        percent >= 100 * PERFORMANCE_TOLERANCE
+        for percent in deltas.values()
+    )
     if not stable:
         verdict = "inconclusive_variability"
     elif not performance_ok:
         verdict = "rejected_performance_regression"
-    elif not recovered:
-        verdict = "rejected_insufficient_measured_vram"
+    elif speed_benefit:
+        verdict = "promising_extended_context_gpu_kv_speedup"
     else:
-        verdict = "promising_needs_operational_confirmation"
+        verdict = "no_measurable_speed_gain"
     return {
-        "measured_vram_recovered_mib": freed,
+        "vram_delta_vs_host_kv_baseline_mib": vram_delta,
         "prefill_change_percent": deltas["prefill_tokens_per_s"],
         "decode_change_percent": deltas["decode_tokens_per_s"],
         "host_peak_rss_change_mib": round(
@@ -411,8 +421,11 @@ def _compare_with_baseline(reference: dict, current: dict) -> dict:
         "verdict": verdict,
         "performance_tolerance_percent": PERFORMANCE_TOLERANCE * 100,
         "note": (
-            "Prima selezione da 3 processi isolati; risultati non "
-            "dimostrano stabilita' operativa e non sono un profilo."
+            "Baseline full-weight CUDA/host KV confrontata alla stessa "
+            "lunghezza e prompt con CPU weight group/GPU KV. Il delta "
+            "VRAM non equivale alla VRAM liberata dai pesi: cambia anche "
+            "la residenza KV. Se manca un guadagno di velocita' misurabile "
+            "il gruppo non viene promosso. Nessun profilo operativo."
         ),
     }
 
@@ -435,6 +448,10 @@ def _reusable_trials(
             or row.get("model_id") != model_id
             or row.get("n_ctx") != n_ctx
             or row.get("requested_tokens") != tokens
+            or row.get("offload_kqv") is (group_id != BASELINE_MODE)
+            or row.get("kv_target") != (
+                "host" if group_id == BASELINE_MODE else "gpu"
+            )
             or row.get("worker_returncode") != 0
             or (row.get("native_placement") or {}).get("verified") is not True
             or (row.get("gpu_runtime_validation") or {}).get("verified") is not True
@@ -459,23 +476,23 @@ def _reusable_trials(
 
 
 def _compatible_previous_report(previous: object, current: dict) -> bool:
-    """Schema2 and schema3 have the same native measurement workload."""
+    """Only schema4 with the same extended context and KV mode is reusable."""
     if not isinstance(previous, dict):
         return False
-    if previous.get("schema_version") not in (2, 3):
+    if previous.get("schema_version") != SCHEMA_VERSION:
         return False
     if previous.get("status") not in (
         "diagnostic_group_comparison_completed", "benchmark_in_progress",
     ):
-        return False
-    if previous.get("schema_version") == 2 and previous.get("success") is not True:
         return False
     for key in (
         "model_id", "source", "repository", "quantization", "filename",
         "model_path", "shard_filenames", "block_count", "tensor_count",
         "probe_n_ctx", "probe_tokens", "n_batch",
         "reference_full_cuda_n_ctx", "workload",
-        "repeat_processes_per_variant",
+        "native_model_context_limit", "baseline_kv_target",
+        "candidate_kv_target", "baseline_offload_kqv",
+        "candidate_offload_kqv", "repeat_processes_per_variant",
     ):
         if previous.get(key) != current.get(key):
             return False
@@ -723,14 +740,14 @@ def run_mapping_phase(baseline: dict, matrix: dict, context: dict,
             "comparison": comparison,
             "status": comparison["verdict"],
         })
-        if comparison["verdict"] == "promising_needs_operational_confirmation":
+        if comparison["verdict"] == "promising_extended_context_gpu_kv_speedup":
             report["promising_group_ids"].append(group_id)
         if progress is not None:
             progress({
                 "event": "mapping_group_comparison",
                 "mode": group_id,
                 "verdict": comparison["verdict"],
-                "freed_mib": comparison["measured_vram_recovered_mib"],
+                "vram_delta_mib": comparison["vram_delta_vs_host_kv_baseline_mib"],
                 "prefill_percent": comparison["prefill_change_percent"],
                 "decode_percent": comparison["decode_change_percent"],
             })
