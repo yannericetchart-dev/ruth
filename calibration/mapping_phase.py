@@ -31,14 +31,13 @@ from model.inspect import inspect_gguf, gguf_file_set
 from .gpu_context import verify_gpu_runtime, make_context_tokens
 from .mapping_grouping import (
     group_inventory, choose_group_trials, native_group_trial,
-    MAX_TRIAL_GROUPS, MIN_GROUP_MIB,
 )
 from .mapping_native_validation import verify_override_logs
 from .native_memory import parse_native_memory
 from .worker_failure import analyze_worker_failure
 
 
-SCHEMA_VERSION = 2
+SCHEMA_VERSION = 3
 WORKER_REPETITIONS = 3
 MIN_N_CTX = 128
 MAX_N_CTX = 512
@@ -353,7 +352,7 @@ def _compare_with_baseline(reference: dict, current: dict) -> dict:
 def run_mapping_phase(baseline: dict, matrix: dict, context: dict,
                       *, model_id: str, progress=None,
                       timeout: int = 300) -> dict:
-    """Baseline repeated then up to three ranked homologous group experiments."""
+    """Repeated baseline, then every eligible homologous block tensor group."""
     if (
         not isinstance(baseline, dict)
         or baseline.get("model_id") != model_id
@@ -421,8 +420,8 @@ def run_mapping_phase(baseline: dict, matrix: dict, context: dict,
         ],
         "workload": "fixed_context_prompt_prefill_and_greedy_decode",
         "repeat_processes_per_variant": WORKER_REPETITIONS,
-        "min_gguf_group_mib_to_test": MIN_GROUP_MIB,
-        "max_group_trials": MAX_TRIAL_GROUPS,
+        "screening_size_threshold_mib": None,
+        "group_trial_limit": None,
         "groups": groups,
         "screened_group_count": len(groups),
         "eligible_group_count": sum(
