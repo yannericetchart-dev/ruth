@@ -95,7 +95,8 @@ class LlamaCppPythonMappingAdapter:
 
     def load(self, path: Path, *, n_gpu_layers: int, rules: list[dict],
              n_ctx: int = 512, n_batch: int = 128, n_ubatch: int = 128,
-             offload_kqv: bool = True):
+             offload_kqv: bool = True, flash_attn: bool = False,
+             type_k: str = "f16", type_v: str = "f16"):
         """Load a model with native per-tensor placement rules.
 
         offload_kqv=False requests KV/attention offload to host for the
@@ -107,6 +108,17 @@ class LlamaCppPythonMappingAdapter:
         """
         from llama_cpp import Llama
         from llama_cpp import _internals
+        from llama_cpp import llama_cpp as api
+
+        kv_types = {
+            "f16": api.GGML_TYPE_F16,
+            "q8_0": api.GGML_TYPE_Q8_0,
+            "q4_0": api.GGML_TYPE_Q4_0,
+        }
+        if type_k not in kv_types or type_v not in kv_types:
+            raise ValueError("Tipi KV ammessi: f16, q8_0, q4_0.")
+        if type_v != "f16" and not flash_attn:
+            raise ValueError("KV V quantizzata richiede Flash Attention.")
 
         caps = self.capabilities()
         if not caps["supported"]:
@@ -183,7 +195,9 @@ class LlamaCppPythonMappingAdapter:
                 llm = Llama(
                     model_path=str(path), n_ctx=n_ctx, n_gpu_layers=n_gpu_layers,
                     n_batch=n_batch, n_ubatch=n_ubatch,
-                    offload_kqv=offload_kqv, flash_attn=False, verbose=True,
+                    offload_kqv=offload_kqv, flash_attn=flash_attn,
+                    type_k=kv_types[type_k], type_v=kv_types[type_v],
+                    verbose=True,
                 )
             finally:
                 _internals.LlamaModel = original
