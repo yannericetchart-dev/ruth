@@ -71,7 +71,7 @@ def make_mapping_tokens(llm, architecture: str, n_ctx: int,
     if (generated_tokens < 1 or generated_tokens > 128
         or n_ctx - generated_tokens < 17):
         raise ValueError("Mapping: prompt e generazione non entrano in n_ctx.")
-    target = n_ctx - generated_tokens - 1
+    target = n_ctx - generated_tokens
     base = minimal_chat_prompt(architecture, model_id)
     reps = max(1, n_ctx // 4)
     while reps <= n_ctx * 64:
@@ -221,13 +221,15 @@ def _worker(model_path: Path, model_id: str, group_id: str,
             metrics["prefill_s"] = round(prefill_s, 5)
             metrics["decode_s"] = round(decode_s, 5)
             metrics["generated_tokens"] = generated
+            metrics["total_tokens"] = len(tokens) + generated
             metrics["prefill_tokens_per_s"] = round(
                 len(tokens) / prefill_s, 3
             ) if prefill_s > 0 else None
             metrics["decode_tokens_per_s"] = round(
                 generated / decode_s, 3
             ) if decode_s > 0 else None
-            report["worker_ok"] = generated == token_count
+            report["worker_ok"] = (generated == token_count
+                                   and len(tokens) + generated == n_ctx)
         except Exception as exc:
             report["error"] = f"{type(exc).__name__}: {exc}"
         finally:
@@ -329,7 +331,8 @@ def probe_native_mapping(model_path: Path, model_id: str, trial: dict,
         and report.get("mode") == group_id
         and report.get("offload_kqv") is (not host_kv)
         and report.get("kv_target") == ("host" if host_kv else "gpu")
-        and measured.get("prompt_tokens") == n_ctx - tokens - 1
+        and measured.get("prompt_tokens") == n_ctx - tokens
+        and measured.get("total_tokens") == n_ctx
         and measured.get("generated_tokens") == tokens
         and finite
         and isinstance(measured.get("vram_headroom_min_mib"), (int, float))
@@ -477,7 +480,7 @@ def _reusable_trials(
                 "verified_host_resident"
                 if group_id == BASELINE_MODE else "verified_gpu_resident"
             ) is not True
-            or measured.get("prompt_tokens") != n_ctx - tokens - 1
+            or measured.get("prompt_tokens") != n_ctx - tokens
             or measured.get("generated_tokens") != tokens
             or measured.get("nvml_errors")
         ):
