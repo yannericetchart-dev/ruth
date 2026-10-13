@@ -47,7 +47,7 @@ def evidence(group_id):
 def fake_mapping(selection):
     ids = ["group:attn_k.weight", "group:ffn_down.weight"]
     return {
-        "schema_version": 2, "phase": "mapping",
+        "schema_version": 3, "phase": "mapping",
         "model_id": selection["model_id"],
         "source": selection["source"],
         "filename": selection["filename"],
@@ -56,6 +56,9 @@ def fake_mapping(selection):
         "reference_full_cuda_n_ctx": 2048,
         "repeat_processes_per_variant": 3,
         "tested_group_ids": ids,
+        "groups": [
+            {"id": name, "eligible_for_trial": True} for name in ids
+        ],
         "baseline_trials": [evidence("baseline") for _ in range(3)],
         "baseline_statistics": {"prefill_tokens_per_s": {"median": 80}},
         "group_evaluations": [
@@ -162,7 +165,7 @@ class MappingPipelineTests(unittest.TestCase):
             failure = fake_mapping(selection)
             failure.update({
                 "success": False,
-                "status": "blocked_unverified_native_mapping",
+                "status": "blocked_baseline_native_benchmark",
                 "group_evaluations": [{"group_id": "group:attn_k.weight",
                                      "trials": [{"success": False}]}],
                 "error": "Native placement unverified",
