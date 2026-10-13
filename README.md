@@ -161,7 +161,8 @@ Il comando usa una pipeline riprendibile per fasi:
 2. `baseline`: prima quantizzazione interamente caricabile su CUDA.
 3. `layer_matrix`: matrice per blocco e tensore **in sola lettura**, nessun offload.
 4. `context_gpu`: massimo n_ctx diagnostico con pesi e KV su CUDA.
-5. `mapping`: vero placement layer/tensori, **da fare**.
+5. `mapping`: **prove native diagnostiche CPU/GPU** di un blocco e un
+   tensore, **implementate**. Ricerca ottimale del mapping ancora da fare.
 6. `runtime`: ottimizzazione parametri llama.cpp, **da fare**.
 7. `context_tuned`: contesto con mapping ottimizzato, **da fare**.
 8. `capacity`: contesto esteso con RAM di sistema, **da fare**.
@@ -171,7 +172,7 @@ il risultato e la decisione, senza dover attendere l'output JSON completo.
 I report rimangono disponibili in
 `models/calibration_runs/<profile_key>/` (`state.json`,
 `events.jsonl`, `inventory.json`, `baseline.json`,
-`layer_matrix.json`, `context_gpu.json`).
+`layer_matrix.json`, `context_gpu.json`, `mapping.json`).
 Questa cartella e' esclusa da Git. Il `profile_key` dipende dalle
 scelte, dall'hardware misurato e dalla versione del runtime: non si
 confondono i profili tra GPU, quantizzazioni o ambienti diversi.
@@ -203,6 +204,55 @@ di un worker) rimane `blocked` e potra' essere riprovato. Il processo
 non promuove mai un errore inconclusivo a OOM. I comandi manuali delle
 singole fasi rimangono disponibili per diagnosi e retrocompatibilita'.
 
+
+## Fase 2, prima iterazione: mapping CPU/GPU verificato nativamente
+
+La prima iterazione della fase `mapping` effettua **due prove reali**
+per ogni baseline gia' certificata, con `n_ctx=64` e due token di
+generazione per prova. Il primo worker assegna alla CPU tutti i
+tensori del blocco `blk.0`; il secondo assegna alla CPU il
+piu' piccolo tensore attention dell'ultimo blocco GGUF.
+**Tutti gli altri tensori restano esplicitamente su CUDA**, inclusi
+embedding e output. Gemma 2 conserva l'obbligo di verificare
+separatamente le due occorrenze native del peso condiviso;
+Llama/Qwen gestiscono le eventuali occorrenze ripetute del
+tensore rope. Le regex devono coprire esattamente tutti i nomi
+GGUF senza sovrapposizioni.
+
+Ciascun worker isolato esegue realmente un'inferenza, misura NVML
+e produce prove native di tutti gli override CPU/CUDA e dei
+buffer KV/compute su CUDA. **CUDA_Host indica RAM host, non VRAM**.
+Il fallimento di qualunque verifica blocca la fase: non viene
+promosso un mapping fittizio. Il report `mapping.json` contiene
+le due prove, causa del fallimento e picchi VRAM campionati.
+La pipeline riutilizza il risultato soltanto con due verifiche
+positive corrispondenti alla baseline corrente.
+
+I test **non** sono un benchmark di prestazioni, non hanno ancora
+cercato la distribuzione ottimale dei pesi, non ripetono la
+calibrazione del contesto e non modificano i parametri
+operativi di Ruth. Questa fase pilota serve prima a provare
+la capacita' di spostamento granularmente controllata.
+
+```bash
+cd ~/Dev/ruth
+git pull --ff-only
+.venv/bin/python -m unittest discover -s tests -p 'test_*.py'
+
+# Una sola combinazione per cominciare, senza --rerun:
+.venv/bin/python -m calibration.profile_pipeline \
+  --model qwen-2.5-7b-instruct --source kaggle --until mapping
+
+# Dopo conferma delle due prove, estendere alle altre fonti:
+.venv/bin/python -m calibration.profile_pipeline \
+  --model all --source all --until mapping
+```
+
+La fase 1 viene sempre riutilizzata quando la cache e' valida.
+Non si creano profili operativi, non si modifica la baseline
+di Bartowski e non si scaricano modelli gia' presenti.
+Le successive fasi `runtime`, `context_tuned` e `capacity`
+non sono ancora implementate.
 
 ## Fase 1 completa: audit delle cinque combinazioni modello/fonte
 
