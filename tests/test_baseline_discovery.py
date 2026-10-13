@@ -117,6 +117,34 @@ class CatalogTests(unittest.TestCase):
             quantization_priority("Q3_K_L")["quality_priority"],
         )
 
+    def test_bare_k_quant_aliases_are_medium_not_large(self):
+        # Standard llama-quantize command aliases. This does NOT claim that
+        # publisher GGUFs with equivalent labels have identical tensors.
+        for bare, medium, large in (
+            ("Q3_K", "Q3_K_M", "Q3_K_L"),
+            ("Q4_K", "Q4_K_M", "Q4_K_L"),
+            ("Q5_K", "Q5_K_M", "Q5_K_L"),
+        ):
+            with self.subTest(bare=bare):
+                named = quantization_priority(bare)
+                canonical = quantization_priority(medium)
+                self.assertEqual(
+                    named["quality_priority"], canonical["quality_priority"]
+                )
+                self.assertEqual(named["quality_base"], medium)
+                self.assertEqual(
+                    named["quality_rank_confidence"],
+                    "standard_llama_quantize_alias",
+                )
+                self.assertLess(
+                    quantization_priority(large)["quality_priority"],
+                    named["quality_priority"],
+                )
+                self.assertEqual(
+                    quantization_priority(bare + "-fp16")["quality_priority"],
+                    quantization_priority(medium + "-fp16")["quality_priority"],
+                )
+
     def test_mistral_publisher_rare_iq_quantizations_ranked(self):
         for label in ("IQ3_S", "IQ1_M", "IQ1_S"):
             with self.subTest(quantization=label):
