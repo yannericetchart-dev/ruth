@@ -703,12 +703,19 @@ def search_gpu_context(
                       "round": confirmation_index, "total": confirm_rounds,
                       "model": model_id})
         confirmation = measure(low)
+        metrics = confirmation.get("measurements") or {}
         result["confirmation"].append({
             "success": confirmation["success"],
             "failure_class": confirmation.get("failure_class"),
-            "vram_peak_sampled_mib": (confirmation.get("measurements") or {}).get(
-                "vram_peak_sampled_mib"
-            ),
+            "vram_peak_sampled_mib": metrics.get("vram_peak_sampled_mib"),
+            "prompt_tokens": metrics.get("prompt_tokens"),
+            "generated_tokens": metrics.get("generated_tokens"),
+            "total_tokens": metrics.get("total_tokens"),
+            "prefill_s": metrics.get("prefill_s"),
+            "decode_s": metrics.get("decode_s"),
+            "inference_s": metrics.get("inference_s"),
+            "prefill_tokens_per_second": metrics.get("prefill_tokens_per_second"),
+            "decode_tokens_per_second": metrics.get("decode_tokens_per_second"),
         })
         if not confirmation["success"]:
             result["error"] = (
@@ -727,6 +734,13 @@ def search_gpu_context(
         min(total_mib - row["vram_peak_sampled_mib"]
             for row in result["confirmation"]), 1
     )
+    # Fase 2 reference: same n_ctx, full-GPU weights and CUDA KV.
+    # Preserve individual repeats rather than pretending a single sample is stable.
+    result["phase2_full_gpu_performance_baseline"] = {
+        "n_ctx": low,
+        "placement": "weights_gpu_kv_gpu",
+        "repeat_measurements": result["confirmation"],
+    }
     result["reference_is_operationally_safe"] = False
     # Retain the original conservative treatment for operator-opted
     # ambiguous errors that are NOT SIGABRT: only a native crash or an
