@@ -241,3 +241,100 @@ def native_multi_group_trial(layout: dict, groups: list[dict]) -> dict:
         "tensor_names": g["tensor_names"],
     } for g in groups]
     return trial
+
+
+def native_tensor_trial(layout: dict, host_tensor_names: list[str]) -> dict:
+    """Build exhaustive native overrides for ANY subset of block tensors.
+
+    Homogeneous block suffix families remain one regex for efficiency; split
+    families use an exact regex per physical tensor. Non-block and tied
+    embedding/output weights intentionally remain GPU-resident.
+    """
+    import hashlib
+    import json
+
+    _, expected = all_gpu_rules(layout)
+    tensors = layout.get("tensors") or []
+    all_names = sorted(t["name"] for t in tensors)
+    if len(all_names) != len(set(all_names)):
+        raise ValueError("GGUF con nomi tensori duplicati.")
+    if (not isinstance(host_tensor_names, list)
+        or any(not isinstance(name, str) for name in host_tensor_names)
+        or len(host_tensor_names) != len(set(host_tensor_names))):
+        raise ValueError("Lista tensori CPU malformata o duplicata.")
+    host = sorted(host_tensor_names)
+    names_set = set(all_names)
+    metadata = layout["metadata"]
+    arch = metadata["general.architecture"]
+    blocks = metadata[f"{arch}.block_count"]
+    for name in host:
+        match = BLOCK_TENSOR.fullmatch(name)
+        if (name not in names_set or match is None
+            or int(match.group(1)) >= blocks):
+            raise ValueError(
+                "Mapping individuale: consentiti soltanto tensori di blocco: "
+                + name
+            )
+
+    placement = {name: "cpu" if name in host else "gpu" for name in all_names}
+    by_suffix = defaultdict(list)
+    non_block = []
+    for name in all_names:
+        match = BLOCK_TENSOR.fullmatch(name)
+        if match and int(match.group(1)) < blocks:
+            by_suffix[match.group(2)].append(name)
+        else:
+            non_block.append(name)
+
+    rules = []
+    for suffix, names in sorted(by_suffix.items()):
+        domains = {placement[name] for name in names}
+        if len(domains) == 1:
+            rules.append({
+                "pattern": r"^blk\\.[0-9]+\\." + re.escape(suffix) + "$",
+                "device": domains.pop(),
+            })
+        else:
+            for name in sorted(names):
+                rules.append({
+                    "pattern": "^" + re.escape(name) + "$",
+                    "device": placement[name],
+                })
+    for name in sorted(non_block):
+        rules.append({
+            "pattern": "^" + re.escape(name) + "$",
+            "device": "gpu",
+        })
+
+    covered = {}
+    for rule in rules:
+        matching = [
+            name for name in all_names
+            if re.search(rule["pattern"], name)
+        ]
+        if not matching:
+            raise RuntimeError("Regola mapping senza corrispondenze.")
+        for name in matching:
+            if name in covered:
+                raise RuntimeError("Regole mapping sovrapposte.")
+            covered[name] = rule["device"]
+    if covered != placement:
+        raise RuntimeError("Mapping individuale non copre il GGUF.")
+
+    identifier = "tensors:" + hashlib.sha256(
+        json.dumps(host, ensure_ascii=False).encode("utf-8")
+    ).hexdigest()[:20]
+    sizes = {t["name"]: t["bytes"] for t in tensors}
+    return {
+        "id": identifier, "rules": rules,
+        "host_tensor_names": host,
+        "gpu_tensor_names": [name for name in all_names if name not in host],
+        "expected_native_log_occurrences":
+            expected["expected_native_log_occurrences"],
+        "output_weight_target": "gpu",
+        "host_tensor_count": len(host),
+        "gpu_tensor_count": len(all_names) - len(host),
+        "host_gguf_bytes": sum(sizes[name] for name in host),
+        "group": None,
+        "mapping_kind": "individual_tensor_subset",
+    }
