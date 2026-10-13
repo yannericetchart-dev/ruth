@@ -85,12 +85,12 @@ def native_mapping_trials(layout: dict) -> list[dict]:
             gpu = [n for n in names if n not in host_set]
             if len(host) == len(names):
                 rules.append({
-                    "pattern": rf"^blk\\.{block}\\..+$",
+                    "pattern": rf"^blk\.{block}\..+$",
                     "device": "cpu",
                 })
             elif not host:
                 rules.append({
-                    "pattern": rf"^blk\\.{block}\\..+$",
+                    "pattern": rf"^blk\.{block}\..+$",
                     "device": "gpu",
                 })
             else:
@@ -107,7 +107,7 @@ def native_mapping_trials(layout: dict) -> list[dict]:
         assigned_block = {name for names in by_block.values() for name in names}
         for name in sorted(set(all_names) - assigned_block):
             pattern = (
-                r"^(token_embd\\.weight)$"
+                r"^(token_embd\.weight)$"
                 if arch == "gemma2" and name == "token_embd.weight"
                 else "^" + re.escape(name) + "$"
             )
@@ -265,7 +265,7 @@ def _worker(model_path: Path, model_id: str, mode: str) -> dict:
 def probe_native_mapping(model_path: Path, model_id: str, trial: dict,
                          timeout: int = 300) -> dict:
     """One fixed-runtime placement per short-lived CUDA subprocess."""
-    if mode := trial.get("id") not in MODES:
+    if trial.get("id") not in MODES:
         raise ValueError("Mapping: candidato non registrato.")
     cmd = [
         sys.executable, "-m", "calibration.mapping_phase",
