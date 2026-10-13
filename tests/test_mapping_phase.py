@@ -309,6 +309,100 @@ class MappingEvaluationTests(unittest.TestCase):
         self.assertIsNone(report["selected_mapping"])
         self.assertFalse(report["profile_generated"])
 
+    def test_reuses_previous_schema2_baseline_and_three_ffn_groups(self):
+        from copy import deepcopy
+
+        with tempfile.TemporaryDirectory() as tmp:
+            path, structure, baseline, matrix, context = self.setup(tmp)
+            def measured(path, model_id, trial, **kwargs):
+                row = probe_result(
+                    trial["id"],
+                    5000 if trial["id"] == "baseline" else 4950,
+                )
+                row.update({
+                    "model_id": model_id,
+                    "n_ctx": kwargs["n_ctx"],
+                    "requested_tokens": kwargs["tokens"],
+                    "worker_returncode": 0,
+                })
+                row["measurements"].update({
+                    "prompt_tokens": kwargs["n_ctx"] - kwargs["tokens"] - 1,
+                    "generated_tokens": kwargs["tokens"],
+                    "nvml_errors": [],
+                })
+                return row
+            with (
+                patch("calibration.mapping_phase.inspect_gguf",
+                      return_value=structure),
+                patch("calibration.mapping_phase.gguf_file_set",
+                      return_value=[path]),
+                patch("calibration.mapping_phase.probe_native_mapping",
+                      side_effect=measured),
+            ):
+                first = run_mapping_phase(
+                    baseline, matrix, context, model_id=baseline["model_id"]
+                )
+            old = deepcopy(first)
+            old["schema_version"] = 2
+            old["group_evaluations"] = old["group_evaluations"][:3]
+            old["tested_group_ids"] = old["tested_group_ids"][:3]
+            calls = []
+            def remaining(*args, **kwargs):
+                calls.append(args[2]["id"])
+                return measured(*args, **kwargs)
+            checkpoints = []
+            with (
+                patch("calibration.mapping_phase.inspect_gguf",
+                      return_value=structure),
+                patch("calibration.mapping_phase.gguf_file_set",
+                      return_value=[path]),
+                patch("calibration.mapping_phase.probe_native_mapping",
+                      side_effect=remaining),
+            ):
+                resumed = run_mapping_phase(
+                    baseline, matrix, context, model_id=baseline["model_id"],
+                    previous_report=old,
+                    checkpoint=lambda r: checkpoints.append(
+                        (r["status"], len(r["group_evaluations"]))
+                    ),
+                )
+        self.assertTrue(resumed["success"])
+        self.assertEqual(resumed["schema_version"], 3)
+        self.assertEqual(resumed["reused_native_trial_count"], 12)
+        self.assertEqual(len(calls), 3)
+        self.assertEqual(len(set(calls)), 1)
+        self.assertEqual(len(resumed["group_evaluations"]), 4)
+        self.assertEqual(checkpoints[-1], (
+            "diagnostic_group_comparison_completed", 4
+        ))
+
+    def test_rejects_reuse_of_other_gguf_runtime(self):
+        from calibration.mapping_phase import _compatible_previous_report
+        current = {
+            "schema_version": 3, "model_id": "qwen",
+            "source": "kaggle", "repository": "a/b",
+            "filename": "model.gguf", "model_path": "/models/model.gguf",
+            "shard_filenames": ["model.gguf"], "quantization": "Q5_K_M",
+            "block_count": 28, "tensor_count": 339,
+            "probe_n_ctx": 512, "probe_tokens": 32, "n_batch": 32,
+            "reference_full_cuda_n_ctx": 7424,
+            "workload": "fixed_context_prompt_prefill_and_greedy_decode",
+            "repeat_processes_per_variant": 3,
+        }
+        old = {**current,
+               "schema_version": 2, "success": True,
+               "status": "diagnostic_group_comparison_completed"}
+        self.assertTrue(_compatible_previous_report(old, current))
+        for name, value in (
+            ("filename", "different.gguf"),
+            ("probe_n_ctx", 128),
+            ("source", "bartowski"),
+            ("reference_full_cuda_n_ctx", 2048),
+        ):
+            with self.subTest(field=name):
+                bad = {**old, name: value}
+                self.assertFalse(_compatible_previous_report(bad, current))
+
     def test_slow_group_rejected_without_failing_complete_evaluation(self):
         with tempfile.TemporaryDirectory() as tmp:
             path, structure, baseline, matrix, context = self.setup(tmp)
