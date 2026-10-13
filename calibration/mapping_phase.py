@@ -508,50 +508,115 @@ def run_mapping_phase(baseline: dict, matrix: dict, context: dict,
             "Nessuna combinazione o configurazione operativa viene scelta."
         ),
     }
+    from copy import deepcopy
+
+    previous = (
+        previous_report
+        if _compatible_previous_report(previous_report, report)
+        else None
+    )
+    prior_groups = {
+        item["group_id"]: item
+        for item in (previous or {}).get("group_evaluations", [])
+        if isinstance(item, dict) and isinstance(item.get("group_id"), str)
+    }
+
+    def persist_progress():
+        if checkpoint is not None:
+            checkpoint(report)
+
     for position, trial in enumerate(plan):
-        samples = []
-        for repetition in range(1, WORKER_REPETITIONS + 1):
-            if progress is not None:
-                progress({
-                    "event": "mapping_probe_start", "mode": trial["id"],
-                    "repetition": repetition,
-                    "repetitions": WORKER_REPETITIONS,
-                    "host_tensors": trial["host_tensor_count"],
-                    "gpu_tensors": trial["gpu_tensor_count"],
-                })
-            outcome = probe_native_mapping(
-                path, model_id, trial,
-                n_ctx=n_ctx, tokens=tokens, timeout=timeout,
+        group_id = trial["id"]
+        existing = (
+            (previous or {}).get("baseline_trials")
+            if position == 0 else
+            (prior_groups.get(group_id) or {}).get("trials")
+        )
+        reused = _reusable_trials(
+            existing, group_id, model_id=model_id,
+            n_ctx=n_ctx, tokens=tokens,
+        )
+        if reused:
+            samples = deepcopy(existing)
+            report["reused_native_trial_count"] = (
+                report.get("reused_native_trial_count", 0) + len(samples)
             )
-            samples.append(outcome)
-            if position == 0:
-                report["baseline_trials"] = samples
             if progress is not None:
                 progress({
-                    "event": "mapping_probe_result", "mode": trial["id"],
-                    "repetition": repetition,
-                    "success": outcome.get("success"),
-                    "failure_class": outcome.get("failure_class"),
-                    "vram_peak_mib": (
-                        outcome.get("measurements") or {}
-                    ).get("vram_peak_sampled_mib"),
+                    "event": "mapping_trial_reused",
+                    "mode": group_id,
+                    "native_trials": len(samples),
                 })
-            if not outcome.get("success"):
-                report["status"] = "blocked_unverified_native_mapping"
-                report["error"] = (
-                    f"Mapping {trial['id']} ripetizione {repetition} "
-                    f"non validata: {outcome.get('failure_class')}; "
-                    f"{outcome.get('error')}"
-                )
-                if position:
-                    report["group_evaluations"].append({
-                        "group_id": trial["id"], "trials": samples,
-                        "status": "blocked_unverified_native_mapping",
+        else:
+            samples = []
+            for repetition in range(1, WORKER_REPETITIONS + 1):
+                if progress is not None:
+                    progress({
+                        "event": "mapping_probe_start", "mode": group_id,
+                        "repetition": repetition,
+                        "repetitions": WORKER_REPETITIONS,
+                        "host_tensors": trial["host_tensor_count"],
+                        "gpu_tensors": trial["gpu_tensor_count"],
                     })
-                return report
+                outcome = probe_native_mapping(
+                    path, model_id, trial, n_ctx=n_ctx, tokens=tokens,
+                    timeout=timeout,
+                )
+                samples.append(outcome)
+                if position == 0:
+                    report["baseline_trials"] = samples
+                if progress is not None:
+                    progress({
+                        "event": "mapping_probe_result", "mode": group_id,
+                        "repetition": repetition,
+                        "success": outcome.get("success"),
+                        "failure_class": outcome.get("failure_class"),
+                        "vram_peak_mib": (
+                            outcome.get("measurements") or {}
+                        ).get("vram_peak_sampled_mib"),
+                    })
+                if not outcome.get("success"):
+                    # Full-CUDA reference must succeed. A failed individual
+                    # group is measured evidence of unsuitability, not a
+                    # reason to skip every subsequent eligible group.
+                    if position == 0:
+                        report["status"] = "blocked_baseline_native_benchmark"
+                        report["error"] = (
+                            f"Mapping baseline ripetizione {repetition} "
+                            f"non validata: {outcome.get('failure_class')}; "
+                            f"{outcome.get('error')}"
+                        )
+                        persist_progress()
+                        return report
+                    report["group_evaluations"].append({
+                        "group_id": group_id,
+                        "trials": samples,
+                        "statistics": None,
+                        "comparison": None,
+                        "status": "native_probe_failed",
+                        "failure_class": outcome.get("failure_class"),
+                        "error": outcome.get("error"),
+                    })
+                    if progress is not None:
+                        progress({
+                            "event": "mapping_group_failed",
+                            "mode": group_id,
+                            "failure_class": outcome.get("failure_class"),
+                        })
+                    persist_progress()
+                    break
+            if len(samples) < WORKER_REPETITIONS or not all(
+                row.get("success") is True for row in samples
+            ):
+                # A native failure in a group has been recorded above;
+                # continue to explore the rest of the tensor families.
+                continue
+
         stats = _median_stats(samples)
         if position == 0:
+            report["baseline_trials"] = samples
             report["baseline_statistics"] = stats
+            persist_progress()
             if progress is not None:
                 progress({
                     "event": "mapping_baseline_complete",
@@ -560,28 +625,37 @@ def run_mapping_phase(baseline: dict, matrix: dict, context: dict,
                     "vram_peak_mib": stats["vram_peak_sampled_mib"]["median"],
                 })
             continue
-        evaluation = _compare_with_baseline(
+
+        comparison = _compare_with_baseline(
             report["baseline_statistics"], stats
         )
         report["group_evaluations"].append({
-            "group_id": trial["id"], "trials": samples,
-            "statistics": stats, "comparison": evaluation,
-            "status": evaluation["verdict"],
+            "group_id": group_id,
+            "trials": samples, "statistics": stats,
+            "comparison": comparison,
+            "status": comparison["verdict"],
         })
-        if evaluation["verdict"] == "promising_needs_operational_confirmation":
-            report["promising_group_ids"].append(trial["id"])
+        if comparison["verdict"] == "promising_needs_operational_confirmation":
+            report["promising_group_ids"].append(group_id)
         if progress is not None:
             progress({
                 "event": "mapping_group_comparison",
-                "mode": trial["id"],
-                "verdict": evaluation["verdict"],
-                "freed_mib": evaluation["measured_vram_recovered_mib"],
-                "prefill_percent": evaluation["prefill_change_percent"],
-                "decode_percent": evaluation["decode_change_percent"],
+                "mode": group_id,
+                "verdict": comparison["verdict"],
+                "freed_mib": comparison["measured_vram_recovered_mib"],
+                "prefill_percent": comparison["prefill_change_percent"],
+                "decode_percent": comparison["decode_change_percent"],
             })
+        persist_progress()
 
     report["success"] = True
     report["status"] = "diagnostic_group_comparison_completed"
+    report["evaluated_group_count"] = len(report["group_evaluations"])
+    report["native_failed_group_count"] = sum(
+        entry["status"] == "native_probe_failed"
+        for entry in report["group_evaluations"]
+    )
+    persist_progress()
     return report
 
 
