@@ -28,7 +28,7 @@ def run_profiles(*, model_id: str = "gemma-2-9b-it",
                  max_ctx: int | None = None, tokens: int = 16,
                  batch: int = 32, timeout: int = 300,
                  confirm_rounds: int = 2,
-                 output: Path = Path("phase1_kv_profiles.json"),
+                 output: Path = Path("phase1_kv_profiles_from_258.json"),
                  rerun: bool = False, search=search_gpu_context,
                  progress=None) -> dict:
     """Start each profile at baseline_ctx + 1; stop if that first probe fails."""
