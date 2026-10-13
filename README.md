@@ -778,16 +778,20 @@ fallito o inconclusivo produce uscita diversa da zero.
 Dopo `phase1_kv_profiles_complete.json`, confrontare soltanto i profili
 la cui inferenza è già stata confermata in GPU a ciascun contesto:
 512 (9 candidati), 768 (3), 1280 (1) per il report Gemma-2 attuale.
-Il corpus deve essere un file UTF-8 **reale, coerente e identico** per
-ogni esecuzione, con almeno 1280 token secondo il tokenizer Gemma-2
-(per esempio un campione deterministico di testi mai usati nella
-calibrazione). Non usare un prompt artificiosamente ripetuto per
-misurare la qualità.
+Il repository include ora `calibration/corpora/kv_eval_it_v1.txt`,
+un campione UTF-8 originale, **sintetico ma scritto in linguaggio naturale**,
+con 12 sezioni tematiche e circa 3300 parole. Non contiene frasi duplicate
+artificialmente per riempire il contesto ed è versionato per ripetibilità.
+Il worker verifica in modo rigoroso che il tokenizer del modello produca
+almeno `n_ctx` token. È un corpus esplorativo, non un benchmark di qualità
+rappresentativo della distribuzione reale delle richieste: inoltre questa
+implementazione valuta sempre il prefisso iniziale del corpus fino a `n_ctx`,
+quindi non tutte le 12 sezioni partecipano a ogni contesto.
 
 ```bash
 python -m calibration.kv_benchmark \
   --phase1-report phase1_kv_profiles_complete.json \
-  --corpus /percorso/valutazione.txt \
+  --corpus calibration/corpora/kv_eval_it_v1.txt \
   --contexts 512,768,1280 \
   --repetitions 3 --decode-tokens 16 --quality-points 64 \
   --output kv_quality_speed_benchmarks.json
