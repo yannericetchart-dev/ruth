@@ -373,7 +373,7 @@ class GreedyLogicTests(unittest.TestCase):
                     memory_steps_report=steps, targets=(512,),
                     output=root / "failed.json", probe=oom,
                 )
-            self.assertEqual(called, [()])
+            self.assertEqual(called, [(), ()])
             self.assertEqual(len(report["stages"]), 1)
             stage = report["stages"][0]
             self.assertEqual(stage["status"], "anchor_not_reproducible")
@@ -385,8 +385,88 @@ class GreedyLogicTests(unittest.TestCase):
                 "exact_phase1_all_gpu_control",
             )
             self.assertEqual(
-                stage["anchor_diagnostics"]["samples"][0]["failure_class"],
+                stage["anchor_diagnostics"]["failed_baseline_samples"][0]["failure_class"],
                 "native_cuda_oom",
+            )
+
+    def test_fallback_to_256_only_after_measured_kv_boundary(self):
+        attempted = []
+        def fake_oom257(*args, **kwargs):
+            ctx = kwargs["n_ctx"]
+            attempted.append(ctx)
+            if ctx == 257:
+                return {
+                    "success": False, "failure_class": "native_cuda_oom",
+                    "error": "Failed to create llama_context",
+                    "native_placement": {"verified": True},
+                    "gpu_runtime_validation": {"verified": False},
+                    "kv_config_native_verification": {"verified": True},
+                    "measurements": {
+                        "vram_peak_sampled_mib": 6035.,
+                        "vram_total_mib": 6141.,
+                    },
+                }
+            return fake_native_probe(*args, **kwargs)
+
+        with tempfile.TemporaryDirectory() as folder:
+            root = Path(folder)
+            model, phase, steps = prepare_reports(root)
+            with patch("calibration.kv_adaptive_tensor_offload.inspect_gguf",
+                       return_value=layout_fixture()):
+                report = run_adaptive_tensor_search(
+                    model_path=model, phase1_report=phase,
+                    memory_steps_report=steps, targets=(512,),
+                    max_tests=250, max_frozen=4,
+                    output=root / "fallback.json", probe=fake_oom257,
+                )
+            self.assertTrue(report["completed"])
+            self.assertEqual(report["historical_baseline_ctx"], 257)
+            self.assertEqual(report["actual_profiling_start_ctx"], 256)
+            self.assertEqual(report["stages"][0]["from_n_ctx"], 256)
+            self.assertTrue(report["stages"][0]["profiling_anchor_fallback_used"])
+            self.assertTrue(
+                report["stages"][0]["anchor_diagnostics"]["fallback_success"]
+            )
+            self.assertEqual(report["stages"][0]["measured_target_n_ctx"], 512)
+            self.assertEqual(
+                report["native_kv_step_evidence"]["host_256_to_512_kv_proxy_mib"],
+                12.
+            )
+            self.assertEqual(attempted[0:3], [257, 256, 256])
+            self.assertTrue(report["learned_groups"][0][
+                "cumulative_host_tensor_names"
+            ])
+
+    def test_fallback_requires_direct_native_kv_step_measurement(self):
+        attempted = []
+        def oom(*args, **kwargs):
+            attempted.append(kwargs["n_ctx"])
+            return {
+                "success": False, "failure_class": "native_cuda_oom",
+                "error": "Failed to create llama_context",
+                "native_placement": {"verified": True},
+                "gpu_runtime_validation": {"verified": False},
+                "kv_config_native_verification": {"verified": True},
+                "measurements": {"vram_peak_sampled_mib": 6035.,
+                                 "vram_total_mib": 6141.},
+            }
+        with tempfile.TemporaryDirectory() as folder:
+            root = Path(folder)
+            model, phase, steps = prepare_reports(root)
+            original = json.loads(steps.read_text())
+            original["profiles"][0]["steps"] = []
+            steps.write_text(json.dumps(original))
+            with patch("calibration.kv_adaptive_tensor_offload.inspect_gguf",
+                       return_value=layout_fixture()):
+                report = run_adaptive_tensor_search(
+                    model_path=model, phase1_report=phase,
+                    memory_steps_report=steps, targets=(512,),
+                    output=root / "strict.json", probe=oom,
+                )
+            self.assertFalse(report["completed"])
+            self.assertEqual(attempted, [257])
+            self.assertFalse(
+                report["stages"][0]["anchor_diagnostics"]["fallback_probed"]
             )
 
     def test_insufficient_probe_budget_never_promotes_configuration(self):
