@@ -8,7 +8,7 @@ from unittest.mock import patch
 import numpy as np
 
 from calibration.kv_quality_worker import (
-    kl_nats, sampled_metrics, score_positions,
+    kl_nats, sampled_metrics, score_positions, native_sample_logits,
 )
 from calibration.kv_benchmark import (
     eligible_profiles, score_context, run_benchmark,
@@ -46,6 +46,48 @@ class KvBenchmarkTests(unittest.TestCase):
             sampled_metrics(
                 np.stack([base]), np.stack([base, base]), [0],
             )
+
+    def test_streamed_logits_use_only_prefix_up_to_scored_position(self):
+        import ctypes
+
+        class FakeBatch:
+            def set_batch(self, batch, n_past, logits_all):
+                self.tokens = list(batch)
+                self.past = n_past
+                self.logits_all = logits_all
+
+        class FakeContext:
+            def __init__(self, batch):
+                self.batch = batch
+                self.seen = []
+                self.buf = (ctypes.c_float * 3)()
+            def decode(self, batch):
+                self.seen += self.batch.tokens
+                self.buf = (ctypes.c_float * 3)(
+                    float(sum(self.seen)), float(len(self.seen)), 0.0
+                )
+            def get_logits(self):
+                return ctypes.cast(
+                    self.buf, ctypes.POINTER(ctypes.c_float)
+                )
+
+        class FakeModel:
+            def __init__(self):
+                self._batch = FakeBatch()
+                self._ctx = FakeContext(self._batch)
+            def reset(self):
+                self._ctx.seen.clear()
+            def n_vocab(self):
+                return 3
+
+        fake = FakeModel()
+        logits = native_sample_logits(
+            fake, [1, 2, 3, 4, 5], [1, 3], batch=2,
+        )
+        self.assertEqual(logits.shape, (2, 3))
+        self.assertEqual(logits[0].tolist(), [3., 2., 0.])
+        self.assertEqual(logits[1].tolist(), [10., 4., 0.])
+        self.assertEqual(fake._ctx.seen, [1, 2, 3, 4])
 
     def test_positions_sparse_sorted_and_have_next_token(self):
         for ctx in (512, 768, 1280):
