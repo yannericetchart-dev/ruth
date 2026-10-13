@@ -27,7 +27,7 @@ from .kv_benchmark import quality_subprocess, score_context
 from .profile_pipeline import atomic_json
 
 
-SCHEMA = "ruth-phase2-adaptive-tensor-greedy-v1"
+SCHEMA = "ruth-phase2-adaptive-tensor-greedy-v2"
 FA = False
 K_TYPE = "f16"
 V_TYPE = "f16"
@@ -264,6 +264,8 @@ def run_adaptive_tensor_search(
         "max_tests": max_tests, "max_frozen": max_frozen,
         "max_backtracks": max_backtracks, "min_gain_mib": min_gain_mib,
         "timeout": timeout, "quality_points": quality_points,
+        "baseline_placement_protocol":
+            "exact_phase1_native_all_gpu_overrides_v2",
     }
     if output.exists() and not rerun:
         previous = json.loads(output.read_text("utf-8"))
@@ -367,6 +369,21 @@ def run_adaptive_tensor_search(
             current = measurement(frozen, anchor, scouting_repeats)
             if not current["success"]:
                 stage["status"] = "anchor_not_reproducible"
+                stage["anchor_diagnostics"] = {
+                    "baseline_mapping_kind":
+                        native_tensor_trial(layout, sorted(frozen)).get("mapping_kind"),
+                    "n_ctx": anchor,
+                    "baseline_flash_attn": FA,
+                    "baseline_kv_type_k": K_TYPE,
+                    "baseline_kv_type_v": V_TYPE,
+                    "samples": current.get("samples", []),
+                    "note": (
+                        "Il fallimento del contesto iniziale precede ogni ricerca "
+                        "di tensor offload. Nessun gruppo puo essere classificato. "
+                        "Confrontare ambiente GPU e baseline nativa originale; "
+                        "il fallimento non dimostra che il modello sia cambiato."
+                    ),
+                }
                 save()
                 break
             anchor_reference = current
