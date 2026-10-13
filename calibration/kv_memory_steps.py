@@ -129,7 +129,7 @@ def run_memory_steps(*, phase1_report: Path,
         phase1 = next((p for p in source["profiles"]
                        if p["id"] == profile["id"]), None)
         gpu_measurements = []
-        for attempt in (phase1 or {}).get("result", {}).get("attempts", []):
+        for attempt in ((phase1 or {}).get("result") or {}).get("attempts", []):
             if attempt.get("success") is not True:
                 continue
             native = attempt.get("native_memory")
