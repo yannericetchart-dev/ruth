@@ -66,7 +66,8 @@ def marginal_value(current: dict, candidate: dict, *,
                    decode_weight: float = 2.) -> dict:
     """Ranking heuristic; all values are measured at SAME n_ctx."""
     result = {"eligible": False, "gain_mib": None, "prefill_loss_pct": None,
-              "decode_loss_pct": None, "efficiency": None}
+              "decode_loss_pct": None, "combined_loss_pct": None,
+              "efficiency": None}
     if not current.get("success") or not candidate.get("success"):
         return result
     a = current["metrics"]
@@ -86,8 +87,17 @@ def marginal_value(current: dict, candidate: dict, *,
         prefill_weight * max(0., prefill) +
         decode_weight * max(0., decode)
     )
+    ca, cb = a.get("combined_time_s"), b.get("combined_time_s")
+    combined_pct = (
+        100 * (cb / ca - 1)
+        if isinstance(ca, (int, float)) and ca > 0
+        and isinstance(cb, (int, float)) and cb > 0
+        else None
+    )
     result.update({
         "gain_mib": round(gain, 3),
+        "combined_loss_pct": round(combined_pct, 3)
+                             if combined_pct is not None else None,
         "prefill_loss_pct": round(prefill, 3),
         "decode_loss_pct": round(decode, 3),
         # Unit: MiB / (1 + weighted loss in percentage points).
@@ -321,6 +331,12 @@ def run_adaptive_tensor_search(
             if not row["success"]:
                 break
         summary = summarize_probe_repeats(rows, reps)
+        if summary["success"]:
+            speeds = summary["metrics"]
+            speeds["combined_time_s"] = round(
+                (ctx - generated_tokens) / speeds["prefill_tok_s"]
+                + generated_tokens / speeds["decode_tok_s"], 6
+            )
         summary["n_ctx"] = ctx
         summary["host_tensor_names"] = sorted(names)
         summary["mapping_id"] = trial["id"]
