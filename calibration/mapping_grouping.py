@@ -263,6 +263,28 @@ def native_tensor_trial(layout: dict, host_tensor_names: list[str]) -> dict:
         or len(host_tensor_names) != len(set(host_tensor_names))):
         raise ValueError("Lista tensori CPU malformata o duplicata.")
     host = sorted(host_tensor_names)
+    # Critical: the empty-subset control MUST be the exact Phase-1
+    # all-GPU tensor mapping. The regular subset algorithm expands GPU
+    # overrides by suffix; doing that for the baseline could introduce
+    # additional native allocation overhead at the VRAM frontier.
+    if not host:
+        baseline_rules, baseline_native = all_gpu_rules(layout)
+        identifier = "tensors:" + hashlib.sha256(
+            json.dumps([], ensure_ascii=False).encode("utf-8")
+        ).hexdigest()[:20]
+        return {
+            "id": identifier, "rules": baseline_rules,
+            "host_tensor_names": [],
+            "gpu_tensor_names": all_names,
+            "expected_native_log_occurrences":
+                baseline_native["expected_native_log_occurrences"],
+            "output_weight_target": "gpu",
+            "host_tensor_count": 0,
+            "gpu_tensor_count": len(all_names),
+            "host_gguf_bytes": 0,
+            "group": None,
+            "mapping_kind": "exact_phase1_all_gpu_control",
+        }
     names_set = set(all_names)
     metadata = layout["metadata"]
     arch = metadata["general.architecture"]
