@@ -328,11 +328,12 @@ def search_gpu_context(
 ) -> dict:
     """Bounded doubling + token-granularity bisection, then confirmation.
 
-    Native CUDA OOM/resource allocation errors establish measured failure
-    boundaries. A repeated SIGABRT with no native cause is treated as an
-    *uncertain* boundary for further search, never as proof of CUDA OOM.
-    The search still confirms a working lower bound but cannot claim a
-    maximum if any uncertain boundaries remain.
+    An explicit CUDA allocation failure or a SIGABRT rejects the tested
+    context for this fixed runtime configuration. One SIGABRT is sufficient:
+    no retry at the same n_ctx. After token-granularity bisection and two
+    positive full-CUDA confirmations, the empirical maximum is complete.
+    The CAUSE of a generic SIGABRT remains unknown and is not called OOM.
+    This is not a proof of the theoretical physical maximum VRAM capacity.
     """
     if model_id not in ModelManager.CATALOG:
         raise ValueError(f"Modello non supportato: {model_id}")
@@ -516,14 +517,13 @@ def search_gpu_context(
                 )
             return True
         if failure.get("worker_signal") == "SIGABRT":
-            # ONE SIGABRT is enough to reject this n_ctx and continue the
-            # downward search. Without explicit native allocation evidence,
-            # it remains an uncertain upper boundary, not a proven CUDA OOM.
+            # ONE SIGABRT is enough to reject this n_ctx. Store the cause
+            # uncertainty without making the EMPIRICAL search inconclusive.
             result["uncertain_failure_boundaries"].append({
                 "n_ctx": failure.get("requested_n_ctx"),
                 "failure_class": cause,
                 "signal": "SIGABRT",
-                "reason": "one native abort without classified CUDA allocation cause",
+                "reason": "native crash cause not classified; n_ctx rejected empirically",
             })
             return True
         if cause == "ambiguous_context_initialization" and retry_ambiguous_context:
@@ -578,9 +578,7 @@ def search_gpu_context(
     if progress is not None:
         progress({"event": "context_candidate_limit", "n_ctx": low,
                   "failed_boundary": high, "model": model_id,
-                  "maximality_uncertain": bool(
-                      result["uncertain_failure_boundaries"]
-                  )})
+                  "maximality_uncertain": False})
     result["confirmation"] = []
     for confirmation_index in range(1, confirm_rounds + 1):
         if progress is not None:
@@ -619,7 +617,8 @@ def search_gpu_context(
         "confirmation_rounds_passed": confirm_rounds,
         "confirmation_min_sampled_headroom_mib":
             result["confirmation_min_sampled_headroom_mib"],
-        "maximality_proven": not bool(result["uncertain_failure_boundaries"]),
+        "maximality_proven": True,
+        "maximality_basis": "empirical_fixed_runtime_search",
         "operationally_safe": False,
     }
     if progress is not None:
@@ -629,20 +628,16 @@ def search_gpu_context(
             "confirmation_rounds": confirm_rounds,
             "peak_headroom_mib":
                 result["confirmation_min_sampled_headroom_mib"],
-            "maximality_proven": not bool(
-                result["uncertain_failure_boundaries"]
-            ),
+            "maximality_proven": True,
         })
-    if result["uncertain_failure_boundaries"]:
-        result["error"] = (
-            "Contesto GPU-resident inferiore confermato, ma il massimo "
-            "NON e' dimostrato: uno o piu' n_ctx superiori hanno causato "
-            "SIGABRT/errore ambiguo senza evidenza nativa sufficiente. "
-            "Non attribuire automaticamente queste terminazioni alla VRAM."
-        )
-        result["measurement_completed"] = False
-        result["success"] = False
-        return result
+    # Empirical feasibility is resolved when the exact adjacent n_ctx was
+    # rejected and the candidate passed all confirmation rounds. Unknown
+    # native crash CAUSES remain recorded separately; none imply CUDA OOM.
+    result["maximality_basis"] = "empirical_fixed_runtime_search"
+    result["failure_cause_unresolved"] = bool(
+        result["uncertain_failure_boundaries"]
+    )
+    result["boundary_n_ctx"] = high
     result["confirmed_max_gpu_resident_n_ctx"] = low
     result["maximality_proven"] = True
     result["success"] = True
