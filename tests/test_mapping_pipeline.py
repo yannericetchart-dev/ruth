@@ -158,6 +158,36 @@ class MappingPipelineTests(unittest.TestCase):
             atomic_json(folder / "mapping.json", report)
             self.assertIsNone(journal.cached("mapping"))
 
+    def test_failed_single_group_counts_as_completed_survey_not_successful_mapping(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            config, folder, selection = self.prepare(root)
+            report = fake_mapping(selection)
+            group_id = report["tested_group_ids"][1]
+            report["group_evaluations"][1] = {
+                "group_id": group_id,
+                "trials": [{
+                    "mode": group_id, "success": False,
+                    "failure_class": "worker_protocol_error",
+                }],
+                "comparison": None,
+                "statistics": None,
+                "status": "native_probe_failed",
+                "failure_class": "worker_protocol_error",
+            }
+            report["native_failed_group_count"] = 1
+            atomic_json(folder / "mapping.json", report)
+            journal = Journal(folder, config)
+            journal.phase_state("mapping", "completed", "mapping.json")
+            validated = journal.cached("mapping")
+            self.assertIsNotNone(validated)
+            self.assertTrue(validated["success"])
+            self.assertEqual(
+                validated["group_evaluations"][1]["status"],
+                "native_probe_failed",
+            )
+            self.assertIsNone(validated["selected_mapping"])
+
     def test_failed_mapping_blocks_then_retries_only_mapping(self):
         with tempfile.TemporaryDirectory() as temp:
             root = Path(temp)
