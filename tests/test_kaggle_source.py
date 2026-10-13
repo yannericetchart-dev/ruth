@@ -321,6 +321,12 @@ class KaggleSourceTests(unittest.TestCase):
             )
         by_name = {row["quantization"]: row for row in found}
         self.assertEqual(len(found), 3)
+        # Equal tier is not an accuracy ranking: try canonical _M before
+        # its short-form alias, and the distinct _L tier before both.
+        self.assertEqual(
+            [row["quantization"] for row in found],
+            ["q5_k_l", "q5_k_m", "q5_k"],
+        )
         self.assertEqual(
             by_name["q5_k"]["quality_priority"],
             by_name["q5_k_m"]["quality_priority"],
