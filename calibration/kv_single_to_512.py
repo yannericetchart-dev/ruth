@@ -295,6 +295,33 @@ def order_single_candidates(census: dict, *, target_ctx: int,
     return ranked
 
 
+def _valid_loaded_configuration(row: dict, *,
+                                n_ctx: int, trial: dict) -> bool:
+    """Require native proof and numerical NVML evidence to promote a load."""
+    if (not isinstance(row, dict)
+        or row.get("success") is not True
+        or row.get("n_ctx") != n_ctx
+        or row.get("host_tensor_names") != trial["host_tensor_names"]
+        or row.get("mapping_id") != trial["id"]
+        or row.get("native_placement_verified") is not True
+        or row.get("gpu_kv_verified") is not True
+        or row.get("native_kv_type_verified") is not True):
+        return False
+    m = row.get("measurements") or {}
+    keys = ("vram_before_mib", "vram_after_load_mib",
+            "vram_peak_load_only_mib", "vram_total_mib",
+            "vram_load_peak_increment_mib")
+    return (all(
+        isinstance(m.get(k), (int, float))
+        and not isinstance(m[k], bool)
+        and math.isfinite(m[k]) and m[k] >= 0
+        for k in keys
+    ) and m["vram_after_load_mib"] <= m["vram_peak_load_only_mib"]
+      and m["vram_before_mib"] <= m["vram_peak_load_only_mib"]
+      and m["vram_peak_load_only_mib"] <= m["vram_total_mib"]
+      and not m.get("nvml_errors"))
+
+
 def run_single_to_512(
     *, census_path: Path, output: Path, target_ctx: int = 512,
     max_new_loads: int | None = None, max_new_benchmarks: int | None = None,
@@ -316,6 +343,11 @@ def run_single_to_512(
     census = json.loads(raw)
     ranked = order_single_candidates(census, target_ctx=target_ctx)
     p = census["parameters"]
+    if (p.get("flash_attn") is not False
+        or p.get("type_k") != "f16"
+        or p.get("type_v") != "f16"
+        or p.get("n_ctx") >= target_ctx):
+        raise ValueError("Census deve usare KV FP16 GPU e FA OFF.")
     model_path = Path(p["model_path"]).resolve()
     model_id = p["model_id"]
     layout = inspect_gguf(model_path, n_ctx=target_ctx)
@@ -343,6 +375,36 @@ def run_single_to_512(
     entries = initial.get("results") or {}
     if not isinstance(entries, dict) or any(name not in names for name in entries):
         raise ValueError("Checkpoint risultati malformato.")
+    for name, entry in entries.items():
+        if not isinstance(entry, dict):
+            raise ValueError("Checkpoint malformato: " + name)
+        trial = native_tensor_trial(layout, [name])
+        load = entry.get("load_only")
+        infer = entry.get("inference")
+        if load is not None and (
+            not isinstance(load, dict)
+            or load.get("mapping_id") != trial["id"]
+            or load.get("n_ctx") != target_ctx
+            or load.get("host_tensor_names") != [name]
+            or (load.get("success") is True
+                and not _valid_loaded_configuration(
+                    load, n_ctx=target_ctx, trial=trial))
+        ):
+            raise ValueError("Checkpoint load non valido: " + name)
+        if infer is not None and (
+            load is None or load.get("success") is not True
+            or not isinstance(infer, dict)
+            or infer.get("host_tensor_names") != [name]
+            or infer.get("n_ctx") != target_ctx
+            or infer.get("mapping_id") != trial["id"]
+            or (infer.get("success") is True
+                and not _native_verified(
+                    infer, n_ctx=target_ctx, names=[name],
+                    trial_id=trial["id"],
+                    repeats=benchmark_repeats,
+                    tokens=p["generated_tokens"]))
+        ):
+            raise ValueError("Checkpoint benchmark non valido: " + name)
     control = initial.get("control_load_only")
     report = {
         "schema": SCHEMA, "parameters": identity,
@@ -367,9 +429,26 @@ def run_single_to_512(
             e.get("inference") is not None
             for e in entries.values()
         )
-        good_loads = sum(
-            e.get("load_only", {}).get("success") is True
-            for e in entries.values()
+        successful_loads = [
+            (name, e["load_only"])
+            for name, e in entries.items()
+            if isinstance(e.get("load_only"), dict)
+            and e["load_only"].get("success") is True
+        ]
+        good_loads = len(successful_loads)
+        min_peak = min(
+            successful_loads,
+            key=lambda pair: pair[1]["measurements"][
+                "vram_peak_load_only_mib"
+            ],
+            default=None,
+        )
+        min_increment = min(
+            successful_loads,
+            key=lambda pair: pair[1]["measurements"][
+                "vram_load_peak_increment_mib"
+            ],
+            default=None,
         )
         good_bench = sum(
             isinstance(e.get("inference"), dict)
@@ -389,6 +468,26 @@ def run_single_to_512(
                 and completed_benchmark == good_loads
             ),
             "has_successful_single_tensor": good_bench > 0,
+            "minimum_observed_successful_load_peak_mib": (
+                min_peak[1]["measurements"]["vram_peak_load_only_mib"]
+                if min_peak else None
+            ),
+            "minimum_observed_successful_load_peak_tensor": (
+                min_peak[0] if min_peak else None
+            ),
+            "minimum_observed_successful_load_increment_mib": (
+                min_increment[1]["measurements"][
+                    "vram_load_peak_increment_mib"
+                ] if min_increment else None
+            ),
+            "minimum_observed_successful_load_increment_tensor": (
+                min_increment[0] if min_increment else None
+            ),
+            "minimum_observed_load_note": (
+                "Minimo osservato tra i caricamenti RIUSCITI di questa "
+                "esecuzione, non una dimostrazione della VRAM "
+                "minima teorica per creare il contesto."
+            ),
         }
         done = report["summary"]["ready_for_phase3"] and control is not None
         report["completed"] = done
@@ -444,6 +543,12 @@ def run_single_to_512(
                 })
         if entry["load_only"].get("success") is not True:
             continue
+        if not _valid_loaded_configuration(
+            entry["load_only"], n_ctx=target_ctx, trial=trial
+        ):
+            raise ValueError(
+                "Caricamento con prove GPU-KV native insufficienti: " + name
+            )
         if "inference" in entry:
             continue
         if (max_new_benchmarks is not None
@@ -465,6 +570,14 @@ def run_single_to_512(
             "n_ctx": target_ctx, "host_tensor_names": [name],
             "mapping_id": trial["id"],
         })
+        if aggregate["success"] and not _native_verified(
+            aggregate, n_ctx=target_ctx, names=[name],
+            trial_id=trial["id"], repeats=benchmark_repeats,
+            tokens=p["generated_tokens"],
+        ):
+            aggregate["success"] = False
+            aggregate["failure_class"] = "unverified_native_cuda_inference"
+            aggregate.pop("metrics", None)
         if aggregate["success"]:
             metrics = aggregate["metrics"]
             metrics["combined_time_s"] = round(
