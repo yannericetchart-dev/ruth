@@ -80,7 +80,13 @@ def probe_result(group_id, peak=5000, prefill=100, decode=50):
     return {
         "mode": group_id, "success": True,
         "native_placement": {"verified": True},
-        "gpu_runtime_validation": {"verified": True},
+        "gpu_runtime_validation": {
+            "verified": True,
+            "kv": {
+                "verified_host_resident": group_id == "baseline_host_kv",
+                "verified_gpu_resident": group_id != "baseline_host_kv",
+            },
+        },
         "measurements": {
             "vram_peak_sampled_mib": peak,
             "host_peak_rss_mib": 1500,
@@ -176,6 +182,59 @@ class NativeBenchmarkTests(unittest.TestCase):
         self.assertEqual(benchmark_context(7424, 8192), (8192, 128))
         with self.assertRaises(ValueError):
             benchmark_context(8192, 8192)
+
+    def test_host_kv_control_is_explicitly_verified(self):
+        from calibration.mapping_phase import (
+            BASELINE_MODE, make_mapping_tokens, verify_mapping_kv_runtime,
+        )
+        self.assertTrue(
+            verify_mapping_kv_runtime(memory(False), host_kv=True)["verified"]
+        )
+        self.assertFalse(
+            verify_mapping_kv_runtime(memory(True), host_kv=True)["verified"]
+        )
+        self.assertTrue(
+            verify_mapping_kv_runtime(memory(True), host_kv=False)["verified"]
+        )
+        class FakeLlama:
+            def tokenize(self, prompt, *, add_bos, special):
+                return list(prompt)
+        self.assertEqual(
+            len(make_mapping_tokens(
+                FakeLlama(), "gemma2", 512, 128, "gemma-2-9b-it"
+            )), 383
+        )
+        trial = native_group_trial(layout(), None)
+        trial["id"] = BASELINE_MODE
+        worker = {
+            "worker_ok": True, "model_id": "qwen-2.5-7b-instruct",
+            "mode": BASELINE_MODE, "n_ctx": 512,
+            "requested_tokens": 128, "offload_kqv": False,
+            "kv_target": "host",
+            "measurements": {
+                "prompt_tokens": 383, "generated_tokens": 128,
+                "vram_peak_sampled_mib": 5000,
+                "host_peak_rss_mib": 1500,
+                "prefill_tokens_per_s": 100,
+                "decode_tokens_per_s": 50,
+                "nvml_errors": [],
+            },
+        }
+        for kv_on_gpu, expected in ((False, True), (True, False)):
+            with self.subTest(kv_gpu=kv_on_gpu), (
+                patch("calibration.mapping_phase.subprocess.run",
+                    return_value=SimpleNamespace(
+                        returncode=0, stdout=json.dumps(worker),
+                        stderr=native_log(trial),
+                    )),
+                patch("calibration.mapping_phase.parse_native_memory",
+                      return_value=memory(kv_on_gpu)),
+            ):
+                outcome = probe_native_mapping(
+                    Path("/dummy/gguf"), worker["model_id"], trial,
+                    n_ctx=512, tokens=128,
+                )
+            self.assertIs(outcome["success"], expected)
 
     def test_worker_requires_native_placement_cuda_kv_and_throughput(self):
         structure = layout()
