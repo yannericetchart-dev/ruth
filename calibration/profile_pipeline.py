@@ -140,7 +140,7 @@ def brief_event(event: dict) -> str:
         )
     if kind == "context_gpu_validated":
         maximum = (
-            "massimo verificato" if event.get("maximality_proven")
+            "massimo empirico confermato" if event.get("maximality_proven")
             else "massimo ancora incerto"
         )
         return (
@@ -234,6 +234,63 @@ class Journal:
                 "(file precedenti conservati).",
                 flush=True,
             )
+
+    def reconcile_blocked_empirical_context(self) -> None:
+        """Upgrade a verified old SIGABRT-bound context without GPU calls.
+
+        Preserve the original report verbatim for forensic inspection.
+        This only runs when explicitly continuing context_gpu and never
+        alters a completed or stale phase.
+        """
+        entry = self.state["phases"].get("context_gpu") or {}
+        if (entry.get("status") != "blocked"
+            or entry.get("result_file") != "context_gpu.json"):
+            return
+        baseline = self.cached("baseline")
+        if baseline is None:
+            return
+        selected = baseline["baseline"]
+        path = self.folder / "context_gpu.json"
+        if not path.is_file():
+            return
+        try:
+            report = json.loads(path.read_text(encoding="utf-8"))
+        except (ValueError, OSError):
+            return
+        if (report.get("model_id") != self.identity["choices"]["model_id"]
+            or report.get("filename") != selected.get("filename")
+            or report.get("quantization") != selected.get("quantization")
+            or report.get("gpu_total_mib") !=
+                self.identity["hardware"]["vram_total_mib"]):
+            return
+        from .gpu_context import reconcile_empirical_context_from_previous_report
+        converted = reconcile_empirical_context_from_previous_report(
+            report,
+            confirmation_rounds=self.identity["reference_runtime"][
+                "context_confirm_rounds"
+            ],
+        )
+        if converted is None:
+            return
+        original = self.folder / "context_gpu.pre_empirical_reconciliation.json"
+        if not original.exists():
+            atomic_json(original, report)
+        atomic_json(path, converted)
+        self.phase_state("context_gpu", "completed", "context_gpu.json", {
+            "n_ctx": converted["confirmed_max_gpu_resident_n_ctx"],
+            "maximality_proven": True,
+            "maximality_basis": "empirical_fixed_runtime_search",
+            "failure_cause_unresolved": True,
+            "reused_native_probes": True,
+        })
+        print(
+            "[context_gpu] RICONCILIATO dai log esistenti: "
+            f"n_ctx={converted['confirmed_max_gpu_resident_n_ctx']} "
+            "VALIDATO full-CUDA come massimo empirico; "
+            f"n_ctx={converted['boundary_n_ctx']} fallito con SIGABRT "
+            "(causa nativa sconosciuta). Nessun nuovo test GPU.",
+            flush=True,
+        )
 
     def cached(self, phase: str) -> dict | None:
         entry = self.state["phases"].get(phase) or {}
@@ -438,6 +495,8 @@ def run_pipeline(identity: dict, *, until: str = "context_gpu",
         )
         previous = {}
         for stage in IMPLEMENTED[:IMPLEMENTED.index(until) + 1]:
+            if stage == "context_gpu" and not rerun:
+                journal.reconcile_blocked_empirical_context()
             cached = None if rerun else journal.cached(stage)
             if cached is not None:
                 previous[stage] = cached
