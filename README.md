@@ -708,3 +708,32 @@ I report diagnostici di ogni fonte restano separati sotto
 `models/calibration_runs/<profile_key>/`. I GGUF Kaggle sono copiati
 sotto `models/<model-id>/sources/kaggle/<owner>/<model>/`,
 senza sovrascrivere i GGUF Hugging Face nella directory del modello.
+
+
+### Esperimento Fase 1: quantizzazione KV e Flash Attention
+
+Per misurare **separatamente** il massimo `n_ctx` con pesi interamente CUDA e
+KV cache interamente CUDA nelle sette configurazioni concordate:
+
+```bash
+python -m calibration.kv_profiles_phase1 \\
+  --model gemma-2-9b-it \\
+  --tokens 16 --batch 32 --confirm-rounds 2 \\
+  --output phase1_kv_profiles.json
+```
+
+I profili sono, nell'ordine: FA off K=q8_0/V=f16; FA off K=q4_0/V=f16;
+FA on K=f16/V=f16; FA on K=q8_0/V=q8_0; FA on K=q8_0/V=q4_0;
+FA on K=q4_0/V=q8_0; FA on K=q4_0/V=q4_0.
+La configurazione di riferimento FA off K=f16/V=f16 rimane invariata e non
+viene rieseguita dalla sweep. Ogni ricerca esegue inferenza reale,
+`prompt_tokens + generated_tokens = n_ctx`, e verifica buffer, placement
+dei pesi, formati KV e Flash Attention dai log del backend.
+
+Il report JSON è aggiornato dopo ogni profilo. Le configurazioni non supportate
+o i limiti non dimostrati rimangono esplicitamente inconclusivi, senza essere
+scambiati automaticamente per esaurimento VRAM. Rieseguire con `--rerun`
+per forzare nuove misurazioni; senza di esso i profili già confermati sono
+riutilizzati. Questo esperimento non altera `gpu_context_reference.json`,
+lo stato della pipeline o le scelte operative di Fase 2. La CLI restituisce
+codice diverso da zero se almeno una configurazione non è confermata.
