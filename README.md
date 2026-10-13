@@ -1237,8 +1237,13 @@ di nuovi benchmark; nessuna misura completata viene ripetuta.
 
 Il JSON conserva `candidate_order`, `control_load_only`,
 `results[tensor].load_only`, `results[tensor].inference`,
-`summary`, `hard_pruning`. Quando tutte le prove di
-caricamento e inferenza ammissibili sono completate,
+`summary`, `hard_pruning`. Il riepilogo espone
+`minimum_observed_successful_load_peak_mib` e
+`minimum_observed_successful_load_increment_mib` insieme ai nomi
+dei tensori corrispondenti: sono i **minimi osservati tra
+caricamenti riusciti**, utilizzabili come dati sperimentali per
+la progettazione della fase 3, non requisiti teorici certi.
+Quando tutte le prove di caricamento e inferenza ammissibili sono completate,
 `summary.ready_for_phase3 = true`; se non esiste alcun
 singolo tensore con inferenza funzionante,
 `status = completed_no_singleton_inference`.
