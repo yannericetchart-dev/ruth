@@ -221,7 +221,8 @@ class NativeBenchmarkTests(unittest.TestCase):
             },
         }
         for kv_on_gpu, expected in ((False, True), (True, False)):
-            with self.subTest(kv_gpu=kv_on_gpu), (
+            with (
+                self.subTest(kv_gpu=kv_on_gpu),
                 patch("calibration.mapping_phase.subprocess.run",
                     return_value=SimpleNamespace(
                         returncode=0, stdout=json.dumps(worker),
