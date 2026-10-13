@@ -8,6 +8,8 @@ phase-1 successes are retained separately if available.
 import argparse
 import hashlib
 import json
+import math
+from functools import reduce
 from pathlib import Path
 
 from model import ModelManager
@@ -149,9 +151,24 @@ def run_memory_steps(*, phase1_report: Path,
         target = None
         if "257" in readings and "512" in readings:
             target = round(readings["512"] - readings["257"], 4)
+        observed_edges = [
+            item["boundary_tokens"] for item in steps
+            if item["native_step_observed"]
+        ]
+        candidate_stride = (
+            reduce(math.gcd, observed_edges)
+            if len(observed_edges) >= 2 else None
+        )
         report["profiles"].append({
             **profile, "probes": probes, "native_host_kv_mib_by_n_ctx": readings,
-            "steps": steps, "additional_kv_mib_257_to_512_host_proxy": target,
+            "steps": steps,
+            "observed_edge_gcd_tokens": candidate_stride,
+            "step_inference_note": (
+                "GCD di due o più confini con salto KV nativo osservato. "
+                "Indicazione del possibile passo di allocazione, non prova "
+                "che ogni confine tra 64 e il limite GGUF si comporti così."
+            ),
+            "additional_kv_mib_257_to_512_host_proxy": target,
             "verified_gpu_kv_native_observations": gpu_measurements,
         })
         atomic_json(Path(output), report)
