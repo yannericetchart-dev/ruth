@@ -129,12 +129,19 @@ class NativeMemoryAndMappingTests(unittest.TestCase):
                  "success": False,
                  "failure_class": "worker_protocol_error",
              }]}},
+            {"id": "native_crash", "status": "unsupported_or_inconclusive",
+             "result": {"attempts": [{
+                 "requested_n_ctx": 258,
+                 "success": False,
+                 "failure_class": "worker_protocol_error",
+                 "worker_signal": "SIGABRT",
+             }]}},
             {"id": "already_512", "status": "confirmed",
              "max_gpu_n_ctx": 512},
         ]}
         self.assertEqual(
             [p["id"] for p in blocked_profiles(report)],
-            ["ref", "failed"],
+            ["ref", "failed", "native_crash"],
         )
 
     def test_combinations_ranked_using_proxy_never_prove_vram(self):
