@@ -231,7 +231,10 @@ def run_single_tensor_census(
             results[name] = {
                 "source": origin, "success": valid,
                 "failure_class": None if valid else row.get("failure_class"),
-                "measurement": row,
+                # Complete raw samples live in reused_from_greedy or
+                # new_measurements; avoid duplicating large evidence at
+                # every atomic checkpoint.
+                "metrics": row.get("metrics") if valid else None,
                 "marginal": (marginal_value(
                     control, row, min_gain_mib=0.0
                 ) if valid else None),
@@ -239,8 +242,23 @@ def run_single_tensor_census(
         good = sum(r["success"] for r in results.values())
         failures = sorted(n for n, r in results.items() if not r["success"])
         missing = sorted(set(names) - set(results))
+        by_family = {}
+        for name in names:
+            suffix = name.split(".", 2)[-1]
+            counter = by_family.setdefault(
+                suffix, {"total": 0, "verified": 0,
+                         "failed": 0, "missing": 0}
+            )
+            counter["total"] += 1
+            if name not in results:
+                counter["missing"] += 1
+            elif results[name]["success"]:
+                counter["verified"] += 1
+            else:
+                counter["failed"] += 1
         report["summary"] = {
             "total_eligible": len(names),
+            "families": by_family,
             "source_reused_success": len(reused),
             "new_success": sum(
                 r["success"] and r["source"] == "new_probe"
@@ -263,6 +281,17 @@ def run_single_tensor_census(
         atomic_json(output, report)
 
     rebuild()
+    if progress:
+        progress({
+            "event": "census_inventory",
+            "n_ctx": ctx, "generated_tokens": tokens,
+            "repetitions": repeats,
+            "total_tensors": len(names),
+            "reused_success": len(reused),
+            "new_success_already_cached": report["summary"]["new_success"],
+            "still_missing": report["summary"]["missing_count"],
+            "failed_to_retry": report["summary"]["failed_count"],
+        })
     fresh_count = 0
     for idx, name in enumerate(names, start=1):
         if name in reused:
