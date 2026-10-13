@@ -296,6 +296,28 @@ batch, KV, mapping o quantizzazione per far risultare la prova valida.
 
 ## Kaggle: somma degli shard e controllo VRAM
 
+### Nomi delle quantizzazioni e ordine di prova
+
+Il codice distingue la convenzione dei nomi dalla qualita' misurata.
+In `llama-quantize`, i nomi brevi `Q3_K`, `Q4_K` e `Q5_K`
+sono alias rispettivamente di `Q3_K_M`, `Q4_K_M` e `Q5_K_M`.
+Quindi `Q5_K` viene ordinato **nella stessa fascia di
+`Q5_K_M`**, non come `Q5_K_L`. Le versioni `_L` sono
+ricette miste diverse; non esiste la regola generale
+`Q?_K == Q?_K_L`. L'alias si applica alla classificazione
+nominale, **non** dimostra che due GGUF prodotti da editori
+diversi siano identici o abbiano lo stesso punteggio di qualita'.
+
+L'ordine delle famiglie e' una priorita' per scegliere quale
+modello verificare prima per la residenza CUDA, non un risultato
+di accuratezza/perplessita' misurato. Una verifica a posteriori
+della qualita' richiede prove riproducibili sullo stesso dataset
+(per esempio una valutazione perplexity), non soltanto il nome
+del file, la dimensione o il numero di token del contesto.
+I dati locali di `layer_matrix` consentono di ispezionare
+le codifiche reali dei singoli tensori, senza attribuire
+automaticamente loro un ranking di accuratezza.
+
 Kaggle segue la stessa ricerca quality-first gia' usata per
 Hugging Face: considera le quantizzazioni nell'ordine di qualita',
 scarta quelle troppo grandi e verifica nativamente su CUDA le altre.
