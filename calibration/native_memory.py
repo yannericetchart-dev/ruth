@@ -20,10 +20,10 @@ _NATIVE_BUFFER_LINE = re.compile(
 # allocation buffer lines. Keep it as independent evidence: the K/V payload
 # totals can differ from allocator-rounded native buffer sizes.
 _KV_COMPONENT_LINE = re.compile(
-    r"\\bK\\s*\\((?P<type_k>f16|q8_0|q4_0)\\)\\s*:\\s*"
-    r"(?P<k_mib>\\d+(?:\\.\\d+)?)\\s*MiB"
-    r".*?\\bV\\s*\\((?P<type_v>f16|q8_0|q4_0)\\)\\s*:\\s*"
-    r"(?P<v_mib>\\d+(?:\\.\\d+)?)\\s*MiB",
+    r"\bK\s*\((?P<type_k>f16|q8_0|q4_0)\)\s*:\s*"
+    r"(?P<k_mib>\d+(?:\.\d+)?)\s*MiB"
+    r".*?\bV\s*\((?P<type_v>f16|q8_0|q4_0)\)\s*:\s*"
+    r"(?P<v_mib>\d+(?:\.\d+)?)\s*MiB",
     re.I,
 )
 
