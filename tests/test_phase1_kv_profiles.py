@@ -55,6 +55,34 @@ class KvProfileTests(unittest.TestCase):
             flash_attn=True, type_k="q8_0", type_v="q4_0",
         )["verified"])
 
+    def test_worker_command_contains_explicit_kv_flags(self):
+        import subprocess
+        native = {"native_buffer_records": []}
+        placement = {
+            "verified": False, "tensor_count": 0,
+            "unverified_names": [],
+            "native_override": {"native_logged_occurrence_count": 0},
+        }
+        with (patch("calibration.gpu_context.inspect_gguf",
+                    return_value={"tensors": [], "metadata": {}}),
+              patch("calibration.gpu_context.subprocess.run",
+                    return_value=subprocess.CompletedProcess(
+                        [], 1, "", "unsupported KV profile"
+                    )) as run,
+              patch("calibration.gpu_context.parse_native_memory",
+                    return_value=native),
+              patch("calibration.gpu_context.native_confirmation",
+                    return_value=placement)):
+            probe_context(
+                Path("/fake.gguf"), 512, generated_tokens=16,
+                flash_attn=True, type_k="q8_0", type_v="q4_0",
+            )
+        cmd = run.call_args.args[0]
+        self.assertEqual(cmd[cmd.index("--flash-attn") + 1], "on")
+        self.assertEqual(cmd[cmd.index("--type-k") + 1], "q8_0")
+        self.assertEqual(cmd[cmd.index("--type-v") + 1], "q4_0")
+        self.assertEqual(cmd[cmd.index("--probe-n-ctx") + 1], "512")
+
     def test_sweep_passes_profile_and_never_overwrites_reference(self):
         calls = []
         def fake_search(model_id, **kwargs):
