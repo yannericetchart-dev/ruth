@@ -46,6 +46,7 @@ def layout(arch="qwen2", blocks=2):
         "metadata": {
             "general.architecture": arch,
             f"{arch}.block_count": blocks,
+            f"{arch}.context_length": 8192,
         },
         "tensors": entries,
         "weights_bytes": sum(x["bytes"] for x in entries),
@@ -169,9 +170,12 @@ class GroupRankingTests(unittest.TestCase):
 
 
 class NativeBenchmarkTests(unittest.TestCase):
-    def test_context_is_bounded_below_phase1_maximum(self):
-        self.assertEqual(benchmark_context(256), (128, 16))
-        self.assertEqual(benchmark_context(7424), (512, 32))
+    def test_context_strictly_exceeds_phase1_and_respects_gguf_limit(self):
+        self.assertEqual(benchmark_context(256, 8192), (512, 128))
+        self.assertEqual(benchmark_context(512, 8192), (1024, 128))
+        self.assertEqual(benchmark_context(7424, 8192), (8192, 128))
+        with self.assertRaises(ValueError):
+            benchmark_context(8192, 8192)
 
     def test_worker_requires_native_placement_cuda_kv_and_throughput(self):
         structure = layout()
@@ -180,9 +184,10 @@ class NativeBenchmarkTests(unittest.TestCase):
         )
         worker = {
             "worker_ok": True, "model_id": "qwen-2.5-7b-instruct",
-            "mode": trial["id"], "n_ctx": 128, "requested_tokens": 16,
+            "mode": trial["id"], "n_ctx": 512, "requested_tokens": 128,
+            "offload_kqv": True, "kv_target": "gpu",
             "measurements": {
-                "prompt_tokens": 111, "generated_tokens": 16,
+                "prompt_tokens": 383, "generated_tokens": 128,
                 "vram_peak_sampled_mib": 5000,
                 "host_peak_rss_mib": 1500,
                 "prefill_tokens_per_s": 100,
@@ -201,7 +206,7 @@ class NativeBenchmarkTests(unittest.TestCase):
         ):
             result = probe_native_mapping(
                 Path("/dummy/gguf"), worker["model_id"], trial,
-                n_ctx=128, tokens=16,
+                n_ctx=512, tokens=128,
             )
         self.assertTrue(result["success"])
         self.assertIsNone(result["failure_class"])
@@ -217,23 +222,23 @@ class NativeBenchmarkTests(unittest.TestCase):
         ):
             result = probe_native_mapping(
                 Path("/dummy/gguf"), worker["model_id"], trial,
-                n_ctx=128, tokens=16,
+                n_ctx=512, tokens=128,
             )
         self.assertFalse(result["success"])
         self.assertEqual(result["failure_class"], "gpu_kv_compute_not_verified")
 
     def test_repeat_medians_reject_regression_and_unstable_runs(self):
         baseline = _median_stats([
-            probe_result("baseline", 5000, 100, 50) for _ in range(3)
+            probe_result("baseline_host_kv", 5000, 100, 50) for _ in range(3)
         ])
         good = _median_stats([
-            probe_result("group:attn_k.weight", 4950, 100, 50)
+            probe_result("group:attn_k.weight", 5400, 105, 55)
             for _ in range(3)
         ])
         accepted = _compare_with_baseline(baseline, good)
-        self.assertEqual(accepted["measured_vram_recovered_mib"], 50)
+        self.assertEqual(accepted["vram_delta_vs_host_kv_baseline_mib"], 400)
         self.assertEqual(
-            accepted["verdict"], "promising_needs_operational_confirmation"
+            accepted["verdict"], "promising_extended_context_gpu_kv_speedup"
         )
         slow = _median_stats([
             probe_result("group:attn_k.weight", 4950, 100, 40)
@@ -299,10 +304,10 @@ class MappingEvaluationTests(unittest.TestCase):
                     baseline, matrix, context, model_id=baseline["model_id"]
                 )
         self.assertTrue(report["success"])
-        self.assertEqual(report["schema_version"], 3)
+        self.assertEqual(report["schema_version"], 4)
         self.assertEqual(report["status"],
                          "diagnostic_group_comparison_completed")
-        self.assertEqual(calls[:3], ["baseline"] * 3)
+        self.assertEqual(calls[:3], ["baseline_host_kv"] * 3)
         self.assertEqual(len(calls), 15)
         self.assertEqual(len(report["group_evaluations"]), 4)
         self.assertEqual(len(report["promising_group_ids"]), 4)
