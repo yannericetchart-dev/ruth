@@ -519,11 +519,17 @@ def run_mapping_phase(baseline: dict, matrix: dict, context: dict,
     if (baseline.get("shard_filenames")
         and shard_names != baseline["shard_filenames"]):
         raise RuntimeError("Mapping: shard GGUF diversi dalla fase 1.")
+    arch = baseline.get("architecture")
+    header = inspect_gguf(path, n_ctx=64)
+    if header["metadata"].get("general.architecture") != arch:
+        raise RuntimeError("Mapping: architettura GGUF diversa dalla baseline.")
+    limit = header["metadata"].get(f"{arch}.context_length")
+    if not isinstance(limit, int) or limit <= 0:
+        raise RuntimeError("Mapping: contesto massimo GGUF sconosciuto.")
     n_ctx, tokens = benchmark_context(
-        context["confirmed_max_gpu_resident_n_ctx"]
+        context["confirmed_max_gpu_resident_n_ctx"], limit
     )
     layout = inspect_gguf(path, n_ctx=n_ctx)
-    arch = baseline.get("architecture")
     if (
         layout["metadata"].get("general.architecture") != arch
         or layout["metadata"].get(f"{arch}.block_count")
@@ -535,8 +541,14 @@ def run_mapping_phase(baseline: dict, matrix: dict, context: dict,
 
     groups = group_inventory(layout)
     selected = choose_group_trials(groups)
-    plan = [native_group_trial(layout, None)]
-    plan.extend(native_group_trial(layout, group) for group in selected)
+    control = native_group_trial(layout, None)
+    control["id"] = BASELINE_MODE
+    control["kv_target"] = "host"
+    plan = [control]
+    for group in selected:
+        candidate = native_group_trial(layout, group)
+        candidate["kv_target"] = "gpu"
+        plan.append(candidate)
     report = {
         "schema_version": SCHEMA_VERSION, "phase": "mapping",
         "status": "benchmark_in_progress",
@@ -553,7 +565,12 @@ def run_mapping_phase(baseline: dict, matrix: dict, context: dict,
         "reference_full_cuda_n_ctx": context[
             "confirmed_max_gpu_resident_n_ctx"
         ],
-        "workload": "fixed_context_prompt_prefill_and_greedy_decode",
+        "workload": "extended_context_host_kv_baseline_vs_gpu_kv_group_128_decode",
+        "native_model_context_limit": limit,
+        "baseline_kv_target": "host",
+        "candidate_kv_target": "gpu",
+        "baseline_offload_kqv": False,
+        "candidate_offload_kqv": True,
         "repeat_processes_per_variant": WORKER_REPETITIONS,
         "screening_size_threshold_mib": None,
         "group_trial_limit": None,
@@ -572,9 +589,11 @@ def run_mapping_phase(baseline: dict, matrix: dict, context: dict,
         "runtime_optimized": False, "context_tuned": False,
         "note": (
             "Byte GGUF unici e shape FLOP proxy ordinano gruppi omologhi "
-            "ma non dimostrano risparmio VRAM o velocita'. Baseline e "
-            "prove usano lo stesso workload, CUDA/KV e 3 processi ciascuna. "
-            "Nessuna combinazione o configurazione operativa viene scelta."
+            "ma non dimostrano risparmio VRAM o velocita'. Baseline: "
+            "pesi full-CUDA e KV host; gruppi: tensori selezionati su CPU "
+            "e KV su CUDA, tutti allo STESSO n_ctx maggiore del massimo "
+            "fase1 e con 128 token decode, 3 processi ciascuno. "
+            "Nessuna configurazione operativa viene scelta."
         ),
     }
     from copy import deepcopy
