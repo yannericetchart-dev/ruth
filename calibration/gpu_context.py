@@ -313,6 +313,113 @@ def context_limit(layout: dict) -> int:
     return maximum
 
 
+
+def reconcile_empirical_context_from_previous_report(
+    report: dict, *, confirmation_rounds: int = 2,
+) -> dict | None:
+    """Certify a legacy blocked search from already saved native evidence.
+
+    This is intentionally strict: the fixed-runtime search must have
+    converged to adjacent n_ctx values; the lower n_ctx has repeated native
+    full-CUDA validation and the immediately higher n_ctx has a SIGABRT
+    failure. We DO NOT infer what caused that SIGABRT or that VRAM OOM
+    occurred. No new GPU probe or download is performed.
+    """
+    from copy import deepcopy
+
+    if (not isinstance(report, dict)
+        or report.get("success") is not False
+        or report.get("confirmation_completed") is not True
+        or not isinstance(confirmation_rounds, int)
+        or isinstance(confirmation_rounds, bool)
+        or confirmation_rounds < 1
+        or not report.get("uncertain_failure_boundaries")):
+        return None
+    low = report.get("confirmed_gpu_resident_n_ctx")
+    high = report.get("highest_context_tested_and_failed")
+    if (not isinstance(low, int) or isinstance(low, bool) or low < 64
+        or not isinstance(high, int) or isinstance(high, bool)
+        or high != low + 1
+        or report.get("candidate_max_gpu_resident_n_ctx") != low
+        or report.get("highest_gpu_resident_n_ctx_observed") != low
+        or not isinstance(report.get("search_ceiling"), int)
+        or high > report["search_ceiling"]):
+        return None
+
+    confirmations = report.get("confirmation")
+    if (not isinstance(confirmations, list)
+        or len(confirmations) < confirmation_rounds
+        or not all(isinstance(item, dict)
+                   and item.get("success") is True
+                   and isinstance(item.get("vram_peak_sampled_mib"), (int, float))
+                   for item in confirmations[-confirmation_rounds:])):
+        return None
+
+    attempts = report.get("attempts")
+    if not isinstance(attempts, list):
+        return None
+    successes = [
+        item for item in attempts if isinstance(item, dict)
+        and item.get("requested_n_ctx") == low
+        and item.get("success") is True
+        and (item.get("full_gpu_native_verification") or {}).get("verified") is True
+        and (item.get("gpu_runtime_validation") or {}).get("verified") is True
+        and (item.get("gpu_runtime_validation") or {}).get("kv", {}).get(
+            "verified_gpu_resident"
+        ) is True
+    ]
+    if len(successes) < confirmation_rounds:
+        return None
+    boundary_attempts = [
+        item for item in attempts if isinstance(item, dict)
+        and item.get("requested_n_ctx") == high
+        and item.get("success") is False
+        and item.get("worker_signal") == "SIGABRT"
+    ]
+    if not boundary_attempts:
+        return None
+    if any(
+        item.get("success") is True
+        and isinstance(item.get("requested_n_ctx"), int)
+        and item["requested_n_ctx"] > low
+        for item in attempts if isinstance(item, dict)
+    ):
+        return None
+    unresolved = report["uncertain_failure_boundaries"]
+    if not isinstance(unresolved, list) or not all(
+        isinstance(item, dict)
+        and item.get("signal") == "SIGABRT"
+        and isinstance(item.get("n_ctx"), int)
+        and item["n_ctx"] > low
+        for item in unresolved
+    ):
+        return None
+
+    upgraded = deepcopy(report)
+    upgraded.update({
+        "confirmed_max_gpu_resident_n_ctx": low,
+        "maximality_proven": True,
+        "maximality_basis": "empirical_fixed_runtime_search",
+        "failure_cause_unresolved": True,
+        "boundary_n_ctx": high,
+        "measurement_completed": True,
+        "success": True,
+        "error": None,
+        "previously_blocked_context_reconciled": True,
+        "reconciliation_note": (
+            "Massimo EMPIRICO per il runtime fisso: n_ctx inferiore "
+            "confermato full-CUDA e n_ctx immediatamente superiore "
+            "fallito con SIGABRT. La causa del SIGABRT non e' stata "
+            "dimostrata: non si certifica un OOM CUDA."
+        ),
+    })
+    valid = upgraded.get("validated_gpu_resident_context")
+    if isinstance(valid, dict):
+        valid["maximality_proven"] = True
+        valid["maximality_basis"] = "empirical_fixed_runtime_search"
+    return upgraded
+
+
 def search_gpu_context(
     model_id: str, *, max_ctx: int | None = None,
     min_ctx: int = 64, tokens: int = 8,
