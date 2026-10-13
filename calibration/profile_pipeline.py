@@ -485,7 +485,8 @@ class Journal:
 
 
 def _phase_call(name: str, identity: dict, previous: dict,
-                reporter) -> tuple[dict, bool, dict]:
+                reporter, *, prior_mapping=None,
+                mapping_checkpoint=None) -> tuple[dict, bool, dict]:
     choices = identity["choices"]
     model = choices["model_id"]
     model_root = ModelManager().model_directory(
@@ -598,6 +599,8 @@ def _phase_call(name: str, identity: dict, previous: dict,
             previous["context_gpu"],
             model_id=model,
             progress=reporter,
+            previous_report=prior_mapping,
+            checkpoint=mapping_checkpoint,
         )
         summary = {
             "status": report.get("status"),
@@ -605,6 +608,8 @@ def _phase_call(name: str, identity: dict, previous: dict,
             "eligible_groups": report.get("eligible_group_count"),
             "tested_groups": len(report.get("tested_group_ids") or []),
             "promising_groups": report.get("promising_group_ids") or [],
+            "failed_native_groups": report.get("native_failed_group_count", 0),
+            "reused_native_probes": report.get("reused_native_trial_count", 0),
             "reference_n_ctx": report.get("probe_n_ctx"),
             "repetitions": report.get("repeat_processes_per_variant"),
             "selected_mapping": None,
@@ -667,12 +672,44 @@ def run_pipeline(identity: dict, *, until: str = "context_gpu",
                     print(f"[{stage}] RIUTILIZZO risultato gia' verificato.", flush=True)
                 continue
             print(f"\n[{stage}] AVVIO: {MESSAGES[stage]}", flush=True)
+            prior_mapping = None
+            mapping_checkpoint = None
+            if stage == "mapping":
+                checkpoint_path = folder / "mapping.checkpoint.json"
+                saved_path = folder / "mapping.json"
+                if not rerun:
+                    for candidate_path in (checkpoint_path, saved_path):
+                        if not candidate_path.is_file():
+                            continue
+                        try:
+                            prior_mapping = json.loads(
+                                candidate_path.read_text(encoding="utf-8")
+                            )
+                            break
+                        except (ValueError, OSError):
+                            continue
+                if saved_path.is_file():
+                    try:
+                        old_mapping = json.loads(
+                            saved_path.read_text(encoding="utf-8")
+                        )
+                        if old_mapping.get("schema_version") == 2:
+                            preserved = folder / "mapping.prior_schema2.json"
+                            if not preserved.exists():
+                                atomic_json(preserved, old_mapping)
+                    except (ValueError, OSError):
+                        pass
+                mapping_checkpoint = lambda state: atomic_json(
+                    checkpoint_path, state
+                )
             journal.invalidate_after(stage)
             journal.phase_state(stage, "running")
             try:
                 report, good, summary = _phase_call(
                     stage, identity, previous,
                     lambda event, phase=stage: journal.event(phase, event),
+                    prior_mapping=prior_mapping,
+                    mapping_checkpoint=mapping_checkpoint,
                 )
                 if stage == "layer_matrix" and good:
                     from .layer_export import export_matrix_tables
@@ -694,6 +731,10 @@ def run_pipeline(identity: dict, *, until: str = "context_gpu",
                     "run_directory": str(folder), "profile_key": identity["profile_key"],
                 }
             atomic_json(folder / (stage + ".json"), report)
+            if stage == "mapping" and good:
+                (folder / "mapping.checkpoint.json").unlink(
+                    missing_ok=True
+                )
             journal.phase_state(
                 stage, "completed" if good else "blocked",
                 stage + ".json", summary,
