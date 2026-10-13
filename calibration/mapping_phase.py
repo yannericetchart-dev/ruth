@@ -141,7 +141,7 @@ def _worker(model_path: Path, model_id: str, group_id: str,
     arch = layout["metadata"]["general.architecture"]
     groups = group_inventory(layout)
     selected = next((g for g in groups if g["id"] == group_id), None)
-    if group_id != "baseline" and (
+    if group_id != BASELINE_MODE and (
         selected is None or not selected["eligible_for_trial"]
     ):
         raise ValueError("Mapping: gruppo non valido o non ammesso alla prova.")
@@ -152,6 +152,8 @@ def _worker(model_path: Path, model_id: str, group_id: str,
         "n_ctx": n_ctx, "n_batch": PROBE_BATCH,
         "requested_tokens": token_count,
         "n_gpu_layers": block_count + 1,
+        "offload_kqv": group_id != BASELINE_MODE,
+        "kv_target": "host" if group_id == BASELINE_MODE else "gpu",
         "host_tensor_count": trial["host_tensor_count"],
         "gpu_tensor_count": trial["gpu_tensor_count"],
         "measurements": {}, "error": None,
@@ -188,12 +190,13 @@ def _worker(model_path: Path, model_id: str, group_id: str,
                 model_path, n_gpu_layers=block_count + 1,
                 rules=trial["rules"], n_ctx=n_ctx, n_batch=PROBE_BATCH,
                 n_ubatch=PROBE_BATCH,
+                offload_kqv=(group_id != BASELINE_MODE),
             )
             report["measurements"]["load_s"] = round(
                 time.perf_counter() - t0, 5
             )
             report["measurements"]["vram_after_load_mib"] = used_mib()
-            tokens = make_context_tokens(
+            tokens = make_mapping_tokens(
                 llm, arch, n_ctx, token_count, model_id=model_id
             )
             report["measurements"]["prompt_tokens"] = len(tokens)
@@ -249,7 +252,7 @@ def probe_native_mapping(model_path: Path, model_id: str, trial: dict,
                          timeout: int = 300) -> dict:
     """Execute exactly one baseline or group trial in a fresh CUDA process."""
     group_id = trial["id"]
-    if group_id != "baseline" and not group_id.startswith("group:"):
+    if group_id != BASELINE_MODE and not group_id.startswith("group:"):
         raise ValueError("Mapping: ID gruppo non valido.")
     command = [
         sys.executable, "-m", "calibration.mapping_phase",
@@ -297,7 +300,8 @@ def probe_native_mapping(model_path: Path, model_id: str, trial: dict,
     report["native_placement"] = evidence
     memory = parse_native_memory(child.stderr)
     report["native_memory"] = memory
-    runtime = verify_gpu_runtime(memory)
+    host_kv = group_id == BASELINE_MODE
+    runtime = verify_mapping_kv_runtime(memory, host_kv=host_kv)
     report["gpu_runtime_validation"] = runtime
     measured = report.get("measurements") or {}
     metrics = ("prefill_tokens_per_s", "decode_tokens_per_s",
@@ -315,6 +319,8 @@ def probe_native_mapping(model_path: Path, model_id: str, trial: dict,
         and report.get("requested_tokens") == tokens
         and report.get("model_id") == model_id
         and report.get("mode") == group_id
+        and report.get("offload_kqv") is (not host_kv)
+        and report.get("kv_target") == ("host" if host_kv else "gpu")
         and measured.get("prompt_tokens") == n_ctx - tokens - 1
         and measured.get("generated_tokens") == tokens
         and finite and not measured.get("nvml_errors")
