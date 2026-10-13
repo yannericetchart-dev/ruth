@@ -829,3 +829,72 @@ falliscono, il punteggio rimane `null`, non viene inventato.
 Il flag `headroom_target_met` non prova che il profilo sia
 operativamente sicuro. Il benchmark non cambia la baseline
 originale né promuove un profilo in produzione.
+
+
+### Passi di allocazione KV e recupero contesto tramite CPU (Fase 2)
+
+Dopo aver completato `phase1_kv_profiles_complete.json` e
+`kv_quality_speed_benchmarks.json`, individuare prima i salti
+effettivi dei buffer KV dichiarati dal runtime nativo:
+
+```bash
+python -m calibration.kv_memory_steps \
+  --phase1-report phase1_kv_profiles_complete.json \
+  --boundaries 256,512,1280 \
+  --output phase1_kv_memory_steps.json
+```
+
+Per ogni profilo Flash/K/V Ruth prova contesti ai bordi del blocco
+(`b-1`, `b`, `b+1`) in processi isolati. Il controllo usa **pesi GPU
+e KV CPU** per osservare i buffer anche quando la KV GPU non entra in
+VRAM; salva la dimensione KV nativa e l'eventuale salto in MiB.
+Se la vecchia Fase 1 dispone già di entrambi i valori GPU validati ai
+confini, registra anche l'incremento effettivo del buffer KV GPU.
+Il delta KV CPU è etichettato `host_proxy`: **non** rappresenta una
+misura diretta della VRAM necessaria per un carico GPU completo.
+Una differenza nulla tra `n_ctx=257` e `512` è plausibile, perché
+entrambi possono ricadere nello stesso blocco KV; non prova che 512
+sia realizzabile senza altro spazio. La dimensione del blocco non viene
+assunta come dato di fatto senza riscontro nei log.
+
+Ricercare poi combinazioni di **gruppi di tensori omologhi** da
+spostare in CPU per recuperare `n_ctx=512` a **KV GPU**:
+
+```bash
+python -m calibration.kv_step_offload \
+  --phase1-report phase1_kv_profiles_complete.json \
+  --memory-steps-report phase1_kv_memory_steps.json \
+  --benchmark-report kv_quality_speed_benchmarks.json \
+  --corpus calibration/corpora/kv_eval_it_v1.txt \
+  --reference-ctx 257 --target-ctx 512 \
+  --max-groups 3 --max-candidates 20 --max-validated 3 \
+  --repetitions 3 --tokens 16 --quality-points 64 \
+  --output phase2_kv_step_offload_512.json
+```
+
+Sono candidati i profili storici sotto il target oppure quelli che
+non hanno superato il probe `258` per un fallimento esplicito delle
+risorse CUDA. Un fallimento a 258 **non** certifica un massimo pari a
+256: l'algoritmo riprova il riferimento a 257.
+
+La selezione delle combinazioni è **limitata** da
+`--max-groups`/`--max-candidates`, quindi non esplora
+necessariamente tutte le sottofamiglie possibili. Le dimensioni GGUF
+e il delta della KV sono proxy per scegliere l'ordine di prova.
+Il risparmio VRAM effettivo viene invece misurato mediante NVML al
+medesimo `n_ctx=257`, confrontando tutti i pesi GPU con i gruppi
+offloadati. Ogni candidato deve poi completare **tre inferenze
+indipendenti** a 512, con placement nativo verificato per ciascun
+tensore e KV nativa in GPU, prima di ricevere lo stato confermato.
+
+Le configurazioni validate ripetono il benchmark prefill/decode
+GPU-resident e la misura qualitativa PPL campionata + KL con la
+**stessa KV CPU** nel riferimento e nel candidato. Il report salva
+`host_group_ids`, `host_tensor_names`, contesto, prestazioni,
+qualità, VRAM, verifiche e un punteggio diagnostico ricalcolato
+insieme ai profili full-GPU a 512 già misurati.
+
+Non si modifica nessun profilo operativo. I risultati possono
+includere `CUDA_Host` (pinned host): la collocazione del tensore
+sul lato host non dimostra che il calcolo venga eseguito dalla CPU;
+l'effetto prestazionale è misurato e non presunto.
