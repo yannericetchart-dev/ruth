@@ -718,15 +718,20 @@ KV cache interamente CUDA nelle sette configurazioni concordate:
 ```bash
 python -m calibration.kv_profiles_phase1 \\
   --model gemma-2-9b-it \\
+  --baseline-ctx 257 \
   --tokens 16 --batch 32 --confirm-rounds 2 \\
-  --output phase1_kv_profiles.json
+  --output phase1_kv_profiles_from_258.json
 ```
 
 I profili sono, nell'ordine: FA off K=q8_0/V=f16; FA off K=q4_0/V=f16;
 FA on K=f16/V=f16; FA on K=q8_0/V=q8_0; FA on K=q8_0/V=q4_0;
 FA on K=q4_0/V=q8_0; FA on K=q4_0/V=q4_0.
-La configurazione di riferimento FA off K=f16/V=f16 rimane invariata e non
-viene rieseguita dalla sweep. Ogni ricerca esegue inferenza reale,
+La configurazione di riferimento FA off K=f16/V=f16 (`n_ctx=257`) rimane
+invariata e non viene rieseguita dalla sweep. Ciascun profilo avvia la prima
+prova a `n_ctx=258` (baseline + 1). Se fallisce, interrompe **quel profilo**
+senza tentare contesti maggiori; un errore non CUDA non viene etichettato
+come OOM. Per una nuova baseline si puo' specificare `--baseline-ctx`.
+Ogni ricerca esegue inferenza reale,
 `prompt_tokens + generated_tokens = n_ctx`, e verifica buffer, placement
 dei pesi, formati KV e Flash Attention dai log del backend.
 
