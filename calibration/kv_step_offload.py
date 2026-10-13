@@ -390,6 +390,42 @@ def run_step_offload(*, phase1_report: Path,
             phase_row["normalized_full_gpu_scores"] = [{
                 "id": r["id"], "diagnostic_score": r.get("diagnostic_score"),
             } for r in full_gpu]
+            benchmark_winner = max(
+                (r for r in full_gpu if r.get("diagnostic_score") is not None),
+                key=lambda row: row["diagnostic_score"], default=None,
+            )
+            for candidate in phase_row["candidates"]:
+                if not candidate["success"] or benchmark_winner is None:
+                    continue
+                cs = candidate["speed"]
+                bs = benchmark_winner["speed"]
+                cq = candidate["quality"]["quality"]
+                bq = benchmark_winner["quality"]["quality"]
+                candidate["comparison_with_existing_best"] = {
+                    "full_gpu_profile_id": benchmark_winner["id"],
+                    "same_n_ctx": target_ctx,
+                    "decode_change_percent": round(
+                        100 * (cs["median_decode_tok_s"]
+                               / bs["median_decode_tok_s"] - 1), 3
+                    ),
+                    "prefill_change_percent": round(
+                        100 * (cs["median_prefill_tok_s"]
+                               / bs["median_prefill_tok_s"] - 1), 3
+                    ),
+                    "mean_kl_nats_delta": round(
+                        cq["mean_kl_nats"] - bq["mean_kl_nats"], 8
+                    ),
+                    "ppl_sampled_delta": round(
+                        cq["candidate_sampled_ppl"]
+                        - bq["candidate_sampled_ppl"], 6
+                    ),
+                    "diagnostic_score_delta": round(
+                        candidate["diagnostic_score"]
+                        - benchmark_winner["diagnostic_score"], 2
+                    ),
+                    "note": "Qualità teacher-forced a KV CPU in entrambi; "
+                            "throughput confrontato a KV GPU.",
+                }
             atomic_json(Path(output), report)
     report["completed"] = True
     atomic_json(Path(output), report)
