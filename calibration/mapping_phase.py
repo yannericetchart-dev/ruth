@@ -28,7 +28,6 @@ import time
 from hardware import GPUManager
 from model.inspect import inspect_gguf, gguf_file_set
 
-from .baseline_discovery import minimal_chat_prompt
 from .gpu_context import verify_gpu_runtime, make_context_tokens
 from .mapping_grouping import (
     group_inventory, choose_group_trials, native_group_trial,
