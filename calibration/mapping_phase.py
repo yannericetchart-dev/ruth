@@ -455,6 +455,12 @@ def _reusable_trials(
             or row.get("worker_returncode") != 0
             or (row.get("native_placement") or {}).get("verified") is not True
             or (row.get("gpu_runtime_validation") or {}).get("verified") is not True
+            or (row.get("gpu_runtime_validation") or {}).get(
+                "kv", {}
+            ).get(
+                "verified_host_resident"
+                if group_id == BASELINE_MODE else "verified_gpu_resident"
+            ) is not True
             or measured.get("prompt_tokens") != n_ctx - tokens - 1
             or measured.get("generated_tokens") != tokens
             or measured.get("nvml_errors")
