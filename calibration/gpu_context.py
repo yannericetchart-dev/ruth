@@ -707,8 +707,8 @@ def search_gpu_context(
             )
             return result
 
-    # Store the actually confirmed working context even if higher contexts
-    # aborted inconclusively. Never store it as "confirmed_max" in that case.
+    # Save native-confirmed working context; retain raw crash causes
+    # separately from whether the adjacent runtime boundary was reached.
     result["confirmed_gpu_resident_n_ctx"] = low
     result["confirmation_completed"] = True
     result["highest_context_tested_and_failed"] = high
@@ -718,14 +718,24 @@ def search_gpu_context(
             for row in result["confirmation"]), 1
     )
     result["reference_is_operationally_safe"] = False
+    # Retain the original conservative treatment for operator-opted
+    # ambiguous errors that are NOT SIGABRT: only a native crash or an
+    # explicit CUDA resource failure may delimit this empirical search.
+    non_sigabrt_ambiguity = any(
+        item.get("signal") != "SIGABRT"
+        for item in result["uncertain_failure_boundaries"]
+    )
+    empirical_maximum = not non_sigabrt_ambiguity
     result["validated_gpu_resident_context"] = {
         "n_ctx": low,
         "native_cuda_validation": True,
         "confirmation_rounds_passed": confirm_rounds,
         "confirmation_min_sampled_headroom_mib":
             result["confirmation_min_sampled_headroom_mib"],
-        "maximality_proven": True,
-        "maximality_basis": "empirical_fixed_runtime_search",
+        "maximality_proven": empirical_maximum,
+        "maximality_basis": (
+            "empirical_fixed_runtime_search" if empirical_maximum else None
+        ),
         "operationally_safe": False,
     }
     if progress is not None:
@@ -735,8 +745,15 @@ def search_gpu_context(
             "confirmation_rounds": confirm_rounds,
             "peak_headroom_mib":
                 result["confirmation_min_sampled_headroom_mib"],
-            "maximality_proven": True,
+            "maximality_proven": empirical_maximum,
         })
+    if non_sigabrt_ambiguity:
+        result["error"] = (
+            "Contesto full-CUDA confermato, ma impossibile attestare il "
+            "massimo empirico: la ricerca usa un limite ambiguo diverso "
+            "da SIGABRT o da fallimento esplicito di risorse CUDA."
+        )
+        return result
     # Empirical feasibility is resolved when the exact adjacent n_ctx was
     # rejected and the candidate passed all confirmation rounds. Unknown
     # native crash CAUSES remain recorded separately; none imply CUDA OOM.
