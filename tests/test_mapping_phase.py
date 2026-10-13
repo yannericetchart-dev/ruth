@@ -269,6 +269,8 @@ class NativeBenchmarkTests(unittest.TestCase):
                   )),
             patch("calibration.mapping_phase.parse_native_memory",
                   return_value=memory(True)),
+            patch("calibration.mapping_phase.inspect_gguf",
+                  return_value=structure),
         ):
             result = probe_native_mapping(
                 Path("/dummy/gguf"), worker["model_id"], trial,
@@ -285,6 +287,8 @@ class NativeBenchmarkTests(unittest.TestCase):
                   )),
             patch("calibration.mapping_phase.parse_native_memory",
                   return_value=memory(False)),
+            patch("calibration.mapping_phase.inspect_gguf",
+                  return_value=structure),
         ):
             result = probe_native_mapping(
                 Path("/dummy/gguf"), worker["model_id"], trial,
