@@ -221,5 +221,129 @@ class NativeMemoryAndMappingTests(unittest.TestCase):
             self.assertTrue(report.exists())
 
 
+    def test_complete_recovery_comparison_uses_existing_full_gpu_rows(self):
+        import hashlib
+        from calibration.kv_step_offload import run_step_offload
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            corpus = root / "corpus.txt"
+            corpus.write_text("Testo di valutazione " * 500)
+            model = root / "model.gguf"
+            model.touch()
+            sha_corpus = hashlib.sha256(corpus.read_bytes()).hexdigest()
+            p1 = {
+                "schema": "ruth-phase1-gpu-kv-profiles-v3",
+                "parameters": {"model_id": "gemma-2-9b-it"},
+                "profiles": [
+                    {"id": "fa_off_k_f16_v_f16",
+                     "flash_attn": False, "type_k": "f16", "type_v": "f16",
+                     "max_gpu_n_ctx": 257, "status": "reference_reused",
+                     "result": None},
+                    {"id": "fa_on_k_q8_0_v_q8_0",
+                     "flash_attn": True, "type_k": "q8_0", "type_v": "q8_0",
+                     "max_gpu_n_ctx": 512, "status": "confirmed",
+                     "result": {"gpu_total_mib": 6141}},
+                ],
+            }
+            f1 = root / "phase1.json"
+            f1.write_text(json.dumps(p1))
+            sha = hashlib.sha256(f1.read_bytes()).hexdigest()
+            steps = {
+                "schema": "ruth-kv-native-memory-steps-v1",
+                "source_phase1_sha256": sha,
+                "model_id": "gemma-2-9b-it",
+                "model_path": str(model.resolve()),
+                "profiles": [{
+                    "id": "fa_off_k_f16_v_f16",
+                    "additional_kv_mib_257_to_512_host_proxy": 0.,
+                }],
+            }
+            fm = root / "steps.json"
+            fm.write_text(json.dumps(steps))
+            previous = {
+                "schema": "ruth-kv-fixed-quality-speed-v1",
+                "source_phase1_sha256": sha, "corpus_sha256": sha_corpus,
+                "model_id": "gemma-2-9b-it",
+                "model_path": str(model.resolve()),
+                "contexts": [512], "kl_scale_nats": 0.01,
+                "headroom_target_mib": 64.,
+                "results": [{
+                    "n_ctx": 512, "profiles": [{
+                        "id": "fa_on_k_q8_0_v_q8_0",
+                        "diagnostic_score": 90.,
+                        "speed": {
+                            "success": True, "median_prefill_tok_s": 400.,
+                            "median_decode_tok_s": 20.,
+                            "max_vram_peak_mib": 6050.,
+                        },
+                        "quality": {"success": True, "quality": {
+                            "reference_sampled_ppl": 8.,
+                            "candidate_sampled_ppl": 8.1,
+                            "mean_kl_nats": 0.001,
+                        }},
+                    }],
+                }],
+            }
+            fb = root / "benchmark.json"
+            fb.write_text(json.dumps(previous))
+            observed = []
+            def speed(*args, **kwargs):
+                observed.append((kwargs["n_ctx"], kwargs["repetitions"],
+                                 args[2]["group_ids"]))
+                return {
+                    "success": True, "median_prefill_tok_s": 300.,
+                    "median_decode_tok_s": 18.,
+                    "max_vram_peak_mib": 6100.,
+                    "repetitions": [
+                        {"success": True} for _ in range(kwargs["repetitions"])
+                    ],
+                }
+            def quality(**kwargs):
+                if kwargs["reference"] is None:
+                    kwargs["output"].touch()
+                    return {"success": True}
+                return {"success": True, "quality": {
+                    "reference_sampled_ppl": 8.,
+                    "candidate_sampled_ppl": 8.05,
+                    "mean_kl_nats": 0.0009,
+                }}
+            with (patch("calibration.kv_step_offload.inspect_gguf",
+                        return_value=gguf_fixture()),
+                  patch("calibration.kv_step_offload.probe_context",
+                        return_value={"success": True, "measurements": {
+                            "vram_peak_sampled_mib": 6130.,
+                        }}),
+                  patch("calibration.kv_step_offload.probe_native_mapping",
+                        return_value={"success": True, "measurements": {
+                            "vram_peak_sampled_mib": 6000.,
+                        }}),
+                  patch("calibration.kv_step_offload.speed_trial",
+                        side_effect=speed),
+                  patch("calibration.kv_step_offload.quality_subprocess",
+                        side_effect=quality)):
+                output = root / "result.json"
+                result = run_step_offload(
+                    phase1_report=f1, memory_steps_report=fm,
+                    benchmark_report=fb, corpus=corpus,
+                    output=output, max_groups=1,
+                    max_candidates=1, max_validated=1, repetitions=3,
+                )
+            self.assertTrue(result["completed"])
+            self.assertTrue(result["profiles"][0]["success"])
+            self.assertEqual(observed[0][:2], (512, 3))
+            candidate = result["profiles"][0]["candidates"][0]
+            self.assertEqual(
+                candidate["preflight_same_ctx"][
+                    "net_vram_peak_saved_vs_full_gpu_mib"
+                ], 130.,
+            )
+            self.assertIsNotNone(candidate["diagnostic_score"])
+            self.assertTrue(candidate["host_tensor_names"])
+            self.assertEqual(
+                len(result["profiles"][0]["normalized_full_gpu_scores"]), 1
+            )
+            self.assertTrue(output.exists())
+
+
 if __name__ == "__main__":
     unittest.main()
