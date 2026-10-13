@@ -184,32 +184,35 @@ def _worker(model_path: Path, model_id: str, group_id: str,
 
 
 def probe_native_mapping(model_path: Path, model_id: str, trial: dict,
+                         *, n_ctx: int, tokens: int,
                          timeout: int = 300) -> dict:
-    """One fixed-runtime placement per short-lived CUDA subprocess."""
-    if trial.get("id") not in MODES:
-        raise ValueError("Mapping: candidato non registrato.")
-    cmd = [
+    """Execute exactly one baseline or group trial in a fresh CUDA process."""
+    group_id = trial["id"]
+    if group_id != "baseline" and not group_id.startswith("group:"):
+        raise ValueError("Mapping: ID gruppo non valido.")
+    command = [
         sys.executable, "-m", "calibration.mapping_phase",
         "--worker", "--model-path", str(model_path),
-        "--model", model_id, "--mode", trial["id"],
+        "--model", model_id, "--mode", group_id,
+        "--ctx", str(n_ctx), "--tokens", str(tokens),
     ]
     try:
         child = subprocess.run(
-            cmd, text=True, capture_output=True, timeout=timeout,
+            command, capture_output=True, text=True, timeout=timeout,
             check=False,
         )
     except subprocess.TimeoutExpired:
         return {
-            "success": False, "mode": trial["id"], "failure_class": "timeout",
+            "success": False, "mode": group_id, "failure_class": "timeout",
             "error": f"Mapping: worker scaduto dopo {timeout}s",
         }
     try:
-        parsed = json.loads(child.stdout)
+        payload = json.loads(child.stdout)
     except (TypeError, ValueError):
-        parsed = None
-    frame_ok = isinstance(parsed, dict)
-    report = parsed if frame_ok else {}
-    report["mode"] = trial["id"]
+        payload = None
+    frame_ok = isinstance(payload, dict)
+    report = payload if frame_ok else {}
+    report["mode"] = group_id
     report["worker_json_valid"] = frame_ok
     report["worker_returncode"] = child.returncode
     if child.returncode < 0:
@@ -221,36 +224,42 @@ def probe_native_mapping(model_path: Path, model_id: str, trial: dict,
             report["worker_signal"] = "UNKNOWN_SIGNAL"
     else:
         report["worker_signal"] = None
-
-    reported_success = (
+    worker_ok = (
         child.returncode == 0 and frame_ok
         and report.get("worker_ok") is True
     )
     report.update(analyze_worker_failure(
         child.stderr, report.get("error"),
-        child.returncode, reported_success,
+        child.returncode, worker_ok,
     ))
     evidence = verify_override_logs(trial, child.stderr)
     report["native_placement"] = evidence
-    native_memory = parse_native_memory(child.stderr)
-    report["native_memory"] = native_memory
-    runtime = verify_gpu_runtime(native_memory)
+    memory = parse_native_memory(child.stderr)
+    report["native_memory"] = memory
+    runtime = verify_gpu_runtime(memory)
     report["gpu_runtime_validation"] = runtime
     measured = report.get("measurements") or {}
-    valid = (
-        reported_success
-        and report.get("n_ctx") == PROBE_N_CTX
-        and report.get("model_id") == model_id
-        and evidence["verified"]
-        and runtime["verified"]
-        and measured.get("generated_tokens") == PROBE_TOKENS
-        and isinstance(measured.get("vram_peak_sampled_mib"), (int, float))
-        and math.isfinite(measured["vram_peak_sampled_mib"])
-        and measured["vram_peak_sampled_mib"] > 0
-        and not measured.get("nvml_errors")
+    metrics = ("prefill_tokens_per_s", "decode_tokens_per_s",
+               "vram_peak_sampled_mib", "host_peak_rss_mib")
+    finite = all(
+        isinstance(measured.get(k), (int, float))
+        and not isinstance(measured[k], bool)
+        and math.isfinite(measured[k])
+        and measured[k] > 0
+        for k in metrics
     )
-    report["success"] = valid
-    if valid:
+    success = (
+        worker_ok and evidence["verified"] and runtime["verified"]
+        and report.get("n_ctx") == n_ctx
+        and report.get("requested_tokens") == tokens
+        and report.get("model_id") == model_id
+        and report.get("mode") == group_id
+        and measured.get("prompt_tokens") == n_ctx - tokens - 1
+        and measured.get("generated_tokens") == tokens
+        and finite and not measured.get("nvml_errors")
+    )
+    report["success"] = success
+    if success:
         report["failure_class"] = None
     elif report.get("suspected_cuda_oom"):
         report["failure_class"] = "native_cuda_oom"
@@ -264,11 +273,82 @@ def probe_native_mapping(model_path: Path, model_id: str, trial: dict,
         report["failure_class"] = "gpu_kv_compute_not_verified"
     else:
         report["failure_class"] = "native_mapping_runtime_failure"
-    if not valid and not report.get("error"):
+    if not success and not report.get("error"):
         report["error"] = (
-            "Mapping: placement, KV CUDA o inferenza non verificati."
+            "Mapping: placement, KV, RAM/VRAM oppure throughput non verificati."
         )
     return report
+
+
+def _median_stats(trials: list[dict]) -> dict:
+    metrics = (
+        "vram_peak_sampled_mib", "host_peak_rss_mib",
+        "prefill_tokens_per_s", "decode_tokens_per_s",
+    )
+    values = {}
+    for key in metrics:
+        sample = [
+            t["measurements"][key] for t in trials
+            if t.get("success") is True
+        ]
+        if len(sample) != WORKER_REPETITIONS:
+            raise ValueError("Mapping: mancano campioni validati per il benchmark.")
+        median = statistics.median(sample)
+        mad = statistics.median(abs(x - median) for x in sample)
+        values[key] = {
+            "median": round(median, 4),
+            "relative_median_absolute_deviation": round(mad / median, 5),
+            "samples": sample,
+        }
+    return values
+
+
+def _compare_with_baseline(reference: dict, current: dict) -> dict:
+    baseline_vram = reference["vram_peak_sampled_mib"]["median"]
+    trial_vram = current["vram_peak_sampled_mib"]["median"]
+    freed = round(baseline_vram - trial_vram, 3)
+    deltas = {}
+    stable = True
+    for label in ("prefill_tokens_per_s", "decode_tokens_per_s"):
+        original = reference[label]["median"]
+        test = current[label]["median"]
+        deltas[label] = round(100 * (test / original - 1), 3)
+        stable = stable and all(
+            stats[label]["relative_median_absolute_deviation"]
+            <= MAX_MEDIAN_RELATIVE_DEVIATION
+            for stats in (reference, current)
+        )
+    performance_ok = all(
+        percent >= -100 * PERFORMANCE_TOLERANCE
+        for percent in deltas.values()
+    )
+    recovered = freed >= 8.0
+    if not stable:
+        verdict = "inconclusive_variability"
+    elif not performance_ok:
+        verdict = "rejected_performance_regression"
+    elif not recovered:
+        verdict = "rejected_insufficient_measured_vram"
+    else:
+        verdict = "promising_needs_operational_confirmation"
+    return {
+        "measured_vram_recovered_mib": freed,
+        "prefill_change_percent": deltas["prefill_tokens_per_s"],
+        "decode_change_percent": deltas["decode_tokens_per_s"],
+        "host_peak_rss_change_mib": round(
+            current["host_peak_rss_mib"]["median"]
+            - reference["host_peak_rss_mib"]["median"], 3
+        ),
+        "no_material_throughput_regression": performance_ok if stable else None,
+        "stable_enough_for_preliminary_comparison": stable,
+        "verdict": verdict,
+        "performance_tolerance_percent": PERFORMANCE_TOLERANCE * 100,
+        "note": (
+            "Prima selezione da 3 processi isolati; risultati non "
+            "dimostrano stabilita' operativa e non sono un profilo."
+        ),
+    }
+
 
 
 def run_mapping_phase(baseline: dict, matrix: dict, context: dict,
