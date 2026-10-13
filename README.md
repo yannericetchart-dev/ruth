@@ -1123,3 +1123,61 @@ e gli altri parametri. Se si esaurisce il budget, il risultato
 confermato finora, ma segnala che la ricerca non è completa.
 L'opzione `--rerun` ricomincia e scarta il checkpoint di
 ottimizzazione (non il report greedy sorgente).
+
+
+### Completare le 420 misure individuali mancanti (senza ripartire)
+
+Lo script `calibration.kv_single_tensor_census` carica le
+**42 misure native a tensore singolo già confermate** dal report
+`phase2_adaptive_tensor_groups_v3.json`, legge direttamente dal GGUF
+l'inventario dei tensori di blocco (42 × 11 = **462** per Gemma-2 9B)
+e profila **uno per volta** soltanto i **420 tensori mancanti**.
+Non misura di nuovo né i 42 tensori già verificati né la baseline.
+
+Mantiene esattamente il protocollo del greedy: `n_ctx=256`, prompt
+di 240 token, 16 token generati, due ripetizioni CUDA indipendenti,
+Flash Attention OFF, K/V FP16 residenti in GPU, tutti gli altri
+tensori dei pesi su GPU. Per ogni tensore il report registra
+NVML VRAM, velocità prefill/decode e verifica nativa effettiva.
+**Nessun margine minimo di VRAM e nessun filtro di convenienza**.
+
+Dalla root del repository, dopo aver aggiornato il branch:
+
+```bash
+python -m calibration.kv_single_tensor_census \
+  --source-report phase2_adaptive_tensor_groups_v3.json \
+  --output phase2_single_tensor_census_256.json
+```
+
+Scrive `phase2_single_tensor_census_256.json` in modo atomico
+dopo ogni configurazione. In caso di interruzione, lanciare lo
+**stesso comando**: i risultati già verificati vengono recuperati
+dal checkpoint e non generano altri test CUDA.
+Per esecuzioni brevi usare `--max-new-tests 50`, ripetendo
+il comando a blocchi; questo limita solo i *nuovi* tensori per
+esecuzione, non le prove conservate. Se una configurazione fallisce
+native/CUDA, viene salvata come errore e **non** conteggiata come
+verificata; per riprovarla aggiungere `--retry-failures`.
+
+La sezione `summary` fornisce il conteggio verificati, mancanti e
+falliti per famiglia; `tensor_results` registra il delta rispetto
+alla **medesima** baseline all-GPU a 256 token; i campioni CUDA
+completi rimangono in `reused_from_greedy` e `new_measurements`.
+Il report greedy originale è immutato e il nuovo report non altera
+né il gruppo validato per 512 token né gli altri esperimenti.
+
+Verifica immediata dopo un completamento positivo:
+
+```bash
+python - <<'PY'
+import json
+d = json.load(open("phase2_single_tensor_census_256.json"))
+print(json.dumps(d["summary"], indent=2))
+assert d["completed"]
+assert d["summary"]["verified_total"] == d["summary"]["total_eligible"]
+PY
+```
+
+I dati singoli raccolti serviranno al successivo planner per
+ordinare combinazioni tra famiglie: il planner esistente che utilizza
+solo `ffn_down.weight` non viene automaticamente allargato.
