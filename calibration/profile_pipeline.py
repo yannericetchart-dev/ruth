@@ -145,6 +145,7 @@ def brief_event(event: dict) -> str:
         return (
             f"Gruppo {event['mode']}: {event['verdict']} "
             f"| delta VRAM vs KV host={event['vram_delta_mib']} MiB "
+            f"| margine CUDA={event['candidate_headroom_mib']} MiB "
             f"| prefill={event['prefill_percent']}% "
             f"| decode={event['decode_percent']}%"
         )
@@ -403,6 +404,7 @@ class Journal:
                         for field in (
                             "prefill_tokens_per_s", "decode_tokens_per_s",
                             "vram_peak_sampled_mib", "host_peak_rss_mib",
+                            "vram_total_mib", "vram_headroom_min_mib",
                         )
                     )
                 )
