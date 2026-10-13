@@ -69,6 +69,21 @@ class NativeMemoryAndMappingTests(unittest.TestCase):
             "511": 20., "512": 20., "513": 20.,
         }, 512)["native_step_observed"])
 
+    def test_native_memory_retains_kv_component_types_and_bytes(self):
+        from calibration.native_memory import parse_native_memory
+        stderr = (
+            "llama_kv_cache: CUDA0 KV buffer size = 118.12 MiB\\n"
+            "llama_kv_cache: size = 118.12 MiB, K (q8_0): 70.00 MiB, "
+            "V (q4_0): 48.12 MiB\\n"
+        )
+        native = parse_native_memory(stderr)
+        self.assertEqual(native["gpu_model_buffer_mib"], 0)
+        self.assertEqual(kv_bytes_mib(native, domain="gpu_vram"), 118.12)
+        self.assertEqual(native["native_kv_component_records"], [{
+            "type_k": "q8_0", "type_v": "q4_0",
+            "k_mib": 70., "v_mib": 48.12,
+        }])
+
     def test_native_host_bytes_require_actual_buffer_records(self):
         self.assertIsNone(kv_bytes_mib({}, domain="host_cpu"))
         records = {"native_buffer_records": [
