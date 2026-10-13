@@ -262,6 +262,11 @@ def audit_pair(identity: dict, *, output_root: Path | None = None,
         context.get("confirmation_min_sampled_headroom_mib")
     )
     result["checks"]["search_ceiling"] = context.get("search_ceiling")
+    result["checks"]["maximality_basis"] = context.get("maximality_basis")
+    result["checks"]["boundary_n_ctx"] = context.get("boundary_n_ctx")
+    result["checks"]["failure_cause_unresolved"] = (
+        context.get("failure_cause_unresolved", False)
+    )
     result["checks"]["declared_context_limit_reached"] = (
         context.get("search_reached_declared_limit")
     )
@@ -313,7 +318,13 @@ def main(argv: list[str] | None = None) -> int:
     for r in reports:
         ctx = r["n_ctx_gpu_resident"]
         if r["context_maximality_proven"] and r["context_gpu_resident_verified"]:
-            context_label = f"{ctx} VALIDATO (massimo verificato)"
+            basis = r["checks"].get("maximality_basis")
+            context_label = (
+                f"{ctx} VALIDATO (massimo empirico)"
+                if basis == "empirical_fixed_runtime_search"
+                and r["checks"].get("failure_cause_unresolved")
+                else f"{ctx} VALIDATO (massimo verificato)"
+            )
         elif r["confirmed_lower_bound_gpu_resident_n_ctx"] is not None:
             context_label = (
                 f"{r['confirmed_lower_bound_gpu_resident_n_ctx']} "
