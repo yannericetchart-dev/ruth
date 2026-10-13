@@ -261,6 +261,18 @@ def run_step_offload(*, phase1_report: Path,
                 })
                 atomic_json(Path(output), report)
                 continue
+            # Measure a same-context GPU-resident all-weight baseline:
+            # the byte estimate is never silently treated as measured VRAM.
+            ref_gpu = probe_context(
+                model_path, reference_ctx, generated_tokens=tokens,
+                batch=32, timeout=timeout, model_id=model_id,
+                flash_attn=profile["flash_attn"],
+                type_k=profile["type_k"], type_v=profile["type_v"],
+            )
+            baseline_vram = (
+                (ref_gpu.get("measurements") or {}).get("vram_peak_sampled_mib")
+                if ref_gpu.get("success") is True else None
+            )
             selected = enumerate_group_candidates(
                 groups, proxy_mib=kv_proxy, safety_mib=safety_mib,
                 max_groups=max_groups, max_candidates=max_candidates,
@@ -273,6 +285,8 @@ def run_step_offload(*, phase1_report: Path,
                 "previous_status": profile["status"],
                 "kv_allocation_257_to_512_host_proxy_mib": kv_proxy,
                 "candidate_group_count": len(selected),
+                "same_ctx_full_gpu_reference_verified": baseline_vram is not None,
+                "same_ctx_full_gpu_reference_peak_mib": baseline_vram,
                 "candidates": [], "success": False,
             }
             report["profiles"].append(phase_row)
@@ -292,11 +306,33 @@ def run_step_offload(*, phase1_report: Path,
                 trial = native_multi_group_trial(layout, chosen)
                 if progress:
                     progress(f"{pid} | {','.join(trial['group_ids'])}")
+                # Cheap preflight also measures net change in actual NVML
+                # peak at the SAME context (weights+KV+scratch together).
+                preflight = probe_native_mapping(
+                    model_path, model_id, trial, n_ctx=reference_ctx,
+                    tokens=tokens, timeout=timeout, flash_attn=flash,
+                    type_k=k, type_v=v,
+                )
+                preflight_peak = (
+                    (preflight.get("measurements") or {}).get("vram_peak_sampled_mib")
+                    if preflight.get("success") is True else None
+                )
+                net_saving = (
+                    round(baseline_vram - preflight_peak, 2)
+                    if baseline_vram is not None and preflight_peak is not None
+                    else None
+                )
                 measure = speed_trial(
                     model_path, model_id, trial, n_ctx=target_ctx,
                     tokens=tokens, timeout=timeout, flash_attn=flash,
-                    type_k=k, type_v=v, repetitions=repetitions,
-                )
+                    type_k=k, type_v=v,
+                    repetitions=(repetitions if preflight.get("success") else 0),
+                ) if preflight.get("success") else {
+                    "success": False,
+                    "error": "Preflight n_ctx iniziale fallito.",
+                    "failure_class": preflight.get("failure_class"),
+                    "repetitions": [],
+                }
                 row = {
                     "id": trial["id"], "host_group_ids": trial["group_ids"],
                     "host_tensor_names": trial["host_tensor_names"],
@@ -304,6 +340,15 @@ def run_step_offload(*, phase1_report: Path,
                     "gguf_host_weight_mib_proxy": round(
                         trial["host_gguf_bytes"] / 1048576, 3
                     ),
+                    "preflight_same_ctx": {
+                        "n_ctx": reference_ctx,
+                        "success": preflight.get("success") is True,
+                        "net_vram_peak_saved_vs_full_gpu_mib": net_saving,
+                        "baseline_vram_peak_mib": baseline_vram,
+                        "candidate_vram_peak_mib": preflight_peak,
+                        "note": "Delta NVML misura il sistema completo a pari n_ctx,"
+                                " non i soli byte fisici di tensori spostati.",
+                    },
                     "speed": measure, "quality": {"success": False},
                     "diagnostic_score": None,
                 }
