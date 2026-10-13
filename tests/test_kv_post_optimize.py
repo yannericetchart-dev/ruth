@@ -163,6 +163,64 @@ class PostOptimizeTests(unittest.TestCase):
             self.assertTrue(result["pareto_front"])
             self.assertEqual(result["best"]["repetitions"], 3)
 
+    def test_preplanned_candidates_are_tested_in_ranked_order(self):
+        with tempfile.TemporaryDirectory() as folder:
+            root = Path(folder)
+            source, seed = prepare_source(root)
+            raw = source.read_bytes()
+            plan = {
+                "schema": "ruth-phase2-offload-candidate-plan-v1",
+                "source_greedy_sha256": hashlib.sha256(raw).hexdigest(),
+                "model_id": "gemma-2-9b-it",
+                "model_path": json.loads(raw)["parameters"]["model_path"],
+                "target_n_ctx": 512,
+                "planning_parameters": {"decode_weight": .7},
+                "candidates": [
+                    {"rank": 1, "host_tensor_names":
+                        ["blk.0.attn_k.weight"],
+                     "estimated_decode_tok_s_at_target": 24.,
+                     "estimated_peak_vram_at_target_mib": 6139.},
+                    {"rank": 2, "host_tensor_names":
+                        ["blk.1.attn_k.weight"],
+                     "estimated_decode_tok_s_at_target": 18.,
+                     "estimated_peak_vram_at_target_mib": 6120.},
+                ],
+            }
+            plan_path = root / "plan.json"
+            plan_path.write_text(json.dumps(plan))
+            seen = []
+            def probed(*args, **kwargs):
+                seen.append(tuple(args[2]["host_tensor_names"]))
+                return fake_gpu_run(*args, **kwargs)
+            with (
+                patch("calibration.kv_post_optimize.inspect_gguf",
+                      return_value=layout_fixture()),
+                patch("calibration.kv_post_optimize.candidate_pool",
+                      return_value=[]),
+            ):
+                result = run_post_optimize(
+                    source_report=source, output=root / "post_plan.json",
+                    candidate_plan=plan_path, max_rounds=1,
+                    max_tests=10, probe=probed,
+                )
+            self.assertTrue(result["completed"])
+            self.assertEqual(result["planning_mode"],
+                             "precomputed_ranked_candidate_list")
+            self.assertEqual(result["planned_candidate_count"], 2)
+            self.assertEqual(result["status"], "precomputed_plan_scanned")
+            self.assertEqual(
+                result["best_host_tensor_names"],
+                ["blk.0.attn_k.weight"],
+            )
+            self.assertEqual(seen, [
+                ("blk.0.attn_k.weight",)] * 3 +
+                [("blk.1.attn_k.weight",)] * 3
+            )
+            self.assertEqual(
+                result["rounds"][0]["tested"][0]["planner_rank"], 1
+            )
+            self.assertIsNone(result["objective"]["vram_minimum_headroom_mib"])
+
     def test_resume_with_greater_budget_no_repeated_cuda(self):
         with tempfile.TemporaryDirectory() as folder:
             root = Path(folder)
