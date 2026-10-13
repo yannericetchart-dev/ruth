@@ -149,6 +149,9 @@ def _worker(model_path: Path, n_ctx: int, generated_tokens: int,
             f"GPU non pronta: {status['errors']}; {status['foreign_processes']}"
         )
     layout = inspect_gguf(model_path, n_ctx=n_ctx)
+    maximum = context_limit(layout)
+    if not isinstance(n_ctx, int) or isinstance(n_ctx, bool) or n_ctx > maximum or n_ctx < 64:
+        raise ValueError(f"n_ctx={n_ctx} fuori dal limite GGUF (64..{maximum}).")
     architecture = layout["metadata"].get("general.architecture")
     n_blocks = layout["metadata"].get(f"{architecture}.block_count")
     if not isinstance(n_blocks, int) or n_blocks < 1:
@@ -268,6 +271,9 @@ def probe_context(model_path: Path, n_ctx: int,
     """One new CUDA process per point; no inherited cached CUDA allocations."""
     validate_kv_config(flash_attn, type_k, type_v)
     layout = inspect_gguf(model_path, n_ctx=n_ctx)
+    maximum = context_limit(layout)
+    if not isinstance(n_ctx, int) or isinstance(n_ctx, bool) or n_ctx < 64 or n_ctx > maximum:
+        raise ValueError(f"Prova vietata: n_ctx={n_ctx} oltre i limiti GGUF (64..{maximum}).")
     cmd = [
         sys.executable, "-m", "calibration.gpu_context",
         "--worker", "--model-path", str(model_path),
@@ -603,6 +609,7 @@ def search_gpu_context(
         raise RuntimeError("Architettura manifest diversa dal GGUF selezionato.")
     model_max = context_limit(layout)
     ceiling = min(model_max, max_ctx) if max_ctx is not None else model_max
+    # Clamp to GGUF model context maximum regardless of operator --max-ctx.
     if ceiling < min_ctx:
         raise ValueError("Contesto minimo oltre il massimo del modello.")
     total_mib = status["memory"]["total_mib"]
