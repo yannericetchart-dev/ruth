@@ -27,7 +27,7 @@ from .kv_benchmark import quality_subprocess, score_context
 from .profile_pipeline import atomic_json
 
 
-SCHEMA = "ruth-phase2-adaptive-tensor-greedy-v2"
+SCHEMA = "ruth-phase2-adaptive-tensor-greedy-v3"
 FA = False
 K_TYPE = "f16"
 V_TYPE = "f16"
@@ -282,7 +282,7 @@ def run_adaptive_tensor_search(
         "max_backtracks": max_backtracks, "min_gain_mib": min_gain_mib,
         "timeout": timeout, "quality_points": quality_points,
         "baseline_placement_protocol":
-            "exact_phase1_native_all_gpu_overrides_v2",
+            "exact_phase1_with_native_kv_step_fallback_v3",
     }
     if output.exists() and not rerun:
         previous = json.loads(output.read_text("utf-8"))
@@ -299,6 +299,8 @@ def run_adaptive_tensor_search(
     report = {
         "schema": SCHEMA, "parameters": identity, "completed": False,
         "status": "in_progress", "model_context_limit": limit,
+        "historical_baseline_ctx": baseline_ctx,
+        "actual_profiling_start_ctx": None,
         "native_kv_step_evidence": {
             "observed_edge_gcd_tokens":
                 step_profile.get("observed_edge_gcd_tokens"),
@@ -385,24 +387,78 @@ def run_adaptive_tensor_search(
             save()
             current = measurement(frozen, anchor, scouting_repeats)
             if not current["success"]:
-                stage["status"] = "anchor_not_reproducible"
                 stage["anchor_diagnostics"] = {
                     "baseline_mapping_kind":
                         native_tensor_trial(layout, sorted(frozen)).get("mapping_kind"),
-                    "n_ctx": anchor,
+                    "historical_baseline_n_ctx": anchor,
                     "baseline_flash_attn": FA,
                     "baseline_kv_type_k": K_TYPE,
                     "baseline_kv_type_v": V_TYPE,
-                    "samples": current.get("samples", []),
+                    "failed_baseline_samples": current.get("samples", []),
+                    "fallback_probed": False,
                     "note": (
-                        "Il fallimento del contesto iniziale precede ogni ricerca "
-                        "di tensor offload. Nessun gruppo puo essere classificato. "
-                        "Confrontare ambiente GPU e baseline nativa originale; "
-                        "il fallimento non dimostra che il modello sia cambiato."
+                        "La baseline storica non e attualmente riproducibile. "
+                        "Un eventuale anchor inferiore e SOLO per il profiling; "
+                        "non cambia il massimo storico ne valida il target."
                     ),
                 }
-                save()
-                break
+                # n_ctx=257 is the very first byte of a new native
+                # 256-cell KV block on this runtime. When the native logs
+                # actually show a 256->257 jump, n_ctx=256 is worth
+                # probing as an alternative measurement anchor: it needs
+                # one fewer KV allocation block. No unmeasured fallback.
+                initial_stage = (len(report["stages"]) == 1 and not frozen
+                                 and anchor == baseline_ctx)
+                matched_step = next((
+                    row for row in (step_profile.get("steps") or [])
+                    if row.get("boundary_tokens") == baseline_ctx - 1
+                    and row.get("native_step_observed") is True
+                    and isinstance(row.get("crossing_step_mib"), (int, float))
+                    and row["crossing_step_mib"] > 0
+                ), None)
+                acceptable_error = current.get("failure_class") in (
+                    "native_cuda_oom",
+                    "native_cuda_resource_allocation_failure",
+                )
+                if initial_stage and matched_step and acceptable_error:
+                    fallback_ctx = baseline_ctx - 1
+                    alternative = measurement(
+                        frozen, fallback_ctx, scouting_repeats
+                    )
+                    stage["anchor_diagnostics"]["fallback_probed"] = True
+                    stage["anchor_diagnostics"]["fallback_n_ctx"] = fallback_ctx
+                    stage["anchor_diagnostics"]["observed_kv_jump_mib_host_proxy"] = (
+                        matched_step["crossing_step_mib"]
+                    )
+                    stage["anchor_diagnostics"]["fallback_samples"] = (
+                        alternative.get("samples", [])
+                    )
+                    stage["anchor_diagnostics"]["fallback_success"] = (
+                        alternative.get("success") is True
+                    )
+                    if alternative.get("success"):
+                        current = alternative
+                        anchor = fallback_ctx
+                        stage["from_n_ctx"] = anchor
+                        stage["profiling_anchor_fallback_used"] = True
+                        report["actual_profiling_start_ctx"] = anchor
+                        if target == 512:
+                            old_proxy = step_profile.get(
+                                "additional_kv_mib_257_to_512_host_proxy"
+                            )
+                            if isinstance(old_proxy, (float, int)):
+                                report["native_kv_step_evidence"][
+                                    "host_256_to_512_kv_proxy_mib"
+                                ] = round(
+                                    old_proxy + matched_step["crossing_step_mib"], 4
+                                )
+                        save()
+                if not current.get("success"):
+                    stage["status"] = "anchor_not_reproducible"
+                    save()
+                    break
+            if report["actual_profiling_start_ctx"] is None:
+                report["actual_profiling_start_ctx"] = anchor
             anchor_reference = current
             history = []
             rejected = set()
