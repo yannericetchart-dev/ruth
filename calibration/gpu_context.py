@@ -70,11 +70,10 @@ def verify_gpu_runtime(native: dict) -> dict:
 def make_context_tokens(llm, architecture: str, n_ctx: int,
                         generated_tokens: int,
                         model_id: str | None = None) -> list[int]:
-    """Produce a long actual prompt and reserve room for the full decode."""
+    """Produce prompt tokens so prompt + requested generation equals n_ctx."""
     if n_ctx < 64 or generated_tokens < 1 or generated_tokens > 32:
         raise ValueError("Contesto o numero di token diagnostici non validi.")
-    reserved = generated_tokens + 1
-    requested = n_ctx - reserved
+    requested = n_ctx - generated_tokens
     if requested < 16:
         raise ValueError("Contesto insufficiente per la prova.")
     base = minimal_chat_prompt(architecture, model_id)
@@ -163,12 +162,15 @@ def _worker(model_path: Path, n_ctx: int, generated_tokens: int,
             tokens = make_context_tokens(llm, architecture, n_ctx,
                                          generated_tokens, model_id=model_id)
             result["measurements"]["prompt_tokens"] = len(tokens)
+            result["measurements"]["planned_total_tokens"] = len(tokens) + generated_tokens
             llm.reset()
             t0 = time.perf_counter()
             llm.eval(tokens)
-            result["measurements"]["prefill_s"] = round(
-                time.perf_counter() - t0, 3
-            )
+            prefill_elapsed = time.perf_counter() - t0
+            result["measurements"]["prefill_s"] = round(prefill_elapsed, 3)
+            result["measurements"]["prefill_tokens_per_second"] = round(
+                len(tokens) / prefill_elapsed, 3
+            ) if prefill_elapsed > 0 else None
             decoder = llm.generate([], reset=False, temp=0.0, top_k=1)
             generated = 0
             t1 = time.perf_counter()
@@ -178,14 +180,21 @@ def _worker(model_path: Path, n_ctx: int, generated_tokens: int,
                     generated += 1
             finally:
                 decoder.close()
-            result["measurements"]["decode_s"] = round(
-                time.perf_counter() - t1, 3
+            decode_elapsed = time.perf_counter() - t1
+            result["measurements"]["decode_s"] = round(decode_elapsed, 3)
+            result["measurements"]["decode_tokens_per_second"] = round(
+                generated / decode_elapsed, 3
+            ) if decode_elapsed > 0 else None
+            result["measurements"]["inference_s"] = round(
+                prefill_elapsed + decode_elapsed, 3
             )
             result["measurements"]["generated_tokens"] = generated
+            result["measurements"]["total_tokens"] = len(tokens) + generated
             result["measurements"]["ending_position_tokens"] = (
                 len(tokens) + generated - 1
             )
-            result["success"] = generated == generated_tokens
+            result["success"] = (generated == generated_tokens
+                                 and len(tokens) + generated == n_ctx)
         except Exception as exc:
             result["error"] = f"{type(exc).__name__}: {exc}"
         finally:
@@ -279,7 +288,8 @@ def probe_context(model_path: Path, n_ctx: int,
         and runtime["verified"]
         and report.get("n_ctx") == n_ctx
         and measured.get("generated_tokens") == generated_tokens
-        and measured.get("prompt_tokens") == n_ctx - generated_tokens - 1
+        and measured.get("prompt_tokens") == n_ctx - generated_tokens
+        and measured.get("total_tokens") == n_ctx
         and isinstance(measured.get("vram_peak_sampled_mib"), (int, float))
         and math.isfinite(measured["vram_peak_sampled_mib"])
         and measured["vram_peak_sampled_mib"] > 0
@@ -558,8 +568,8 @@ def search_gpu_context(
         "uncertain_failure_boundaries": [],
         "note": (
             "Contesto diagnostico: mapping di tutti i pesi GPU invariato, "
-            "KV in GPU e compute CUDA principale verificati da log, prefill vicino al "
-            "contesto dichiarato. Nessun margine VRAM operativo implicito, "
+            "KV in GPU e compute CUDA principale verificati da log, "
+            "prompt + generazione pari al contesto richiesto. Nessun margine VRAM operativo implicito, "
             "nessuna modifica a quantizzazione KV o parametri llama.cpp."
         ),
     }
