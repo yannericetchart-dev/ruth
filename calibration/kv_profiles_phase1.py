@@ -1,8 +1,11 @@
-"""Phase 1 experiments: seven Flash Attention / KV precision profiles.
+"""Phase 1 experiment: all supported f16/q8_0/q4_0 KV combinations.
 
-Weights and KV stay GPU-resident. The historical f16/f16, FA-off reference
-is not recalibrated or overwritten by this experimental sweep.
+Each non-reference profile searches the full-CUDA context frontier, starting
+at the already measured reference n_ctx + 1. Do not test an inferior K/V
+precision pair once a componentwise-superior pair with the SAME Flash
+Attention setting is confirmed at the model's architectural context limit.
 """
+
 import argparse
 import json
 from pathlib import Path
@@ -12,15 +15,54 @@ from .gpu_context import search_gpu_context
 from .profile_pipeline import atomic_json
 
 
+# Off: V quantization requires Flash Attention; on: all 3x3 combinations.
+# The reference profile is present in the matrix, but never re-executed.
+# Within each FA mode, superior precision profiles precede dominated ones.
 PROFILES = (
+    ("fa_off_k_f16_v_f16", False, "f16", "f16"),
     ("fa_off_k_q8_0_v_f16", False, "q8_0", "f16"),
     ("fa_off_k_q4_0_v_f16", False, "q4_0", "f16"),
     ("fa_on_k_f16_v_f16", True, "f16", "f16"),
+    ("fa_on_k_f16_v_q8_0", True, "f16", "q8_0"),
+    ("fa_on_k_q8_0_v_f16", True, "q8_0", "f16"),
     ("fa_on_k_q8_0_v_q8_0", True, "q8_0", "q8_0"),
+    ("fa_on_k_f16_v_q4_0", True, "f16", "q4_0"),
+    ("fa_on_k_q4_0_v_f16", True, "q4_0", "f16"),
     ("fa_on_k_q8_0_v_q4_0", True, "q8_0", "q4_0"),
     ("fa_on_k_q4_0_v_q8_0", True, "q4_0", "q8_0"),
     ("fa_on_k_q4_0_v_q4_0", True, "q4_0", "q4_0"),
 )
+
+PRECISION_RANK = {"q4_0": 0, "q8_0": 1, "f16": 2}
+REFERENCE_ID = "fa_off_k_f16_v_f16"
+STATUS_SKIP = "skipped_dominated_at_model_limit"
+
+
+def precision_dominates(winner: dict, candidate: tuple) -> bool:
+    """Strict Pareto dominance for K/V, comparing only the same FA mode.
+
+    Precision is ordered per component. Mixed configurations such as
+    f16/q4_0 and q8_0/q8_0 are incomparable and must both be tested.
+    """
+    _, flash, k, v = candidate
+    if flash != winner["flash_attn"]:
+        return False
+    wk, wv = winner["type_k"], winner["type_v"]
+    return (PRECISION_RANK[wk] >= PRECISION_RANK[k]
+            and PRECISION_RANK[wv] >= PRECISION_RANK[v]
+            and (wk != k or wv != v))
+
+
+def model_limit_reached(profile: dict) -> bool:
+    """Never infer model limit from the caller's optional --max-ctx bound."""
+    if profile.get("status") != "confirmed":
+        return False
+    result = profile.get("result") or {}
+    limit = result.get("model_declared_context_length")
+    maximum = profile.get("max_gpu_n_ctx")
+    return (type(limit) is int and type(maximum) is int
+            and limit >= 64 and maximum == limit
+            and result.get("success") is True)
 
 
 def run_profiles(*, model_id: str = "gemma-2-9b-it",
@@ -28,18 +70,22 @@ def run_profiles(*, model_id: str = "gemma-2-9b-it",
                  max_ctx: int | None = None, tokens: int = 16,
                  batch: int = 32, timeout: int = 300,
                  confirm_rounds: int = 2,
-                 output: Path = Path("phase1_kv_profiles_from_258.json"),
+                 output: Path = Path("phase1_kv_profiles_complete.json"),
                  rerun: bool = False, search=search_gpu_context,
                  progress=None) -> dict:
-    """Start each profile at baseline_ctx + 1; stop if that first probe fails."""
-    if (not isinstance(baseline_ctx, int) or isinstance(baseline_ctx, bool)
-        or baseline_ctx < 63 or not 1 <= tokens <= 32 or batch < 1):
+    """Run each non-dominated profile and checkpoint after each decision."""
+    if (type(baseline_ctx) is not int or baseline_ctx < 63
+        or type(tokens) is not int or not 1 <= tokens <= 32
+        or type(batch) is not int or batch < 1
+        or type(confirm_rounds) is not int or confirm_rounds < 1
+        or type(timeout) is not int or timeout < 1):
         raise ValueError("Parametri Fase 1 KV non validi.")
     min_ctx = baseline_ctx + 1
-    if max_ctx is not None and max_ctx < min_ctx:
-        raise ValueError("max_ctx deve essere almeno min_ctx.")
+    if max_ctx is not None and (type(max_ctx) is not int or max_ctx < min_ctx):
+        raise ValueError("max_ctx deve essere almeno baseline_ctx + 1.")
     if model_id not in ModelManager.CATALOG:
         raise ValueError(f"Modello non supportato: {model_id}")
+
     output = Path(output).expanduser().resolve()
     identity = {
         "model_id": model_id, "source": source,
@@ -48,19 +94,22 @@ def run_profiles(*, model_id: str = "gemma-2-9b-it",
         "timeout": timeout, "confirm_rounds": confirm_rounds,
     }
     report = {
-        "schema": "ruth-phase1-gpu-kv-profiles-v2",
+        "schema": "ruth-phase1-gpu-kv-profiles-v3",
         "parameters": identity,
         "original_reference": {
             "flash_attn": False, "type_k": "f16", "type_v": "f16",
             "n_ctx": baseline_ctx,
-            "note": "Riferimento storico non rieseguito; ogni nuovo profilo parte da baseline + 1.",
+            "note": "Full-GPU historical reference, not re-executed.",
         },
         "profiles": [], "all_profiles_completed": False,
-        "note": ("Full GPU weights + GPU KV, token prompt + output = n_ctx. "
-                 "Prima prova sempre a baseline_ctx + 1; fallimento iniziale "
-                 "arresta il profilo, senza ulteriori n_ctx. "
-                 "Configurazioni non supportate sono riportate separatamente. "
-                 "Nessun profilo operativo o reference originale viene sovrascritto."),
+        "note": (
+            "All 12 allowed FA/KV combinations; 1 historic reference + 11 "
+            "experimental profiles. Each probe <= GGUF architecture limit; "
+            "start at baseline+1. At the architecture limit, skip only "
+            "K/V componentwise dominated profiles with identical FA setting. "
+            "The skip optimizes context-capacity search, not throughput or quality. "
+            "The original reference and operational profiles remain unchanged."
+        ),
     }
     if output.exists() and not rerun:
         try:
@@ -69,49 +118,102 @@ def run_profiles(*, model_id: str = "gemma-2-9b-it",
             raise ValueError("Report precedente non valido; usare --rerun.")
         if (previous.get("schema") != report["schema"]
             or previous.get("parameters") != identity):
-            raise ValueError("Parametri diversi dal report salvato; usare --rerun.")
-        report["profiles"] = [
-            p for p in previous.get("profiles", [])
-            if p.get("id") in {row[0] for row in PROFILES}
-        ]
+            raise ValueError(
+                "Report precedente con schema/parametri diversi: "
+                "usare un nuovo --output o --rerun."
+            )
+        cached = {
+            p["id"]: p for p in previous.get("profiles", [])
+            if isinstance(p, dict) and p.get("id") in {
+                row[0] for row in PROFILES
+            }
+        }
+    else:
+        cached = {}
 
-    cached = {row["id"]: row for row in report["profiles"]}
-    report["profiles"] = []
-    for identifier, flash, k, v in PROFILES:
+    def record(profile: dict) -> None:
+        report["profiles"].append(profile)
+        atomic_json(output, report)
+        if progress is not None:
+            progress({
+                "event": "profile_end", "profile": profile["id"],
+                "status": profile["status"],
+                "n_ctx": profile["max_gpu_n_ctx"],
+                "dominated_by": profile.get("dominated_by"),
+            })
+
+    for candidate in PROFILES:
+        identifier, flash, k, v = candidate
         if progress is not None:
             progress({"event": "profile_start", "profile": identifier})
+
+        # Existing FP16/FP16 reference remains an explicit row in the
+        # complete matrix; no CUDA worker and no fake new measurements.
+        if identifier == REFERENCE_ID:
+            record({
+                "id": identifier, "flash_attn": flash,
+                "type_k": k, "type_v": v,
+                "status": "reference_reused",
+                "max_gpu_n_ctx": baseline_ctx,
+                "result": None,
+                "reference_provenance": "previous_phase1_full_gpu_measurement",
+            })
+            continue
+
+        # Reuse complete earlier evidence, but recompute all skip decisions
+        # based on confirmed model ceilings from this exact runtime identity.
         old = cached.get(identifier)
         if old is not None and old.get("status") == "confirmed":
-            report["profiles"].append(old)
+            record(old)
             continue
+
+        dominator = next((
+            p for p in report["profiles"]
+            if model_limit_reached(p) and precision_dominates(p, candidate)
+        ), None)
+        if dominator is not None:
+            record({
+                "id": identifier, "flash_attn": flash,
+                "type_k": k, "type_v": v,
+                "status": STATUS_SKIP, "max_gpu_n_ctx": None,
+                "dominated_by": dominator["id"],
+                "model_declared_context_length": dominator["result"][
+                    "model_declared_context_length"
+                ],
+                "reason": (
+                    "A same-Flash-Attention configuration with equal or better "
+                    "K and V precision already reached the model context cap."
+                ),
+                "result": None,
+            })
+            continue
+
         try:
             result = search(
                 model_id, source=source, min_ctx=min_ctx, max_ctx=max_ctx,
                 tokens=tokens, batch=batch, timeout=timeout,
                 confirm_rounds=confirm_rounds, flash_attn=flash,
                 type_k=k, type_v=v, persist_reference=False,
-                progress=(lambda event: progress({"profile": identifier, **event}))
-                if progress is not None else None,
+                progress=(lambda event: progress({
+                    "profile": identifier, **event
+                })) if progress is not None else None,
             )
             state = ("confirmed" if result.get("success") is True
                      else "unsupported_or_inconclusive")
         except Exception as exc:
-            result = {"success": False,
-                      "error": f"{type(exc).__name__}: {exc}"}
+            result = {
+                "success": False,
+                "error": f"{type(exc).__name__}: {exc}",
+            }
             state = "unsupported_or_inconclusive"
-        report["profiles"].append({
+        record({
             "id": identifier, "flash_attn": flash,
-            "type_k": k, "type_v": v,
-            "status": state,
+            "type_k": k, "type_v": v, "status": state,
             "max_gpu_n_ctx": result.get("confirmed_max_gpu_resident_n_ctx")
             if result.get("success") is True else None,
             "result": result,
         })
-        atomic_json(output, report)
-        if progress is not None:
-            progress({"event": "profile_end", "profile": identifier,
-                      "status": state,
-                      "n_ctx": report["profiles"][-1]["max_gpu_n_ctx"]})
+
     report["all_profiles_completed"] = len(report["profiles"]) == len(PROFILES)
     atomic_json(output, report)
     return report
@@ -119,7 +221,7 @@ def run_profiles(*, model_id: str = "gemma-2-9b-it",
 
 def main() -> int:
     parser = argparse.ArgumentParser(
-        description="Fase 1: massimo contesto full-CUDA per sette profili KV/Flash Attention"
+        description="Fase 1: 12 combinazioni KV/Flash Attention (riferimento incluso)"
     )
     parser.add_argument("--model", default="gemma-2-9b-it")
     parser.add_argument("--source")
@@ -131,7 +233,7 @@ def main() -> int:
     parser.add_argument("--timeout", type=int, default=300)
     parser.add_argument("--confirm-rounds", type=int, default=2)
     parser.add_argument("--output", type=Path,
-                        default=Path("phase1_kv_profiles_from_258.json"))
+                        default=Path("phase1_kv_profiles_complete.json"))
     parser.add_argument("--rerun", action="store_true")
     args = parser.parse_args()
     try:
@@ -151,7 +253,8 @@ def main() -> int:
         for row in report["profiles"]:
             print(f"{row['id']} | {row['status']} | {row['max_gpu_n_ctx']}")
         print("Report:", args.output)
-        return 0 if all(p["status"] == "confirmed" for p in report["profiles"]) else 1
+        return 0 if all(p["status"] in ("confirmed", "reference_reused", STATUS_SKIP)
+                        for p in report["profiles"]) else 1
     except Exception as exc:
         print(f"Fase 1 KV: {type(exc).__name__}: {exc}")
         return 1
