@@ -400,6 +400,10 @@ def inventory_kaggle(
         candidates, key=lambda x: (
             x["quality_priority"] is None,
             x["quality_priority"] if x["quality_priority"] is not None else 0,
+            # Same nominal quality tier: prefer the explicitly named
+            # canonical _M recipe to its bare command alias, without
+            # claiming any measured accuracy advantage.
+            x.get("quality_rank_confidence") == "standard_llama_quantize_alias",
             x["filename"].casefold(),
         ),
     )
