@@ -771,3 +771,57 @@ già confermati vengono riutilizzati con parametri identici; usare
 operativi rimangono invariati. Codice d'uscita 0 indica profili
 confermati, baseline riutilizzata o salti per dominanza; un profilo
 fallito o inconclusivo produce uscita diversa da zero.
+
+
+### Benchmark comparativo Fase 1: throughput, qualità e punteggio
+
+Dopo `phase1_kv_profiles_complete.json`, confrontare soltanto i profili
+la cui inferenza è già stata confermata in GPU a ciascun contesto:
+512 (9 candidati), 768 (3), 1280 (1) per il report Gemma-2 attuale.
+Il corpus deve essere un file UTF-8 **reale, coerente e identico** per
+ogni esecuzione, con almeno 1280 token secondo il tokenizer Gemma-2
+(per esempio un campione deterministico di testi mai usati nella
+calibrazione). Non usare un prompt artificiosamente ripetuto per
+misurare la qualità.
+
+```bash
+python -m calibration.kv_benchmark \
+  --phase1-report phase1_kv_profiles_complete.json \
+  --corpus /percorso/valutazione.txt \
+  --contexts 512,768,1280 \
+  --repetitions 3 --decode-tokens 16 --quality-points 64 \
+  --output kv_quality_speed_benchmarks.json
+```
+
+Per la velocità ogni configurazione viene provata in **tre worker CUDA
+separati**, con tutti i pesi e KV in GPU e verifica nativa di placement,
+precisione e Flash Attention; salvati prefill tok/s, decode tok/s, picco
+VRAM, margine e mediana. `prompt + generazione = n_ctx`, con
+`decode_tokens=16`, per tutti i profili del medesimo contesto.
+
+Per la qualità il confronto è tra K/V FP16 e K/V quantizzate con
+**stesso stato Flash Attention, pesi GPU e KV entrambe in RAM**:
+questo mantiene costante la collocazione KV, altrimenti FP16
+non sarebbe interamente GPU ai contesti richiesti. Il benchmark
+calcola **PPL campionata** (64 posizioni next-token, teacher forcing
+sullo stesso corpus) e KL(P_FP16 || P_quant) media sull'intero
+vocabolario a quelle posizioni, senza buffer logits `n_ctx × vocab`.
+Le qualità qui misurate isolano meglio la quantizzazione **a KV CPU**,
+ma non certificano l'errore numerico della KV GPU; sono separate dalle
+misure di throughput GPU. Non confondere la PPL campionata con la
+perplexity classica su tutti i token del corpus.
+
+Per ogni `n_ctx`, il report calcola un **punteggio diagnostico 0–100**
+soltanto dove velocità e qualità sono state validate, con pesi
+espliciti: KL (30%), PPL relativa (20%), decode (25%), prefill
+(15%), margine VRAM campionato (10%). Il punteggio dipende
+dalla scala KL scelta (`--kl-scale`, default 0,01 nat) e dalla
+soglia di margine (`--headroom-target-mib`, default 64).
+Le velocità sono normalizzate al migliore candidato **dello stesso**
+contesto: non confrontare punteggi tra lunghezze diverse.
+
+Se la baseline qualità CPU FP16, il candidato o un probe di velocità
+falliscono, il punteggio rimane `null`, non viene inventato.
+Il flag `headroom_target_met` non prova che il profilo sia
+operativamente sicuro. Il benchmark non cambia la baseline
+originale né promuove un profilo in produzione.
