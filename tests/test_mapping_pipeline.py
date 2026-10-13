@@ -45,6 +45,8 @@ def evidence(group_id):
         "offload_kqv": group_id != "baseline_host_kv",
         "measurements": {
             "vram_peak_sampled_mib": 5300,
+            "vram_total_mib": 6141,
+            "vram_headroom_min_mib": 841,
             "host_peak_rss_mib": 1200,
             "prefill_tokens_per_s": 80,
             "decode_tokens_per_s": 35,
