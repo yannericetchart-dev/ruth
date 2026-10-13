@@ -94,9 +94,13 @@ class LlamaCppPythonMappingAdapter:
         }
 
     def load(self, path: Path, *, n_gpu_layers: int, rules: list[dict],
-             n_ctx: int = 512, n_batch: int = 128, n_ubatch: int = 128):
+             n_ctx: int = 512, n_batch: int = 128, n_ubatch: int = 128,
+             offload_kqv: bool = True):
         """Load a model with native per-tensor placement rules.
 
+        offload_kqv=False requests KV/attention offload to host for the
+        extended-context baseline; its actual location is checked in the
+        native subprocess stderr. Defaults remain full-CUDA for phase 1.
         Rules are {"pattern": regex, "device": "cpu"|"gpu"}. A pattern
         must match a real GGUF tensor. Gemma 2's tied token_embd.weight can be placed only as a coupled
         input/output mapping, never independently with a name regex.
@@ -179,7 +183,7 @@ class LlamaCppPythonMappingAdapter:
                 llm = Llama(
                     model_path=str(path), n_ctx=n_ctx, n_gpu_layers=n_gpu_layers,
                     n_batch=n_batch, n_ubatch=n_ubatch,
-                    offload_kqv=True, flash_attn=False, verbose=True,
+                    offload_kqv=offload_kqv, flash_attn=False, verbose=True,
                 )
             finally:
                 _internals.LlamaModel = original
