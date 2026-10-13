@@ -237,50 +237,62 @@ senza ridurre materialmente le prestazioni di inferenza.
    separatamente e non vengono spostati automaticamente: servono
    prove dedicate dei vincoli di condivisione.
 
-3. **Baseline prestazionale full-GPU**: tre worker isolati con
-   tutti i pesi CUDA, stesso `n_ctx`, prompt quasi pieno, batch,
-   KV CUDA, prefill e 16-32 token di decode greedy.
-   Il contesto diagnostico del benchmark e' compreso fra
-   128 e 512 token, non coincide necessariamente col massimo
-   n_ctx della fase 1. Vengono registrati picco VRAM NVML,
-   picco RAM di processo, prefill e decode token/s.
+3. **Contesto realmente esteso oltre la fase 1**. Dal GGUF
+   si recupera il limite architetturale e si sceglie il primo
+   valore di contesto potenza di due **strettamente superiore**
+   al `confirmed_max_gpu_resident_n_ctx` della fase 1, senza
+   superare il limite del modello. Esempio: Gemma con massimo
+   full-GPU 256 -> test `n_ctx=512` con **383 token di prompt,
+   128 di generazione** (un token riservato). Qwen Kaggle con
+   massimo 7424 -> `n_ctx=8192`, prompt 8063 e 128 decode.
+   Queste prove non possono essere sostituite dal vecchio
+   benchmark sotto il limite di VRAM.
 
-4. **Prove dei gruppi**, sempre da baseline full-GPU: per ogni
-   gruppo selezionato Ruth sposta **tutti e soli** i tensori
-   omologhi del gruppo sulla CPU, in tre worker isolati.
-   Gli altri pesi, inclusi embedding/output, restano su GPU.
-   Richiede prove native di ogni override, comprese tutte le
-   occorrenze duplicate, e verifica KV e compute CUDA. Un SIGABRT
-   scarta la prova del gruppo senza attribuirlo automaticamente
-   a OOM e **senza interrompere gli altri gruppi**. Solo
-   il fallimento della baseline impedisce un confronto attendibile.
+4. **Baseline host-KV**. Tre processi isolati caricano **tutti i
+   pesi GGUF su GPU**, come nella fase 1, ma richiedono
+   `offload_kqv=False`, cioe' **cache KV su RAM CPU durante
+   l'inferenza**. Il placement KV host deve risultare nei log
+   nativi; non ci si affida a un fallback automatico.
+   La baseline deve eseguire l'intero prompt esteso e 128 token
+   di decode, misurando tempo, throughput, VRAM e RSS del processo.
 
-5. **Confronto**: usa le mediane delle tre prove e ne registra
-   la dispersione. I gruppi promettenti devono liberare almeno
-   8 MiB *misurati* e non mostrare un rallentamento oltre il 3%
-   né variabilita' eccessiva. Le soglie sono criteri iniziali
-   per restringere la ricerca, non garanzie di prestazioni.
-   Gruppi lenti, instabili o che non liberano VRAM vengono
-   mantenuti nel report con esito esplicito.
+5. **Gruppi di tensori con KV GPU**. Uno alla volta, Ruth
+   sposta soltanto i tensori omologhi del gruppo sulla CPU,
+   mantenendo gli altri pesi full-CUDA e richiedendo
+   `offload_kqv=True`. Le prove native devono confermare
+   la KV interamente su CUDA e il compute principale su GPU.
+   Si provano **tutti** i gruppi `blk.*`, con tre processi
+   ciascuno, stesso `n_ctx`, 128 decode, prompt, batch e
+   quantizzazione della baseline. Errori di singoli gruppi
+   sono registrati senza interrompere la ricerca.
 
-Il report `mapping.json` (schema 3) conserva tutte le schede dei
-gruppi, la classifica, le prove full-CUDA di baseline, le prove
-CPU/GPU e le comparazioni per prefill/decode/VRAM/RAM.
-**Nessun mapping operativo viene promosso**: i gruppi promettenti
-richiedono conferme successive con contesto operativo e scenari
-di carico diversi. Il modulo `runtime`, `context_tuned` e
-`capacity` rimangono non implementati. I vecchi report schema 1
-del mapping a blocchi **non** vengono riutilizzati.
-I report schema 2 del primo screening a tre gruppi possono essere
-riutilizzati **soltanto** se i risultati sono completi, corrispondono
-a GGUF, fonte, n_ctx, token e runtime attuali e contengono prove
-native e misure prestazionali verificabili. Ruth preserva
-`mapping.prior_schema2.json` prima di aggiornare il report.
-Il nuovo run salva `mapping.checkpoint.json` dopo ogni gruppo:
-un'interruzione non costringe a ripetere le prove gia' confermate.
-`--rerun` forza invece una nuova serie di misurazioni.
-Una prova nativa fallita viene registrata per quel gruppo e non
-blocca il resto del survey.
+6. **Confronto a contesto identico**. Il parametro principale e'
+   il cambiamento di velocita' rispetto alla baseline
+   *pesi CUDA + KV CPU*. Se almeno uno tra prefill e decode
+   migliora di oltre il 3%, l'altro non peggiora di oltre
+   il 3% e la dispersione resta limitata, il gruppo viene
+   considerato promettente. Un gruppo senza guadagno misurabile
+   non viene promosso. La differenza di VRAM fra i due casi e'
+   registrata come **delta**: il candidato puo' usare **piu'
+   VRAM** della baseline perche' ospita la KV su GPU, e questo
+   non e' di per se' un fallimento. I MiB GGUF del gruppo
+   non sono un risparmio VRAM nativo automaticamente garantito.
+
+Il report `mapping.json` (schema 4) contiene gruppo, ranking,
+baseline host-KV, prove con KV GPU, throughput, picchi VRAM/RAM e
+verdetti. Questo **non e' un profilo operativo** e non modifica
+i risultati della fase 1. I report schema 1, 2 e 3 (prove
+precedenti a contesto inferiore) **non sono riutilizzabili**
+per il nuovo benchmark: cambiano sia il contesto sia la residenza KV.
+Restano disponibili come diagnosi e Ruth conserva il vecchio
+`mapping.json` in `mapping.prior_schema3.json` (oppure
+`mapping.prior_schema2.json` per i report schema 2).
+Dalla nuova fase 2 sono riprendibili solo checkpoint schema 4
+con prova nativa e workload strettamente identici.
+Un gruppo senza KV GPU valida viene registrato come fallito;
+la baseline host-KV fallita blocca il confronto complessivo.
+Le fasi `runtime`, `context_tuned` e `capacity` rimangono
+non implementate.
 
 ```bash
 cd ~/Dev/ruth
