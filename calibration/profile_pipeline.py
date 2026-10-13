@@ -441,7 +441,17 @@ def run_pipeline(identity: dict, *, until: str = "context_gpu",
             cached = None if rerun else journal.cached(stage)
             if cached is not None:
                 previous[stage] = cached
-                print(f"[{stage}] RIUTILIZZO risultato gia' verificato.", flush=True)
+                if stage == "baseline":
+                    selected = cached["baseline"]
+                    print(
+                        "[baseline] RIUTILIZZO baseline full-CUDA gia' "
+                        f"validata: {selected.get('quantization')} "
+                        f"| GGUF={selected.get('filename')} "
+                        "| pesi CUDA=True | nessun nuovo download/probe.",
+                        flush=True,
+                    )
+                else:
+                    print(f"[{stage}] RIUTILIZZO risultato gia' verificato.", flush=True)
                 continue
             print(f"\n[{stage}] AVVIO: {MESSAGES[stage]}", flush=True)
             journal.invalidate_after(stage)
