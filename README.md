@@ -1024,3 +1024,48 @@ Il file contiene `scanned_families`, `measured_configs`,
 `stages[].group_screenings`, `stages[].individual_screenings`,
 `stages[].frozen_tensors`, `learned_groups` e
 `final_host_tensor_names`, oltre ai dati dei ripetuti test CUDA.
+
+
+### Ottimizzare il bundle confermato senza soglie VRAM
+
+Dopo che `phase2_adaptive_tensor_groups_v3.json` ha confermato
+`n_ctx=512`, si può cercare una combinazione di tensori più veloce
+**senza vincolo di margine VRAM**. Nessun `min_headroom`, né 64 MiB,
+né altri MiB imposti. Rimane obbligatorio che ogni configurazione
+completi tre inferenze native indipendenti, mantenendo il contesto e
+la KV in GPU, con placement per tensore validato.
+
+```bash
+python -m calibration.kv_post_optimize \
+  --source-report phase2_adaptive_tensor_groups_v3.json \
+  --target-ctx 512 \
+  --max-candidates 48 --max-rounds 2 --max-tests 160 \
+  --decode-weight 0.7 --confirm-repeats 3 \
+  --benchmark-report kv_quality_speed_benchmarks.json \
+  --corpus calibration/corpora/kv_eval_it_v1.txt \
+  --output phase2_post_optimize_512.json
+```
+
+Il motore parte dai tensori del `learned_ctx_512` validato e
+misura *a parità di n_ctx* la rimozione, la sostituzione e l'aggiunta
+di singoli tensori CPU. Il ranking usa esclusivamente le velocità
+di **decode (70%) e prefill (30%)** in forma di somma pesata dei
+logaritmi dei throughput; modificare `--decode-weight` per preferenze
+diverse. La memoria residua NVML è **misurata e riportata**, ma
+**non fa parte del punteggio e non stabilisce una soglia minima**.
+La verifica di ammissibilità è il successo effettivo del worker
+CUDA, non una stima della memoria. Il report include
+`best_host_tensor_names`, `measured_configs`, `rounds` e
+una `pareto_front` prefill/decode. Il miglior gruppo trovato
+può essere diverso da quello iniziale; l'originale non viene
+sovrascritto né perso. Se indicati, corpus e benchmark eseguono
+un controllo PPL/KL finale quando la ricerca si completa.
+
+Questa ricerca locale è limitata dal budget e non garantisce
+l'ottimo globale. Può riprendere incrementando **solo**
+`--max-tests`, conservando esattamente lo stesso `--output`
+e gli altri parametri. Se si esaurisce il budget, il risultato
+`budget_exhausted_best_valid` conserva il miglior gruppo
+confermato finora, ma segnala che la ricerca non è completa.
+L'opzione `--rerun` ricomincia e scarta il checkpoint di
+ottimizzazione (non il report greedy sorgente).
