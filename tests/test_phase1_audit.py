@@ -136,6 +136,39 @@ class PhaseOneAuditTests(unittest.TestCase):
             self.assertEqual(result["checks"]["tensor_count"], 339)
             self.assertEqual((run / "state.json").read_bytes(), state_before)
 
+    def test_completed_empirical_context_is_complete_with_unknown_crash_cause(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            manager, ident, run, gguf = self.prepare(root)
+            ctx = run / "context_gpu.json"
+            saved = json.loads(ctx.read_text())
+            saved["maximality_proven"] = True
+            saved["maximality_basis"] = "empirical_fixed_runtime_search"
+            saved["boundary_n_ctx"] = 257
+            saved["failure_cause_unresolved"] = True
+            saved["uncertain_failure_boundaries"] = [
+                {"n_ctx": 257, "signal": "SIGABRT",
+                 "failure_class": "worker_protocol_error"}
+            ]
+            ctx.write_text(json.dumps(saved))
+            with patch(
+                "calibration.phase1_audit.ModelManager",
+                side_effect=lambda: ModelManager(root=manager.root),
+            ):
+                audited = audit_pair(
+                    ident, output_root=root / "runs", inspect_local=False
+                )
+            self.assertTrue(audited["phase1_complete"])
+            self.assertEqual(audited["n_ctx_gpu_resident"], 256)
+            self.assertEqual(
+                audited["checks"]["maximality_basis"],
+                "empirical_fixed_runtime_search",
+            )
+            self.assertTrue(
+                audited["checks"]["failure_cause_unresolved"]
+            )
+            self.assertEqual(audited["checks"]["boundary_n_ctx"], 257)
+
     def test_blocked_context_preserves_verified_floor_but_not_max(self):
         with tempfile.TemporaryDirectory() as temp:
             root = Path(temp)
