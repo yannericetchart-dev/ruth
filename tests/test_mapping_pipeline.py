@@ -30,27 +30,46 @@ def identity():
     }
 
 
-def fake_mapping(selection):
+def evidence(group_id):
     return {
-        "schema_version": 1, "phase": "mapping",
+        "mode": group_id, "success": True,
+        "native_placement": {"verified": True},
+        "gpu_runtime_validation": {"verified": True},
+        "measurements": {
+            "vram_peak_sampled_mib": 5300,
+            "host_peak_rss_mib": 1200,
+            "prefill_tokens_per_s": 80,
+            "decode_tokens_per_s": 35,
+        },
+    }
+
+
+def fake_mapping(selection):
+    ids = ["group:attn_k.weight", "group:ffn_down.weight"]
+    return {
+        "schema_version": 2, "phase": "mapping",
         "model_id": selection["model_id"],
         "source": selection["source"],
         "filename": selection["filename"],
         "quantization": selection["quantization"],
         "model_path": str(Path(selection["local_path"]).resolve()),
-        "status": "diagnostic_native_placement_validated",
-        "selected_mapping": None, "profile_generated": False,
-        "success": True, "trials": [
+        "reference_full_cuda_n_ctx": 2048,
+        "repeat_processes_per_variant": 3,
+        "tested_group_ids": ids,
+        "baseline_trials": [evidence("baseline") for _ in range(3)],
+        "baseline_statistics": {"prefill_tokens_per_s": {"median": 80}},
+        "group_evaluations": [
             {
-                "mode": mode, "success": True,
-                "native_placement": {"verified": True},
-                "gpu_runtime_validation": {"verified": True},
-                "measurements": {"vram_peak_sampled_mib": 5300},
+                "group_id": name, "status": "rejected_performance_regression",
+                "comparison": {"verdict": "rejected_performance_regression"},
+                "trials": [evidence(name) for _ in range(3)],
             }
-            for mode in ("block0_host", "attention_tensor_host")
+            for name in ids
         ],
+        "status": "diagnostic_group_comparison_completed",
+        "selected_mapping": None, "profile_generated": False,
+        "success": True,
     }
-
 
 class MappingPipelineTests(unittest.TestCase):
     def prepare(self, root):
@@ -126,13 +145,13 @@ class MappingPipelineTests(unittest.TestCase):
             root = Path(temp)
             config, folder, baseline = self.prepare(root)
             report = fake_mapping(baseline)
-            report["trials"][1]["gpu_runtime_validation"]["verified"] = False
+            report["group_evaluations"][1]["trials"][2]["gpu_runtime_validation"]["verified"] = False
             atomic_json(folder / "mapping.json", report)
             journal = Journal(folder, config)
             journal.phase_state("mapping", "completed", "mapping.json")
             self.assertIsNone(journal.cached("mapping"))
-            report["trials"][1]["gpu_runtime_validation"]["verified"] = True
-            report["trials"][1]["native_placement"]["verified"] = False
+            report["group_evaluations"][1]["trials"][2]["gpu_runtime_validation"]["verified"] = True
+            report["group_evaluations"][1]["trials"][1]["native_placement"]["verified"] = False
             atomic_json(folder / "mapping.json", report)
             self.assertIsNone(journal.cached("mapping"))
 
@@ -144,7 +163,8 @@ class MappingPipelineTests(unittest.TestCase):
             failure.update({
                 "success": False,
                 "status": "blocked_unverified_native_mapping",
-                "trials": [{"mode": "block0_host", "success": False}],
+                "group_evaluations": [{"group_id": "group:attn_k.weight",
+                                     "trials": [{"success": False}]}],
                 "error": "Native placement unverified",
             })
             with patch(
