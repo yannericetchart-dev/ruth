@@ -115,6 +115,20 @@ def _probe_summary(probe: dict) -> dict:
         "success": probe.get("success") is True,
         "failure_class": probe.get("failure_class"),
         "error": probe.get("error"),
+        "worker_signal": probe.get("worker_signal"),
+        "worker_returncode": probe.get("worker_returncode"),
+        "native_kv_buffer_records": [
+            row for row in (
+                (probe.get("native_memory") or {}).get(
+                    "native_buffer_records", []
+                )
+            ) if row.get("category") == "kv"
+        ],
+        "native_buffer_totals_mib": (
+            (probe.get("native_memory") or {}).get(
+                "totals_mib_by_category_and_domain", {}
+            )
+        ),
         "native_placement_verified": (
             probe.get("native_placement", {}).get("verified") is True
         ),
@@ -128,6 +142,9 @@ def _probe_summary(probe: dict) -> dict:
         "prefill_tok_s": m.get("prefill_tokens_per_s"),
         "decode_tok_s": m.get("decode_tokens_per_s"),
         "vram_peak_mib": m.get("vram_peak_sampled_mib"),
+        "vram_before_mib": m.get("vram_before_mib"),
+        "vram_after_load_mib": m.get("vram_after_load_mib"),
+        "nvml_errors": m.get("nvml_errors"),
         "vram_total_mib": m.get("vram_total_mib"),
         "prompt_tokens": m.get("prompt_tokens"),
         "generated_tokens": m.get("generated_tokens"),
