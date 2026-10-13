@@ -224,15 +224,18 @@ senza ridurre materialmente le prestazioni di inferenza.
    fuori blocco. Questi ultimi sono censiti separatamente,
    ma non vengono automaticamente spostati.
 
-2. **Screening computazionale**, prima di avviare CUDA. Le dimensioni
-   GGUF stimate e un proxy strutturale delle operazioni per token
-   stabiliscono una priorita' di prove, **non una misura di velocita'
-   o una predizione dei MiB davvero liberati**. Gruppi non supportati
-   o inferiori a 16 MiB GGUF sono registrati e non provati.
-   Per limitare il costo dell'esperimento vengono provati
-   al massimo tre gruppi alla volta, ordinati per questa euristica.
-   I costi PCIe e la duplicazione effettiva dei buffer rimangono
-   incogniti fino ai benchmark.
+2. **Screening computazionale, senza esclusioni arbitrarie**.
+   Le dimensioni GGUF uniche e un proxy delle operazioni per token
+   producono una classifica e documentano il costo relativo.
+   **Tutti i gruppi `blk.*.<suffix>` sono testati**, inclusi quelli
+   minori di 16 MiB o con proxy computazionale incompleto.
+   Non e' previsto un numero massimo di gruppi. Il filtro
+   non esclude semplicemente perche' il vantaggio stimato sia
+   piccolo: saranno le misure native a stabilirlo.
+   I pesi non appartenenti a blocchi (per esempio embedding/output
+   condivisi e rope materializzata più volte) sono censiti
+   separatamente e non vengono spostati automaticamente: servono
+   prove dedicate dei vincoli di condivisione.
 
 3. **Baseline prestazionale full-GPU**: tre worker isolati con
    tutti i pesi CUDA, stesso `n_ctx`, prompt quasi pieno, batch,
@@ -248,7 +251,9 @@ senza ridurre materialmente le prestazioni di inferenza.
    Gli altri pesi, inclusi embedding/output, restano su GPU.
    Richiede prove native di ogni override, comprese tutte le
    occorrenze duplicate, e verifica KV e compute CUDA. Un SIGABRT
-   scarta la prova senza attribuirlo automaticamente a OOM.
+   scarta la prova del gruppo senza attribuirlo automaticamente
+   a OOM e **senza interrompere gli altri gruppi**. Solo
+   il fallimento della baseline impedisce un confronto attendibile.
 
 5. **Confronto**: usa le mediane delle tre prove e ne registra
    la dispersione. I gruppi promettenti devono liberare almeno
@@ -258,7 +263,7 @@ senza ridurre materialmente le prestazioni di inferenza.
    Gruppi lenti, instabili o che non liberano VRAM vengono
    mantenuti nel report con esito esplicito.
 
-Il report `mapping.json` (schema 2) conserva tutte le schede dei
+Il report `mapping.json` (schema 3) conserva tutte le schede dei
 gruppi, la classifica, le prove full-CUDA di baseline, le prove
 CPU/GPU e le comparazioni per prefill/decode/VRAM/RAM.
 **Nessun mapping operativo viene promosso**: i gruppi promettenti
@@ -266,6 +271,16 @@ richiedono conferme successive con contesto operativo e scenari
 di carico diversi. Il modulo `runtime`, `context_tuned` e
 `capacity` rimangono non implementati. I vecchi report schema 1
 del mapping a blocchi **non** vengono riutilizzati.
+I report schema 2 del primo screening a tre gruppi possono essere
+riutilizzati **soltanto** se i risultati sono completi, corrispondono
+a GGUF, fonte, n_ctx, token e runtime attuali e contengono prove
+native e misure prestazionali verificabili. Ruth preserva
+`mapping.prior_schema2.json` prima di aggiornare il report.
+Il nuovo run salva `mapping.checkpoint.json` dopo ogni gruppo:
+un'interruzione non costringe a ripetere le prove gia' confermate.
+`--rerun` forza invece una nuova serie di misurazioni.
+Una prova nativa fallita viene registrata per quel gruppo e non
+blocca il resto del survey.
 
 ```bash
 cd ~/Dev/ruth
