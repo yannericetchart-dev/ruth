@@ -177,7 +177,9 @@ def record_local_profile(
         raise ValueError("Exact driver/backend CUDA version unknown")
     # GPU UUID is used for local identity verification, never included in
     # public portable profile keys.
-    key = "/".join((hardware["architecture"], backend_cuda, gpu_cuda,
+    key = "/".join(("llama.cpp", hardware["architecture"],
+                    backend_cuda, gpu_cuda,
+                    hardware.get("toolkit_cuda") or "toolkit-unknown",
                     hardware["driver_version"], WHEEL_VERSION))
     record = data["runtime_measurements"].get(key, {
         "architecture": hardware["architecture"],
