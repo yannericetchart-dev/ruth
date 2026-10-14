@@ -1,9 +1,9 @@
 # Ruth — Roadmap del branch `model-profiling`
 
-> **Versione:** 1.5 — roadmap approvata e modificabile. Fase 02 verificata sul PC per Python e NVIDIA; proposta di wheel CUDA 13.2 pin+SHA256, installazione non ancora autorizzata.
+> **Versione:** 1.6 — roadmap approvata e modificabile. Fase 02: piano CUDA 13.2 verificato sul PC (47 test); catalogo dipendenze transitive e revisione sicurezza della cache richiesti prima dell'installer.
 > **Branch:** `model-profiling` (riscrittura da zero sulla base minimale di `main`).
 > **Riferimento storico:** `feature/minimal-chat` è consultabile per imparare dalle prove precedenti, **non** è una dipendenza né una base di codice da copiare.
-> **Stato attuale:** Fase 01 verificata; Fase 02: bootstrap, `.venv` e policy driver/CUDA verificati sul PC dell'utente (40 test superati). `llama-cpp-python` assente come previsto; pianificazione wheel CUDA bloccata a versione/hash in revisione, senza installazioni.
+> **Stato attuale:** Fase 01 verificata; Fase 02: ambiente e piano wheel CUDA verificati sul PC dell'utente (47 test superati, glibc 2.39, circa 69,94 GB liberi). `llama-cpp-python` non installato; dipendenze transitive da bloccare e politica di sicurezza cache da applicare nell'adapter. Nessuna installazione eseguita.
 
 ## 1. Obiettivo e confini
 
@@ -110,8 +110,10 @@ Il commit della fase contiene **solo** quanto concordato, inclusi test e documen
 - [x] Test simulati per Python/pacchetti host assenti e venv mancante, ambiente sbagliato, build CUDA CPU-only e tool host assenti.
 - [x] Individuato artefatto ufficiale CUDA 13.2 per Linux x86_64: `llama-cpp-python 0.3.36`, `llama_cpp_python-0.3.36-py3-none-manylinux_2_35_x86_64.whl`, dimensione `783614981` byte, SHA256 `808bc0344d77351efcd2aa19fc978799de9f07ce7313e135bbc202bf4aac136e`; provenienza release https://github.com/abetlen/llama-cpp-python/releases/tag/v0.3.36-cu132 (metadati API GitHub verificati il 14 ottobre 2026).
 - [x] Preparato `.venv/bin/python -m ruth_runtime.install_plan`, comando offline/read-only che controlla requisiti NVIDIA, glibc >=2.35, dimensione del wheel e spazio disponibile, senza scaricare o installare.
-- [ ] Verificare il nuovo piano e i relativi test sul PC dell'utente; `eligible_for_review` **non** equivale ad autorizzazione/installazione.
-- [ ] Bloccare **tutte** le dipendenze Python transitive con versioni e hash e garantire installazione solo binaria CUDA senza fallback CPU/source automatico.
+- [x] Piano e test verificati sul PC dell'utente: **47 test OK**, Python 3.12.3, driver 595.99.02 / CUDA 13.2, glibc 2.39, 69.940.981.760 byte disponibili, `eligible_for_review: true`; `installation_authorized: false`, `installation_implemented: false`.
+- [x] Verificati requisiti della release ufficiale `v0.3.36`: `typing-extensions>=4.5.0`, `numpy>=1.20.0`, `diskcache>=5.6.1`, `jinja2>=2.11.3`; transitive `MarkupSafe>=2.0` via Jinja2. Catalogo completo dei nomi nel piano; le versioni candidate e gli hash per i singoli wheel restano non approvati.
+- [ ] Bloccare **tutte** le dipendenze Python transitive con versioni e SHA256 e garantire installazione solo binaria CUDA senza fallback CPU/source automatico.
+- [ ] **Gate di sicurezza prima dell'adapter:** `diskcache <=5.6.3` ha l'advisory `GHSA-w8v5-vhqr-4h9v` (CVE-2025-69872) per pickle su cache modificabili da terzi. Il codice della release `v0.3.36` usa `diskcache` in `LlamaDiskCache`. Nel primo runtime Ruth **non consentire `LlamaDiskCache` né lettura di cache su disco non attendibili**; testare l'enforcement e non considerare l'advisory risolta soltanto perché la funzione è disabilitata. Fonte: https://github.com/advisories/GHSA-w8v5-vhqr-4h9v e https://github.com/abetlen/llama-cpp-python/blob/v0.3.36/llama_cpp/llama_cache.py.
 - [ ] Progettare installazione riproducibile nella sola `.venv`, verifica SHA256 pre-installazione, compatibilità compute capability GPU, rollback/gestione fallimenti e prove su macchina pulita.
 - [ ] Autorizzare separatamente download (~784 MB) ed eventuale installazione: nessuna azione è implicita nell'esito positivo del piano.
 - [x] L'utente ha eseguito `sh bootstrap.sh --plan`, creato/verificato `.venv` ed eseguito `.venv/bin/python -m ruth_runtime.dependencies`: **40 test passati**, Python 3.12.3 nella `.venv`, GPU NVIDIA driver 595.99.02, CUDA dichiarata 13.2, CMake/C++ presenti; `nvcc` opzionale mancante e `llama-cpp-python` non ancora installato.
@@ -349,7 +351,7 @@ Queste non sono domande da risolvere tutte subito: ciascuna viene affrontata **p
 | Roadmap | **Approvata, modificabile** | Approvazione generale del 14 ottobre 2026; revisioni future consentite |
 | 00 | **Bozza di contratto da revisionare** | Interfacce e catalogo dichiarativo nel codice, test CPU-only; nessun adapter operativo |
 | 01 | **Conclusa (inventario statico)** | 21 test dell'utente, hardware reale e snapshot processi NVIDIA verificati; recheck dinamico richiesto prima dei benchmark |
-| 02 | **Hardware/preflight verificati; piano wheel in revisione** | 40 test sul PC, driver 595.99.02 e CUDA 13.2 OK; wheel ufficiale 0.3.36-cu132 con SHA256 fissato; dipendenze/installer da definire |
+| 02 | **Piano wheel verificato; revisione dipendenze/sicurezza** | 47 test sul PC, CUDA 13.2/glibc/spazio OK; warning diskcache CVE-2025-69872 e 5 dipendenze Python da bloccare prima dell'installazione |
 | 03–16 | **Non iniziate** | Nessun runtime o profiling operativo ancora sviluppato |
 
-**Prossima azione:** eseguire i nuovi test e il piano read-only `.venv/bin/python -m ruth_runtime.install_plan` sul PC. Poi concordare blocco delle dipendenze transitive, dimensioni e autorizzazione esplicita prima di download/installazione CUDA. Inferenza non ancora verificata.
+**Prossima azione:** valutare un lockfile con hash dei wheel delle cinque dipendenze Python; preservare la policy di esclusione delle cache su disco e verificare l'adapter quando verrà scritto. Scaricamento/installazione restano subordinati a consenso esplicito; inferenza non ancora verificata.

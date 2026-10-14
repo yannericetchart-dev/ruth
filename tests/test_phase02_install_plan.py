@@ -5,6 +5,7 @@ from ruth_runtime.dependencies import DependencyCheck, DependencyReport
 from ruth_runtime.install_plan import (
     WHEEL_FILENAME, WHEEL_SHA256, WHEEL_SIZE_BYTES, WHEEL_SOURCE,
     build_installation_plan, parse_glibc_version,
+    DIRECT_DEPENDENCIES, TRANSITIVE_DEPENDENCIES, DISKCACHE_ADVISORY,
 )
 
 
@@ -84,6 +85,31 @@ class PlanTests(unittest.TestCase):
         empty = self.plan(free_bytes=None, disk_usage=lambda _: (_ for _ in ()).throw(OSError("blocked")))
         self.assertFalse(empty.eligible_for_review)
         self.assertIsNone(empty.wheel_download_fits)
+
+    def test_transitive_dependency_closure_is_explicit(self):
+        p = self.plan()
+        self.assertEqual(len(DIRECT_DEPENDENCIES), 4)
+        self.assertIn("jinja2>=2.11.3", p.direct_requirements)
+        self.assertIn("MarkupSafe>=2.0", TRANSITIVE_DEPENDENCIES)
+        self.assertIn("markupsafe", p.unpinned_dependencies)
+        self.assertEqual(len(p.unpinned_dependencies), 5)
+        self.assertFalse(p.dependency_lock_ready)
+
+    def test_diskcache_security_warning_cannot_be_ignored(self):
+        p = self.plan()
+        self.assertTrue(any(DISKCACHE_ADVISORY in warning
+                            for warning in p.security_advisories))
+        self.assertIn("DISABLED", p.disk_cache_policy)
+        self.assertIn("LlamaDiskCache", p.disk_cache_policy)
+        self.assertFalse(p.installation_ready)
+        self.assertTrue(p.eligible_for_review)
+        self.assertFalse(p.installation_authorized)
+
+    def test_no_machine_qualifies_for_installation_yet(self):
+        p = self.plan()
+        self.assertFalse(p.installation_ready)
+        self.assertFalse(p.installation_implemented)
+        self.assertFalse(p.installation_authorized)
 
     def test_json_compatible_payload_and_no_background_actions(self):
         import json

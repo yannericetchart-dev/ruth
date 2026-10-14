@@ -28,7 +28,21 @@ WHEEL_SHA256 = "808bc0344d77351efcd2aa19fc978799de9f07ce7313e135bbc202bf4aac136e
 WHEEL_SIZE_BYTES = 783614981
 MIN_GLIBC = (2, 35)
 # Names are upstream runtime requirements, NOT a lockfile or approved versions.
-UNLOCKED_DEPENDENCIES = ("numpy", "typing-extensions", "diskcache", "jinja2")
+# Direct constraints from pyproject.toml at upstream tag v0.3.36.
+# MarkupSafe is transitive via Jinja2. Versions and wheel SHA256s remain TO DO.
+DIRECT_DEPENDENCIES = (
+    "typing-extensions>=4.5.0",
+    "numpy>=1.20.0",
+    "diskcache>=5.6.1",
+    "jinja2>=2.11.3",
+)
+TRANSITIVE_DEPENDENCIES = ("MarkupSafe>=2.0",)
+UNLOCKED_DEPENDENCIES = (
+    "numpy", "typing-extensions", "diskcache", "jinja2", "markupsafe"
+)
+DISKCACHE_ADVISORY = "GHSA-w8v5-vhqr-4h9v / CVE-2025-69872"
+DISKCACHE_ADVISORY_URL = "https://github.com/advisories/GHSA-w8v5-vhqr-4h9v"
+
 
 
 @dataclass(frozen=True)
@@ -47,6 +61,12 @@ class InstallationPlan:
     filesystem_free_bytes: int | None
     wheel_download_fits: bool | None
     unpinned_dependencies: tuple[str, ...]
+    direct_requirements: tuple[str, ...]
+    transitive_requirements: tuple[str, ...]
+    security_advisories: tuple[str, ...]
+    disk_cache_policy: str
+    dependency_lock_ready: bool
+    installation_ready: bool
     eligible_for_review: bool
     installation_authorized: bool
     installation_implemented: bool
@@ -113,6 +133,11 @@ def build_installation_plan(
         "The package is pinned to an official cu132 Linux wheel; no source/CPU fallback.",
         "The GPU compute capability and native CUDA execution remain unverified.",
         "Upstream runtime dependencies are NOT yet version/hash locked.",
+        "diskcache <=5.6.3 has a known advisory (CVE-2025-69872): default pickle "
+        "deserialization is unsafe if untrusted users can write cache files. "
+        "The first Ruth runtime must not instantiate LlamaDiskCache.",
+        "No user-writable disk cache or untrusted cache deserialization is allowed. "
+        "Adapter-level enforcement/tests are not implemented yet.",
         "Downloading the wheel is not enough disk space for installation/extraction.",
         "Any download and package installation require a separate approved policy.",
     )
@@ -128,6 +153,15 @@ def build_installation_plan(
         filesystem_free_bytes=free_bytes,
         wheel_download_fits=fit,
         unpinned_dependencies=UNLOCKED_DEPENDENCIES,
+        direct_requirements=DIRECT_DEPENDENCIES,
+        transitive_requirements=TRANSITIVE_DEPENDENCIES,
+        security_advisories=(DISKCACHE_ADVISORY + " (" + DISKCACHE_ADVISORY_URL + ")",),
+        disk_cache_policy=(
+            "DISABLED for initial Ruth runtime: never create LlamaDiskCache; "
+            "no loading deserialized cache files; requires adapter-level tests"
+        ),
+        dependency_lock_ready=False,
+        installation_ready=False,
         eligible_for_review=bool(prereqs_ok and libc_ok and fit),
         installation_authorized=False,
         installation_implemented=False,
