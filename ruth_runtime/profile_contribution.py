@@ -79,6 +79,31 @@ def build_proposal(profile_file: Path, *, project_root: Path = PROJECT_ROOT) -> 
         "review_required": True,
         "measurements_pending": not bool(clean),
     }
+    observed = data.get("minimal_context_inference", [])
+    if not isinstance(observed, list) or len(observed) > 64:
+        raise ValueError("Malformed minimal-context evidence")
+    if observed:
+        safe_obs = []
+        fields = ("verified", "n_ctx", "n_batch", "n_ubatch",
+                  "generated_tokens", "full_gpu_offload_layers",
+                  "architecture", "driver_version", "cuda_backend",
+                  "llama_cpp_binding", "flash_attention",
+                  "kv_type_k", "kv_type_v", "production_context_qualified")
+        for entry in observed:
+            if not isinstance(entry, dict):
+                raise ValueError("Invalid native inference entry")
+            record = {k: entry.get(k) for k in fields}
+            if (record["verified"] is not True
+                or record["production_context_qualified"] is not False
+                or type(record["n_ctx"]) is not int or record["n_ctx"] < 1
+                or type(record["generated_tokens"]) is not int or record["generated_tokens"] < 1
+                or type(record["full_gpu_offload_layers"]) is not int
+                or record["full_gpu_offload_layers"] < 1):
+                raise ValueError("Minimal inference proof incomplete or overstated")
+            safe_obs.append(record)
+        proposal["minimal_context_inference"] = sorted(
+            safe_obs, key=lambda q:(q["architecture"], q["driver_version"],
+                                    q["cuda_backend"], q["n_ctx"]))
     raw = json.dumps(proposal, sort_keys=True, separators=(",", ":"))
     digest = hashlib.sha256(raw.encode("utf-8")).hexdigest()
     return {"proposal": proposal, "content_digest": digest,
@@ -105,9 +130,13 @@ def validate_submitted_proposal(
         raise ValueError("Unsafe or oversized submission")
     payload = json.loads(path.read_text(encoding="utf-8"))
     if (not isinstance(payload, dict)
-        or set(payload) != {"schema", "model", "runtime_measurements",
-                           "verified_inference", "production_qualified",
-                           "review_required", "measurements_pending"}
+        or set(payload) - {"schema", "model", "runtime_measurements",
+                          "verified_inference", "production_qualified",
+                          "review_required", "measurements_pending",
+                          "minimal_context_inference"}
+        or not {"schema", "model", "runtime_measurements",
+                "verified_inference", "production_qualified",
+                "review_required", "measurements_pending"}.issubset(payload)
         or payload["schema"] != "ruth-community-model-memory-proposal-v1"
         or payload["verified_inference"] is not False
         or payload["production_qualified"] is not False
@@ -161,6 +190,33 @@ def validate_submitted_proposal(
             if value is not None and (type(value) not in (int, float) or
                                        not 0 <= value < 1_000_000):
                 raise ValueError("Invalid CUDA buffer measurement")
+    minimal = payload.get("minimal_context_inference", [])
+    if not isinstance(minimal, list) or len(minimal) > 64:
+        raise ValueError("Invalid minimal CUDA inference records")
+    if minimal:
+        allowed_fields = {
+            "verified", "n_ctx", "n_batch", "n_ubatch",
+            "generated_tokens", "full_gpu_offload_layers",
+            "architecture", "driver_version", "cuda_backend",
+            "llama_cpp_binding", "flash_attention",
+            "kv_type_k", "kv_type_v", "production_context_qualified",
+        }
+        for entry in minimal:
+            if (not isinstance(entry, dict)
+                or set(entry) != allowed_fields
+                or entry["verified"] is not True
+                or entry["production_context_qualified"] is not False
+                or type(entry["n_ctx"]) is not int or entry["n_ctx"] < 1
+                or type(entry["generated_tokens"]) is not int or entry["generated_tokens"] < 1
+                or type(entry["full_gpu_offload_layers"]) is not int
+                or entry["full_gpu_offload_layers"] < 1
+                or not any(
+                    row.get("architecture") == entry["architecture"]
+                    and row.get("driver_version") == entry["driver_version"]
+                    and row.get("cuda_backend") == entry["cuda_backend"]
+                    and row.get("llama_cpp_binding") == entry["llama_cpp_binding"]
+                    for row in rows)):
+                raise ValueError("Unmatched or unverified GPU inference record")
     canonical = json.dumps(payload, sort_keys=True, separators=(",", ":"))
     digest = hashlib.sha256(canonical.encode("utf-8")).hexdigest()
     if parts[-1] != digest + ".json":
