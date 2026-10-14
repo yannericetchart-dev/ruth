@@ -1,6 +1,8 @@
 name: Ruth portable CUDA profile PR checks
 
 on:
+  push:
+    branches: [model-profiling]
   pull_request:
     branches: [model-profiling]
     paths:
