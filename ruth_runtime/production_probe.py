@@ -22,6 +22,7 @@ from .native_failure_diagnostics import diagnose_cuda_failure
 from .venv_packages import inspect_python_environment
 from .production_probe_worker import (
     SCHEMA, PREFIX, N_CTX, N_BATCH, N_UBATCH, MAX_TOKENS,
+    SUPPORTED_PINNED_QUANTS,
 )
 
 TIMEOUT = 360
@@ -91,15 +92,24 @@ def _empty(status: str, **updates) -> ProductionCandidateProbe:
 def probe_production_candidate(
     *, project_root: Path = PROJECT_ROOT,
     authorize_gpu_inference: bool = False,
+    quantization: str = "Q4_K_L",
     environment: Any = None,
     run: Callable[..., Any] = subprocess.run,
     verify_native: Callable[..., Any] = verify_native_library,
     discover_gpu: Callable[..., tuple[str, str]] = _select_unique_gpu,
 ) -> ProductionCandidateProbe:
     """Probe only after explicit GPU consent and verified local license manifest."""
+    def outcome(status: str, **updates) -> ProductionCandidateProbe:
+        return _empty(
+            status, candidate=f"gemma-2-9B-it/gguf/{quantization}", **updates,
+        )
+
     if not authorize_gpu_inference:
-        return _empty("gpu_inference_not_authorized",
-                      error="Explicit --allow-gpu-inference required")
+        return outcome("gpu_inference_not_authorized",
+                       error="Explicit --allow-gpu-inference required")
+    if quantization not in SUPPORTED_PINNED_QUANTS:
+        return outcome("quantization_not_approved_for_probe",
+                       error="Only explicitly selected pinned Gemma Q4_K_L or Q4_K_M")
     root = Path(project_root)
     env = environment if environment is not None else inspect_python_environment()
     if not (env.interpreter_in_project_venv
@@ -107,26 +117,26 @@ def probe_production_candidate(
             and Path(env.project_root).resolve() == root.resolve()
             and Path(env.interpreter).resolve() ==
                 (root / ".venv/bin/python").resolve()):
-        return _empty("invalid_project_venv")
+        return outcome("invalid_project_venv")
     try:
-        selected = select_model("production", project_root=root)
+        selected = select_model("production", quantization=quantization, project_root=root)
         if (selected.family, selected.model, selected.version,
                 selected.quantization) != (
-                    "gemma", "gemma-2", "gemma-2-9B-it", "Q4_K_L"):
-            return _empty("unexpected_production_candidate")
+                    "gemma", "gemma-2", "gemma-2-9B-it", quantization):
+            return outcome("unexpected_production_candidate")
         verified, model, reason = _valid_local_gguf(root, selected)
         if not verified:
-            return _empty("model_integrity_or_license_unverified", error=reason)
+            return outcome("model_integrity_or_license_unverified", error=reason)
         native = verify_native(project_root=root, environment=env)
         if native.status != "native_library_dual_abi_verified":
-            return _empty("native_runtime_unverified", model_verified=True,
+            return outcome("native_runtime_unverified", model_verified=True,
                           error=native.status)
         uuid, pci = discover_gpu(run=run)
         child_env = {**os.environ, "CUDA_VISIBLE_DEVICES": uuid,
                      "PYTHONNOUSERSITE": "1", "PYTHONDONTWRITEBYTECODE": "1"}
         child_env.pop("LLAMA_CPP_LIB_PATH", None)
         cmd = [str(root / ".venv/bin/python"), "-I", "-c", COMMAND,
-               str(root), str(root), uuid]
+               str(root), str(root), uuid, quantization]
         proc = run(
             cmd, cwd=str(root), capture_output=True, text=True,
             check=False, timeout=TIMEOUT, env=child_env,
@@ -137,7 +147,7 @@ def probe_production_candidate(
             native = diagnose_cuda_failure(
                 proc.stderr or "", returncode=proc.returncode,
             )
-            return _empty(
+            return outcome(
                 "worker_failed_or_no_result", model_verified=True,
                 native_library_verified=True, gpu_uuid=uuid,
                 gpu_pci_bus=pci,
@@ -154,13 +164,14 @@ def probe_production_candidate(
                 proc.stderr or "", worker_error=message,
                 returncode=proc.returncode,
             )
-            return _empty(
+            return outcome(
                 "production_min_context_worker_failed",
                 model_verified=True, native_library_verified=True,
                 gpu_uuid=uuid, gpu_pci_bus=pci,
                 error=message, **native,
             )
         if result.get("purpose") != "production" or \
+                result.get("quantization") != quantization or \
                 result.get("gpu_uuid") != uuid or \
                 type(result.get("worker_pid")) is not int or \
                 result["worker_pid"] < 1 or \
@@ -184,7 +195,7 @@ def probe_production_candidate(
         observed = result.get("gpu_process_observed") is True
         loaded = result.get("model_loaded") is True
         passed = full and observed and loaded and tokens > 0
-        return _empty(
+        return outcome(
             "gemma_min_context_gpu_verified" if passed
             else "gemma_min_context_inconclusive",
             model_verified=True, native_library_verified=True,
@@ -200,5 +211,5 @@ def probe_production_candidate(
         )
     except (OSError, RuntimeError, ValueError, TypeError,
             subprocess.SubprocessError, json.JSONDecodeError) as exc:
-        return _empty("gemma_min_context_probe_failed",
+        return outcome("gemma_min_context_probe_failed",
                       error=type(exc).__name__ + ": " + str(exc)[:250])

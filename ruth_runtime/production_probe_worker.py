@@ -27,15 +27,18 @@ N_UBATCH = 64
 MAX_TOKENS = 24
 SEED = 42
 PROMPT = "Rispondi in italiano con una sola parola: ciao"
+SUPPORTED_PINNED_QUANTS = frozenset({"Q4_K_L", "Q4_K_M"})
 
 
-def run_production_worker(root: Path, gpu_uuid: str) -> dict:
+def run_production_worker(root: Path, gpu_uuid: str, *, quantization: str = "Q4_K_L") -> dict:
     root = root.resolve(strict=True)
-    choice = select_model("production", project_root=root)
+    if quantization not in SUPPORTED_PINNED_QUANTS:
+        raise RuntimeError("Quantization not approved for CUDA candidate probe")
+    choice = select_model("production", quantization=quantization, project_root=root)
     if (choice.family, choice.model, choice.version, choice.quantization) != (
-        "gemma", "gemma-2", "gemma-2-9B-it", "Q4_K_L"
+        "gemma", "gemma-2", "gemma-2-9B-it", quantization
     ):
-        raise RuntimeError("Only pinned Gemma 2 9B IT Q4_K_L allowed")
+        raise RuntimeError("Only explicitly selected pinned Gemma 2 9B IT allowed")
     file = _local_path(root, choice)
     if file.is_symlink() or not file.is_file() or \
             file.stat().st_size != choice.expected_size_bytes:
@@ -75,6 +78,7 @@ def run_production_worker(root: Path, gpu_uuid: str) -> dict:
         watcher.join(timeout=8)
     return {
         "schema": SCHEMA, "purpose": "production",
+        "quantization": quantization,
         "model_loaded": model_loaded,
         "generated_text_sha256": result_hash,
         "completion_tokens": generated, "n_ctx": N_CTX,
@@ -90,10 +94,10 @@ def run_production_worker(root: Path, gpu_uuid: str) -> dict:
 
 def main(args: list[str] | None = None) -> int:
     argv = args if args is not None else sys.argv[1:]
-    if len(argv) != 2:
-        raise SystemExit("Expected project root and selected GPU UUID")
+    if len(argv) != 3:
+        raise SystemExit("Expected project root, selected GPU UUID and quantization")
     try:
-        result = run_production_worker(Path(argv[0]), argv[1])
+        result = run_production_worker(Path(argv[0]), argv[1], quantization=argv[2])
         print(PREFIX + json.dumps(result, sort_keys=True))
         return 0 if result["model_loaded"] and result["completion_tokens"] > 0 else 2
     except (OSError, RuntimeError, ValueError, ImportError) as exc:

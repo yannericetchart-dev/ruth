@@ -56,8 +56,8 @@
           "expected_size_bytes": 5983265728,
           "approx_size_mb": 5983,
           "revision": "d731033f3dc4018261fd39896e50984d398b4ac5",
-          "assessment": "selected_for_minimum_context_native_cuda_probe_not_qualified",
-          "note": "Chosen by Phase 05 quality heuristic with full free VRAM. GPU fit, runtime allocations and context not verified. Gemma license acknowledgement required."
+          "assessment": "full_gpu_cuda_allocation_failed_on_rtx4050_6gib_nctx128",
+          "note": "Verified GGUF pin and native CUDA library, but actual RTX 4050 6GiB n_ctx=128 full-GPU load failed: cudaMalloc out of memory when requesting 5700.31 MiB (observed 2026-10-14; available NVIDIA snapshot 5759 MiB). Hardware-specific result, not a universal backend incompatibility; retain for audit and explicit retries only."
         },
         {
           "quantization": "Q4_K_M",
@@ -67,8 +67,8 @@
           "expected_sha256": "13b2a7b4115bbd0900162edcebe476da1ba1fc24e718e8b40d32f6e300f56dfe",
           "approx_size_mb": 5760,
           "revision": "d731033f3dc4018261fd39896e50984d398b4ac5",
-          "assessment": "unselected_alternative_requires_real_hardware_profiling",
-          "note": "GGUF third-party quantization; Google Gemma terms apply; 6GiB VRAM does not guarantee full GPU residency.",
+          "assessment": "next_calibration_candidate_not_yet_gpu_verified",
+          "note": "Second-highest-ranked registered Gemma GGUF after Q4_K_L CUDA OOM on RTX 4050 6GiB, 2026-10-14. SHA256/revision/size pinned. No implicit download or GPU load; explicit --quantization Q4_K_M + consent and full-GPU verification required.",
           "expected_size_bytes": 5761057728
         }
       ]
@@ -101,5 +101,5 @@
       ]
     }
   ],
-  "scope": "Production Gemma Q4_K_L selected and pinned, fallback quantization Q4_K_M pinned, test Llama Q4_K_M verified. No download, GPU inference or model-license acceptance authorized by catalog edits."
+  "scope": "Gemma Q4_K_L still pinned as default but NOT GPU-qualified on RTX4050 6GiB (native cudaMalloc OOM at n_ctx=128). Q4_K_M is a distinct pinned next calibration candidate, requiring explicit CLI selection, separate license/download authorization and real CUDA test. Llama Q4_K_M test baseline verified; no CPU fallback."
 }

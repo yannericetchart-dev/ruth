@@ -29,8 +29,8 @@ PCI = "00000000:01:00.0"
 GGUF = b"GGUF" + b"gemma synthetic mock" * 12
 
 
-def fixture(root, *, accepted=True):
-    original = select_model("production")
+def fixture(root, *, accepted=True, quantization="Q4_K_L"):
+    original = select_model("production", quantization=quantization)
     choice = replace(
         original, expected_size_bytes=len(GGUF),
         expected_sha256=hashlib.sha256(GGUF).hexdigest(),
@@ -53,7 +53,7 @@ def fixture(root, *, accepted=True):
 class FakeProcess:
     def __init__(self, *, layers=51, total=51, observed=True, tokens=12,
                  pid=3456, mem=5800, exitcode=0, error=None,
-                 native_log=None, emit_result=True):
+                 native_log=None, emit_result=True, quantization="Q4_K_L"):
         self.calls = []
         self.layers, self.total = layers, total
         self.observed, self.tokens = observed, tokens
@@ -61,6 +61,7 @@ class FakeProcess:
         self.error = error
         self.native_log = native_log
         self.emit_result = emit_result
+        self.quantization = quantization
 
     def __call__(self, cmd, **kw):
         self.calls.append((cmd, kw))
@@ -69,8 +70,10 @@ class FakeProcess:
         assert kw["env"]["CUDA_VISIBLE_DEVICES"] == UUID
         assert kw["env"]["PYTHONNOUSERSITE"] == "1"
         assert kw["timeout"] == 360
+        assert cmd[-1] in ("Q4_K_L", "Q4_K_M")
         data = {
             "schema": SCHEMA, "purpose": "production",
+            "quantization": self.quantization,
             "gpu_uuid": UUID, "worker_pid": self.pid,
             "model_loaded": True, "completion_tokens": self.tokens,
             "gpu_process_observed": self.observed,
@@ -123,14 +126,19 @@ class GemmaProductionPinTests(unittest.TestCase):
 
 
 class GemmaMinimumContextProbeTests(unittest.TestCase):
-    def run_fake(self, root, *, worker=None, accepted=True):
-        choice, path, env = fixture(root, accepted=accepted)
-        process = worker if worker is not None else FakeProcess()
+    def run_fake(self, root, *, worker=None, accepted=True,
+                 quantization="Q4_K_L"):
+        choice, path, env = fixture(
+            root, accepted=accepted, quantization=quantization,
+        )
+        process = worker if worker is not None else FakeProcess(
+            quantization=quantization,
+        )
         with patch("ruth_runtime.production_probe.select_model",
                    return_value=choice):
             result = probe_production_candidate(
                 project_root=root, authorize_gpu_inference=True,
-                environment=env, run=process,
+                quantization=quantization, environment=env, run=process,
                 verify_native=lambda **k: SimpleNamespace(
                     status="native_library_dual_abi_verified"),
                 discover_gpu=lambda **k: (UUID, PCI),
@@ -296,6 +304,64 @@ class GemmaMinimumContextProbeTests(unittest.TestCase):
         self.assertLessEqual(len(report["native_log_excerpt"]), 8)
         self.assertNotIn("/home/example", repr(report["native_log_excerpt"]))
 
+    def test_explicit_q4_km_can_be_probed_without_changing_default(self):
+        with TemporaryDirectory() as temp:
+            result, worker = self.run_fake(
+                Path(temp), quantization="Q4_K_M",
+            )
+            self.assertEqual(result.candidate, "gemma-2-9B-it/gguf/Q4_K_M")
+            self.assertEqual(result.status, "gemma_min_context_gpu_verified")
+            self.assertTrue(result.gpu_inference_verified)
+            self.assertEqual(worker.calls[0][0][-1], "Q4_K_M")
+            self.assertEqual(select_model("production").quantization, "Q4_K_L")
+
+    def test_q4_km_missing_local_file_cannot_use_q4_kl_pinned_gguf(self):
+        with TemporaryDirectory() as temp:
+            root = Path(temp)
+            _, path, env = fixture(root, quantization="Q4_K_L")
+            self.assertTrue(path.is_file())
+            with patch("ruth_runtime.production_probe.select_model",
+                       wraps=select_model):
+                result = probe_production_candidate(
+                    project_root=root, authorize_gpu_inference=True,
+                    quantization="Q4_K_M", environment=env,
+                    verify_native=lambda **kw: self.fail("No CUDA"),
+                )
+            self.assertEqual(result.status, "model_integrity_or_license_unverified")
+            self.assertEqual(result.candidate, "gemma-2-9B-it/gguf/Q4_K_M")
+            self.assertFalse(result.model_loaded)
+
+    def test_unlisted_quantization_rejected_before_any_native_or_network(self):
+        result = probe_production_candidate(
+            authorize_gpu_inference=True, quantization="IQ4_XS",
+            run=lambda *a, **kw: self.fail("No subprocess"),
+        )
+        self.assertEqual(result.status, "quantization_not_approved_for_probe")
+        self.assertFalse(result.gpu_inference_verified)
+
+    def test_worker_result_wrong_quantization_must_never_pass(self):
+        with TemporaryDirectory() as temp:
+            result, _ = self.run_fake(
+                Path(temp), quantization="Q4_K_M",
+                worker=FakeProcess(quantization="Q4_K_L"),
+            )
+            self.assertEqual(result.status, "gemma_min_context_probe_failed")
+            self.assertFalse(result.gpu_inference_verified)
+
+    def test_native_real_q4_kl_cuda_oom_text_classified_from_user_output(self):
+        log = "\n".join((
+            "ggml_backend_cuda_buffer_type_alloc_buffer: allocating 5700.31 MiB on device 0: cudaMalloc failed: out of memory",
+            "llama_model_load: error loading model: unable to allocate CUDA0 buffer",
+            "llama_model_load_from_file_impl: failed to load model",
+        ))
+        diagnosis = diagnose_cuda_failure(log, returncode=2)
+        self.assertEqual(diagnosis["native_failure_category"],
+                         "cuda_out_of_memory_reported")
+        self.assertIn("explicit_out_of_memory",
+                      diagnosis["native_failure_signals"])
+        self.assertEqual(diagnosis["native_cuda_buffer_mib_reported"], 5700.31)
+        self.assertEqual(diagnosis["worker_exit_code"], 2)
+
     def test_worker_hash_change_refused(self):
         with TemporaryDirectory() as temp:
             root = Path(temp)
@@ -339,6 +405,39 @@ class GemmaProbeWorkerTests(unittest.TestCase):
             self.assertTrue(report["gpu_process_observed"])
             self.assertFalse(report["cpu_fallback_selected"])
 
+    def test_worker_explicit_q4_km_uses_distinct_pinned_file(self):
+        with TemporaryDirectory() as temp:
+            root = Path(temp)
+            choice, path, _ = fixture(root, quantization="Q4_K_M")
+            class Session:
+                def generate_report(self, prompt, *, max_tokens):
+                    return {"completion_tokens": 7, "text": "ciao"}
+                def close(self):
+                    self.closed = True
+            sess = Session()
+            with patch("ruth_runtime.production_probe_worker.select_model",
+                       return_value=choice) as selector, \
+                 patch("ruth_runtime.production_probe_worker.CudaLlamaAdapter") as adapter, \
+                 patch("ruth_runtime.production_probe_worker.measure_worker_gpu",
+                       side_effect=lambda pid, uuid, stop, samples: samples.append(1024)), \
+                 patch.dict("os.environ", {"CUDA_VISIBLE_DEVICES": UUID}):
+                adapter.return_value.load.return_value = sess
+                result = run_production_worker(root, UUID, quantization="Q4_K_M")
+                self.assertEqual(selector.call_args.kwargs["quantization"], "Q4_K_M")
+                self.assertEqual(adapter.return_value.load.call_args.args[0], path)
+            self.assertEqual(result["quantization"], "Q4_K_M")
+            self.assertEqual(result["completion_tokens"], 7)
+            self.assertTrue(result["gpu_process_observed"])
+            self.assertTrue(sess.closed)
+
+    def test_worker_rejects_unpinned_candidate_before_backend(self):
+        with TemporaryDirectory() as temp:
+            with patch("ruth_runtime.production_probe_worker.CudaLlamaAdapter",
+                       side_effect=AssertionError("No model loading")), \
+                 patch.dict("os.environ", {"CUDA_VISIBLE_DEVICES": UUID}):
+                with self.assertRaises(RuntimeError):
+                    run_production_worker(Path(temp), UUID, quantization="IQ4_XS")
+
     def test_worker_rejects_wrong_gpu_before_native_import(self):
         with TemporaryDirectory() as temp:
             root = Path(temp)
@@ -373,6 +472,21 @@ class ProductionProbeCliTests(unittest.TestCase):
             self.assertEqual(main([
                 "models", "probe-production", "--allow-gpu-inference"
             ]), 0)
+            self.assertTrue(probe.call_args.kwargs["authorize_gpu_inference"])
+            self.assertEqual(probe.call_args.kwargs["quantization"], "Q4_K_L")
+
+    def test_cli_explicit_q4_km_is_passed_to_production_probe(self):
+        with (patch("ruth_runtime.production_probe.probe_production_candidate") as probe,
+              patch("sys.stdout", new_callable=StringIO)):
+            probe.return_value = SimpleNamespace(
+                gpu_inference_verified=False,
+                to_dict=lambda: {"status": "model_integrity_or_license_unverified"},
+            )
+            self.assertEqual(main([
+                "models", "probe-production", "--purpose", "production",
+                "--quantization", "Q4_K_M", "--allow-gpu-inference",
+            ]), 2)
+            self.assertEqual(probe.call_args.kwargs["quantization"], "Q4_K_M")
             self.assertTrue(probe.call_args.kwargs["authorize_gpu_inference"])
 
     def test_rejects_test_purpose_for_production_probe(self):

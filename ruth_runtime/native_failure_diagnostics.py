@@ -30,6 +30,10 @@ _SIGNALS = (
 _BUFFER_RE = re.compile(
     r"\bCUDA\d+\s+buffer size\s*=\s*(\d+(?:\.\d+)?)\s*MiB\b", re.I,
 )
+_CUDA_REQUEST_RE = re.compile(
+    r"ggml_backend_cuda_buffer_type_alloc_buffer:\s*allocating\s+"
+    r"(\d+(?:\.\d+)?)\s*MiB\s+on\s+device\s+\d+", re.I,
+)
 _PREFIX = re.compile(
     r"^(?:ggml_cuda|ggml_backend|llama_model|llama_load|"
     r"llama_context|gguf|CUDA|ggml-cuda|ggml_backend_cuda)", re.I,
@@ -73,8 +77,13 @@ def diagnose_cuda_failure(
         category = "native_model_load_failed_cause_unknown"
     else:
         category = "native_failure_cause_unknown"
-    matches = [_BUFFER_RE.search(line) for line in source.splitlines()]
-    mib = [float(m.group(1)) for m in matches if m is not None]
+    matches = [
+        match
+        for line in source.splitlines()
+        for expr in (_BUFFER_RE, _CUDA_REQUEST_RE)
+        if (match := expr.search(line)) is not None
+    ]
+    mib = [float(m.group(1)) for m in matches]
     return {
         "native_failure_category": category,
         "native_failure_signals": list(detected),

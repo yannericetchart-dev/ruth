@@ -167,6 +167,7 @@ def main(argv: list[str] | None = None) -> int:
                     raise CatalogError("Production probe only accepts --purpose production")
                 result = probe_production_candidate(
                     authorize_gpu_inference=args.allow_gpu_inference,
+                    quantization=choice.quantization,
                 )
                 _print({"action": "models", **result.to_dict()})
                 return 0 if result.gpu_inference_verified else 2

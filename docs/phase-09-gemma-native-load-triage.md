@@ -1,5 +1,24 @@
 # Ruth — Diagnostica del primo caricamento Gemma Q4_K_L (Fase 09)
 
+## Aggiornamento: CUDA OOM dimostrato dai log nativi (14 ottobre 2026)
+
+Dopo il rilascio della diagnostica, la ripetizione del probe su RTX
+4050 ha confermato la causa: `cudaMalloc failed: out of memory`
+mentre il runtime tentava `allocating 5700.31 MiB on device 0`.
+Risultato `native_failure_category=cuda_out_of_memory_reported`,
+segnali `explicit_out_of_memory`, `cuda_allocation_failed`,
+`model_load_failed_generic`. GGUF/hash e ABI nativa verificati,
+ma `model_loaded=false` e **nessun token generato**.
+
+La diagnosi sotto riportata documenta il primo tentativo, nel
+quale lo stderr non era ancora esposto. **Per lo stato corrente
+fa fede l'OOM confermato**, descritto con il prossimo candidato in
+`docs/phase-09-gemma-oom-next-candidate.md`. Non ripetere senza motivo
+Q4_K_L; proseguire solo con Q4_K_M esplicitamente selezionata,
+scaricata e verificata con le consuete autorizzazioni separate.
+
+
+
 ## Esito realmente osservato — 14 ottobre 2026
 
 Comando eseguito sul PC:
