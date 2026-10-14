@@ -127,7 +127,7 @@ class ProfileContributionTests(unittest.TestCase):
                  patch("ruth_runtime.profile_registry.record_local_profile",
                        return_value={"status": "local_profile_updated",
                                      "profile_file": str(profile)}) as record, \
-                 patch("ruth_runtime.profile_contribution.publish_proposal_pr",
+                 patch("ruth_runtime.profile_contribution.sync_profile_to_git",
                        return_value={"status": "git_cli_missing",
                                      "git_updated": False}):
                 code = main(["models", "profiles", "--host",
@@ -142,6 +142,43 @@ class ProfileContributionTests(unittest.TestCase):
             self.assertEqual(result["git_publication"]["status"], "git_cli_missing")
             self.assertTrue(result["local_profile_retained"])
             self.assertEqual(record.call_count, 1)
+
+    def test_cli_implicit_owner_sync_is_not_additional_authorization(self):
+        with TemporaryDirectory() as tmp:
+            profile = self.prepare(Path(tmp))
+            matrix = {"status": "profile_catalog_ready", "profiles": []}
+            with patch("sys.stdout", new_callable=StringIO) as output, \
+                 patch("ruth_runtime.model_memory_profiles.build_profile_matrix",
+                       return_value=matrix), \
+                 patch("ruth_runtime.profile_registry.record_local_profile",
+                       return_value={"status": "local_profile_updated",
+                                     "profile_file": str(profile)}), \
+                 patch("ruth_runtime.profile_contribution.sync_owner_profile_if_authenticated",
+                       return_value={"status": "git_profile_updated_model_profiling",
+                                     "git_updated": True, "branch": "model-profiling"}) as sync:
+                code = main(["models", "profiles", "--host", "--record-local",
+                             "--evidence-file", "/tmp/measurement.json"])
+            self.assertEqual(code, 0)
+            self.assertTrue(sync.called)
+            body = json.loads(output.getvalue())
+            self.assertEqual(body["git_publication"]["status"],
+                             "git_profile_updated_model_profiling")
+
+    def test_cli_owner_can_explicitly_sync_without_consent_flag(self):
+        with TemporaryDirectory() as tmp:
+            profile = self.prepare(Path(tmp))
+            matrix = {"status": "profile_catalog_ready", "profiles": []}
+            with patch("sys.stdout", new_callable=StringIO) as output, \
+                 patch("ruth_runtime.model_memory_profiles.build_profile_matrix",
+                       return_value=matrix), \
+                 patch("ruth_runtime.profile_contribution.sync_profile_to_git",
+                       return_value={"status": "git_profile_updated_model_profiling",
+                                     "git_updated": True, "branch": "model-profiling"}) as sync:
+                code = main(["models", "profiles", "--profile-file", str(profile),
+                             "--sync-git"])
+            self.assertEqual(code, 0)
+            self.assertTrue(sync.called)
+            self.assertTrue(json.loads(output.getvalue())["git_publication"]["git_updated"])
 
     def test_without_consent_never_calls_external_process(self):
         result = publish_proposal_pr({}, permit_external_publication=False,
@@ -159,7 +196,7 @@ class ProfileContributionTests(unittest.TestCase):
         self.assertEqual(result["status"], "git_cli_missing")
         self.assertFalse(result["git_updated"])
         self.assertTrue(result["retryable"])
-        self.assertTrue(result["review_required"])
+        self.assertIsNone(result["review_required"])
 
     def test_tampered_digest_blocked_before_auth(self):
         with TemporaryDirectory() as tmp:
