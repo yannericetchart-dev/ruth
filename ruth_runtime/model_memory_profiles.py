@@ -20,7 +20,7 @@ from .model_catalog import load_catalog
 CAPACITY_FILE = Path("catalog/gpu_capacity_profiles.json")
 _MIB = 1024 * 1024
 _CARD = re.compile(r"card[0-9]+$")
-_PCI_BUS = re.compile(r"^([0-9a-fA-F]{4,8}):([0-9a-fA-F]{2}):([0-9a-fA-F]{2})\\.([0-7])$")
+_PCI_BUS = re.compile(r"^([0-9a-fA-F]{4,8}):([0-9a-fA-F]{2}):([0-9a-fA-F]{2})\.([0-7])$")
 
 
 def _canonical_pci_bus(raw: str) -> str | None:
@@ -101,7 +101,6 @@ def _match_evidence(evidence: dict | None, model: dict) -> tuple[dict | None, st
     if evidence.get("mode") == "weights" and evidence.get("weights_loaded") is False:
         native = _positive_finite(evidence.get("native_cuda_buffer_mib_reported"))
     if native is None:
-
         if not isinstance(buffers, list):
             return None, "malformed_native_buffers"
         cuda_weights = [_positive_finite(x.get("mib"))
