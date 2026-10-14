@@ -35,6 +35,7 @@ from .mapping_grouping import (
 from .mapping_native_validation import verify_override_logs
 from .native_memory import parse_native_memory
 from .worker_failure import analyze_worker_failure
+from .kv_worker_infrastructure import worker_import_failure
 
 
 SCHEMA_VERSION = 4
@@ -405,6 +406,11 @@ def probe_native_mapping(model_path: Path, model_id: str, trial: dict,
     report["success"] = success
     if success:
         report["failure_class"] = None
+    elif worker_import_failure({
+        "success": False,
+        "failure_diagnostics": report,
+    }):
+        report["failure_class"] = "worker_python_module_import_error"
     elif report.get("suspected_cuda_oom"):
         report["failure_class"] = "native_cuda_oom"
     elif report.get("native_cuda_resource_allocation_failed"):
