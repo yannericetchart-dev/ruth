@@ -375,13 +375,18 @@ def run_single_to_512(
     *, census_path: Path, output: Path, target_ctx: int = 512,
     max_new_loads: int | None = None, max_new_benchmarks: int | None = None,
     benchmark_repeats: int = 2, timeout: int = 600,
+    retry_failed_inferences: int = 0, retry_only: bool = False,
     progress=None, load_probe=probe_load_only,
     inference_probe=probe_native_mapping,
 ) -> dict:
     """Plan once, load-only once each, infer only on native-validated loads."""
     if (type(benchmark_repeats) is not int
-        or not 1 <= benchmark_repeats <= 10 or
-        any(v is not None and (type(v) is not int or v < 1)
+        or not 1 <= benchmark_repeats <= 10
+        or type(retry_failed_inferences) is not int
+        or retry_failed_inferences < 0
+        or type(retry_only) is not bool
+        or (retry_only and retry_failed_inferences == 0)
+        or any(v is not None and (type(v) is not int or v < 1)
             for v in (max_new_loads, max_new_benchmarks))):
         raise ValueError("Budget o ripetizioni non validi.")
     source = Path(census_path).expanduser().resolve()
@@ -454,6 +459,27 @@ def run_single_to_512(
                     tokens=p["generated_tokens"]))
         ):
             raise ValueError("Checkpoint benchmark non valido: " + name)
+    # Optional diagnostic replay: keep the original failure intact in
+    # inference_history and only replay previously FAILED inferences.
+    # Runtime controls intentionally do not alter the checkpoint identity.
+    # The user can inspect old versus new CUDA stderr in one report.
+    retried_names = set()
+    for item in ranked:
+        if len(retried_names) >= retry_failed_inferences:
+            break
+        name = item["tensor"]
+        entry = entries.get(name)
+        if not entry:
+            continue
+        prior = entry.get("inference")
+        if (not isinstance(prior, dict) or prior.get("success") is not False
+            or entry.get("load_only", {}).get("success") is not True):
+            continue
+        history = entry.setdefault("inference_history", [])
+        if not isinstance(history, list):
+            raise ValueError("Checkpoint history non valido: " + name)
+        history.append(entry.pop("inference"))
+        retried_names.add(name)
     control = initial.get("control_load_only")
     report = {
         "schema": SCHEMA, "parameters": identity,
@@ -577,9 +603,13 @@ def run_single_to_512(
     new_benchmarks = 0
     for item in ranked:
         name = item["tensor"]
+        if retry_only and name not in retried_names:
+            continue
         entry = entries.setdefault(name, {})
         trial = native_tensor_trial(layout, [name])
         if "load_only" not in entry:
+            if retry_only:
+                raise ValueError("Retry diagnostico senza caricamento verificato.")
             if max_new_loads is not None and new_loads >= max_new_loads:
                 break
             try:
