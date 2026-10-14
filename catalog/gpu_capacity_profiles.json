@@ -1,0 +1,23 @@
+{
+  "schema": "ruth-gpu-capacity-classes-v1",
+  "backend": "cuda",
+  "description": "Reusable nominal VRAM classes, not measured free memory and not proof of model compatibility. Device identity and observed failures live only in local probe results.",
+  "vram_classes_gib": [
+    4,
+    6,
+    8,
+    10,
+    12,
+    16,
+    24,
+    32,
+    48
+  ],
+  "unlisted_device_policy": "use_detected_total_vram_and_actual_free_memory_without_rejecting_unknown_size",
+  "selection_policy": "highest_quality_candidate_fitting_current_free_vram_then_verify_with_real_full_gpu_probe",
+  "memory_reserve_mib": 0,
+  "require_gpu_exclusivity_for_probes": true,
+  "require_full_gpu_offload_for_production": true,
+  "failed_probe_policy": "record_local_evidence_only_do_not_blacklist_generic_class",
+  "context_policy": "start_small_then_calibrate_after_verified_load"
+}
