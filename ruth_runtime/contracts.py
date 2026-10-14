@@ -46,6 +46,10 @@ class DeviceInfo:
     name: str
     total_memory_bytes: int | None = None
     available_memory_bytes: int | None = None
+    # Optional hardware identifiers/telemetry: NOT backend compatibility evidence.
+    pci_address: str | None = None
+    uuid: str | None = None
+    driver: str | None = None
 
 
 @dataclass(frozen=True)

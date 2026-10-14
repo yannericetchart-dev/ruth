@@ -212,4 +212,4 @@ Questo file è **temporaneo** e serve a discutere la fase 00. Dopo approvazione 
 - Nessun adapter, driver, downloader, profiling o runtime di inferenza è stato implementato. I test eseguiti non costituiscono verifica CUDA.
 - **Punto di controllo:** revisione e approvazione del contratto prima della Fase 01.
 
-**Stato finale della fase 00:** non raggiunto; matrice e D1–D7 restano in revisione. Esiste solo una bozza API dichiarativa, da modificare liberamente.
+**Stato di fase 00:** struttura a quattro livelli e singolo stack iniziale NVIDIA/CUDA/llama.cpp/llama_cpp_python adottati come base della fase 01 su istruzione dell'utente. Le decisioni quantitative D3–D7 restano da chiudere prima delle fasi che le richiedono. La proposta rimane temporanea; nessuna inferenza è stata implementata.

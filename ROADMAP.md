@@ -3,7 +3,7 @@
 > **Versione:** 1.2 — roadmap generale approvata il 14 ottobre 2026, sempre modificabile. Chiarimento sullo **stack operativo unico** e sulla classificazione di GGML CPU; specifiche della fase 00 ancora in revisione.
 > **Branch:** `model-profiling` (riscrittura da zero sulla base minimale di `main`).
 > **Riferimento storico:** `feature/minimal-chat` è consultabile per imparare dalle prove precedenti, **non** è una dipendenza né una base di codice da copiare.
-> **Stato attuale:** roadmap generale approvata; requisiti tecnici ancora da ratificare. Avviata una bozza di contratti Python e catalogo dichiarativo, senza backend, rilevamento hardware, download o profiling eseguibili.
+> **Stato attuale:** contratti preliminari e registro dichiarativo presenti. **Fase 01: inventario hardware implementato per revisione e test locale**, ancora da verificare sulla macchina NVIDIA dell'utente. Nessun backend CUDA, inferenza, download o profiling operativo.
 
 ## 1. Obiettivo e confini
 
@@ -83,16 +83,17 @@ Il commit della fase contiene **solo** quanto concordato, inclusi test e documen
 - **Output:** specifica versionata delle policy e degli stati; nessun profiling reale.
 - **Gate:** l'utente approva ambito, comandi e comportamento dei fallback.
 
-### Fase 01 — Rilevamento dell'hardware
-- [ ] Inventario CPU: architettura, istruzioni rilevanti, core/thread.
-- [ ] Inventario RAM e memoria realmente disponibile.
-- [ ] Inventario GPU vendor-neutral (NVIDIA, AMD, Intel come identificatori): produttore, nome, ID stabile quando disponibile, driver, capacità e memoria libera; provider NVIDIA testato per primo, altri `TO DO` fino a verifica.
-- [ ] Identificare più GPU e le restrizioni di visibilità dei dispositivi.
-- [ ] Rilevare processi concorrenti/risorse occupate quando il driver lo permette.
-- [ ] Gestire GPU assenti, driver mancanti, dati parziali e permessi insufficienti.
-- [ ] Test offline/mocks delle API per Intel/AMD/NVIDIA e probe reali solo sull'hardware disponibile; non confondere emulazione e supporto funzionante.
-- **Output:** `hardware_report` strutturato con limiti e incertezze esplicite.
-- **Gate:** nessuna risorsa non rilevata viene considerata disponibile.
+### Fase 01 — Rilevamento dell'hardware (**implementazione in verifica**)
+- [x] Inventario CPU da `/proc/cpuinfo`: architettura, vendor, modello, flag, thread e core fisici *solo se ricavabili*.
+- [x] Inventario RAM da `/proc/meminfo`, usando i byte e lasciando `null` i valori non disponibili.
+- [x] Inventario PCI/DRM vendor-neutral per GPU NVIDIA/AMD/Intel; metriche NVIDIA da `nvidia-smi` collegate **solo per corrispondenza PCI**. Telemetria AMD/Intel: `TO DO`.
+- [x] Identificazione di più GPU e raccolta della variabile `CUDA_VISIBLE_DEVICES` come contesto, non prova di accessibilità CUDA.
+- [ ] Misura dei processi concorrenti GPU e della contesa, con prova nativa sulla macchina dell'utente (**da progettare senza confondere grafica e compute**).
+- [x] Gestione di assenza di GPU, `nvidia-smi` mancante, dati incompleti e piattaforma non supportata senza metriche inventate.
+- [x] Test automatici offline per Intel/AMD/NVIDIA, casi con/ senza DRM, parsing CSV e PCI, senza affermare supporto di inferenza.
+- [ ] **Esecuzione e revisione dell'inventario sulla macchina GNU/Linux x86_64 NVIDIA dell'utente**.
+- **Output:** `python -m ruth_runtime.hardware` stampa un `hardware_report` JSON di sola lettura. Non certifica CUDA, né uno stack LLM.
+- **Gate:** nessuna risorsa non rilevata viene considerata disponibile; chiudere soltanto dopo revisione dei risultati hardware e del punto sui processi concorrenti.
 
 ### Fase 02 — Ambiente software e capacità native
 - [ ] Identificare OS, Python, architettura, runtime/CUDA/driver e librerie installate.
@@ -332,6 +333,7 @@ Queste non sono domande da risolvere tutte subito: ciascuna viene affrontata **p
 | --- | --- | --- |
 | Roadmap | **Approvata, modificabile** | Approvazione generale del 14 ottobre 2026; revisioni future consentite |
 | 00 | **Bozza di contratto da revisionare** | Interfacce e catalogo dichiarativo nel codice, test CPU-only; nessun adapter operativo |
-| 01–16 | **Non iniziate** | Nessuna implementazione autorizzata |
+| 01 | **Implementazione da verificare** | Inventario Linux/DRM/NVIDIA e test offline; manca verifica sulla GPU dell'utente e occupazione processi |
+| 02–16 | **Non iniziate** | Nessun backend/runtime/profiling operativo autorizzato |
 
 **Prossima azione:** discutere l'aggiornamento della **Fase 00**, con matrice `PRIMO`/`TO DO`, policy e API multilivello; approvare separatamente comportamento automatico e contratto operativo. Nessuna implementazione è implicita nell'approvazione generale della roadmap.
