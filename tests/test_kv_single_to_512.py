@@ -209,6 +209,115 @@ class SingleTo512Tests(unittest.TestCase):
             self.assertEqual(len(loads), 7)
             self.assertIsNone(resumed["observed_cuda_futility_stop"])
 
+    def test_python_module_import_failure_pauses_without_marking_cuda_failure(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            layout, census = make_census(root)
+            output = root / "restartable.json"
+            load_calls = []
+            def broken_load(path, model_id, trial, **kwargs):
+                load_calls.append(tuple(trial["host_tensor_names"]))
+                sample = fake_load(path, model_id, trial, **kwargs)
+                if trial["host_tensor_names"]:
+                    sample["success"] = False
+                    sample["failure_class"] = "load_or_native_verification_failed"
+                    sample["failure_diagnostics"] = {
+                        "stderr_tail": (
+                            "python: No module named "
+                            "calibration.kv_single_to_512\\n"
+                        ),
+                    }
+                return sample
+            with patch("calibration.kv_single_to_512.inspect_gguf",
+                       return_value=layout):
+                interrupted = run_single_to_512(
+                    census_path=census, output=output,
+                    load_probe=broken_load, inference_probe=fake_infer,
+                )
+            self.assertFalse(interrupted["completed"])
+            self.assertEqual(interrupted["status"],
+                             "worker_infrastructure_failure")
+            self.assertEqual(interrupted["summary"]["load_attempted"], 0)
+            self.assertEqual(len(load_calls), 2)  # GPU control, then 1 tensor.
+            first_name = interrupted["candidate_order"][0]["tensor"]
+            self.assertNotIn("load_only", interrupted["results"][first_name])
+            self.assertEqual(
+                len(interrupted["results"][first_name]["load_only_history"]),
+                1,
+            )
+            with patch("calibration.kv_single_to_512.inspect_gguf",
+                       return_value=layout):
+                resumed = run_single_to_512(
+                    census_path=census, output=output,
+                    load_probe=fake_load, inference_probe=fake_infer,
+                )
+            self.assertTrue(resumed["completed"])
+            self.assertEqual(resumed["summary"]["load_attempted"], 6)
+            self.assertEqual(resumed["summary"]["inference_success"], 1)
+            self.assertEqual(resumed["status"],
+                             "completed_singleton_benchmarks")
+
+    def test_previously_completed_checkpoint_repairs_only_python_import_errors(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            layout, census = make_census(root)
+            output = root / "stale-completed.json"
+            with patch("calibration.kv_single_to_512.inspect_gguf",
+                       return_value=layout):
+                original = run_single_to_512(
+                    census_path=census, output=output,
+                    load_probe=fake_load, inference_probe=fake_infer,
+                )
+            self.assertTrue(original["completed"])
+            entries = original["results"]
+            failed_load_name = original["candidate_order"][0]["tensor"]
+            valid_infer_name = "blk.0.attn_norm.weight"
+            entries[failed_load_name]["load_only"][
+                "failure_diagnostics"
+            ] = {"stderr_tail":
+                 "python: No module named calibration.kv_single_to_512\\n"}
+            entries[valid_infer_name]["inference"] = {
+                "success": False, "n_ctx": 512,
+                "host_tensor_names": [valid_infer_name],
+                "mapping_id": entries[valid_infer_name][
+                    "load_only"]["mapping_id"],
+                "failure_class": "worker_protocol_error",
+                "samples": [{
+                    "success": False,
+                    "failure_class": "worker_protocol_error",
+                    "failure_diagnostics": {
+                        "stderr_tail": "python: No module named calibration.mapping_phase\\n",
+                    },
+                }],
+            }
+            output.write_text(json.dumps(original), encoding="utf-8")
+            reloads = []
+            def tracking_load(*args, **kwargs):
+                reloads.append(tuple(args[2]["host_tensor_names"]))
+                return fake_load(*args, **kwargs)
+            reinferences = []
+            def tracking_infer(*args, **kwargs):
+                reinferences.append(tuple(args[2]["host_tensor_names"]))
+                return fake_infer(*args, **kwargs)
+            with patch("calibration.kv_single_to_512.inspect_gguf",
+                       return_value=layout):
+                fixed = run_single_to_512(
+                    census_path=census, output=output,
+                    load_probe=tracking_load, inference_probe=tracking_infer,
+                )
+            self.assertTrue(fixed["completed"])
+            self.assertEqual(fixed["recovered_worker_import_failures"][
+                "recovered_load_only_count"], 1)
+            self.assertEqual(fixed["recovered_worker_import_failures"][
+                "recovered_inference_count"], 1)
+            self.assertEqual(reloads, [(failed_load_name,)])
+            self.assertEqual(reinferences, [(valid_infer_name,)])
+            self.assertEqual(
+                len(fixed["results"][valid_infer_name]["inference_history"]),
+                1,
+            )
+            self.assertEqual(fixed["summary"]["inference_success"], 1)
+
     def test_resume_between_load_and_inference_does_not_repeat_successful_load(self):
         with tempfile.TemporaryDirectory() as d:
             root = Path(d)
