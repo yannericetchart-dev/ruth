@@ -1344,3 +1344,57 @@ Il risultato precedente viene archiviato in
 viene rieseguita e il report complessivo rimane compatibile
 con le esecuzioni precedenti. È possibile continuare normalmente
 in seguito eliminando le due opzioni di retry.
+
+
+### Promozione opzionale di q8_0/f16 con Flash Attention OFF
+
+Questo ramo **non** e ancora stato confermato a `n_ctx=256` sulla GPU:
+un fallimento storico a 258 non fornisce una baseline sufficiente per
+promuoverlo a 512. Il nuovo comando esegue una verifica nativa rigorosa:
+all-GPU weights, `offload_kqv=True`, FA OFF,
+`K=q8_0`, `V=f16`, `n_ctx=256`,
+240 token prompt + 16 generated (2 ripetizioni), placement e KV
+verificati dal log CUDA. La modalita `BASELINE_MODE` di
+`mapping_phase` non e usata, perche manterrebbe la KV in host.
+
+```bash
+# Chiudere prima l'eventuale benchmark f16/f16 sulla stessa GPU.
+git pull
+python -m calibration.kv_profile_baseline \
+  --census phase2_single_tensor_census_256.json \
+  --output phase2_q8_0_f16_faoff_baseline_256.json \
+  --benchmark-repeats 2 \
+  --promote-if-valid \
+  --promotion-output phase2_single_to_512_q8_0_f16_faoff.json
+```
+
+Se la baseline fallisce, non parte nessuna promozione e il report
+`phase2_q8_0_f16_faoff_baseline_256.json` conserva il motivo
+nativo: una prova fallita **non dimostra** l'impossibilita del profilo.
+Senza `--promote-if-valid` viene eseguita solo la baseline,
+che puo anche essere ripresa riutilizzando lo stesso output.
+
+Se la baseline passa, la fase 2 riusa il ranking del census
+`f16/f16 FA OFF 256` **soltanto come euristica d'ordine**;
+le misure di memoria e prestazioni per `q8_0/f16` sono acquisite
+nuovamente a `n_ctx=512`. I 462 candidati restano tutti ammissibili.
+Il checkpoint del ramo originale `phase2_single_to_512.json`
+non viene alterato. I due profili devono essere eseguiti
+**in sequenza**, non in parallelo sulla RTX 4050.
+
+Per limitare le prime prove dopo la baseline usare
+`--max-new-loads 10 --max-new-benchmarks 10`. In seguito ripetere
+lo stesso comando senza limiti per riprendere il checkpoint.
+
+Si puo anche avviare la fase di ricerca 512 separatamente
+**solo dopo che la baseline e stata verificata**:
+```bash
+python -m calibration.kv_single_to_512 \
+  --census phase2_single_tensor_census_256.json \
+  --output phase2_single_to_512_q8_0_f16_faoff.json \
+  --target-ctx 512 --flash-attn off --type-k q8_0 --type-v f16 \
+  --baseline-profile phase2_q8_0_f16_faoff_baseline_256.json
+```
+
+Il report baseline e identificato da SHA256 nel checkpoint 512
+alternativo: cambiando la baseline bisogna scegliere un output diverso.
