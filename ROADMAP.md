@@ -3,7 +3,7 @@
 > **Versione:** 1.1 — roadmap generale approvata il 14 ottobre 2026, sempre modificabile. I requisiti di compatibilità introdotti nella revisione 1.1 sono **da confermare separatamente nella fase 00**.
 > **Branch:** `model-profiling` (riscrittura da zero sulla base minimale di `main`).
 > **Riferimento storico:** `feature/minimal-chat` è consultabile per imparare dalle prove precedenti, **non** è una dipendenza né una base di codice da copiare.
-> **Stato attuale:** roadmap generale approvata; requisiti hardware/backend/API aggiornati su richiesta dell'utente, **non ancora approvati come specifica finale**. Nessun codice implementativo autorizzato.
+> **Stato attuale:** roadmap generale approvata; requisiti tecnici ancora da ratificare. Avviata una bozza di contratti Python e catalogo dichiarativo, senza backend, rilevamento hardware, download o profiling eseguibili.
 
 ## 1. Obiettivo e confini
 
@@ -330,7 +330,7 @@ Queste non sono domande da risolvere tutte subito: ciascuna viene affrontata **p
 | Fase | Stato | Nota |
 | --- | --- | --- |
 | Roadmap | **Approvata, modificabile** | Approvazione generale del 14 ottobre 2026; revisioni future consentite |
-| 00 | **Progettazione in revisione** | Matrice hardware/backend/API proposta il 14 ottobre; in attesa di approvazione puntuale |
+| 00 | **Bozza di contratto da revisionare** | Interfacce e catalogo dichiarativo nel codice, test CPU-only; nessun adapter operativo |
 | 01–16 | **Non iniziate** | Nessuna implementazione autorizzata |
 
 **Prossima azione:** discutere l'aggiornamento della **Fase 00**, con matrice `PRIMO`/`TO DO`, policy e API multilivello; approvare separatamente comportamento automatico e contratto operativo. Nessuna implementazione è implicita nell'approvazione generale della roadmap.

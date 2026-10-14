@@ -3,7 +3,7 @@
 > **Stato:** revisione 0.2 della proposta, **non approvata**. Requisiti forniti dall'utente inclusi come target e da confermare; **nessun adapter è già funzionante**.
 > **Data:** 14 ottobre 2026.
 > **Roadmap:** [ROADMAP.md](../ROADMAP.md) (approvata con riserva di modifiche future).
-> **Regola:** questo documento propone opzioni e contratti; **non autorizza implementazione**, installazioni, download o benchmark.
+> **Regola:** documento ancora soggetto ad approvazione. Per avviare il lavoro è stata scritta una **bozza limitata** di contratti Python e di registro dichiarativo; nessuna installazione, download, prova hardware o runtime funzionante.
 
 ## Obiettivo della fase 00
 
@@ -201,4 +201,13 @@ Stati delle singole prove: `pending`, `running`, `verified`, `failed`, `inconclu
 
 Questo file è **temporaneo** e serve a discutere la fase 00. Dopo approvazione e implementazione della fase, le decisioni finali entrano nella documentazione stabile e nei contratti di codice; il file temporaneo sarà rimosso con un commit di pulizia, quando l'utente ne confermerà l'inutilità. `ROADMAP.md` rimane come riferimento di sviluppo finché utile. Eliminare un file dal branch **non** lo cancella dalla cronologia Git: eventuali riscritture della storia richiedono consenso esplicito.
 
-**Stato finale della fase 00:** non raggiunto; la nuova matrice e D1–D7 sono **in revisione e soggette ad approvazione**, inclusi tutti gli elementi tra parentesi quadre forniti dall'utente. Nessuna installazione, download, prova hardware o implementazione è stata autorizzata.
+### Primo incremento di codice — contratto e catalogo (da approvare)
+
+- `ruth_runtime/contracts.py`: protocolli vendor-neutral e modelli dati di base, ancora soggetti a revisione.
+- `ruth_runtime/capabilities.py`: 33 voci, delle quali sei `target` (primi test) e 27 `TO DO`; nessuna voce `verified`.
+- `ruth_runtime/__init__.py`: superficie di import pubblica preliminare.
+- `tests/test_phase00_contracts.py`: 7 test standard library per stati e combinazioni, senza accesso hardware.
+- Nessun adapter, driver, downloader, profiling o runtime di inferenza è stato implementato. I test eseguiti non costituiscono verifica CUDA.
+- **Punto di controllo:** revisione e approvazione del contratto prima della Fase 01.
+
+**Stato finale della fase 00:** non raggiunto; matrice e D1–D7 restano in revisione. Esiste solo una bozza API dichiarativa, da modificare liberamente.
