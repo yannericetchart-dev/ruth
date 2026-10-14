@@ -124,7 +124,12 @@ def validate_submitted_proposal(
                 and model.get("quantization") == v["quantization"]
                 and model.get("source_repository") == v["repo_id"]
                 and model.get("source_revision") == v["revision"]
-                and model.get("version") == item["version"]):
+                and model.get("version") == item["version"]
+                and model.get("family") == item["family"]
+                and model.get("model") == item["model"]
+                and model.get("format") == item["format"]
+                and model.get("license") == item["license"]
+                and model.get("gguf_serialized_bytes") == v["expected_size_bytes"]):
                 pinned = True
     if not pinned:
         raise ValueError("Unregistered GGUF source")
