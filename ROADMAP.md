@@ -1,9 +1,9 @@
 # Ruth — Roadmap del branch `model-profiling`
 
-> **Versione:** 1.0 — roadmap approvata il 14 ottobre 2026, con riserva esplicita di modifiche future.
+> **Versione:** 1.1 — roadmap generale approvata il 14 ottobre 2026, sempre modificabile. I requisiti di compatibilità introdotti nella revisione 1.1 sono **da confermare separatamente nella fase 00**.
 > **Branch:** `model-profiling` (riscrittura da zero sulla base minimale di `main`).
 > **Riferimento storico:** `feature/minimal-chat` è consultabile per imparare dalle prove precedenti, **non** è una dipendenza né una base di codice da copiare.
-> **Stato attuale:** roadmap approvata; fase 00 avviata come progettazione, senza autorizzazione a implementare codice.
+> **Stato attuale:** roadmap generale approvata; requisiti hardware/backend/API aggiornati su richiesta dell'utente, **non ancora approvati come specifica finale**. Nessun codice implementativo autorizzato.
 
 ## 1. Obiettivo e confini
 
@@ -33,6 +33,29 @@ Costruire da zero una procedura **automatica, misurabile, riprendibile e verific
 - **Interventi prevedibili:** policy e limiti di download, spazio disco, GPU/CPU, tempo e tentativi sono dichiarati *prima* dell'esecuzione non supervisionata.
 - **Errori trasparenti:** niente fallback nascosti fra modelli, backend, quantizzazioni, GPU e CPU.
 - **Modularità:** il runtime deve restare indipendente dall'applicazione che lo consumerà.
+- **API universale:** hardware, backend esecutivo, motore di inferenza e modalità di inizializzazione sono assi distinti. Interfacce comuni, implementazioni specifiche isolate per vendor e capacità negoziate esplicitamente: nessun `if nvidia` sparso nell'orchestratore.
+- **Solo ciò che si può provare:** implementazione reale soltanto sulle combinazioni verificabili sull'hardware dell'utente. Tutte le altre opzioni richieste figurano **nel registro del codice come `TO DO`**, non come funzionalità funzionanti. Le prove simulate verificano contratti, ma non certificano supporto hardware.
+- **Documenti di sviluppo temporanei:** i documenti di proposta sono rimossi da Git dopo la chiusura della relativa fase e il trasferimento delle decisioni stabili nei documenti permanenti, previa verifica con l'utente. Un normale commit di eliminazione **non cancella la cronologia**: riscritture/squash solo con approvazione esplicita.
+
+## 1.1 Matrice preliminare di compatibilità (modificabile, da approvare nella fase 00)
+
+Il progetto è **solo GNU/Linux**, con **architettura CPU x86_64**. Il primo hardware fisicamente testabile è **CPU Intel x86_64 e GPU NVIDIA**; la disponibilità delle singole funzioni CUDA/CPU sarà accertata dai probe, non assunta. AMD/Intel GPU e AMD CPU sono target architetturali **`TO DO`** finché non avremo accesso a test nativi reali.
+
+**Convenzione:** `PRIMO` significa «da implementare e verificare per primo», **non** «già supportato». `TO DO` significa «voce prevista nel codice, senza adapter operativo e con rifiuto esplicito dell'esecuzione». L'utente può cambiare questa matrice prima e durante lo sviluppo.
+
+| Livello | PRIMO (testabile dall'utente) | TO DO (previsto nel codice ma non funzionante) |
+| --- | --- | --- |
+| OS | GNU/Linux | Nessun altro OS nel perimetro |
+| CPU (x86_64) | Intel | AMD |
+| GPU | NVIDIA | AMD, Intel |
+| Backend GPU | CUDA | Vulkan, ROCm, HIP, SYCL, oneAPI, XPU, OpenVINO GPU |
+| Backend CPU | GGML CPU | oneDNN, oneMKL, OpenVINO CPU, ONNX Runtime CPU, vLLM CPU, BLIS, OpenBLAS |
+| Motore di inferenza | llama.cpp | vLLM, ONNX Runtime, PyTorch, OpenVINO, MLC LLM, IREE, SGLang |
+| Inizializzazione llama.cpp | `llama_cpp_python` | `local-server`, `system-library`, `cli` |
+
+Per OpenVINO, vLLM, ONNX Runtime, SYCL/oneAPI/XPU e simili i livelli possono sovrapporsi: il codice deve conservare **identità e capacità separate**, evitando di equiparare un motore con un driver GPU, un provider d'esecuzione o una libreria matematica. I nomi, le combinazioni lecite e le reali capacità verranno validati, senza assunzioni di compatibilità fra incroci non testati.
+
+La gerarchia pubblica proposta è `HardwareProvider → ExecutionBackend → InferenceEngine → InitializationAdapter → Runtime`; ogni livello espone un contratto neutrale rispetto al vendor. Gli adapter specifici sono selezionati da un **registro di capacità**, mai tramite import obbligatori di librerie non disponibili. Le voci `TO DO` restituiscono `unsupported/not_implemented` e non effettuano fallback nascosti.
 
 ## 2. Contratto di avanzamento
 
@@ -50,29 +73,29 @@ Il commit della fase contiene **solo** quanto concordato, inclusi test e documen
 ## 3. Roadmap dettagliata
 
 ### Fase 00 — Specifica del comportamento automatico (DA APPROVARE)
-- [ ] Definire l'utente e l'ambiente target: Linux, Python minimo, requisiti hardware, esecuzione locale.
+- [ ] Definire l'ambiente vincolante: **GNU/Linux, CPU x86_64**; test iniziali su CPU Intel e GPU NVIDIA, senza presumere le specifiche non ancora misurate.
 - [ ] Definire le modalità: ispezione senza effetti (`doctor`), anteprima (`plan`), esecuzione automatica (`run`), ripresa (`resume`), verifica (`verify`).
 - [ ] Stabilire priorità della scelta (qualità, latenza, throughput, VRAM, RAM, disco), soglie e budget.
-- [ ] Decidere se la CPU è un fallback ammesso oppure se l'assenza di GPU provoca uno stop.
+- [ ] Decidere quando è consentita la CPU: uso richiesto, backend CPU `GGML CPU` oppure fallback esplicitamente autorizzato; nessuna scelta implicita.
 - [ ] Definire come chiedere una sola volta le autorizzazioni (download/licenze/uso risorse), poi procedere in automatico nei limiti accordati.
-- [ ] Specificare il contratto del profilo operativo e dei codici di errore prima di scrivere il motore.
+- [ ] Specificare il contratto del profilo operativo, stati `TO DO`, interfacce vendor-neutral, matrice delle combinazioni e codici di errore prima di scrivere il motore.
 - **Output:** specifica versionata delle policy e degli stati; nessun profiling reale.
 - **Gate:** l'utente approva ambito, comandi e comportamento dei fallback.
 
 ### Fase 01 — Rilevamento dell'hardware
 - [ ] Inventario CPU: architettura, istruzioni rilevanti, core/thread.
 - [ ] Inventario RAM e memoria realmente disponibile.
-- [ ] Inventario GPU: produttore, nome, UUID, driver, capacità e memoria libera, se accessibili.
+- [ ] Inventario GPU vendor-neutral (NVIDIA, AMD, Intel come identificatori): produttore, nome, ID stabile quando disponibile, driver, capacità e memoria libera; provider NVIDIA testato per primo, altri `TO DO` fino a verifica.
 - [ ] Identificare più GPU e le restrizioni di visibilità dei dispositivi.
 - [ ] Rilevare processi concorrenti/risorse occupate quando il driver lo permette.
 - [ ] Gestire GPU assenti, driver mancanti, dati parziali e permessi insufficienti.
-- [ ] Test offline con output riproducibili e mock per macchine prive di GPU.
+- [ ] Test offline/mocks delle API per Intel/AMD/NVIDIA e probe reali solo sull'hardware disponibile; non confondere emulazione e supporto funzionante.
 - **Output:** `hardware_report` strutturato con limiti e incertezze esplicite.
 - **Gate:** nessuna risorsa non rilevata viene considerata disponibile.
 
 ### Fase 02 — Ambiente software e capacità native
 - [ ] Identificare OS, Python, architettura, runtime/CUDA/driver e librerie installate.
-- [ ] Verificare che il binding Python supporti *davvero* le capacità native dichiarate.
+- [ ] Verificare tramite probe che il binding `llama_cpp_python` supporti realmente CUDA o GGML CPU secondo device; elencare gli altri backend del registro come `TO DO` senza abilitarli.
 - [ ] Distinguere compatibilità teorica, installazione disponibile e inferenza nativa verificata.
 - [ ] Progettare installazione/versionamento riproducibile del backend senza alterazioni silenziose dell'ambiente.
 - [ ] Diagnosticare dipendenze mancanti e incompatibilità fra versioni.
@@ -80,9 +103,9 @@ Il commit della fase contiene **solo** quanto concordato, inclusi test e documen
 - **Gate:** versioni e prerequisiti testabili e riproducibili.
 
 ### Fase 03 — Backend e adattatore di inferenza
-- [ ] Definire un'interfaccia comune del backend: verifica, caricamento, tokenizzazione, generazione, streaming, chiusura e metriche.
-- [ ] Confrontare esplicitamente i motori candidati (p.es. llama.cpp, altri solo se implementabili davvero).
-- [ ] Implementare e testare **un** primo adattatore end-to-end; gli altri sono estensioni future, non opzioni fittizie.
+- [ ] Definire API vendor-neutral separate per provider hardware, backend esecutivo, engine d'inferenza e modalità di inizializzazione; capacità, probe, caricamento, tokenizzazione, generazione, streaming, chiusura e metriche.
+- [ ] Registrare **tutti** i motori/backend/opzioni di inizializzazione elencati nella matrice §1.1; implementare solo l'incrocio iniziale verificabile e segnare il resto `TO DO` con errori espliciti.
+- [ ] Implementare e testare per primo `llama.cpp` attraverso `llama_cpp_python` e backend CUDA/GGML CPU nei casi approvati; `local-server`, `system-library`, `cli` restano `TO DO`.
 - [ ] Definire backend automatico, vincoli hardware e gestione dei fallimenti.
 - [ ] Isolare i processi di prova per errori nativi/CUDA senza contaminare l'orchestratore.
 - [ ] Verificare la corretta associazione GPU selezionata ↔ processo.
@@ -188,7 +211,7 @@ Il commit della fase contiene **solo** quanto concordato, inclusi test e documen
 
 ### Fase 14 — API runtime riutilizzabile
 - [ ] Definire API Python stabile per lettura/validazione profilo, `load`, `generate`, `stream`, `close`.
-- [ ] Non introdurre cronologia chat, prompt di sistema obbligatori né politiche applicative.
+- [ ] Non introdurre cronologia chat, prompt di sistema obbligatori né politiche applicative; il client usa la stessa API su device diversi, tramite gli adapter disponibili.
 - [ ] Verificare al caricamento modello, adapter, device, versioni e risorse; fallire con diagnosi esplicita se non compatibili.
 - [ ] Supportare i messaggi/prompt nel formato consentito dal backend selezionato, con tokenizzazione coerente.
 - [ ] Gestire lifecycle, interruzioni, rilascio delle risorse e massimo contesto del profilo.
@@ -198,7 +221,7 @@ Il commit della fase contiene **solo** quanto concordato, inclusi test e documen
 
 ### Fase 15 — Qualità, regressioni e automazione end-to-end
 - [ ] Test unitari CPU-only per rilevamento, regole di scelta, storage, errori, resumability e profili.
-- [ ] Test con adapter simulato per la pipeline completa senza hardware.
+- [ ] Test con adapter simulato per la pipeline completa e per il dispatch vendor-neutral NVIDIA/AMD/Intel; i risultati simulati non promuovono voci `TO DO`.
 - [ ] Test di integrazione reali sulla macchina di destinazione (GPU/CPU secondo policy).
 - [ ] Test di download interrotto, crash worker, memoria insufficiente, versione cambiata, pesi rimossi e risorse concorrenti.
 - [ ] Provare run pulito, run ripreso, run ripetuto e riuso del profilo da altro processo.
@@ -289,17 +312,25 @@ Il progetto è completato soltanto se:
 6. **Budget sperimentale:** durata massima, massimo contesto, tentativi, limite memoria, quando interrompere?
 7. **Misure:** corpus, soglie di affidabilità, qualità minima e regola di comparazione.
 8. **Profilo operativo:** posizione su disco, schema, semantica di scadenza e retrocompatibilità.
-9. **Interfaccia Python:** firma pubblica e formato di input/output per i branch futuri.
+9. **Interfaccia Python:** firma pubblica vendor-neutral e formato di input/output; selezione di hardware, backend, motore e inizializzazione con capacità dichiarate.
 10. **Pubblicazione:** definizione di «pronto», release, test in CI e criteri di merge.
 
 Queste non sono domande da risolvere tutte subito: ciascuna viene affrontata **prima della fase che la richiede**, presentando opzioni e conseguenze.
+
+## 7.1 Gestione della documentazione di sviluppo e pulizia Git
+
+- `ROADMAP.md` rimane documento di riferimento finché serve a governare l'intero sviluppo.
+- `docs/phase-XX-proposal.md` è **temporaneo**: alla chiusura di ogni fase, trasferire contratti approvati, decisioni, test e risultati nei file permanenti strettamente necessari; poi proporre/rimuovere il documento temporaneo con commit di pulizia.
+- Evitare la proliferazione di file di appunti nel branch: nessuna prova locale, log o report voluminoso entra in Git per default.
+- Prima della consegna v1: audit dei file tracciati, rimozione dei documenti temporanei esauriti e verifica che il runtime non dipenda dai documenti.
+- **Cronologia Git:** un commit che cancella file li rimuove dal checkout corrente ma **non li elimina dai commit precedenti**. Qualsiasi squash, rebase o riscrittura dello storico richiede consenso specifico, perché modifica commit condivisi.
 
 ## 8. Registro di avanzamento
 
 | Fase | Stato | Nota |
 | --- | --- | --- |
 | Roadmap | **Approvata, modificabile** | Approvazione generale del 14 ottobre 2026; revisioni future consentite |
-| 00 | **Progettazione avviata** | Proposta tecnica da discutere; nessuna decisione implementativa approvata |
+| 00 | **Progettazione in revisione** | Matrice hardware/backend/API proposta il 14 ottobre; in attesa di approvazione puntuale |
 | 01–16 | **Non iniziate** | Nessuna implementazione autorizzata |
 
-**Prossima azione:** discutere la proposta della **Fase 00** e approvare separatamente policy, comportamento automatico e contratto operativo. Nessuna implementazione è implicita nell'approvazione generale della roadmap.
+**Prossima azione:** discutere l'aggiornamento della **Fase 00**, con matrice `PRIMO`/`TO DO`, policy e API multilivello; approvare separatamente comportamento automatico e contratto operativo. Nessuna implementazione è implicita nell'approvazione generale della roadmap.
