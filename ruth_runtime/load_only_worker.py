@@ -46,9 +46,50 @@ def current_cuda_free_mib() -> float | None:
         return None
 
 
-def run_load_only(root: Path, gpu_uuid: str, quantization: str, mode: str, n_ctx: int = N_CTX) -> dict:
+
+def initialize_cuda_primary_context() -> tuple[ctypes.CDLL, int]:
+    """Diagnostic-only: activate device 0 primary context before GGUF loading.
+
+    CUDA_VISIBLE_DEVICES is already restricted by the guarded parent worker.
+    This intentionally changes initialization order; compare with a normal
+    unmodified weights-only load in a different worker process.
+    """
+    cuda = ctypes.CDLL("libcuda.so.1")
+    cuda.cuInit.argtypes = [ctypes.c_uint]
+    cuda.cuInit.restype = ctypes.c_int
+    cuda.cuDeviceGet.argtypes = [ctypes.POINTER(ctypes.c_int), ctypes.c_int]
+    cuda.cuDeviceGet.restype = ctypes.c_int
+    cuda.cuDevicePrimaryCtxRetain.argtypes = [
+        ctypes.POINTER(ctypes.c_void_p), ctypes.c_int,
+    ]
+    cuda.cuDevicePrimaryCtxRetain.restype = ctypes.c_int
+    cuda.cuCtxSetCurrent.argtypes = [ctypes.c_void_p]
+    cuda.cuCtxSetCurrent.restype = ctypes.c_int
+    cuda.cuDevicePrimaryCtxRelease.argtypes = [ctypes.c_int]
+    cuda.cuDevicePrimaryCtxRelease.restype = ctypes.c_int
+
+    def require(name: str, status: int):
+        if status != 0:
+            raise RuntimeError(f"{name} failed with CUDA error {status}")
+
+    require("cuInit", cuda.cuInit(0))
+    device = ctypes.c_int()
+    require("cuDeviceGet", cuda.cuDeviceGet(ctypes.byref(device), 0))
+    context = ctypes.c_void_p()
+    require("cuDevicePrimaryCtxRetain",
+            cuda.cuDevicePrimaryCtxRetain(ctypes.byref(context), device.value))
+    try:
+        require("cuCtxSetCurrent", cuda.cuCtxSetCurrent(context))
+    except Exception:
+        cuda.cuDevicePrimaryCtxRelease(device.value)
+        raise
+    return cuda, device.value
+
+def run_load_only(root: Path, gpu_uuid: str, quantization: str, mode: str,
+                  n_ctx: int = N_CTX, cuda_preinit: bool = False) -> dict:
     if (mode not in ("weights", "context") or quantization not in SUPPORTED
-            or type(n_ctx) is not int or not 64 <= n_ctx <= 4096):
+            or type(n_ctx) is not int or not 64 <= n_ctx <= 4096
+            or type(cuda_preinit) is not bool):
         raise ValueError("Unapproved pinned quantization or load-only mode")
     root = root.resolve(strict=True)
     choice = select_model("production", quantization=quantization, project_root=root)
@@ -85,7 +126,10 @@ def run_load_only(root: Path, gpu_uuid: str, quantization: str, mode: str, n_ctx
         "n_ctx": n_ctx if mode == "context" else None,
         "n_batch": N_BATCH if mode == "context" else None,
         "n_ubatch": N_UBATCH if mode == "context" else None,
+        "cuda_preinit_requested": cuda_preinit,
+        "cuda_primary_context_preinitialized": False,
         "cuda_free_mib_after_backend_init": None,
+        "cuda_free_mib_after_primary_ctx_init": None,
         "cuda_free_mib_after_model_load": None,
         "cuda_free_mib_after_context_init": None,
         "cuda_free_mib_after_failure": None,
@@ -96,12 +140,20 @@ def run_load_only(root: Path, gpu_uuid: str, quantization: str, mode: str, n_ctx
     model = None
     context = None
     backend_initialized = False
+    primary_context_driver = None
+    primary_context_device = None
     start = monotonic()
     watcher.start()
     try:
         api.llama_backend_init()
         backend_initialized = True
         report["cuda_free_mib_after_backend_init"] = current_cuda_free_mib()
+        if cuda_preinit:
+            primary_context_driver, primary_context_device = initialize_cuda_primary_context()
+            report["cuda_primary_context_preinitialized"] = True
+            report["cuda_free_mib_after_primary_ctx_init"] = current_cuda_free_mib()
+            if report["cuda_free_mib_after_primary_ctx_init"] is None:
+                raise RuntimeError("Primary CUDA context initialized but cuMemGetInfo unavailable")
         params = api.llama_model_default_params()
         params.n_gpu_layers = 2**31 - 1
         params.main_gpu = 0
@@ -134,6 +186,13 @@ def run_load_only(root: Path, gpu_uuid: str, quantization: str, mode: str, n_ctx
             if backend_initialized:
                 api.llama_backend_free()
         finally:
+            if primary_context_driver is not None:
+                # Release only our additional explicit primary-context retain;
+                # never reset other CUDA state.
+                primary_context_driver.cuCtxSetCurrent(ctypes.c_void_p())
+                primary_context_driver.cuDevicePrimaryCtxRelease(
+                    primary_context_device)
+
             stop.set()
             watcher.join(timeout=5)
             report["gpu_process_observed"] = bool(samples)
@@ -144,10 +203,11 @@ def run_load_only(root: Path, gpu_uuid: str, quantization: str, mode: str, n_ctx
 
 def main(args: list[str] | None = None) -> int:
     argv = sys.argv[1:] if args is None else args
-    if len(argv) != 5:
-        raise SystemExit("Expected project root, GPU UUID, quantization, mode, n_ctx")
+    if len(argv) != 6 or argv[5] not in ("normal", "preinit"):
+        raise SystemExit("Expected root, GPU UUID, quantization, mode, n_ctx, normal|preinit")
     try:
-        result = run_load_only(Path(argv[0]), argv[1], argv[2], argv[3], int(argv[4]))
+        result = run_load_only(Path(argv[0]), argv[1], argv[2], argv[3],
+                               int(argv[4]), argv[5] == "preinit")
         print(PREFIX + json.dumps(result, sort_keys=True))
         return 0 if result["weights_loaded"] and (
             argv[3] == "weights" or result["context_initialized"]
