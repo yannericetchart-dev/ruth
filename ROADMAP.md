@@ -3,7 +3,7 @@
 > **Versione:** 1.2 — roadmap generale approvata il 14 ottobre 2026, sempre modificabile. Chiarimento sullo **stack operativo unico** e sulla classificazione di GGML CPU; specifiche della fase 00 ancora in revisione.
 > **Branch:** `model-profiling` (riscrittura da zero sulla base minimale di `main`).
 > **Riferimento storico:** `feature/minimal-chat` è consultabile per imparare dalle prove precedenti, **non** è una dipendenza né una base di codice da copiare.
-> **Stato attuale:** contratti preliminari e registro dichiarativo presenti. **Fase 01: inventario hardware implementato per revisione e test locale**, ancora da verificare sulla macchina NVIDIA dell'utente. Nessun backend CUDA, inferenza, download o profiling operativo.
+> **Stato attuale:** Fase 01 verificata su hardware reale. Fase 02: diagnosi dipendenze implementata, in attesa di esecuzione sul PC dell'utente. Nessuna inferenza/runtime/profiling operativo.
 
 ## 1. Obiettivo e confini
 
@@ -35,7 +35,7 @@ Costruire da zero una procedura **automatica, misurabile, riprendibile e verific
 - **Modularità:** il runtime deve restare indipendente dall'applicazione che lo consumerà.
 - **API universale:** hardware, backend esecutivo, motore di inferenza e modalità di inizializzazione sono assi distinti. Interfacce comuni, implementazioni specifiche isolate per vendor e capacità negoziate esplicitamente: nessun `if nvidia` sparso nell'orchestratore.
 - **Solo ciò che si può provare:** implementazione reale soltanto sulle combinazioni verificabili sull'hardware dell'utente. Tutte le altre opzioni richieste figurano **nel registro del codice come `TO DO`**, non come funzionalità funzionanti. Le prove simulate verificano contratti, ma non certificano supporto hardware.
-- **Documenti di sviluppo temporanei:** i documenti di proposta sono rimossi da Git dopo la chiusura della relativa fase e il trasferimento delle decisioni stabili nei documenti permanenti, previa verifica con l'utente. Un normale commit di eliminazione **non cancella la cronologia**: riscritture/squash solo con approvazione esplicita.
+- **Regola dipendenze:** ogni programma, libreria o toolchain realmente necessari devono avere prova di presenza/versione/capacità e, se mancanti, diagnosi o procedura affidabile di installazione. Nessuna installazione automatica, nessun fallback nascosto; distinguere tool di build opzionali dal runtime.\n- **Documenti di sviluppo temporanei:** i documenti di proposta sono rimossi da Git dopo la chiusura della relativa fase e il trasferimento delle decisioni stabili nei documenti permanenti, previa verifica con l'utente. Un normale commit di eliminazione **non cancella la cronologia**: riscritture/squash solo con approvazione esplicita.
 
 ## 1.1 Matrice preliminare di compatibilità (modificabile, da approvare nella fase 00)
 
@@ -83,25 +83,27 @@ Il commit della fase contiene **solo** quanto concordato, inclusi test e documen
 - **Output:** specifica versionata delle policy e degli stati; nessun profiling reale.
 - **Gate:** l'utente approva ambito, comandi e comportamento dei fallback.
 
-### Fase 01 — Rilevamento dell'hardware (**implementazione in verifica**)
+### Fase 01 — Rilevamento dell'hardware (**inventario verificato**)
 - [x] Inventario CPU da `/proc/cpuinfo`: architettura, vendor, modello, flag, thread e core fisici *solo se ricavabili*.
 - [x] Inventario RAM da `/proc/meminfo`, usando i byte e lasciando `null` i valori non disponibili.
 - [x] Inventario PCI/DRM vendor-neutral per GPU NVIDIA/AMD/Intel; metriche NVIDIA da `nvidia-smi` collegate **solo per corrispondenza PCI**. Telemetria AMD/Intel: `TO DO`.
 - [x] Identificazione di più GPU e raccolta della variabile `CUDA_VISIBLE_DEVICES` come contesto, non prova di accessibilità CUDA.
-- [ ] Misura dei processi concorrenti GPU e della contesa, con prova nativa sulla macchina dell'utente (**da progettare senza confondere grafica e compute**).
+- [x] Controllo dei processi GPU sul PC dell'utente il 14/10/2026 alle 05:56: `nvidia-smi` riporta zero processi, 2 MiB / 6141 MiB di VRAM occupati, driver 580.178.04, CUDA massimo riportato 13.0. **Snapshot**: le fasi di benchmark devono controllare di nuovo grafica/compute e contesa prima di ogni prova.
 - [x] Gestione di assenza di GPU, `nvidia-smi` mancante, dati incompleti e piattaforma non supportata senza metriche inventate.
 - [x] Test automatici offline per Intel/AMD/NVIDIA, casi con/ senza DRM, parsing CSV e PCI, senza affermare supporto di inferenza.
 - [x] **Esecuzione e revisione dell'inventario reale**, riportata dall'utente il 14 ottobre 2026: `21` test standard-library superati; sistema Linux x86_64 compatibile; Intel Core Ultra 7 155H (16 core / 22 thread), circa 15,13 GiB RAM (8,92 GiB disponibili), swap assente; GPU Intel integrata rilevata e GPU NVIDIA RTX 4050 Laptop 6 GiB con driver 580.178.04, VRAM libera circa 5,63 GiB; `warnings: []`. L'identificativo univoco GPU e il report integrale non vengono conservati nel repository.
 - **Output:** `python -m ruth_runtime.hardware` stampa un `hardware_report` JSON di sola lettura. Non certifica CUDA, né uno stack LLM.
-- **Gate:** nessuna risorsa non rilevata viene considerata disponibile; chiudere soltanto dopo revisione dei risultati hardware e del punto sui processi concorrenti.
+- **Gate:** hardware e snapshot processi verificati; il monitoraggio dinamico della contesa resta obbligatorio prima dei benchmark. Nessuna conferma di toolkit CUDA o binding LLM da questi dati.
 
-### Fase 02 — Ambiente software e capacità native
-- [ ] Identificare OS, Python, architettura, runtime/CUDA/driver e librerie installate.
-- [ ] Verificare tramite probe che `llama_cpp_python` supporti realmente CUDA e le librerie native richieste (inclusa GGML CPU); la presenza di GGML CPU **non** è una prova di backend CPU selezionabile. Tutte le altre tecnologie restano `TO DO`.
-- [ ] Distinguere compatibilità teorica, installazione disponibile e inferenza nativa verificata.
+### Fase 02 — Ambiente software e capacità native (**diagnostica realizzata; prova utente da eseguire**)
+- [x] Diagnosticare GNU/Linux x86_64, Python, driver NVIDIA, `nvidia-smi` e versione di `llama-cpp-python` nell'interprete corrente.
+- [x] Interrogare `llama_supports_gpu_offload()` in un subprocess isolato, distinguendo pacchetto assente, import fallito, binding CPU-only, crash e timeout. GGML CPU è una libreria, non un backend CPU.
+- [x] Distinguere presenza pacchetto, GPU offload dichiarato e inferenza reale ancora **non** verificata.
 - [ ] Progettare installazione/versionamento riproducibile del backend senza alterazioni silenziose dell'ambiente.
-- [ ] Diagnosticare dipendenze mancanti e incompatibilità fra versioni.
-- **Output:** `environment_report` e matrice delle capacità effettivamente rilevate.
+- [x] Diagnostica con `required_now`, `status`, messaggi di errore e `remediation`. `pip`, CMake, compilatore C++ e `nvcc` sono prerequisiti **opzionali per una wheel CUDA già funzionante**, necessari secondo il metodo di installazione scelto.
+- [ ] L'utente esegue `python3 -m ruth_runtime.dependencies` e condivide risultati per verificare e, se richiesto, autorizzare installazioni.
+- [ ] Congelare le versioni e verificare dipendenze native effettivamente caricate durante la successiva fase adapter.
+- **Output:** `python3 -m ruth_runtime.dependencies` produce JSON di controllo di sola lettura e codice d'uscita 1 quando manca un requisito obbligatorio; nessun download o installazione.
 - **Gate:** versioni e prerequisiti testabili e riproducibili.
 
 ### Fase 03 — Backend e adattatore di inferenza
@@ -333,7 +335,8 @@ Queste non sono domande da risolvere tutte subito: ciascuna viene affrontata **p
 | --- | --- | --- |
 | Roadmap | **Approvata, modificabile** | Approvazione generale del 14 ottobre 2026; revisioni future consentite |
 | 00 | **Bozza di contratto da revisionare** | Interfacce e catalogo dichiarativo nel codice, test CPU-only; nessun adapter operativo |
-| 01 | **Inventario reale verificato; fase aperta** | 21 test passati sulla macchina dell'utente, Intel + NVIDIA e VRAM riportate correttamente; manca il censimento dei processi GPU e della contesa |
-| 02–16 | **Non iniziate** | Nessun backend/runtime/profiling operativo autorizzato |
+| 01 | **Conclusa (inventario statico)** | 21 test dell'utente, hardware reale e snapshot processi NVIDIA verificati; recheck dinamico richiesto prima dei benchmark |
+| 02 | **Diagnostica pronta; verifica reale da fare** | Test locali con mock; requisiti e rimedi senza installazione automatica |
+| 03–16 | **Non iniziate** | Nessun runtime o profiling operativo ancora sviluppato |
 
-**Prossima azione:** completare la **Fase 01** con verifica dei processi NVIDIA (graphics e compute) e policy di contesa. Non si passa a validazione CUDA o profiling prima della fase successiva. Le decisioni della Fase 00 ancora aperte vanno chiuse prima delle fasi che le richiedono; roadmap sempre modificabile.
+**Prossima azione:** eseguire `python3 -m ruth_runtime.dependencies` sull'hardware NVIDIA e risolvere le dipendenze segnalate solo dopo aver concordato installazione e versioni. Nessuna inferenza ancora validata.
