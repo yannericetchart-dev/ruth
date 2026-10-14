@@ -40,8 +40,11 @@ Never conflate:
 
 Ruth rejects verified versions below the **architecture minimum**, reports
 unverified missing data as unknown, and warns about older-but-compatible
-Toolkits/backends/drivers. A driver reporting lower CUDA capability than
-an installed Toolkit or the chosen backend is incompatible. The existing
+Toolkits/backends/drivers. A driver reporting a **lower CUDA major** than the Toolkit or chosen
+backend is incompatible. When only the **minor** version differs within a
+major CUDA family and the driver meets NVIDIA's family minimum, Ruth warns
+about restricted features/PTX and requires runtime validation instead of
+rejecting all minor-version-compatible software. The existing
 `setup` and pinned wheel remain CUDA **13.2** for now; supporting another
 CUDA version and GPU architecture requires rebuilding/verifying that native
 backend. Being an allowed hardware class does **not** certify current
