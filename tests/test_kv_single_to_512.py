@@ -194,6 +194,55 @@ class SingleTo512Tests(unittest.TestCase):
                 self.assertTrue(repeat["completed"])
                 self.assertEqual(len(calls), 9)
 
+    def test_replay_failed_inference_archives_sigabrt_without_new_loads(self):
+        with tempfile.TemporaryDirectory() as d:
+            root = Path(d)
+            layout, census = make_census(root)
+            output = root / "replay.json"
+            loaded = []
+            def loading(*args, **kwargs):
+                loaded.append(tuple(args[2]["host_tensor_names"]))
+                return fake_load(*args, **kwargs)
+            calls = []
+            def failed_inference(*args, **kwargs):
+                calls.append("failed")
+                return {
+                    "success": False,
+                    "failure_class": "native_cuda_resource_allocation_failure",
+                    "worker_signal": "SIGABRT",
+                    "worker_returncode": -6,
+                    "stderr_tail": "CUDA error: the resource allocation failed",
+                    "last_worker_phase": "prefill_begin",
+                    "failed_during": "prefill",
+                }
+            with patch("calibration.kv_single_to_512.inspect_gguf",
+                       return_value=layout):
+                first = run_single_to_512(
+                    census_path=census, output=output,
+                    load_probe=loading, inference_probe=failed_inference,
+                )
+                self.assertTrue(first["completed"])
+                count_before = len(loaded)
+                replay = run_single_to_512(
+                    census_path=census, output=output,
+                    retry_failed_inferences=1, retry_only=True,
+                    load_probe=lambda *a, **kw: self.fail(
+                        "Replay must never repeat load-only."
+                    ),
+                    inference_probe=fake_infer,
+                )
+            self.assertEqual(len(loaded), count_before)
+            self.assertTrue(replay["completed"])
+            self.assertEqual(len(calls), 1)
+            entry = replay["results"]["blk.0.attn_norm.weight"]
+            self.assertEqual(len(entry["inference_history"]), 1)
+            self.assertFalse(entry["inference_history"][0]["success"])
+            self.assertEqual(
+                entry["inference_history"][0]["samples"][0]["worker_signal"],
+                "SIGABRT"
+            )
+            self.assertTrue(entry["inference"]["success"])
+
     def test_no_load_success_still_finishes_for_phase3(self):
         with tempfile.TemporaryDirectory() as d:
             root = Path(d)
