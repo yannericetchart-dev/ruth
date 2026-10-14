@@ -120,7 +120,10 @@ def inspect_dependencies(
         venv_prefix is not None  # test injection, never used by main()
         or (cfg.is_file() and sys.prefix != sys.base_prefix)
     )
-    active_venv = correct_prefix and has_venv_marker and not allows_global
+    active_venv = (
+        correct_prefix and has_venv_marker and not allows_global
+        and not (project_root / ".venv").is_symlink()
+    )
 
     checks: list[DependencyCheck] = []
 

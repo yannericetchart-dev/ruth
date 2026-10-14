@@ -52,6 +52,10 @@ check_python() {
 }
 
 check_venv() {
+    if [ -L "$VENV" ]; then
+        printf '%s\n' "ERROR: .venv must be a local directory, not a symlink." >&2
+        return 1
+    fi
     if [ ! -f "$VENV/pyvenv.cfg" ] || [ ! -x "$VENV/bin/python" ]; then
         printf '%s\n' "ERROR: Ruth .venv does not exist or is incomplete: $VENV" >&2
         printf '%s\n' "Run: sh bootstrap.sh --create-venv (explicitly creates it)." >&2
@@ -76,7 +80,7 @@ case "$1" in
         printf '%s\n' "Ruth setup plan — no files will be changed."
         python_advice
         printf '%s\n' "1. Verify Python 3.10+ on the host (needed to create .venv)."
-        printf '%s\n' "2. Create ./ .venv with: sh bootstrap.sh --create-venv"
+        printf '%s\n' "2. Create .venv with: sh bootstrap.sh --create-venv"
         printf '%s\n' "3. Install APPROVED, VERSION-PINNED Python dependencies inside .venv (not defined yet)."
         printf '%s\n' "4. Verify NVIDIA driver, CUDA-capable llama.cpp binding and native inference separately."
         printf '%s\n' "No system or Python dependencies are installed by this command."
@@ -91,7 +95,7 @@ case "$1" in
     --create-venv)
         check_platform || exit 1
         check_python || exit 1
-        if [ -e "$VENV" ]; then
+        if [ -e "$VENV" ] || [ -L "$VENV" ]; then
             check_venv || exit 1
             printf '%s\n' "OK: Existing Ruth .venv retained; no packages installed."
         else

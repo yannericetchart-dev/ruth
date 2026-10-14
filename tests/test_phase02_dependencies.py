@@ -83,6 +83,18 @@ class DependencyTests(unittest.TestCase):
             self.assertEqual(next(c.status for c in result.checks
                                   if c.name == "Ruth .venv"), "missing")
 
+    def test_project_venv_symlink_is_rejected(self):
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            target = root / "external"
+            target.mkdir()
+            (root / ".venv").symlink_to(target, target_is_directory=True)
+            report = inspect(project_root=root, venv_prefix=root / ".venv",
+                             package_version=lambda _: self.fail("unexpected package read"))
+            self.assertFalse(report.ready_for_next_probe)
+            self.assertEqual(next(c.status for c in report.checks
+                                  if c.name == "Ruth .venv"), "missing")
+
     def test_missing_python_venv_has_usable_setup_instructions(self):
         report = inspect(venv_prefix=Path("/system"))
         for name in ("Ruth .venv", "Python >=3.10 (Ruth .venv)"):
