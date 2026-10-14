@@ -127,6 +127,10 @@ def main(argv: list[str] | None = None) -> int:
                             help="Inspect host GPU processes, DRM and free VRAM without CUDA init")
             mp.add_argument("--evidence-file",
                             help="Local JSON output from a pinned probe-load command")
+            mp.add_argument("--publish-pr", action="store_true",
+                            help="After --record-local, prepare sanitized profile and propose PR via authenticated gh fork")
+            mp.add_argument("--consent-publication", action="store_true",
+                            help="Explicit consent to publish anonymized hardware measurement summary")
             mp.add_argument("--record-local", action="store_true",
                             help="Explicit atomic update of local pinned runtime memory profile from verified evidence")
             mp.add_argument("--force", action="store_true",
@@ -173,6 +177,8 @@ def main(argv: list[str] | None = None) -> int:
                 try:
                     if args.force and not args.host:
                         raise ValueError("--force is only meaningful with --host")
+                    if args.publish_pr and not (args.record_local and args.consent_publication):
+                        raise ValueError("--publish-pr requires --record-local and --consent-publication")
                     local_record = None
                     if args.record_local:
                         if not args.host or not args.evidence_file:
@@ -186,6 +192,11 @@ def main(argv: list[str] | None = None) -> int:
                     )
                     if local_record is not None:
                         result["local_profile_update"] = local_record
+                        if args.publish_pr:
+                            from .profile_contribution import build_proposal, publish_proposal_pr
+                            proposal = build_proposal(Path(local_record["profile_file"]))
+                            result["git_publication"] = publish_proposal_pr(
+                                proposal, permit_external_publication=True)
                     if args.quantization:
                         result["profiles"] = [
                             p for p in result["profiles"]
@@ -195,7 +206,7 @@ def main(argv: list[str] | None = None) -> int:
                             raise ValueError("Requested quantization not registered")
                     _print({"action": "models", **result})
                     return 0
-                except (OSError, ValueError, TypeError, KeyError) as exc:
+                except (OSError, RuntimeError, ValueError, TypeError, KeyError) as exc:
                     _print({"action": "models", "status": "profile_matrix_unverified",
                             "error": type(exc).__name__ + ": " + str(exc)[:240],
                             "gpu_allocations_executed": False})
