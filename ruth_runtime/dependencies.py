@@ -36,7 +36,10 @@ CUDA_BINDING_GUIDE = (
     "https://llama-cpp-python.readthedocs.io/en/stable/ . "
     "PRIORITÀ 2: usare il wheel CUDA 13.2 ufficiale solo previa scelta e "
     "autorizzazione esplicita se la build nativa non è percorribile. "
-    "Usare sempre la .venv di Ruth; mai una build CPU-only o fallback silenzioso."
+    "Per installare le dipendenze Python approvate utilizzare esclusivamente "
+    "`.venv/bin/python -m pip` della directory Ruth, con versioni e hash "
+    "bloccati; NON eseguire installazioni senza autorizzazione. "
+    "Mai una build CPU-only o un fallback silenzioso."
 )
 BINDING_PROBE = (
     "from llama_cpp.llama_cpp import llama_supports_gpu_offload; "
