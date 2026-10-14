@@ -92,9 +92,15 @@ def classify_hardware(
         if toolkit is not None and toolkit < min_cuda:
             problems.append("toolkit_cuda_below_architecture_minimum")
     if drvmax and backend and drvmax < backend:
-        problems.append("driver_cuda_below_backend_cuda")
+        if drvmax[0] == backend[0]:
+            warnings.append("backend_newer_cuda_minor_than_driver_feature_compatibility_unverified")
+        else:
+            problems.append("driver_cuda_below_backend_cuda")
     if drvmax and toolkit and drvmax < toolkit:
-        problems.append("driver_cuda_below_installed_toolkit")
+        if drvmax[0] == toolkit[0]:
+            warnings.append("toolkit_newer_cuda_minor_than_driver_feature_compatibility_unverified")
+        else:
+            problems.append("driver_cuda_below_installed_toolkit")
     if toolkit is None:
         warnings.append("nvcc_toolkit_not_detected_backend_version_checked_separately")
     if latest:
