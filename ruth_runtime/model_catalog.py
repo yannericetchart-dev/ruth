@@ -263,7 +263,11 @@ def resolve_model_metadata(
     if not authorize_metadata_network:
         return base
     try:
-        info = (fetch or fetch_huggingface_metadata)(choice.repo_id)
+        # Immutable pin: the author's default branch may have moved since
+        # this GGUF's checksum and revision were approved.
+        info = (fetch(choice.repo_id) if fetch is not None else
+                fetch_huggingface_metadata(
+                    choice.repo_id, revision=choice.revision or "main"))
         if not isinstance(info, dict):
             raise CatalogError("Invalid metadata type")
         revision = info.get("sha")
