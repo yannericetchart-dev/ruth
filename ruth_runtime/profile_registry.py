@@ -72,6 +72,75 @@ def _native_buffer(report: dict, kind: str) -> float | None:
 
 
 
+
+def record_minimal_context_inference(
+    local_profile_file: Path, inference: dict, *,
+    choice: Any, hardware: dict,
+) -> dict:
+    """Persist ONLY verified same-host full CUDA offload with generated tokens.
+
+    A successful minimal-context probe is not production-context qualification.
+    No Git side effects; only subsequent sanitized owner Git sync publishes it.
+    """
+    path = Path(local_profile_file)
+    if path.is_symlink() or not path.is_file() or path.stat().st_size > 200_000:
+        raise ValueError("Missing/unsafe local model profile")
+    profile = json.loads(path.read_text(encoding="utf-8"))
+    if (profile.get("schema") != SCHEMA or
+        (profile.get("model") or {}).get("gguf_sha256") != choice.expected_sha256):
+        raise ValueError("Inference GGUF differs from local profile pin")
+    if (inference.get("candidate") !=
+        f"{choice.version}/gguf/{choice.quantization}" or
+        inference.get("gpu_inference_verified") is not True or
+        inference.get("full_gpu_offload_verified") is not True or
+        inference.get("gpu_process_observed") is not True or
+        inference.get("model_verified") is not True or
+        inference.get("native_library_verified") is not True or
+        inference.get("model_loaded") is not True or
+        inference.get("cpu_fallback_selected") is not False or
+        inference.get("context_calibration_pending") is not True or
+        type(inference.get("generated_tokens")) is not int or
+        inference["generated_tokens"] <= 0 or
+        type(inference.get("n_ctx")) is not int or
+        inference["n_ctx"] <= 0 or
+        type(inference.get("offloaded_layers")) is not int or
+        inference["offloaded_layers"] <= 0 or
+        inference.get("offloaded_layers") != inference.get("total_layers") or
+        inference.get("gpu_uuid") != hardware.get("gpu_uuid") or
+        (inference.get("gpu_preflight") or {}).get("driver_version")
+          != hardware.get("driver_version")):
+        raise ValueError("Incomplete native full GPU minimal-context inference proof")
+    values = {
+        "verified": True,
+        "n_ctx": inference["n_ctx"],
+        "n_batch": inference.get("n_batch"),
+        "n_ubatch": inference.get("n_ubatch"),
+        "generated_tokens": inference["generated_tokens"],
+        "full_gpu_offload_layers": inference["offloaded_layers"],
+        "architecture": hardware.get("architecture"),
+        "driver_version": hardware.get("driver_version"),
+        "cuda_backend": hardware.get("backend_cuda"),
+        "llama_cpp_binding": WHEEL_VERSION,
+        "flash_attention": None,
+        "kv_type_k": None, "kv_type_v": None,
+        "production_context_qualified": False,
+    }
+    if any(not isinstance(values[k], str) or not values[k] for k in (
+        "architecture", "driver_version", "cuda_backend", "llama_cpp_binding")):
+        raise ValueError("Unverified native runtime identity")
+    entries = profile.setdefault("minimal_context_inference", [])
+    if not isinstance(entries, list):
+        raise ValueError("Malformed prior inference evidence")
+    unique_key = ("n_ctx", "architecture", "driver_version",
+                  "cuda_backend", "llama_cpp_binding")
+    if not any(all(v.get(k) == values[k] for k in unique_key)
+               for v in entries if isinstance(v, dict)):
+        entries.append(values)
+        _atomic_write(path, profile)
+    return {"status": "local_minimal_gpu_inference_verified",
+            "model_sha256": choice.expected_sha256,
+            "n_ctx": values["n_ctx"], "production_context_qualified": False}
+
 def initialize_model_profile(
     choice: Any, metadata: dict, *, project_root: Path = PROJECT_ROOT,
 ) -> dict:
