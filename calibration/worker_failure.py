@@ -52,7 +52,7 @@ def analyze_worker_failure(stderr: str, error: str | None,
         if any(marker in line.lower() for marker in _NATIVE_MARKERS)
     ]
     phases = re.findall(
-        r"^RUTH_WORKER_PHASE=([a-z_]+)\\s*$",
+        r"^RUTH_WORKER_PHASE=([a-z_]+)\s*$",
         stderr, flags=re.MULTILINE,
     )
     last_worker_phase = phases[-1] if phases else None
