@@ -54,6 +54,7 @@ def probe_model_load(
     quantization: str = "Q4_K_L",
     mode: str = "weights",
     n_ctx: int = 128,
+    cuda_preinit: bool = False,
     allow_gpu_load: bool = False,
     environment: Any = None,
     run: Callable[..., Any] = subprocess.run,
@@ -64,7 +65,8 @@ def probe_model_load(
     report = {
         "status": "gpu_load_not_authorized",
         "candidate": f"gemma-2-9B-it/gguf/{quantization}",
-        "mode": mode, "weights_loaded": False,
+        "mode": mode, "cuda_preinit_requested": cuda_preinit,
+        "weights_loaded": False,
         "context_initialized": False, "inference_executed": False,
         "generated_tokens": 0, "runtime_profile_published": False,
         "cpu_fallback_selected": False, "download_started": False,
@@ -76,7 +78,8 @@ def probe_model_load(
         return finish("gpu_load_not_authorized",
                       error="Explicit --allow-gpu-load is required")
     if (mode not in ("weights", "context") or quantization not in SUPPORTED
-            or type(n_ctx) is not int or not 64 <= n_ctx <= 4096):
+            or type(n_ctx) is not int or not 64 <= n_ctx <= 4096
+            or type(cuda_preinit) is not bool):
         return finish("unsupported_load_diagnostic",
                       error="Only pinned Gemma Q4_K_L or Q4_K_M: weights/context; 64<=n_ctx<=4096")
     root = Path(project_root)
@@ -104,7 +107,8 @@ def probe_model_load(
                       "PYTHONNOUSERSITE": "1", "PYTHONDONTWRITEBYTECODE": "1"}
         worker_env.pop("LLAMA_CPP_LIB_PATH", None)
         argv = [str(root / ".venv/bin/python"), "-I", "-c", WORKER_SCRIPT,
-                str(root), str(root), uuid, quantization, mode, str(n_ctx)]
+                str(root), str(root), uuid, quantization, mode, str(n_ctx),
+                "preinit" if cuda_preinit else "normal"]
         pre = gpu_preflight(uuid, run=run)
         if pre.status != "gpu_ready":
             return finish(pre.status, gpu_uuid=uuid, gpu_pci_bus=pci,
@@ -134,6 +138,7 @@ def probe_model_load(
             or data.get("gpu_uuid") != uuid
             or data.get("inference_executed") is not False
             or data.get("generated_tokens") != 0
+            or (data.get("cuda_preinit_requested") is not cuda_preinit)
             or (mode == "context" and data.get("n_ctx") != n_ctx)):
             raise ValueError("Unexpected worker identity or inference activity")
         weights = data.get("weights_loaded") is True
@@ -154,7 +159,10 @@ def probe_model_load(
             n_ubatch=data.get("n_ubatch"),
             gpu_process_observed=data.get("gpu_process_observed") is True,
             gpu_memory_peak_mib_observed=data.get("gpu_memory_peak_mib_observed"),
+            cuda_primary_context_preinitialized=(
+                data.get("cuda_primary_context_preinitialized") is True),
             cuda_free_mib_after_backend_init=data.get("cuda_free_mib_after_backend_init"),
+            cuda_free_mib_after_primary_ctx_init=data.get("cuda_free_mib_after_primary_ctx_init"),
             cuda_free_mib_after_model_load=data.get("cuda_free_mib_after_model_load"),
             cuda_free_mib_after_context_init=data.get("cuda_free_mib_after_context_init"),
             cuda_free_mib_after_failure=data.get("cuda_free_mib_after_failure"),
