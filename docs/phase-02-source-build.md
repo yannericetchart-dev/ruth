@@ -1,4 +1,4 @@
-# Fase 02 — Build CUDA nativa riproducibile (piano, non installer)
+# Fase 02 — Build CUDA nativa: acquisizione automatica dei sorgenti, build ancora da implementare
 
 **Ambito:** GNU/Linux x86_64, Python del progetto in `.venv`, NVIDIA CUDA Toolkit **13.2**, RTX 4050 (`sm_89`). Una build CUDA **non** introduce un backend di inferenza CPU: le librerie GGML CPU possono essere dipendenze native, non una scelta di runtime.
 
@@ -36,19 +36,23 @@ L'ultimo comando esamina `git`, `cmake --version` (minimo 3.21), `c++`, `make`, 
 
 Campi attesi in fase iniziale: `build_prerequisites_met=true` se tutti i tool sono disponibili; `source_status=missing` finché non si acquisiscono i sorgenti; `dependency_lock_ready=false`, `ready_to_build=false`, `build_authorized=false`. Il piano **non** usa automaticamente il wheel qualora un prerequisito manchi.
 
-## 2. Acquisizione dei sorgenti — passo distinto, con rete e scrittura
+## 2. Acquisizione automatica dei sorgenti — un solo comando autorizzato
 
-Dopo aver verificato i prerequisiti e autorizzato esplicitamente il download, dalla radice del repository:
+La preparazione dei sorgenti **non richiede operazioni Git manuali**. Il flusso esamina i prerequisiti, scarica il commit fissato di `llama-cpp-python` e il submodule `llama.cpp`, controlla provenienza, commit e albero pulito, poi verifica il checkout finale.
+
+Il comando di Ruth è:
 
 ```bash
-mkdir -p .ruth-src
-git clone --no-checkout https://github.com/abetlen/llama-cpp-python.git .ruth-src/llama-cpp-python
-git -C .ruth-src/llama-cpp-python checkout --detach 1652066e0af45f2313b339670ef9555e8a54e545
-git -C .ruth-src/llama-cpp-python submodule update --init --recursive
-.venv/bin/python -m ruth_runtime.source_build_plan --plan
+.venv/bin/python -m ruth_runtime.source_build_plan --prepare
 ```
 
-Il diagnostico richiede commit Python e submodule **esatti**, URL del remote ufficiale, checkout pulito e presenza dei manifest. Blocca anche checkout alterati o incompleti. La directory `.ruth-src/` è ignorata da Git; **non** sostituire automaticamente un checkout preesistente. Non eseguire queste istruzioni come `root`.
+**`--prepare` autorizza esplicitamente questo download da GitHub e le scritture nella sola `.ruth-src/`**. Non domanda conferme intermedie, non installa librerie, non cambia il driver, non compila e non esegue fallback. La modalità di default e `--plan` restano read-only.
+
+La procedura è idempotente: se i due commit e l'albero sono già verificati, li riutilizza; se la destinazione è assente, clona in staging privato, effettua checkout pinned e promuove il contenuto solo dopo validazione. Se il checkout esiste ma è alterato, è un symlink o non corrisponde alle revisioni richieste, **blocca senza sostituire**. In caso di errore di rete non seleziona il wheel alternativo; uno staging incompleto viene eliminato. Il clone è limitato al tag `v0.3.36` con `--depth 1`, submodule al commit esatto; nessuna richiesta di credenziali interattive.
+
+Il JSON contiene `acquisition.status` (`acquired_verified`, `already_verified`, `blocked`, `failed`) e `plan_after`. L'esito richiesto per proseguire è `acquisition.source_verified=true` e `plan_after.source_verified=true`, mentre `ready_to_build=false` rimane corretto finché manca il lockfile Python.
+
+In una futura pipeline `run`, la stessa funzione sarà chiamata automaticamente **quando la policy iniziale autorizza i download dei sorgenti**. Non sarà richiesto all'utente di copiare comandi Git in ogni fase. La verifica di download ammessi e limiti generali della pipeline deve ancora essere implementata.
 
 ## 3. Python: lockfile e build isolata nel progetto — ancora DA IMPLEMENTARE
 
@@ -75,9 +79,9 @@ Questa è una configurazione, **non** un comando completo da eseguire: mancano l
 ## 4. Criteri per proseguire
 
 1. Nuovi test e preflight host confermati dall'utente.
-2. Checkout dei sorgenti acquisito e verificato, se autorizzato.
+2. Checkout acquisito **automaticamente** tramite `--prepare` con consenso iniziale, e commit verificati.
 3. Lockfile con hash e sicurezza approvato.
 4. Build CUDA in directory dedicata, mai installazione globale.
 5. Validazione della libreria, GPU offload, caricamento di un modello e inferenza reale (fasi successive).
 
-Il codice di pianificazione non scarica, non installa e non avvia processi CUDA. **Non usare `apt autoremove` per eliminare i residui NVIDIA 580** senza revisione separata.
+Il comando `--plan` non scarica e non installa; `--prepare` scarica i **soli sorgenti fissati** nella directory ignorata dal repository, ma non installa Python, non compila e non avvia CUDA. **Non usare `apt autoremove` per eliminare i residui NVIDIA 580** senza revisione separata.

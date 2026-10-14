@@ -1,7 +1,7 @@
-"""Read-only build preflight for pinned llama-cpp-python + llama.cpp CUDA sources.
+"""CUDA source build planning and opt-in automatic acquisition entry point.
 
-No cloning, downloads, package installs, compilation, or implicit fallback.
-Use .venv/bin/python -m ruth_runtime.source_build_plan.
+--plan is read-only. --prepare automates the pinned Git download with one
+explicit authorization, never installs Python packages or compiles a model.
 """
 from __future__ import annotations
 
@@ -219,7 +219,8 @@ def create_source_build_plan(
     tool_ok = all(item.status == "ok" for item in tools)
     prereqs = bool(install_plan.primary_prerequisites_met and tool_ok)
     notes = (
-        "DEFAULT READ-ONLY: do not run the checkout commands automatically.",
+        "DEFAULT --plan is read-only; --prepare automatically acquires and verifies "
+        "pinned sources with one explicit download authorization.",
         "Review Git source provenance and pinned parent/submodule revisions before builds.",
         "Pin with SHA256 every Python runtime/build wheel and its complete transitive closure.",
         "Use ONLY .venv/bin/python for Python dependencies, never host pip/site-packages.",
@@ -257,13 +258,29 @@ def create_source_build_plan(
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="Ruth CUDA source-build read-only preflight")
-    parser.add_argument("--plan", action="store_true", help="Only read-only checks (default)")
-    parser.parse_args()
+    parser = argparse.ArgumentParser(description="Ruth pinned CUDA source preflight and acquisition")
+    actions = parser.add_mutually_exclusive_group()
+    actions.add_argument("--plan", action="store_true",
+                         help="Read-only preflight (default); no network or disk writes")
+    actions.add_argument("--prepare", action="store_true",
+                         help="Authorize and automate pinned Git source acquisition (network/disk)")
+    args = parser.parse_args()
     report = create_source_build_plan()
-    print(json.dumps(report.to_dict(), ensure_ascii=False, indent=2, sort_keys=True))
-    # A plan can succeed even if a checkout has not been created. No installation.
-    return 0
+    if not args.prepare:
+        print(json.dumps(report.to_dict(), ensure_ascii=False, indent=2, sort_keys=True))
+        return 0
+    from .source_acquisition import acquire_pinned_sources
+    result = acquire_pinned_sources(report)
+    # Verify the resulting checkout automatically; no second user command.
+    checked = create_source_build_plan() if result.source_verified else None
+    accepted = bool(checked and checked.source_verified and result.source_verified)
+    print(json.dumps({
+        "operation": "prepare_sources",
+        "acquisition": result.to_dict(),
+        "plan_after": checked.to_dict() if checked else None,
+        "build_and_pip_not_started": True,
+    }, ensure_ascii=False, indent=2, sort_keys=True))
+    return 0 if accepted else 1
 
 
 if __name__ == "__main__":
