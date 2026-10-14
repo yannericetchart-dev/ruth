@@ -81,7 +81,7 @@ def main(argv: list[str] | None = None) -> int:
     models = sub.add_parser("models", help="Read-only hierarchical model catalog and HF provenance")
     model_sub = models.add_subparsers(dest="model_action")
     model_sub.add_parser("list", help="List families, GGUF models and defaults (offline)")
-    for operation in ("select", "resolve", "download", "smoke", "profile", "quantizations", "recommend", "probe-production", "probe-load", "profiles", "hardware"):
+    for operation in ("select", "resolve", "download", "smoke", "profile", "quantizations", "recommend", "probe-production", "probe-load", "profiles", "hardware", "auto-production"):
         mp = model_sub.add_parser(operation, help=(
             "Offline model selection" if operation == "select" else
             "Resolve HF immutable revision and GGUF checksum (metadata only)"
@@ -103,9 +103,11 @@ def main(argv: list[str] | None = None) -> int:
             "Read-only capacity classes and host-compatible GPU profiles"
             if operation == "profiles" else
             "Read-only strict Tensor Core/CC/VRAM/CUDA and driver compatibility check"
+            if operation == "hardware" else
+            "Quality-first production GGUF selection, pinned Git memory evidence and optional guarded download/probes"
         ))
         mp.add_argument("--purpose", choices=("production", "test"),
-                        default="production" if operation in ("probe-production", "probe-load", "profiles") else "test")
+                        default="production" if operation in ("probe-production", "probe-load", "profiles", "auto-production") else "test")
         mp.add_argument("--family")
         mp.add_argument("--model")
         mp.add_argument("--version")
@@ -117,6 +119,19 @@ def main(argv: list[str] | None = None) -> int:
         if operation == "recommend":
             mp.add_argument("--top-k", type=int, default=None,
                             help="Maximum number of shortlisted candidates")
+        if operation == "auto-production":
+            mp.add_argument("--allow-metadata-network", action="store_true",
+                            help="Read pinned Hugging Face GGUF quantization inventory")
+            mp.add_argument("--execute", action="store_true",
+                            help="After planning, run guarded download, CUDA load/context and minimal token tests")
+            mp.add_argument("--allow-model-download", action="store_true",
+                            help="Authorize pinned GGUF network transfer")
+            mp.add_argument("--accept-model-license", action="store_true",
+                            help="Confirm model license reviewed and accepted")
+            mp.add_argument("--allow-gpu-load", action="store_true",
+                            help="Authorize pinned CUDA weight/context allocation tests")
+            mp.add_argument("--allow-gpu-inference", action="store_true",
+                            help="Authorize minimal GPU token generation")
         if operation == "download":
             mp.add_argument("--allow-model-download", action="store_true",
                             help="Authorize network transfer of this pinned GGUF file")
@@ -182,8 +197,46 @@ def main(argv: list[str] | None = None) -> int:
             if args.model_action == "list":
                 _print({"action": "models", **list_models()})
                 return 0
-            if args.model_action not in {"select", "resolve", "download", "smoke", "profile", "quantizations", "recommend", "probe-production", "probe-load", "profiles", "hardware"}:
-                raise CatalogError("Choose models list, select, resolve, download, smoke, profile, quantizations, recommend, probe-production, probe-load, profiles or hardware")
+            if args.model_action not in {"select", "resolve", "download", "smoke", "profile", "quantizations", "recommend", "probe-production", "probe-load", "profiles", "hardware", "auto-production"}:
+                raise CatalogError("Choose models list, select, resolve, download, smoke, profile, quantizations, recommend, probe-production, probe-load, profiles, hardware or auto-production")
+            if args.model_action == "auto-production":
+                from .production_selection import (
+                    plan_production, execute_production_candidate,
+                )
+                try:
+                    if not args.allow_metadata_network:
+                        _print({"action": "models",
+                                "status": "production_metadata_network_not_authorized",
+                                "download_started": False,
+                                "gpu_allocations_executed": False})
+                        return 2
+                    if any((args.family and args.family != "gemma",
+                            args.model and args.model != "gemma-2",
+                            args.version and args.version != "gemma-2-9B-it",
+                            args.format and args.format != "gguf",
+                            args.quantization)):
+                        raise CatalogError(
+                            "auto-production selects registered Gemma 2 9B IT quantization by quality, not an explicit quant override")
+                    planned = plan_production(
+                        authorize_metadata_network=True,
+                    )
+                    if not args.execute:
+                        _print({"action": "models", **planned})
+                        return 0 if planned["status"] == "production_selection_ready" else 2
+                    executed = execute_production_candidate(
+                        plan=planned, allow_model_download=args.allow_model_download,
+                        acknowledge_model_license=args.accept_model_license,
+                        allow_gpu_load=args.allow_gpu_load,
+                        allow_gpu_inference=args.allow_gpu_inference,
+                    )
+                    _print({"action": "models", "plan": planned,
+                            "execution": executed, "status": executed["status"]})
+                    return 0 if executed["status"] == "production_candidate_min_context_gpu_verified" else 2
+                except (OSError, ValueError, TypeError, RuntimeError, CatalogError) as exc:
+                    _print({"action": "models", "status": "production_selection_blocked",
+                            "error": type(exc).__name__ + ": " + str(exc)[:250],
+                            "download_started": False})
+                    return 2
             if args.model_action == "hardware":
                 from .hardware_eligibility import inspect_host_hardware
                 try:
