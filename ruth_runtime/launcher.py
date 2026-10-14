@@ -81,7 +81,7 @@ def main(argv: list[str] | None = None) -> int:
     models = sub.add_parser("models", help="Read-only hierarchical model catalog and HF provenance")
     model_sub = models.add_subparsers(dest="model_action")
     model_sub.add_parser("list", help="List families, GGUF models and defaults (offline)")
-    for operation in ("select", "resolve", "download", "smoke", "profile", "quantizations", "recommend", "probe-production", "probe-load"):
+    for operation in ("select", "resolve", "download", "smoke", "profile", "quantizations", "recommend", "probe-production", "probe-load", "profiles"):
         mp = model_sub.add_parser(operation, help=(
             "Offline model selection" if operation == "select" else
             "Resolve HF immutable revision and GGUF checksum (metadata only)"
@@ -99,6 +99,8 @@ def main(argv: list[str] | None = None) -> int:
             "Gemma Q4_K_L n_ctx=128 CUDA candidate probe (never publishes runtime)"
             if operation == "probe-production" else
             "Pinned CUDA weights/context allocation only (NO inference)"
+            if operation == "probe-load" else
+            "Read-only capacity classes and host-compatible GPU profiles"
         ))
         mp.add_argument("--purpose", choices=("production", "test"),
                         default="production" if operation in ("probe-production", "probe-load") else "test")
@@ -118,6 +120,13 @@ def main(argv: list[str] | None = None) -> int:
                             help="Authorize network transfer of this pinned GGUF file")
             mp.add_argument("--accept-model-license", action="store_true",
                             help="Confirm you reviewed and accept the original model license terms")
+        if operation == "profiles":
+            mp.add_argument("--host", action="store_true",
+                            help="Inspect host GPU processes, DRM and free VRAM without CUDA init")
+            mp.add_argument("--evidence-file",
+                            help="Local JSON output from a pinned probe-load command")
+            mp.add_argument("--force", action="store_true",
+                            help="Mark explicit experimental selection, NEVER execute a GPU probe")
         if operation == "probe-load":
             mp.add_argument("--n-ctx", type=int, default=128,
                             help="Context size in context mode only (64..4096)")
@@ -143,8 +152,32 @@ def main(argv: list[str] | None = None) -> int:
             if args.model_action == "list":
                 _print({"action": "models", **list_models()})
                 return 0
-            if args.model_action not in {"select", "resolve", "download", "smoke", "profile", "quantizations", "recommend", "probe-production", "probe-load"}:
-                raise CatalogError("Choose models list, select, resolve, download, smoke, profile, quantizations, recommend, probe-production or probe-load")
+            if args.model_action not in {"select", "resolve", "download", "smoke", "profile", "quantizations", "recommend", "probe-production", "probe-load", "profiles"}:
+                raise CatalogError("Choose models list, select, resolve, download, smoke, profile, quantizations, recommend, probe-production, probe-load or profiles")
+            if args.model_action == "profiles":
+                from .model_memory_profiles import build_profile_matrix
+                try:
+                    if args.force and not args.host:
+                        raise ValueError("--force is only meaningful with --host")
+                    result = build_profile_matrix(
+                        check_host=args.host, force=args.force,
+                        evidence_file=(Path(args.evidence_file)
+                                       if args.evidence_file else None),
+                    )
+                    if args.quantization:
+                        result["profiles"] = [
+                            p for p in result["profiles"]
+                            if p["quantization"] == args.quantization
+                        ]
+                        if not result["profiles"]:
+                            raise ValueError("Requested quantization not registered")
+                    _print({"action": "models", **result})
+                    return 0
+                except (OSError, ValueError, TypeError, KeyError) as exc:
+                    _print({"action": "models", "status": "profile_matrix_unverified",
+                            "error": type(exc).__name__ + ": " + str(exc)[:240],
+                            "gpu_allocations_executed": False})
+                    return 2
             choice = select_model(
                 purpose=args.purpose, family=args.family, model=args.model,
                 version=args.version, format=args.format,
