@@ -239,6 +239,12 @@ def build_profile_matrix(
                 host_status = "host_weights_allocated_context_unverified"
             else:
                 host_status = "host_requires_native_allocation_verification"
+        experiment_available = bool(
+            host and host["exclusivity_verified"]
+            and host["drm"]["status"] == "drm_not_loaded"
+            and model["family"] == "gemma"
+            and model["quantization"] in ("Q4_K_L", "Q4_K_M")
+        )
         records.append({
             "id": model["id"], "family": model["family"],
             "quantization": model["quantization"],
@@ -248,12 +254,10 @@ def build_profile_matrix(
             "source_evidence": measured,
             "capacity_classes": tiers,
             "host_status": host_status,
+            "experiment_force_available": experiment_available,
             "experiment_force_requested": force,
             "experiment_allowed_in_separate_probe": bool(
-                force and host and host["exclusivity_verified"] and
-                host["drm"]["status"] == "drm_not_loaded" and
-                model["family"] == "gemma" and
-                model["quantization"] in ("Q4_K_L", "Q4_K_M")),
+                force and experiment_available),
             "production_qualified": False,
         })
     return {
@@ -268,7 +272,7 @@ def build_profile_matrix(
         "host_production_compatible_profile_ids": [],
         "host_force_experiment_options": [
             r["id"] for r in records
-            if r["experiment_allowed_in_separate_probe"]
+            if r["experiment_force_available"]
         ],
         "host": host,
         "force_is_selection_only": True, "gpu_inference_executed": False,
