@@ -12,3 +12,8 @@ venv/
 models/
 *.gguf
 *.log
+
+# Pinned upstream source checkouts and local native build outputs
+.ruth-src/
+.ruth-build/
+.ruth-wheelhouse/
