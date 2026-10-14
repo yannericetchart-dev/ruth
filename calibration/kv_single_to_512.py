@@ -422,6 +422,7 @@ def run_single_to_512(
     alternate_profile = (flash_attn is not False
                          or type_k != "f16" or type_v != "f16")
     baseline_profile_sha = None
+    baseline_context = p["n_ctx"]
     if alternate_profile:
         if baseline_profile_path is None:
             raise ValueError(
@@ -442,7 +443,11 @@ def run_single_to_512(
             or expected.get("model_id") != p["model_id"]
             or expected.get("model_path") !=
                 str(Path(p["model_path"]).expanduser().resolve())
-            or expected.get("n_ctx") != p["n_ctx"]
+            or type(expected.get("n_ctx")) is not int
+            or expected["n_ctx"] not in (
+                p["n_ctx"], target_ctx - 256,
+            )
+            or expected["n_ctx"] >= target_ctx
             or expected.get("generated_tokens") != p["generated_tokens"]
             or expected.get("flash_attn") is not flash_attn
             or expected.get("type_k") != type_k
@@ -455,8 +460,10 @@ def run_single_to_512(
                 tokens=p["generated_tokens"],
             )):
             raise ValueError(
-                "Baseline alternativa non compatibile o non verificata a 256."
+                "Baseline alternativa non compatibile o non verificata "
+                "al contesto sorgente della promozione."
             )
+        baseline_context = expected["n_ctx"]
     model_path = Path(p["model_path"]).resolve()
     model_id = p["model_id"]
     layout = inspect_gguf(model_path, n_ctx=target_ctx)
@@ -468,7 +475,7 @@ def run_single_to_512(
     identity = {
         "census_sha256": hashlib.sha256(raw).hexdigest(),
         "model_id": model_id, "model_path": str(model_path),
-        "source_n_ctx": p["n_ctx"], "target_n_ctx": target_ctx,
+        "source_n_ctx": baseline_context, "target_n_ctx": target_ctx,
         "generated_tokens": p["generated_tokens"],
         "flash_attn": flash_attn, "type_k": type_k, "type_v": type_v,
         "benchmark_repeats": benchmark_repeats, "timeout": timeout,
@@ -481,6 +488,13 @@ def run_single_to_512(
             "Solo ranking da f16/f16 FA OFF n_ctx=256; NON una misura "
             "di memoria o throughput per il profilo KV alternativo."
         )
+        if baseline_context != p["n_ctx"]:
+            # A verified 512 GPU-only baseline can legitimately seed a
+            # 512->768 promotion, while this census remains *only* the
+            # 256-based ordering heuristic. Preserve old 256->512
+            # identities exactly for resumable legacy checkpoints.
+            identity["ranking_census_n_ctx"] = p["n_ctx"]
+            identity["promotion_source"] = "verified_native_all_gpu_baseline"
     initial = {}
     if output.exists():
         previous = json.loads(output.read_text("utf-8"))
@@ -627,6 +641,8 @@ def run_single_to_512(
                 "esecuzione, non una dimostrazione della VRAM "
                 "minima teorica per creare il contesto."
             ),
+            "promotion_source_n_ctx": baseline_context,
+            "ranking_source_n_ctx": p["n_ctx"],
         }
         done = report["summary"]["ready_for_phase3"] and control is not None
         report["observed_cuda_futility_stop"] = futility_observation
