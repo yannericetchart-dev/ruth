@@ -9,8 +9,8 @@ import re
 
 
 _MODULE_IMPORT_ERROR = re.compile(
-    r"(?:No module named ['\\\"]?calibration(?:\\.[A-Za-z_][A-Za-z_0-9]*)+"
-    r"|Error while finding module specification for ['\\\"]calibration\\.)",
+    r"No module named .?calibration(?:[.][A-Za-z_][A-Za-z_0-9]*)+"
+    r"|Error while finding module specification for .?calibration[.]",
     re.IGNORECASE,
 )
 
