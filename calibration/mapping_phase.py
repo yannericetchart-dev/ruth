@@ -217,6 +217,7 @@ def _worker(model_path: Path, model_id: str, group_id: str,
         thread = threading.Thread(target=monitor, daemon=True)
         thread.start()
         try:
+            print("RUTH_WORKER_PHASE=load_begin", file=sys.stderr, flush=True)
             t0 = time.perf_counter()
             llm, _ = LlamaCppPythonMappingAdapter().load(
                 model_path, n_gpu_layers=block_count + 1,
@@ -229,14 +230,18 @@ def _worker(model_path: Path, model_id: str, group_id: str,
                 time.perf_counter() - t0, 5
             )
             report["measurements"]["vram_after_load_mib"] = used_mib()
+            print("RUTH_WORKER_PHASE=load_complete", file=sys.stderr, flush=True)
             tokens = make_mapping_tokens(
                 llm, arch, n_ctx, token_count, model_id=model_id
             )
             report["measurements"]["prompt_tokens"] = len(tokens)
             llm.reset()
+            print("RUTH_WORKER_PHASE=prefill_begin", file=sys.stderr, flush=True)
             t0 = time.perf_counter()
             llm.eval(tokens)
             prefill_s = time.perf_counter() - t0
+            print("RUTH_WORKER_PHASE=prefill_complete", file=sys.stderr, flush=True)
+            print("RUTH_WORKER_PHASE=decode_begin", file=sys.stderr, flush=True)
             output = llm.generate([], reset=False, temp=0.0, top_k=1)
             t0 = time.perf_counter()
             generated = 0
@@ -247,6 +252,7 @@ def _worker(model_path: Path, model_id: str, group_id: str,
             finally:
                 output.close()
             decode_s = time.perf_counter() - t0
+            print("RUTH_WORKER_PHASE=decode_complete", file=sys.stderr, flush=True)
             metrics = report["measurements"]
             metrics["prefill_s"] = round(prefill_s, 5)
             metrics["decode_s"] = round(decode_s, 5)
