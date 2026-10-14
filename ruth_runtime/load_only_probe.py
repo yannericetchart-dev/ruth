@@ -16,6 +16,7 @@ from .dependencies import PROJECT_ROOT
 from .gpu_preflight import inspect_gpu_preflight
 from .inference_probe import _valid_local_gguf, _select_unique_gpu, _parse_offload
 from .load_only_worker import SCHEMA, PREFIX, SUPPORTED
+from .install_plan import WHEEL_VERSION
 from .model_catalog import select_model
 from .native_failure_diagnostics import diagnose_cuda_failure
 from .native_library import verify_native_library
@@ -153,6 +154,8 @@ def probe_model_load(
         return finish(
             "gpu_load_only_completed" if success else "gpu_load_only_failed",
             gpu_uuid=uuid, gpu_pci_bus=pci, gpu_preflight=pre.to_dict(),
+            model_sha256=getattr(choice, "expected_sha256", None),
+            native_binding_version=WHEEL_VERSION,
             weights_loaded=weights, context_initialized=context,
             n_ctx=data.get("n_ctx"), native_kv_sizes=native_kv_sizes,
             n_batch=data.get("n_batch"),
