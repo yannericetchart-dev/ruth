@@ -22,7 +22,9 @@ già verificato. Non installa pacchetti di sistema.
 | `./ruth doctor` | Legge Python, `.venv`, pacchetti installati; non scrive. |
 | `./ruth plan` | Aggiunge la diagnostica CUDA/Git/sorgenti pinned; non scrive. |
 | `./ruth setup` | Valida la `.venv` e si ferma se il download non è autorizzato. |
-| `./ruth setup --allow-downloads` | Con autorizzazione esplicita, scarica/verifica **solo** i sorgenti pinned in `.ruth-src/`; è idempotente; nessun `pip` o build. |
+| `./ruth setup --allow-downloads` | Autorizza e acquisisce automaticamente soltanto i sorgenti pinned, riutilizzando quelli già verificati. |
+| `./ruth setup --allow-python-dependency-downloads` | Se il checkout è già verificato, autorizza soltanto **pip download** di wheel binari runtime e build in staging. Genera il manifest candidato con SHA256 e si ferma prima dell'installazione. |
+| `./ruth setup --allow-downloads --allow-python-dependency-downloads` | Acquisisce i sorgenti se mancanti e poi risolve i wheel candidati automaticamente, con due autorizzazioni dichiarate nella stessa invocazione. |
 | `./ruth run` | **Rifiuta** l'inferenza finché binding/adapter e modello non saranno realmente installati e verificati. |
 
 ## Diagnosi delle dipendenze
@@ -46,13 +48,41 @@ tutti i vincoli: finché non viene verificato il lock completo, i flag
 `runtime_dependencies_verified`, `python_packages_installable`,
 `backend_gpu_verified` e `ruth_runtime_ready` restano `false`.
 
+## Generazione automatica del lock candidato — in attesa di test
+
+`./ruth setup --allow-python-dependency-downloads` utilizza **esclusivamente**
+l'interprete `.venv/bin/python -m pip --isolated download` per ottenere i wheel
+binari da `https://pypi.org/simple/`, comprese le dipendenze transitive.
+Il comando **non installa**, non compila e non scarica il wheel CPU/GPU
+precompilato di `llama-cpp-python`: quest'ultimo rimane destinato alla
+compilazione CUDA locale dai sorgenti pinned.
+
+Un'area di staging privata nella directory ignorata `.ruth-wheelhouse/`
+contiene i wheel, le versioni e gli SHA256 calcolati. Dopo i controlli
+sul formato e sui metadati, promuove il candidato in
+`.ruth-wheelhouse/python-dependencies-candidate/` con
+`candidate-lock.json`. Qualsiasi candidato preesistente è preservato
+senza sovrascrittura. Fallimenti e download incompleti non vengono promossi.
+
+**Gli SHA256 calcolati sui file scaricati non costituiscono da soli una
+validazione della provenienza PyPI, della chiusura del grafo delle
+dipendenze o della sicurezza.** Il manifest ha `approved=false` e
+`dependency_lock_ready=false` finché una verifica indipendente dei digest,
+dei metadati e dei vincoli, oltre alla policy di sicurezza, non sarà
+implementata ed eseguita. Questo è un passaggio verso il lockfile,
+non un'installazione già utilizzabile.
+
+`diskcache<=5.6.3` ha CVE-2025-69872 senza release upstream corretta
+conosciuta: Ruth mantiene il divieto di `LlamaDiskCache` e dei dati di cache
+su disco non attendibili, ma deve ancora testare l'enforcement nell'adapter.
+Non promuovere automaticamente il candidato ad installabile.
+
 ## Installazione automatica: gate da completare
 
-Non inventiamo versioni/hash o dipendenze transitive. Il prossimo sviluppo
-deve produrre un lockfile approvato e chiuso su **tutte** le dipendenze di
-build e runtime, collegato alla versione Python/Piattaforma, alla build CUDA
-ed ai sorgenti upstream fissati; verificare gli SHA256 dei wheel, le
-dipendenze effettive e la policy di sicurezza `LlamaDiskCache` disabilitata.
+Non inventiamo hash approvati. Dopo il lock candidato restano la verifica
+indipendente dei digest/artefatti, la coerenza di tutto il grafo e la
+revisione di sicurezza. Solo allora lo setup potrà essere autorizzato
+a installare le dipendenze e a compilare CUDA.
 
 Solo **dopo** questo gate, il comando `setup` potrà installare automaticamente
 nella `.venv` i wheel corretti e compilare il binding CUDA dalla sorgente,

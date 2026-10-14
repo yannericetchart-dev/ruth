@@ -82,6 +82,46 @@ class LauncherTests(unittest.TestCase):
             self.assertIn("sources_verified_dependency_lock_pending", out.getvalue())
             self.assertIn('"pip_started": false', out.getvalue())
 
+    def test_dependency_download_approval_only_stages_candidate(self):
+        from types import SimpleNamespace
+        report = {"setup_ready": True, "runtime_ready": False}
+        source = SimpleNamespace(
+            source_verified=True,
+            to_dict=lambda: {"source_verified": True},
+        )
+        candidate = SimpleNamespace(
+            status="candidate_review_required",
+            to_dict=lambda: {"status": "candidate_review_required",
+                             "installation_started": False},
+        )
+        with patch("ruth_runtime.launcher.inspect_python_environment",
+                   return_value=environment()), \
+             patch("ruth_runtime.launcher.build_launch_plan",
+                   return_value=report), \
+             patch("ruth_runtime.source_build_plan.create_source_build_plan",
+                   return_value=source), \
+             patch("ruth_runtime.dependency_resolution.stage_dependency_candidate",
+                   return_value=candidate) as resolve, \
+             patch("ruth_runtime.source_acquisition.acquire_pinned_sources",
+                   side_effect=AssertionError("existing sources must not re-download")), \
+             patch("sys.stdout", new_callable=StringIO) as out:
+            code = main(["setup", "--allow-python-dependency-downloads"])
+            self.assertEqual(code, 0)
+            self.assertEqual(resolve.call_count, 1)
+            self.assertTrue(resolve.call_args.kwargs["authorize_network"])
+            self.assertIn('"installation_started": false', out.getvalue())
+            self.assertIn('"build_started": false', out.getvalue())
+
+    def test_setup_without_any_download_permission_never_resolves(self):
+        with patch("ruth_runtime.launcher.inspect_python_environment",
+                   return_value=environment()), \
+             patch("ruth_runtime.launcher.build_launch_plan",
+                   return_value={"setup_ready": True}), \
+             patch("ruth_runtime.dependency_resolution.stage_dependency_candidate",
+                   side_effect=AssertionError("must not download")), \
+             patch("sys.stdout", new_callable=StringIO):
+            self.assertEqual(main(["setup"]), 2)
+
     def test_run_never_pretends_llm_engine_implemented(self):
         with patch("ruth_runtime.launcher.inspect_python_environment",
                    return_value=environment()), \

@@ -61,6 +61,8 @@ def main(argv: list[str] | None = None) -> int:
     setup = sub.add_parser("setup", help="Prepare native CUDA sources and dependencies")
     setup.add_argument("--allow-downloads", action="store_true",
                        help="Authorize GitHub source downloads for this invocation")
+    setup.add_argument("--allow-python-dependency-downloads", action="store_true",
+                       help="Authorize pip DOWNLOAD of binary Python dependencies only (not install)")
     sub.add_parser("run", help="Start the CUDA runtime only after verification")
     args = parser.parse_args(argv)
 
@@ -89,29 +91,53 @@ def main(argv: list[str] | None = None) -> int:
         if not env.interpreter_in_project_venv or not report["setup_ready"]:
             _print({"action": "setup", "status": "blocked_preflight", "plan": report})
             return 2
-        if not args.allow_downloads:
+        if not args.allow_downloads and not args.allow_python_dependency_downloads:
             _print({
                 "action": "setup", "status": "download_not_authorized",
                 "plan": report,
-                "remediation": "./ruth setup --allow-downloads",
+                "remediation": "./ruth setup --allow-downloads "
+                               "--allow-python-dependency-downloads",
             })
             return 2
-        # Explicit authorization covers only the pinned source acquisition.
-        # Build/install cannot start until every Python package SHA is vetted.
-        from .source_acquisition import acquire_pinned_sources
         from .source_build_plan import create_source_build_plan
-        result = acquire_pinned_sources(create_source_build_plan())
+        source_plan = create_source_build_plan()
+        acquisition = None
+        if args.allow_downloads:
+            from .source_acquisition import acquire_pinned_sources
+            acquisition = acquire_pinned_sources(source_plan)
+            if not acquisition.source_verified:
+                _print({"action": "setup", "status": "source_acquisition_failed",
+                        "acquisition": acquisition.to_dict(),
+                        "pip_started": False, "build_started": False})
+                return 2
+            source_plan = create_source_build_plan()
+        if args.allow_python_dependency_downloads:
+            if not source_plan.source_verified:
+                _print({"action": "setup", "status": "source_checkout_unverified",
+                        "source": source_plan.to_dict(),
+                        "pip_started": False, "build_started": False})
+                return 2
+            from .dependency_resolution import stage_dependency_candidate
+            candidate = stage_dependency_candidate(
+                authorize_network=True, environment=env,
+                source_verified=source_plan.source_verified,
+            )
+            _print({
+                "action": "setup",
+                "status": candidate.status,
+                "acquisition": acquisition.to_dict() if acquisition else None,
+                "dependency_candidate": candidate.to_dict(),
+                "installation_started": False, "build_started": False,
+            })
+            return 0 if candidate.status == "candidate_review_required" else 2
         updated = build_launch_plan()
         _print({
-            "action": "setup", "status": (
-                "sources_verified_dependency_lock_pending"
-                if result.source_verified else "source_acquisition_failed"
-            ),
-            "acquisition": result.to_dict(),
+            "action": "setup", "status": "sources_verified_dependency_lock_pending",
+            "acquisition": acquisition.to_dict() if acquisition else None,
             "plan": updated,
             "pip_started": False, "build_started": False,
         })
-        return 0 if result.source_verified else 2
+        return 0
     parser.error("Unsupported operation")
     return 2
 
