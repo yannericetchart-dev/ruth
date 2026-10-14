@@ -1,5 +1,7 @@
 """A portable profile submission never leaks machine identity or bypasses consent."""
 import json
+from io import StringIO
+from unittest.mock import patch
 from pathlib import Path
 from tempfile import TemporaryDirectory
 from types import SimpleNamespace
@@ -10,6 +12,7 @@ from ruth_runtime.profile_contribution import (
 )
 from ruth_runtime.model_catalog import select_model
 from ruth_runtime.profile_registry import SCHEMA
+from ruth_runtime.launcher import main
 
 
 class ProfileContributionTests(unittest.TestCase):
@@ -82,6 +85,62 @@ class ProfileContributionTests(unittest.TestCase):
             public.write_text(json.dumps(tampered))
             with self.assertRaises(ValueError):
                 validate_submitted_proposal(public)
+
+    def test_cli_publication_only_uses_saved_profile_without_recording(self):
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            profile = self.prepare(root)
+            expected = {
+                "status": "git_cli_missing", "git_updated": False,
+                "retryable": True,
+            }
+            matrix = {
+                "status": "profile_catalog_ready", "profiles": [],
+                "gpu_allocations_executed": False,
+            }
+            with patch("sys.stdout", new_callable=StringIO) as output, \
+                 patch("ruth_runtime.model_memory_profiles.build_profile_matrix",
+                       return_value=matrix), \
+                 patch("ruth_runtime.profile_contribution.publish_proposal_pr",
+                       return_value=expected) as publish, \
+                 patch("ruth_runtime.profile_registry.record_local_profile",
+                       side_effect=AssertionError("Do not rerecord")):
+                code = main(["models", "profiles", "--publish-pr",
+                             "--consent-publication", "--profile-file", str(profile)])
+            self.assertEqual(code, 2)
+            result = json.loads(output.getvalue())
+            self.assertEqual(result["status"], "profile_catalog_ready")
+            self.assertTrue(result["local_profile_retained"])
+            self.assertEqual(result["git_publication"]["status"], "git_cli_missing")
+            self.assertTrue(publish.called)
+
+    def test_cli_local_profile_survives_failed_publication(self):
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            profile = self.prepare(root)
+            matrix = {"status": "profile_catalog_ready", "profiles": [],
+                      "gpu_allocations_executed": False}
+            with patch("sys.stdout", new_callable=StringIO) as output, \
+                 patch("ruth_runtime.model_memory_profiles.build_profile_matrix",
+                       return_value=matrix), \
+                 patch("ruth_runtime.profile_registry.record_local_profile",
+                       return_value={"status": "local_profile_updated",
+                                     "profile_file": str(profile)}) as record, \
+                 patch("ruth_runtime.profile_contribution.publish_proposal_pr",
+                       return_value={"status": "git_cli_missing",
+                                     "git_updated": False}):
+                code = main(["models", "profiles", "--host",
+                             "--evidence-file", str(root / "probe.json"),
+                             "--record-local", "--publish-pr",
+                             "--consent-publication"])
+            self.assertEqual(code, 2)
+            result = json.loads(output.getvalue())
+            self.assertEqual(result["status"], "profile_catalog_ready")
+            self.assertEqual(result["local_profile_update"]["status"],
+                             "local_profile_updated")
+            self.assertEqual(result["git_publication"]["status"], "git_cli_missing")
+            self.assertTrue(result["local_profile_retained"])
+            self.assertEqual(record.call_count, 1)
 
     def test_without_consent_never_calls_external_process(self):
         result = publish_proposal_pr({}, permit_external_publication=False,
