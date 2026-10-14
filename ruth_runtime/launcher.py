@@ -124,6 +124,8 @@ def main(argv: list[str] | None = None) -> int:
             mp.add_argument("--load-mode", choices=("weights", "context"),
                             default="weights",
                             help="weights: load GGUF only; context: add KV/compute buffers")
+            mp.add_argument("--cuda-preinit", action="store_true",
+                            help="Experimentally preinitialize CUDA primary context and measure free VRAM before GGUF load")
             mp.add_argument("--allow-gpu-load", action="store_true",
                             help="Authorize isolated GPU allocations WITHOUT inference")
         if operation in ("smoke", "profile", "probe-production"):
@@ -177,7 +179,8 @@ def main(argv: list[str] | None = None) -> int:
                     raise CatalogError("Load-only probe requires production purpose")
                 result = probe_model_load(
                     quantization=choice.quantization, mode=args.load_mode,
-                    n_ctx=args.n_ctx, allow_gpu_load=args.allow_gpu_load,
+                    n_ctx=args.n_ctx, cuda_preinit=args.cuda_preinit,
+                    allow_gpu_load=args.allow_gpu_load,
                 )
                 _print({"action": "models", **result})
                 return 0 if result["status"] == "gpu_load_only_completed" else 2
