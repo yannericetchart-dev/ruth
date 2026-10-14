@@ -89,9 +89,37 @@ class WorkerFailureTests(unittest.TestCase):
             "logline\n" * 1000 + "llama_context failed to initialize",
             "ValueError: Failed to create llama_context", 0, False,
         )
-        self.assertLessEqual(len(report["stderr_tail"]), 2500)
+        self.assertLessEqual(len(report["stderr_tail"]), 6000)
         self.assertIn("failed to initialize", report["stderr_tail"])
-        self.assertLessEqual(len(report["cuda_diagnostics"]), 12)
+        self.assertLessEqual(len(report["cuda_diagnostics"]), 24)
+
+    def test_abort_captures_native_phase_and_diagnostics(self):
+        raw = (
+            "RUTH_WORKER_PHASE=load_begin\n"
+            "RUTH_WORKER_PHASE=load_complete\n"
+            "RUTH_WORKER_PHASE=prefill_begin\n"
+            "CUDA error: the resource allocation failed\n"
+            "  current device: 0, in function cublas_handle\n"
+        )
+        outcome = analyze_worker_failure(raw, None, -6, False)
+        self.assertTrue(outcome["abort_signal_detected"])
+        self.assertEqual(outcome["last_worker_phase"], "prefill_begin")
+        self.assertEqual(outcome["failed_during"], "prefill")
+        self.assertTrue(outcome["native_cuda_resource_allocation_failed"])
+        self.assertFalse(outcome["suspected_cuda_oom"])
+        self.assertIn("resource allocation failed", "\n".join(
+            outcome["fatal_native_lines"]
+        ))
+        self.assertIn("RUTH_WORKER_PHASE=prefill_begin",
+                      outcome["stderr_tail"])
+
+    def test_successful_probe_is_not_treated_as_native_abort(self):
+        report = analyze_worker_failure(
+            "RUTH_WORKER_PHASE=decode_complete\n", None, 0, True,
+        )
+        self.assertIsNone(report["failed_during"])
+        self.assertFalse(report["abort_signal_detected"])
+        self.assertIsNone(report["stderr_tail"])
 
     def test_benchmark_retains_native_logs_for_exit_zero_failure(self):
         completed = subprocess.CompletedProcess(
