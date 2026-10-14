@@ -103,6 +103,13 @@ class GpuInferenceContractTests(unittest.TestCase):
                 environment=env, run=worker,
                 native_verification=native,
                 gpu_discovery=discover or (lambda **kwargs: (UUID, PCI)),
+                gpu_preflight=lambda uuid, **kw: SimpleNamespace(
+                    status="gpu_ready",
+                    to_dict=lambda: {"status": "gpu_ready", "gpu_uuid": uuid,
+                                     "memory_mib": {"total": 6141, "reserved": 369,
+                                                    "used": 0, "free": 5772},
+                                     "processes": [], "recommendations": []},
+                ),
             )
         return result, worker
 
