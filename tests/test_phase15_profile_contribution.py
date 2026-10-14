@@ -19,7 +19,7 @@ from ruth_runtime.launcher import main
 class ProfileContributionTests(unittest.TestCase):
     def prepare(self, root):
         path = root / ".ruth-build/profiles/models"
-        path.mkdir(parents=True)
+        path.mkdir(parents=True, exist_ok=True)
         sha = "a" * 64
         file = path / (sha + ".json")
         file.write_text(json.dumps({
