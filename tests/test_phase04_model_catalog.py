@@ -194,12 +194,19 @@ class HfMetadataTests(unittest.TestCase):
 
     def test_source_gated_is_reported_not_accepted(self):
         selected = select_model("production")
+        # Gemma's exact size is intentionally not pinned yet. For this
+        # metadata-only gated-state test supply a valid *synthetic* size;
+        # it must not be mistaken for a verified production artifact.
+        self.assertIsNone(selected.expected_size_bytes)
+        simulated_size = selected.approx_size_mb * 1_000_000
         result = resolve_model_metadata(
             selected, authorize_metadata_network=True,
-            fetch=lambda _: metadata(selected, gated="auto"))
+            fetch=lambda _: metadata(
+                selected, gated="auto", size=simulated_size))
         self.assertEqual(result["status"], "source_metadata_verified_license_pending")
         self.assertEqual(result["gated"], "auto")
         self.assertFalse(result["license_accepted"])
+        self.assertIsNone(selected.revision)
 
 
 class ModelsCliTests(unittest.TestCase):
