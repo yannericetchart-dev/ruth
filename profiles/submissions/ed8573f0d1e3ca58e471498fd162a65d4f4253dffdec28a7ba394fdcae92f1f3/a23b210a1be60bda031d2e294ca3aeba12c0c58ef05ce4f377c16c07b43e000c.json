@@ -1,0 +1,40 @@
+{
+  "measurements_pending": false,
+  "model": {
+    "family": "gemma",
+    "format": "gguf",
+    "gguf_serialized_bytes": 5983265728,
+    "gguf_sha256": "ed8573f0d1e3ca58e471498fd162a65d4f4253dffdec28a7ba394fdcae92f1f3",
+    "license": "gemma",
+    "model": "gemma-2",
+    "quantization": "Q4_K_L",
+    "source_repository": "bartowski/gemma-2-9b-it-GGUF",
+    "source_revision": "d731033f3dc4018261fd39896e50984d398b4ac5",
+    "version": "gemma-2-9B-it"
+  },
+  "production_qualified": false,
+  "review_required": true,
+  "runtime_measurements": [
+    {
+      "architecture": "ada",
+      "compute_buffer_mib": null,
+      "compute_capability": "8.9",
+      "cuda_backend": "13.2",
+      "cuda_driver_max": "13.2",
+      "cuda_init_observed_nvml_delta_mib_max": 90.19,
+      "cuda_toolkit": null,
+      "driver_reserved_mib_max": 369.0,
+      "driver_version": "595.99.02",
+      "flash_attention": null,
+      "kv_buffer_mib": null,
+      "kv_type_k": null,
+      "kv_type_v": null,
+      "llama_cpp_binding": "0.3.36",
+      "n_ctx": null,
+      "tensor_core_generation": 4,
+      "weights_buffer_mib_max": 5700.31
+    }
+  ],
+  "schema": "ruth-community-model-memory-proposal-v1",
+  "verified_inference": false
+}
