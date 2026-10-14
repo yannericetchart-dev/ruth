@@ -27,6 +27,7 @@ WORKER_SCRIPT = (
     "from ruth_runtime.load_only_worker import main;"
     "sys.exit(main(sys.argv[2:]))"
 )
+KV_SIZE = re.compile(r"\bkv_size\s*=\s*(\d+)\b")
 BUFFER = re.compile(
     r"(?P<device>CUDA\d+|CPU(?:_[A-Za-z]+)?)\s+"
     r"(?:(?P<kind>model|KV|compute|output)\s+)?"
@@ -52,6 +53,7 @@ def probe_model_load(
     *, project_root: Path = PROJECT_ROOT,
     quantization: str = "Q4_K_L",
     mode: str = "weights",
+    n_ctx: int = 128,
     allow_gpu_load: bool = False,
     environment: Any = None,
     run: Callable[..., Any] = subprocess.run,
@@ -73,9 +75,10 @@ def probe_model_load(
     if not allow_gpu_load:
         return finish("gpu_load_not_authorized",
                       error="Explicit --allow-gpu-load is required")
-    if mode not in ("weights", "context") or quantization not in SUPPORTED:
+    if (mode not in ("weights", "context") or quantization not in SUPPORTED
+            or type(n_ctx) is not int or not 64 <= n_ctx <= 4096):
         return finish("unsupported_load_diagnostic",
-                      error="Only pinned Gemma Q4_K_L or Q4_K_M: weights/context")
+                      error="Only pinned Gemma Q4_K_L or Q4_K_M: weights/context; 64<=n_ctx<=4096")
     root = Path(project_root)
     env = environment if environment is not None else inspect_python_environment()
     if not (env.interpreter_in_project_venv
@@ -101,7 +104,7 @@ def probe_model_load(
                       "PYTHONNOUSERSITE": "1", "PYTHONDONTWRITEBYTECODE": "1"}
         worker_env.pop("LLAMA_CPP_LIB_PATH", None)
         argv = [str(root / ".venv/bin/python"), "-I", "-c", WORKER_SCRIPT,
-                str(root), str(root), uuid, quantization, mode]
+                str(root), str(root), uuid, quantization, mode, str(n_ctx)]
         pre = gpu_preflight(uuid, run=run)
         if pre.status != "gpu_ready":
             return finish(pre.status, gpu_uuid=uuid, gpu_pci_bus=pci,
@@ -110,6 +113,7 @@ def probe_model_load(
         worker = run(argv, cwd=str(root), capture_output=True, text=True,
                      check=False, timeout=TIMEOUT, env=worker_env)
         native_buffers = extract_native_buffers(worker.stderr or "")
+        native_kv_sizes = [int(x) for x in KV_SIZE.findall(worker.stderr or "")]
         lines = [s[len(PREFIX):] for s in (worker.stdout or "").splitlines()
                  if s.startswith(PREFIX)]
         data = json.loads(lines[0]) if len(lines) == 1 else {}
@@ -119,7 +123,8 @@ def probe_model_load(
             or data.get("quantization") != quantization
             or data.get("gpu_uuid") != uuid
             or data.get("inference_executed") is not False
-            or data.get("generated_tokens") != 0):
+            or data.get("generated_tokens") != 0
+            or (mode == "context" and data.get("n_ctx") != n_ctx)):
             raise ValueError("Unexpected worker identity or inference activity")
         weights = data.get("weights_loaded") is True
         context = data.get("context_initialized") is True
@@ -134,7 +139,8 @@ def probe_model_load(
             "gpu_load_only_completed" if success else "gpu_load_only_failed",
             gpu_uuid=uuid, gpu_pci_bus=pci, gpu_preflight=pre.to_dict(),
             weights_loaded=weights, context_initialized=context,
-            n_ctx=data.get("n_ctx"), n_batch=data.get("n_batch"),
+            n_ctx=data.get("n_ctx"), native_kv_sizes=native_kv_sizes,
+            n_batch=data.get("n_batch"),
             n_ubatch=data.get("n_ubatch"),
             gpu_process_observed=data.get("gpu_process_observed") is True,
             gpu_memory_peak_mib_observed=data.get("gpu_memory_peak_mib_observed"),
