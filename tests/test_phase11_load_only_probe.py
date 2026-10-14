@@ -39,6 +39,10 @@ class FakeWorker:
             "schema": SCHEMA, "mode": self.mode,
             "quantization": "Q4_K_L", "gpu_uuid": UUID,
             "weights_loaded": self.loaded, "context_initialized": self.context,
+            "cuda_preinit_requested": args[-1] == "preinit",
+            "cuda_primary_context_preinitialized": args[-1] == "preinit",
+            "cuda_free_mib_after_primary_ctx_init": (
+                5680 if args[-1] == "preinit" else None),
             "inference_executed": False, "generated_tokens": 0,
             "gpu_process_observed": self.loaded,
             "gpu_memory_peak_mib_observed": 5450 if self.loaded else None,
@@ -46,7 +50,7 @@ class FakeWorker:
             "cuda_free_mib_after_model_load": 300 if self.loaded else None,
             "cuda_free_mib_after_context_init": 250 if self.context else None,
             "error": self.error,
-            "n_ctx": int(args[-1]) if self.mode == "context" else None,
+            "n_ctx": int(args[-2]) if self.mode == "context" else None,
             "n_batch": 64 if self.mode == "context" else None,
             "n_ubatch": 64 if self.mode == "context" else None,
         }
@@ -75,6 +79,59 @@ def ready(uuid, **kw):
 
 
 class LoadOnlyWorkerNoInferenceTests(unittest.TestCase):
+    def test_primary_context_preinitializes_before_native_model_load(self):
+        calls = []
+        class Driver:
+            def cuCtxSetCurrent(self, ctx):
+                calls.append("clear_context")
+            def cuDevicePrimaryCtxRelease(self, device):
+                calls.append("release_context")
+
+        class API:
+            def llama_supports_gpu_offload(self): return True
+            def llama_backend_init(self): calls.append("backend_init")
+            def llama_backend_free(self): calls.append("backend_free")
+            def llama_model_default_params(self):
+                return SimpleNamespace(n_gpu_layers=0, main_gpu=0, use_mmap=False)
+            def llama_model_load_from_file(self, path, params):
+                calls.append("model_load")
+                return None
+
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            model = root / "model.gguf"
+            model.write_bytes(b"GGUF01234567")
+            choice = SimpleNamespace(
+                family="gemma", model="gemma-2",
+                version="gemma-2-9B-it", quantization="Q4_K_L",
+                expected_size_bytes=model.stat().st_size,
+            )
+            package = ModuleType("llama_cpp")
+            package.__version__ = WHEEL_VERSION
+            package.llama_cpp = API()
+            def initialize():
+                calls.append("preinit")
+                return Driver(), 0
+            with patch.dict(sys.modules, {"llama_cpp": package}), \
+                 patch("ruth_runtime.load_only_worker.select_model",
+                       return_value=choice), \
+                 patch("ruth_runtime.load_only_worker._local_path",
+                       return_value=model), \
+                 patch("ruth_runtime.load_only_worker.measure_worker_gpu"), \
+                 patch("ruth_runtime.load_only_worker.initialize_cuda_primary_context",
+                       side_effect=initialize), \
+                 patch("ruth_runtime.load_only_worker.current_cuda_free_mib",
+                       return_value=5682.8), \
+                 patch.dict("os.environ", {"CUDA_VISIBLE_DEVICES": UUID}):
+                result = run_load_only(root, UUID, "Q4_K_L", "weights",
+                                       128, cuda_preinit=True)
+            self.assertEqual(calls[:3], ["backend_init", "preinit", "model_load"])
+            self.assertIn("release_context", calls)
+            self.assertTrue(result["cuda_primary_context_preinitialized"])
+            self.assertEqual(result["cuda_free_mib_after_primary_ctx_init"], 5682.8)
+            self.assertFalse(result["weights_loaded"])
+            self.assertFalse(result["inference_executed"])
+
     def test_native_stage_separation_does_not_generate_any_tokens(self):
         class FakeAPI:
             def __init__(self):
@@ -134,7 +191,8 @@ class LoadOnlyWorkerNoInferenceTests(unittest.TestCase):
 
 
 class LoadOnlyTests(unittest.TestCase):
-    def execute(self, mode="weights", worker=None, preflight=ready):
+    def execute(self, mode="weights", worker=None, preflight=ready,
+                cuda_preinit=False):
         with TemporaryDirectory() as tmp:
             root = Path(tmp)
             env = SimpleNamespace(
@@ -150,7 +208,8 @@ class LoadOnlyTests(unittest.TestCase):
                        return_value=(True, root / "fake.gguf", None)):
                 report = probe_model_load(
                     project_root=root, quantization="Q4_K_L",
-                    allow_gpu_load=True, mode=mode, environment=env,
+                    allow_gpu_load=True, mode=mode,
+                    cuda_preinit=cuda_preinit, environment=env,
                     verify_native=lambda **kw: SimpleNamespace(
                         status="native_library_dual_abi_verified",
                     ),
@@ -168,6 +227,15 @@ class LoadOnlyTests(unittest.TestCase):
         self.assertEqual([row["kind"] for row in rows],
                          ["model", "kv", "compute"])
         self.assertEqual(rows[0]["mib"], 5700.31)
+
+    def test_cuda_preinit_reported_separately_from_original_baseline(self):
+        result, worker = self.execute(cuda_preinit=True)
+        self.assertEqual(result["status"], "gpu_load_only_completed")
+        self.assertTrue(result["cuda_preinit_requested"])
+        self.assertTrue(result["cuda_primary_context_preinitialized"])
+        self.assertEqual(result["cuda_free_mib_after_primary_ctx_init"], 5680)
+        self.assertEqual(worker.calls[0][0][-1], "preinit")
+        self.assertFalse(result["inference_executed"])
 
     def test_weights_only_no_inference(self):
         result, worker = self.execute()
