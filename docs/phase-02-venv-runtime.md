@@ -189,6 +189,22 @@ non attendibile nello stesso processo) e infine la build nativa
 con test di offload CUDA e inferenza GGUF reale. Evitare qualunque
 autorizzazione implicita nascosta nello stato di `setup`.
 
+## Stato della CVE diskcache: TO DO non prioritario
+
+Decisione progettuale: **non** rimuovere, forkare né patchare subito
+`diskcache` solo per la CVE-2025-69872. Mantenere il problema come
+**TO DO aperto** in `ROADMAP.md` fino alla disponibilità di una release
+upstream corretta e verificata. Quando arriverà, aggiornare versione,
+wheel SHA256 e lock completo, ripetendo i test dell'adapter e gli audit.
+
+Nel frattempo il percorso Ruth conserva il divieto di `LlamaDiskCache`
+e di deserializzazione da cache non attendibili. La mitigazione verificata
+(`controls_verified_residual_risk`) **non** costituisce una patch alla
+libreria, un'approvazione del lock o un'autorizzazione a installare la
+versione vulnerabile. Il rinvio del TO DO non blocca la **progettazione,
+implementazione e prova non invasiva** del builder CUDA nativo; ogni
+installazione effettiva mantiene i propri gate e autorizzazioni.
+
 ## Installazione automatica: gate da completare
 
 Non inventiamo hash approvati. Dopo il lock candidato restano la verifica
