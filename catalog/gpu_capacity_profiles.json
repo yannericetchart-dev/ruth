@@ -1,23 +1,29 @@
 {
   "schema": "ruth-gpu-capacity-classes-v1",
   "backend": "cuda",
-  "description": "Reusable nominal VRAM classes, not measured free memory and not proof of model compatibility. Device identity and observed failures live only in local probe results.",
+  "description": "Legacy union of Ruth-allowed nominal VRAM classes. Source of truth is nvidia_architecture_policy.json: compute capability + architecture-specific permitted tiers; listed sizes do NOT certify real-GPU SKU or runtime fit.",
   "vram_classes_gib": [
-    4,
     6,
     8,
-    10,
     12,
     16,
     24,
     32,
-    48
+    48,
+    80,
+    94,
+    96,
+    141,
+    180,
+    192,
+    372
   ],
   "unlisted_device_policy": "use_detected_total_vram_and_actual_free_memory_without_rejecting_unknown_size",
-  "selection_policy": "highest_quality_candidate_fitting_current_free_vram_then_verify_with_real_full_gpu_probe",
+  "selection_policy": "exact_compute_capability_and_allowed_architecture_vram_then_measure_native_backend_per_cuda",
   "memory_reserve_mib": 0,
   "require_gpu_exclusivity_for_probes": true,
   "require_full_gpu_offload_for_production": true,
   "failed_probe_policy": "record_local_evidence_only_do_not_blacklist_generic_class",
-  "context_policy": "start_small_then_calibrate_after_verified_load"
+  "context_policy": "start_small_then_calibrate_after_verified_load",
+  "hardware_policy_ref": "catalog/nvidia_architecture_policy.json"
 }
