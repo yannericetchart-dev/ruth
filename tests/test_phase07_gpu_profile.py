@@ -118,6 +118,13 @@ class ProfileParentTests(unittest.TestCase):
                 authorize_gpu_inference=allow, environment=env,
                 run=worker, native_check=native,
                 gpu_check=lambda **kw: (UUID, PCI), save=saving,
+                gpu_preflight=lambda uuid, **kw: SimpleNamespace(
+                    status="gpu_ready",
+                    to_dict=lambda: {"status": "gpu_ready", "gpu_uuid": uuid,
+                                     "memory_mib": {"total": 6141, "reserved": 369,
+                                                    "used": 0, "free": 5772},
+                                     "processes": [], "recommendations": []},
+                ),
             )
         return result, worker
 
