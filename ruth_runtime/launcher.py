@@ -81,7 +81,7 @@ def main(argv: list[str] | None = None) -> int:
     models = sub.add_parser("models", help="Read-only hierarchical model catalog and HF provenance")
     model_sub = models.add_subparsers(dest="model_action")
     model_sub.add_parser("list", help="List families, GGUF models and defaults (offline)")
-    for operation in ("select", "resolve", "download", "smoke"):
+    for operation in ("select", "resolve", "download", "smoke", "profile"):
         mp = model_sub.add_parser(operation, help=(
             "Offline model selection" if operation == "select" else
             "Resolve HF immutable revision and GGUF checksum (metadata only)"
@@ -89,6 +89,8 @@ def main(argv: list[str] | None = None) -> int:
             "Explicit, resumable SHA256-verified HF GGUF download"
             if operation == "download" else
             "Isolated native GGUF test with real CUDA offload/token evidence"
+            if operation == "smoke" else
+            "Repeated GPU GGUF profile: warmup, prefill/decode, VRAM, token/s"
         ))
         mp.add_argument("--purpose", choices=("production", "test"), default="test")
         mp.add_argument("--family")
@@ -104,7 +106,7 @@ def main(argv: list[str] | None = None) -> int:
                             help="Authorize network transfer of this pinned GGUF file")
             mp.add_argument("--accept-model-license", action="store_true",
                             help="Confirm you reviewed and accept the original model license terms")
-        if operation == "smoke":
+        if operation in ("smoke", "profile"):
             mp.add_argument("--allow-gpu-inference", action="store_true",
                             help="Authorize model loading/inference in isolated CUDA worker; no download")
     sub.add_parser("run", help="Start the CUDA runtime only after verification")
@@ -119,8 +121,8 @@ def main(argv: list[str] | None = None) -> int:
             if args.model_action == "list":
                 _print({"action": "models", **list_models()})
                 return 0
-            if args.model_action not in {"select", "resolve", "download", "smoke"}:
-                raise CatalogError("Choose models list, select, resolve, download or smoke")
+            if args.model_action not in {"select", "resolve", "download", "smoke", "profile"}:
+                raise CatalogError("Choose models list, select, resolve, download, smoke or profile")
             choice = select_model(
                 purpose=args.purpose, family=args.family, model=args.model,
                 version=args.version, format=args.format,
@@ -131,6 +133,14 @@ def main(argv: list[str] | None = None) -> int:
                         "selection": choice.to_dict(),
                         "download_started": False})
                 return 0
+            if args.model_action == "profile":
+                from .gpu_profile import run_gpu_profile
+                result = run_gpu_profile(
+                    purpose=args.purpose,
+                    authorize_gpu_inference=args.allow_gpu_inference,
+                )
+                _print({"action": "models", **result.to_dict()})
+                return 0 if result.gpu_profile_verified else 2
             if args.model_action == "smoke":
                 from .inference_probe import probe_inference
                 result = probe_inference(

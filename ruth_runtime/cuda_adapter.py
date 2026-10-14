@@ -9,6 +9,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 import importlib
 from pathlib import Path
+from time import perf_counter
 from typing import Callable, Mapping, Any
 
 from .contracts import StackSelection
@@ -90,6 +91,55 @@ class _NoDiskCacheSession:
         return {"completion_tokens": tokens,
                 "text": str(result["choices"][0]["text"])}
 
+    def benchmark_round(
+        self, prompt: str, *, max_tokens: int = 64, seed: int = 42,
+    ) -> dict:
+        """Isolated prefill + greedy decode using pinned Llama API.
+
+        Tokenization, prompt eval and generation are timed separately.
+        Measured decode is after the first token, which is drawn from
+        prefill logits. Early EOS is reported, not silently padded.
+        This is not a chat formatting or quality benchmark.
+        """
+        if self._closed:
+            raise UnverifiedCudaEngine("Closed CUDA session")
+        if not self.cache_disabled:
+            raise UnsafeRuntimeOptions("Llama cache must remain disabled")
+        if not isinstance(prompt, str) or not prompt:
+            raise ValueError("Nonempty fixed prompt required")
+        if type(max_tokens) is not int or not 1 <= max_tokens <= 256:
+            raise ValueError("Benchmark tokens out of supported range")
+        if type(seed) is not int or not 0 <= seed <= 2**31 - 1:
+            raise ValueError("Invalid benchmark seed")
+        llm = self._llm
+        t0 = perf_counter()
+        prompt_ids = llm.tokenize(prompt.encode("utf-8"), add_bos=True)
+        tokenize = perf_counter() - t0
+        if not prompt_ids or len(prompt_ids) + max_tokens > llm.n_ctx():
+            raise ValueError("Prompt/generation exceeds fixed context")
+        llm.reset()
+        llm.set_seed(seed)
+        t0 = perf_counter()
+        llm.eval(prompt_ids)
+        prefill = perf_counter() - t0
+        t0 = perf_counter()
+        generated = [llm.sample(temp=0.0)]
+        first = perf_counter() - t0
+        t0 = perf_counter()
+        while len(generated) < max_tokens and generated[-1] != llm.token_eos():
+            llm.eval([generated[-1]])
+            generated.append(llm.sample(temp=0.0))
+        decode = perf_counter() - t0
+        decoded = len(generated) - 1
+        return {
+            "prompt_tokens": len(prompt_ids), "completion_tokens": len(generated),
+            "decode_tokens": decoded, "eos": generated[-1] == llm.token_eos(),
+            "tokenize_seconds": tokenize, "prefill_seconds": prefill,
+            "first_token_seconds": first, "decode_seconds": decode,
+            "prefill_tokens_per_second": len(prompt_ids) / prefill if prefill > 0 else None,
+            "decode_tokens_per_second": decoded / decode if decode > 0 and decoded else None,
+        }
+
     def close(self) -> None:
         if not self._closed:
             self._closed = True
@@ -105,6 +155,7 @@ class CudaLlamaAdapter:
     """
     load_backend: Callable[[str], Any] = importlib.import_module
     native_diagnostics: bool = False
+    seed: int = 42
 
     def load(
         self, model_path: Path, selection: StackSelection,
@@ -132,6 +183,7 @@ class CudaLlamaAdapter:
         llm = constructor(
             model_path=str(model.resolve()),
             n_gpu_layers=-1,  # request all possible layers on GPU
+            seed=self.seed,
             main_gpu=0,
             n_ctx=selected["n_ctx"],
             n_batch=selected["n_batch"],
