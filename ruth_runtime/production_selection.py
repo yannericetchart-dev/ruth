@@ -23,6 +23,33 @@ _MIB = 1024 * 1024
 SUPPORTED_PROBES = frozenset(("Q4_K_L", "Q4_K_M"))
 
 
+def _published_minimal_inference(
+    *, root: Path, sha: str, hardware: dict,
+) -> dict | None:
+    """Reuse only validated exact-runtime minimal-context token evidence."""
+    from .profile_contribution import validate_submitted_proposal
+    folder = root / "profiles" / "measurements" / sha
+    if folder.is_symlink() or not folder.is_dir():
+        return None
+    for file in sorted(folder.glob("*.json")):
+        if file.is_symlink() or not file.is_file() or file.stat().st_size > 200_000:
+            raise ValueError("Unsafe published CUDA record")
+        validate_submitted_proposal(file, project_root=root)
+        payload = json.loads(file.read_text(encoding="utf-8"))
+        for v in payload.get("minimal_context_inference", []):
+            if (v.get("verified") is True
+                and v.get("production_context_qualified") is False
+                and v.get("n_ctx") == 128
+                and v.get("architecture") == hardware.get("architecture")
+                and v.get("driver_version") == hardware.get("driver_version")
+                and v.get("cuda_backend") == hardware.get("backend_cuda")
+                and v.get("llama_cpp_binding") == WHEEL_VERSION):
+                return {"status": "minimal_gpu_tokens_previously_verified",
+                        "n_ctx": 128, "source": file.relative_to(root).as_posix(),
+                        "production_context_qualified": False}
+    return None
+
+
 def plan_production(
     *, project_root: Path = PROJECT_ROOT,
     authorize_metadata_network: bool = False,
@@ -82,13 +109,20 @@ def plan_production(
             proof = None
         else:
             proof = None
+            confirmed = (_published_minimal_inference(
+                root=root, sha=v["sha256"], hardware=hw)
+                if v.get("catalog_pin_exists") else None)
             if v.get("catalog_pin_exists"):
                 try:
                     proof = offline_fit(project_root=root, quantization=quant,
                                         **matched_runtime)
                 except (CatalogError, ValueError):
                     proof = None
-            if proof and proof.get("status") == "full_gpu_weights_cannot_fit_nominal_bound":
+            if confirmed is not None:
+                state = "minimal_context_gpu_verified_from_git"
+                rationale = "Exact GGUF/driver/CUDA minimal-context full GPU token evidence already published"
+                proof = confirmed
+            elif proof and proof.get("status") == "full_gpu_weights_cannot_fit_nominal_bound":
                 state = "measured_full_gpu_weights_incompatible"
                 rationale = "Published exact-runtime driver+CUDA+weights measurements exceed VRAM"
             elif proof and proof.get("status") == "weights_possible_context_unverified":
@@ -129,10 +163,23 @@ def plan_production(
         -(r["quality_priority_heuristic"] or 0),
         r["quantization"],
     ))
+    previously_verified = next(
+        (r for r in rows if r["status"] == "minimal_context_gpu_verified_from_git"),
+        None,
+    )
     ordered_testable = [r for r in rows if r["status"] in (
         "candidate_requires_download_and_gpu_tests",
         "candidate_requires_runtime_context_and_inference_test")]
     first = ordered_testable[0]["quantization"] if ordered_testable else None
+    # If the best qualified quant was already verified in this exact runtime,
+    # avoid retesting smaller/lower-priority variants.
+    if previously_verified is not None and (
+        first is None or
+        previously_verified["quality_priority_heuristic"]
+        >= next(r["quality_priority_heuristic"] for r in ordered_testable
+                if r["quantization"] == first)
+    ):
+        first = None
     return {
         "status": "production_selection_ready",
         "model": pinned.version, "purpose": "production",
@@ -145,6 +192,8 @@ def plan_production(
         "quality_order_is_heuristic_not_benchmark": True,
         "models": rows,
         "first_candidate_to_test": first,
+        "best_previously_verified_minimal_context": (
+            previously_verified["quantization"] if previously_verified else None),
         "download_started": False, "gpu_allocations_executed": False,
         "inference_executed": False,
         "smaller_candidates_are_not_automatically_verified": True,
@@ -163,6 +212,8 @@ def execute_production_candidate(
     record: Callable[..., dict] | None = None,
     build: Callable[..., dict] | None = None,
     publish_owner: Callable[..., dict] | None = None,
+    save_minimal_inference: Callable[..., dict] | None = None,
+    hardware: dict | None = None,
 ) -> dict:
     """Download/test just the first UNKNOWN PINNED candidate, fail closed.
 
@@ -176,6 +227,12 @@ def execute_production_candidate(
         return {**base, "status": "production_plan_not_ready"}
     candidate = plan.get("first_candidate_to_test")
     if not candidate:
+        if plan.get("best_previously_verified_minimal_context"):
+            return {**base, "status": "production_previous_minimal_gpu_profile_reused",
+                    "candidate": plan["best_previously_verified_minimal_context"],
+                    "gpu_inference_verified_historical": True,
+                    "current_live_inference_executed": False,
+                    "production_qualified": False}
         return {**base, "status": "no_unverified_pinned_candidate_to_probe"}
     row = next((r for r in plan["models"] if r["quantization"] == candidate), None)
     if row is None or not row.get("download_pin_ready") or candidate not in SUPPORTED_PROBES:
@@ -192,7 +249,7 @@ def execute_production_candidate(
     from .model_download import download_pinned_model
     from .load_only_probe import probe_model_load
     from .production_probe import probe_production_candidate
-    from .profile_registry import record_local_profile
+    from .profile_registry import record_local_profile, record_minimal_context_inference
     from .profile_contribution import build_proposal, sync_owner_profile_if_authenticated
     download = download or download_pinned_model
     load = load or probe_model_load
@@ -200,6 +257,7 @@ def execute_production_candidate(
     record = record or record_local_profile
     build = build or build_proposal
     publish_owner = publish_owner or sync_owner_profile_if_authenticated
+    save_minimal_inference = save_minimal_inference or record_minimal_context_inference
 
     dr = download(choice, project_root=root, allow_download=True,
                   acknowledge_model_license=True)
@@ -240,6 +298,14 @@ def execute_production_candidate(
                    quantization=candidate)
     verified = getattr(result, "gpu_inference_verified", False) is True
     publication = None
+    minimal_record = None
+    if verified and recording:
+        # Never store a full-GPU positive status without checking exact GPU
+        # identity, layers, native library and token evidence.
+        host = hardware if hardware is not None else inspect_host_hardware(project_root=root)
+        minimal_record = save_minimal_inference(
+            Path(recording[-1]["profile_file"]),
+            result.to_dict(), choice=choice, hardware=host)
     if recording:
         proposal = build(Path(recording[-1]["profile_file"]))
         publication = publish_owner(proposal)
@@ -259,6 +325,7 @@ def execute_production_candidate(
         "gpu_inference_verified": verified,
         "inference_report": result.to_dict(),
         "local_records": recording,
+        "minimal_context_inference_record": minimal_record,
         "git_publication": publication,
         "git_updated": bool(publication and publication.get("git_updated")),
         "smaller_formats_preliminary_size_candidates": smaller if verified else [],
