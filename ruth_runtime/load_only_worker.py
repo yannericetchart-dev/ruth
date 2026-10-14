@@ -46,8 +46,9 @@ def current_cuda_free_mib() -> float | None:
         return None
 
 
-def run_load_only(root: Path, gpu_uuid: str, quantization: str, mode: str) -> dict:
-    if mode not in ("weights", "context") or quantization not in SUPPORTED:
+def run_load_only(root: Path, gpu_uuid: str, quantization: str, mode: str, n_ctx: int = N_CTX) -> dict:
+    if (mode not in ("weights", "context") or quantization not in SUPPORTED
+            or type(n_ctx) is not int or not 64 <= n_ctx <= 4096):
         raise ValueError("Unapproved pinned quantization or load-only mode")
     root = root.resolve(strict=True)
     choice = select_model("production", quantization=quantization, project_root=root)
@@ -81,7 +82,7 @@ def run_load_only(root: Path, gpu_uuid: str, quantization: str, mode: str) -> di
         "gpu_uuid": gpu_uuid, "worker_pid": os.getpid(),
         "weights_loaded": False, "context_initialized": False,
         "inference_executed": False, "generated_tokens": 0,
-        "n_ctx": N_CTX if mode == "context" else None,
+        "n_ctx": n_ctx if mode == "context" else None,
         "n_batch": N_BATCH if mode == "context" else None,
         "n_ubatch": N_UBATCH if mode == "context" else None,
         "cuda_free_mib_after_backend_init": None,
@@ -112,7 +113,7 @@ def run_load_only(root: Path, gpu_uuid: str, quantization: str, mode: str) -> di
         report["cuda_free_mib_after_model_load"] = current_cuda_free_mib()
         if mode == "context":
             options = api.llama_context_default_params()
-            options.n_ctx = N_CTX
+            options.n_ctx = n_ctx
             options.n_batch = N_BATCH
             options.n_ubatch = N_UBATCH
             options.offload_kqv = True
@@ -143,10 +144,10 @@ def run_load_only(root: Path, gpu_uuid: str, quantization: str, mode: str) -> di
 
 def main(args: list[str] | None = None) -> int:
     argv = sys.argv[1:] if args is None else args
-    if len(argv) != 4:
-        raise SystemExit("Expected project root, GPU UUID, quantization, mode")
+    if len(argv) != 5:
+        raise SystemExit("Expected project root, GPU UUID, quantization, mode, n_ctx")
     try:
-        result = run_load_only(Path(argv[0]), argv[1], argv[2], argv[3])
+        result = run_load_only(Path(argv[0]), argv[1], argv[2], argv[3], int(argv[4]))
         print(PREFIX + json.dumps(result, sort_keys=True))
         return 0 if result["weights_loaded"] and (
             argv[3] == "weights" or result["context_initialized"]
