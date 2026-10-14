@@ -186,61 +186,152 @@ def _gh(args: list[str], run: Callable[..., Any]) -> str:
     return result.stdout.strip()
 
 
-def publish_proposal_pr(
-    proposal: dict, *, permit_external_publication: bool = False,
-    run: Callable[..., Any] = subprocess.run,
-) -> dict:
-    """Push one immutable allowlisted JSON in user's fork and open upstream PR.
-
-    User must opt in to publishing machine measurement summaries; requires
-    Github CLI authentication with permission to create fork/PR.
-    """
-    if not permit_external_publication:
-        return {"status": "git_publication_not_authorized", "git_updated": False}
-    try:
-        return _publish_authenticated_proposal(proposal, run=run)
-    except GitHubCLIMissing:
-        return {
-            "status": "git_cli_missing",
-            "git_updated": False,
-            "review_required": True,
-            "retryable": True,
-            "remediation": "Install GitHub CLI (gh), run gh auth login, then retry publication from the existing local profile.",
-        }
-
-
-def _publish_authenticated_proposal(
-    proposal: dict, *, run: Callable[..., Any],
-) -> dict:
+def _validate_proposal_for_publication(proposal: dict) -> tuple[str, str]:
+    """Reject mutations before any GitHub read or write."""
     digest = proposal.get("content_digest")
     path = proposal.get("repository_path")
     if (not isinstance(digest, str) or not re.fullmatch("[0-9a-f]{64}", digest)
         or not isinstance(path, str)
-        or not re.fullmatch(r"profiles/submissions/[0-9a-f]{64}/[0-9a-f]{64}\.json", path)
+        or not re.fullmatch(r"profiles/submissions/[0-9a-f]{64}/[0-9a-f]{64}\\.json", path)
         or not isinstance(proposal.get("proposal"), dict)):
         raise ValueError("Invalid immutable proposal identity")
     canonical = json.dumps(proposal["proposal"], sort_keys=True, separators=(",", ":"))
     if hashlib.sha256(canonical.encode("utf-8")).hexdigest() != digest:
         raise ValueError("Proposal digest changed")
+    return digest, path
+
+
+def _github_user(run: Callable[..., Any]) -> str:
     user = _gh(["api", "user", "--jq", ".login"], run)
     if not _LOGIN.fullmatch(user):
-        raise ValueError("Unexpected GitHub login")
-    if user.lower() == UPSTREAM.split("/")[0].lower():
-        # Repository owner cannot fork their own repository: use a distinct
-        # proposal branch, never writing to the baseline branch.
-        fork = UPSTREAM
-    else:
-        # gh repo fork OWNER/REPO --clone=false leaves local git remotes alone.
-        try:
-            existing = json.loads(_gh(["api", f"repos/{user}/ruth"], run))
-        except RuntimeError:
-            existing = None
-        if existing is None:
-            _gh(["repo", "fork", UPSTREAM, "--clone=false"], run)
-        elif existing.get("fork") is not True or (
-            existing.get("parent") or {}).get("full_name", "").lower() != UPSTREAM.lower():
-            raise ValueError("A repository named ruth already exists but is not Ruth's fork")
-        fork = f"{user}/ruth"
+        raise ValueError("Unexpected authenticated GitHub login")
+    return user
+
+
+def _owner_direct_commit(
+    proposal: dict, *, run: Callable[..., Any],
+) -> dict:
+    """Append immutable model evidence DIRECTLY to model-profiling.
+
+    Use GitHub Contents API with branch explicitly set. Never overwrite existing
+    paths, and do not write to release/main. A same-content retry is idempotent.
+    """
+    digest, submission_path = _validate_proposal_for_publication(proposal)
+    path = submission_path.replace("profiles/submissions/", "profiles/measurements/", 1)
+    endpoint = f"repos/{UPSTREAM}/contents/{path}"
+    public_content = json.dumps(proposal["proposal"], sort_keys=True, indent=2) + "\n"
+    # GitHub returns HTTP 404 for a missing path. Other failures fail closed.
+    try:
+        response = run(
+            ["gh", "api", endpoint + "?ref=" + BASE_BRANCH],
+            capture_output=True, text=True, timeout=30, check=False,
+        )
+    except FileNotFoundError as exc:
+        raise GitHubCLIMissing("GitHub CLI 'gh' not found on PATH") from exc
+    if response.returncode == 0:
+        data = json.loads(response.stdout)
+        if not isinstance(data, dict) or data.get("type") != "file":
+            raise RuntimeError("Unexpected GitHub profile content response")
+        old = base64.b64decode(data.get("content", "").replace("\n", ""),
+                               validate=True).decode("utf-8")
+        if json.loads(old) != proposal["proposal"]:
+            raise ValueError("Immutable profile path already has different content")
+        return {
+            "status": "git_profile_already_current", "git_updated": False,
+            "branch": BASE_BRANCH, "repository": UPSTREAM,
+            "repository_path": path, "review_required": False,
+        }
+    stderr = response.stderr or ""
+    if not re.search(r"HTTP 404\\b", stderr):
+        raise RuntimeError("GitHub profile lookup failed (not an absent path)")
+    content = base64.b64encode(public_content.encode("utf-8")).decode("ascii")
+    result = _gh([
+        "api", "--method", "PUT", endpoint,
+        "-f", f"message=profiles: record measured CUDA profile {digest[:16]}",
+        "-f", f"content={content}",
+        "-f", f"branch={BASE_BRANCH}",
+    ], run)
+    confirmed = json.loads(result)
+    if (not isinstance(confirmed, dict)
+        or (confirmed.get("content") or {}).get("path") != path
+        or not re.fullmatch("[0-9a-f]{40}",
+                            (confirmed.get("commit") or {}).get("sha", ""))):
+        raise RuntimeError("GitHub did not verify branch file commit")
+    return {
+        "status": "git_profile_updated_model_profiling",
+        "git_updated": True, "review_required": False,
+        "branch": BASE_BRANCH, "repository": UPSTREAM,
+        "repository_path": path,
+        "commit_sha": confirmed["commit"]["sha"],
+    }
+
+
+def sync_owner_profile_if_authenticated(
+    proposal: dict, *, run: Callable[..., Any] = subprocess.run,
+) -> dict:
+    """Automatic owner-only commit, no extra consent flag; others stay local."""
+    try:
+        _validate_proposal_for_publication(proposal)
+        login = _github_user(run)
+        if login.lower() != UPSTREAM.split("/")[0].lower():
+            return {
+                "status": "git_owner_review_required",
+                "git_updated": False, "review_required": True,
+                "next_step": "An explicit --sync-git submits a fork PR for owner approval",
+            }
+        return _owner_direct_commit(proposal, run=run)
+    except GitHubCLIMissing:
+        return {
+            "status": "git_cli_missing", "git_updated": False,
+            "retryable": True, "review_required": None,
+            "remediation": "Install gh, authenticate, then retry --sync-git with saved profile",
+        }
+
+
+def publish_proposal_pr(
+    proposal: dict, *, permit_external_publication: bool = False,
+    run: Callable[..., Any] = subprocess.run,
+) -> dict:
+    """Legacy explicit publication API: owner direct, contributor PR."""
+    if not permit_external_publication:
+        return {"status": "git_publication_not_authorized", "git_updated": False}
+    return sync_profile_to_git(proposal, run=run)
+
+
+def sync_profile_to_git(
+    proposal: dict, *, run: Callable[..., Any] = subprocess.run,
+) -> dict:
+    """Authenticated owner: direct branch; outside contributor: PR, never push."""
+    try:
+        _validate_proposal_for_publication(proposal)
+        user = _github_user(run)
+        if user.lower() == UPSTREAM.split("/")[0].lower():
+            return _owner_direct_commit(proposal, run=run)
+        return _publish_external_pr(proposal, user=user, run=run)
+    except GitHubCLIMissing:
+        return {
+            "status": "git_cli_missing", "git_updated": False,
+            "review_required": None, "retryable": True,
+            "remediation": "Install GitHub CLI (gh), run gh auth login and retry with saved profile",
+        }
+
+
+def _publish_external_pr(
+    proposal: dict, *, user: str, run: Callable[..., Any],
+) -> dict:
+    """Only nonowners use forks, with owner's review required at merge."""
+    digest, path = _validate_proposal_for_publication(proposal)
+    # gh repo fork OWNER/REPO --clone=false leaves local git remotes alone.
+    try:
+        existing = json.loads(_gh(["api", f"repos/{user}/ruth"], run))
+    except RuntimeError:
+        existing = None
+    if existing is None:
+        _gh(["repo", "fork", UPSTREAM, "--clone=false"], run)
+    elif existing.get("fork") is not True or (
+        existing.get("parent") or {}).get("full_name", "").lower() != UPSTREAM.lower():
+        raise ValueError("A repository named ruth already exists but is not Ruth's fork")
+    fork = f"{user}/ruth"
     head_json = _gh(["api", f"repos/{fork}/git/ref/heads/{BASE_BRANCH}"], run)
     head = json.loads(head_json)["object"]["sha"]
     if not re.fullmatch("[0-9a-f]{40}", head):
@@ -250,19 +341,17 @@ def _publish_authenticated_proposal(
         _gh(["api", "--method", "POST", f"repos/{fork}/git/refs",
              "-f", f"ref=refs/heads/{branch}", "-f", f"sha={head}"], run)
     except RuntimeError:
-        # Never overwrite an existing branch; return a clear manual state.
         return {"status": "git_branch_exists_review_existing_pr",
-                "git_updated": False, "branch": branch}
+                "git_updated": False, "branch": branch, "review_required": True}
     public_content = json.dumps(proposal["proposal"], sort_keys=True, indent=2) + "\n"
     encoded = base64.b64encode(public_content.encode("utf-8")).decode("ascii")
     _gh(["api", "--method", "PUT", f"repos/{fork}/contents/{path}",
          "-f", f"message=profiles: submit immutable measured CUDA report {digest[:16]}",
          "-f", f"content={encoded}", "-f", f"branch={branch}"], run)
     title = f"Profile proposal: pinned GGUF CUDA measurements {digest[:12]}"
-    body = ("Automated, privacy-minimized **measurement proposal**. "
-            "Requires schema/provenance validation and human review; "
-            "no inference/production compatibility claims. "
-            "No machine identifiers, prompts or credentials included.")
+    body = ("Automated privacy-minimized measurement proposal. "
+            "Only repository owner approval can integrate this contribution. "
+            "Does not claim verified production inference.")
     response = _gh(["api", "--method", "POST", f"repos/{UPSTREAM}/pulls",
                     "-f", f"title={title}", "-f", f"head={user}:{branch}",
                     "-f", f"base={BASE_BRANCH}", "-f", f"body={body}"], run)
