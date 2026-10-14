@@ -87,6 +87,30 @@ class ProfileContributionTests(unittest.TestCase):
             with self.assertRaises(ValueError):
                 validate_submitted_proposal(public)
 
+    def test_ci_validates_owner_direct_measurements_with_same_pinned_schema(self):
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            local = self.prepare(root)
+            choice = select_model("production")
+            data = json.loads(local.read_text())
+            data["model"].update({
+                "gguf_sha256": choice.expected_sha256,
+                "source_repository": choice.repo_id,
+                "source_revision": choice.revision,
+                "version": choice.version,
+                "quantization": choice.quantization,
+            })
+            local.write_text(json.dumps(data))
+            proposal = build_proposal(local, project_root=root)
+            measured = root / proposal["repository_path"].replace(
+                "profiles/submissions/", "profiles/measurements/", 1)
+            measured.parent.mkdir(parents=True)
+            measured.write_text(json.dumps(proposal["proposal"]))
+            result = validate_submitted_proposal(measured)
+            self.assertEqual(result["status"],
+                             "submitted_profile_schema_verified_review_required")
+            self.assertFalse(result["production_qualified"])
+
     def test_cli_publication_only_uses_saved_profile_without_recording(self):
         with TemporaryDirectory() as tmp:
             root = Path(tmp)
