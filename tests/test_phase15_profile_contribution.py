@@ -9,6 +9,7 @@ import unittest
 
 from ruth_runtime.profile_contribution import (
     build_proposal, publish_proposal_pr, validate_submitted_proposal,
+    sync_profile_to_git, sync_owner_profile_if_authenticated,
 )
 from ruth_runtime.model_catalog import select_model
 from ruth_runtime.profile_registry import SCHEMA
@@ -101,7 +102,7 @@ class ProfileContributionTests(unittest.TestCase):
             with patch("sys.stdout", new_callable=StringIO) as output, \
                  patch("ruth_runtime.model_memory_profiles.build_profile_matrix",
                        return_value=matrix), \
-                 patch("ruth_runtime.profile_contribution.publish_proposal_pr",
+                 patch("ruth_runtime.profile_contribution.sync_profile_to_git",
                        return_value=expected) as publish, \
                  patch("ruth_runtime.profile_registry.record_local_profile",
                        side_effect=AssertionError("Do not rerecord")):
@@ -169,32 +170,89 @@ class ProfileContributionTests(unittest.TestCase):
             publish_proposal_pr(proposal, permit_external_publication=True,
                                 run=lambda *args, **kwargs: self.fail("No network"))
 
-    def test_repository_owner_uses_proposal_branch_not_fork(self):
+    def test_authenticated_owner_commits_directly_on_model_profiling(self):
         with TemporaryDirectory() as tmp:
             root = Path(tmp)
             proposal = build_proposal(self.prepare(root), project_root=root)
         calls = []
         def run(args, **kwargs):
             calls.append(args)
-            command = " ".join(args)
+            line = " ".join(args)
+            if "api user --jq .login" in line:
+                return SimpleNamespace(returncode=0, stdout="yannericetchart-dev",
+                                       stderr="")
+            if "?ref=model-profiling" in line:
+                return SimpleNamespace(returncode=1, stdout="",
+                                       stderr="gh: Not Found (HTTP 404)")
+            if ("--method PUT" in line and
+                "repos/yannericetchart-dev/ruth/contents/profiles/measurements" in line):
+                endpoint = next(arg for arg in args if arg.startswith(
+                    "repos/yannericetchart-dev/ruth/contents/"))
+                path = endpoint.split("/contents/", 1)[1]
+                response = {"content": {"path": path},
+                            "commit": {"sha": "f" * 40}}
+                return SimpleNamespace(returncode=0, stdout=json.dumps(response),
+                                       stderr="")
+            self.fail("Unexpected GitHub command: " + line)
+        result = sync_profile_to_git(proposal, run=run)
+        self.assertEqual(result["status"], "git_profile_updated_model_profiling")
+        self.assertTrue(result["git_updated"])
+        self.assertEqual(result["branch"], "model-profiling")
+        self.assertFalse(result["review_required"])
+        self.assertTrue(result["repository_path"].startswith("profiles/measurements/"))
+        self.assertFalse(any("pulls" in " ".join(x) for x in calls))
+        self.assertFalse(any("fork" in " ".join(x) for x in calls))
+        self.assertFalse(any("repos/contributor" in " ".join(x) for x in calls))
+
+    def test_owner_idempotent_existing_measurement(self):
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            proposal = build_proposal(self.prepare(root), project_root=root)
+        content = json.dumps(proposal["proposal"]).encode("utf-8")
+        import base64
+        calls = []
+        def run(args, **kwargs):
+            calls.append(args)
             if args[:4] == ["gh", "api", "user", "--jq"]:
-                output = "yannericetchart-dev"
-            elif "git/ref/heads/model-profiling" in command:
-                output = json.dumps({"object": {"sha": "f" * 40}})
-            elif "repos/yannericetchart-dev/ruth/pulls" in command:
-                output = json.dumps({"html_url":
-                    "https://github.com/yannericetchart-dev/ruth/pull/321"})
-            else:
-                output = "{}"
-            return SimpleNamespace(returncode=0, stdout=output, stderr="")
-        result = publish_proposal_pr(proposal,
-                                     permit_external_publication=True, run=run)
-        self.assertEqual(result["status"], "git_profile_pull_request_opened")
-        self.assertFalse(any(x[1:3] == ["repo", "fork"] for x in calls))
-        self.assertTrue(any("repos/yannericetchart-dev/ruth/contents/" in
-                            " ".join(x) for x in calls))
-        self.assertTrue(any("refs/heads/ruth-profile-" in
-                            " ".join(x) for x in calls))
+                return SimpleNamespace(returncode=0, stdout="yannericetchart-dev",
+                                       stderr="")
+            if "?ref=model-profiling" in args[-1]:
+                return SimpleNamespace(returncode=0, stdout=json.dumps({
+                    "type": "file",
+                    "content": base64.b64encode(content).decode("ascii"),
+                }), stderr="")
+            self.fail("Owner must not overwrite unchanged measurements")
+        result = sync_profile_to_git(proposal, run=run)
+        self.assertEqual(result["status"], "git_profile_already_current")
+        self.assertFalse(result["git_updated"])
+        self.assertEqual(len(calls), 2)
+
+    def test_owner_automatic_sync_requires_authenticated_identity(self):
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            proposal = build_proposal(self.prepare(root), project_root=root)
+        calls = []
+        def outsider(args, **kwargs):
+            calls.append(args)
+            return SimpleNamespace(returncode=0, stdout="contributor",
+                                   stderr="")
+        result = sync_owner_profile_if_authenticated(proposal, run=outsider)
+        self.assertEqual(result["status"], "git_owner_review_required")
+        self.assertFalse(result["git_updated"])
+        self.assertEqual(len(calls), 1)
+
+    def test_owner_direct_write_does_not_hide_api_errors(self):
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            proposal = build_proposal(self.prepare(root), project_root=root)
+        def run(args, **kwargs):
+            if "api user --jq .login" in " ".join(args):
+                return SimpleNamespace(returncode=0, stdout="yannericetchart-dev",
+                                       stderr="")
+            return SimpleNamespace(returncode=1, stdout="",
+                                   stderr="gh: Forbidden (HTTP 403)")
+        with self.assertRaisesRegex(RuntimeError, "lookup failed"):
+            sync_profile_to_git(proposal, run=run)
 
     def test_fork_pr_flow_is_user_authenticated_not_upstream_push(self):
         with TemporaryDirectory() as tmp:
