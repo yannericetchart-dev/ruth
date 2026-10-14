@@ -95,9 +95,13 @@ def _match_evidence(evidence: dict | None, model: dict) -> tuple[dict | None, st
         return None, "missing_or_mismatched_gguf_sha256"
     if evidence.get("native_binding_version") != WHEEL_VERSION:
         return None, "different_or_unknown_native_runtime_version"
-    native = _positive_finite(evidence.get("native_cuda_buffer_mib_reported"))
+    native = None
+    buffers = evidence.get("native_buffers") or []
+    # Never interpret a later KV/compute OOM as a model-weights requirement.
+    if evidence.get("mode") == "weights" and evidence.get("weights_loaded") is False:
+        native = _positive_finite(evidence.get("native_cuda_buffer_mib_reported"))
     if native is None:
-        buffers = evidence.get("native_buffers") or []
+
         if not isinstance(buffers, list):
             return None, "malformed_native_buffers"
         cuda_weights = [_positive_finite(x.get("mib"))
@@ -225,7 +229,9 @@ def build_profile_matrix(
             "experiment_force_requested": force,
             "experiment_allowed_in_separate_probe": bool(
                 force and host and host["exclusivity_verified"] and
-                host["drm"]["status"] == "drm_not_loaded"),
+                host["drm"]["status"] == "drm_not_loaded" and
+                model["family"] == "gemma" and
+                model["quantization"] in ("Q4_K_L", "Q4_K_M")),
             "production_qualified": False,
         })
     return {
