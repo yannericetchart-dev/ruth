@@ -39,8 +39,8 @@ def build_proposal(profile_file: Path, *, project_root: Path = PROJECT_ROOT) -> 
     if not isinstance(sha, str) or not re.fullmatch("[0-9a-f]{64}", sha):
         raise ValueError("Invalid pinned GGUF")
     rows = data.get("runtime_measurements")
-    if not isinstance(rows, dict) or not rows:
-        raise ValueError("No measured CUDA runtime data")
+    if not isinstance(rows, dict) or (not rows and data.get("source_verified") is not True):
+        raise ValueError("Missing source verification or measured CUDA data")
     # Allowlisted fields only. Do NOT upload GPU UUID, BusID, paths, process
     # names, host username, machine identity, raw prompts or native stderr.
     clean = []
@@ -75,6 +75,7 @@ def build_proposal(profile_file: Path, *, project_root: Path = PROJECT_ROOT) -> 
         "verified_inference": False,
         "production_qualified": False,
         "review_required": True,
+        "measurements_pending": not bool(clean),
     }
     raw = json.dumps(proposal, sort_keys=True, separators=(",", ":"))
     digest = hashlib.sha256(raw.encode("utf-8")).hexdigest()
