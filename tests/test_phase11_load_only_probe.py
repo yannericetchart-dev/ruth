@@ -2,6 +2,8 @@
 import json
 from pathlib import Path
 import subprocess
+import sys
+from types import ModuleType
 from tempfile import TemporaryDirectory
 from types import SimpleNamespace
 import unittest
@@ -11,6 +13,8 @@ from ruth_runtime.load_only_probe import (
     PREFIX, SCHEMA, extract_native_buffers, probe_model_load,
 )
 from ruth_runtime.launcher import main
+from ruth_runtime.load_only_worker import run_load_only
+from ruth_runtime.install_plan import WHEEL_VERSION
 
 
 UUID = "GPU-5a841828-882b-85d9-c98e-3a0d29e66e00"
@@ -67,6 +71,66 @@ def ready(uuid, **kw):
             },
         },
     )
+
+
+
+class LoadOnlyWorkerNoInferenceTests(unittest.TestCase):
+    def test_native_stage_separation_does_not_generate_any_tokens(self):
+        class FakeAPI:
+            def __init__(self):
+                self.calls = []
+            def llama_supports_gpu_offload(self):
+                return True
+            def llama_backend_init(self):
+                self.calls.append("backend_init")
+            def llama_backend_free(self):
+                self.calls.append("backend_free")
+            def llama_model_default_params(self):
+                return SimpleNamespace(n_gpu_layers=0, main_gpu=0, use_mmap=False)
+            def llama_model_load_from_file(self, path, params):
+                self.calls.append(("model_load", params.n_gpu_layers))
+                return object()
+            def llama_model_free(self, model):
+                self.calls.append("model_free")
+            def llama_context_default_params(self):
+                return SimpleNamespace(n_ctx=0, n_batch=0, n_ubatch=0, offload_kqv=False)
+            def llama_init_from_model(self, model, params):
+                self.calls.append(("context_init", params.n_ctx))
+                return object()
+            def llama_free(self, context):
+                self.calls.append("context_free")
+
+        with TemporaryDirectory() as temp:
+            root = Path(temp)
+            path = root / "model.gguf"
+            path.write_bytes(b"GGUF123456")
+            choice = SimpleNamespace(
+                family="gemma", model="gemma-2",
+                version="gemma-2-9B-it", quantization="Q4_K_L",
+                expected_size_bytes=path.stat().st_size,
+            )
+            for mode in ("weights", "context"):
+                api = FakeAPI()
+                package = ModuleType("llama_cpp")
+                package.__version__ = WHEEL_VERSION
+                package.llama_cpp = api
+                with patch.dict(sys.modules, {"llama_cpp": package}), \
+                     patch("ruth_runtime.load_only_worker.select_model",
+                           return_value=choice), \
+                     patch("ruth_runtime.load_only_worker._local_path",
+                           return_value=path), \
+                     patch("ruth_runtime.load_only_worker.measure_worker_gpu"), \
+                     patch.dict("os.environ", {"CUDA_VISIBLE_DEVICES": UUID}):
+                    result = run_load_only(root, UUID, "Q4_K_L", mode, 257)
+                self.assertTrue(result["weights_loaded"])
+                self.assertEqual(result["generated_tokens"], 0)
+                self.assertFalse(result["inference_executed"])
+                self.assertEqual(result["context_initialized"], mode == "context")
+                self.assertTrue(any(isinstance(x, tuple) and x[0] == "model_load"
+                                    and x[1] == 2**31 - 1 for x in api.calls))
+                self.assertEqual(any(isinstance(x, tuple) and
+                                     x[0] == "context_init" for x in api.calls),
+                                 mode == "context")
 
 
 class LoadOnlyTests(unittest.TestCase):
