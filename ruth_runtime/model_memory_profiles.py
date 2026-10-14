@@ -15,6 +15,7 @@ from .candidate_selection import GpuMemory, inspect_single_nvidia_gpu
 from .dependencies import PROJECT_ROOT
 from .gpu_preflight import inspect_gpu_preflight
 from .install_plan import WHEEL_VERSION
+from .hardware_eligibility import inspect_host_hardware, load_architecture_policy
 from .model_catalog import load_catalog
 
 CAPACITY_FILE = Path("catalog/gpu_capacity_profiles.json")
@@ -172,6 +173,7 @@ def build_profile_matrix(
     gpu_inspector: Callable[..., GpuMemory] = inspect_single_nvidia_gpu,
     preflight: Callable[..., Any] = inspect_gpu_preflight,
     drm_inspector: Callable[..., dict] = inspect_gpu_drm,
+    hardware_inspector: Callable[..., dict] = inspect_host_hardware,
 ) -> dict:
     """Read-only profile listing and fail-closed hardware-fit planning.
 
@@ -187,40 +189,57 @@ def build_profile_matrix(
             len(set(classes)) != len(classes):
         raise ValueError("Invalid GPU capacity class policy")
     evidence = _load_evidence(evidence_file)
+    arch_policy = load_architecture_policy(root)
     models = _models(root)
     host = None
     if check_host:
         gpu = gpu_inspector()
+        hardware = hardware_inspector(project_root=root)
         gate = preflight(gpu.uuid)
         drm = drm_inspector(gpu.pci_bus)
+        if hardware.get("gpu_uuid") != gpu.uuid or hardware.get("pci_bus", "").lower().lstrip("0") != gpu.pci_bus.lower().lstrip("0"):
+            raise ValueError("Host architecture probe disagrees with NVIDIA GPU identity")
         host = {
+            "hardware": hardware,
+            "architecture_verified": hardware.get("status") == "hardware_eligible_native_backend_unverified",
             "gpu_uuid": gpu.uuid, "pci_bus": gpu.pci_bus,
             "total_mib": gpu.total_mib, "free_mib": gpu.free_mib,
             "gpu_preflight": gate.to_dict(), "drm": drm,
             "exclusivity_verified": gate.status == "gpu_ready",
             "compute_only_verified": (gate.status == "gpu_ready"
-                                      and drm["status"] == "drm_not_loaded"),
+                                      and drm["status"] == "drm_not_loaded"
+                                      and hardware.get("status") == "hardware_eligible_native_backend_unverified"),
         }
     records = []
     for model in models:
         measured, state = _match_evidence(evidence, model)
         weight_mib = measured["native_weights_buffer_mib"] if measured else None
         tiers = []
-        for gib in classes:
-            total = gib * 1024
-            if weight_mib is not None and weight_mib > total:
-                fit = "insufficient_nominal_vram_for_measured_weights"
-            elif weight_mib is not None:
-                fit = "weights_physically_possible_unverified"
-            else:
-                fit = "native_memory_profile_pending"
-            tiers.append({
-                "nominal_gib": gib, "physical_mib": total,
-                "status": fit, "full_runtime_compatible": False,
-            })
+        # An architecture/VRAM pair is its own profile class; identical
+        # nominal VRAM sizes across architectures remain distinct.
+        for architecture in arch_policy["architectures"]:
+            for gib in architecture["vram_classes_gib"]:
+                total = gib * 1024
+                if weight_mib is not None and weight_mib > total:
+                    fit = "insufficient_nominal_vram_for_measured_weights"
+                elif weight_mib is not None:
+                    fit = "weights_physically_possible_unverified"
+                else:
+                    fit = "native_memory_profile_pending"
+                tiers.append({
+                    "architecture": architecture["id"],
+                    "compute_capabilities": architecture["compute_capabilities"],
+                    "min_cuda": architecture["min_cuda"],
+                    "tensor_core_generation": architecture["tensor_core_generation"],
+                    "nominal_gib": gib, "physical_mib": total,
+                    "status": fit, "full_runtime_compatible": False,
+                })
+
         host_status = None
         if host:
-            if not host["exclusivity_verified"]:
+            if not host["architecture_verified"]:
+                host_status = "host_architecture_cuda_or_vram_unsupported"
+            elif not host["exclusivity_verified"]:
                 host_status = "host_gpu_busy_or_unverified"
             elif host["drm"]["status"] == "drm_active_on_selected_gpu":
                 host_status = "gpu_drm_active_review_compute_only_policy"
@@ -240,7 +259,8 @@ def build_profile_matrix(
             else:
                 host_status = "host_requires_native_allocation_verification"
         experiment_available = bool(
-            host and host["exclusivity_verified"]
+            host and host["architecture_verified"]
+            and host["exclusivity_verified"]
             and host["drm"]["status"] == "drm_not_loaded"
             and model["family"] == "gemma"
             and model["quantization"] in ("Q4_K_L", "Q4_K_M")
@@ -263,7 +283,14 @@ def build_profile_matrix(
     return {
         "schema": "ruth-model-memory-profiles-v1",
         "status": "host_profile_matrix_ready" if host else "profile_catalog_ready",
-        "capacity_classes_gib": classes, "profiles": records,
+        "capacity_classes_gib": classes,
+        "architecture_classes": [
+            {"architecture": a["id"], "compute_capabilities": a["compute_capabilities"],
+             "min_cuda": a["min_cuda"], "tensor_core_generation": a["tensor_core_generation"],
+             "vram_classes_gib": a["vram_classes_gib"]}
+            for a in arch_policy["architectures"]
+        ],
+        "profiles": records,
         "available_profile_ids": [r["id"] for r in records],
         "host_context_allocations_observed": [
             r["id"] for r in records
