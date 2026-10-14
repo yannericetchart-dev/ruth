@@ -70,6 +70,60 @@ def _native_buffer(report: dict, kind: str) -> float | None:
     return round(sum(valid), 2) if valid else None
 
 
+
+def initialize_model_profile(
+    choice: Any, metadata: dict, *, project_root: Path = PROJECT_ROOT,
+) -> dict:
+    """Create an UNKNOWN-only local profile after explicit remote pin verification.
+
+    Does NOT accept the model license, download weights or claim CUDA support.
+    If a profile exists already, leave every measured value untouched.
+    """
+    if (metadata.get("status") != "source_metadata_verified_license_pending"
+        or metadata.get("sha256") != choice.expected_sha256
+        or metadata.get("revision") != choice.revision
+        or metadata.get("repo_id") != choice.repo_id
+        or metadata.get("size_bytes") != choice.expected_size_bytes):
+        raise ValueError("Source metadata is not verified against catalog pins")
+    root = Path(project_root)
+    target = root / ".ruth-build" / "profiles" / "models" / (
+        choice.expected_sha256 + ".json")
+    if target.exists():
+        if target.is_symlink() or target.stat().st_size > 150_000:
+            raise ValueError("Unsafe existing model profile")
+        old = json.loads(target.read_text(encoding="utf-8"))
+        if old.get("schema") != SCHEMA or (
+            old.get("model") or {}).get("gguf_sha256") != choice.expected_sha256:
+            raise ValueError("Existing profile does not match pinned GGUF")
+        return {"status": "local_profile_already_exists",
+                "profile_file": str(target), "git_updated": False}
+    profile = {
+        "schema": SCHEMA,
+        "model": {
+            "family": choice.family, "model": choice.model,
+            "version": choice.version, "format": choice.format,
+            "quantization": choice.quantization,
+            "gguf_sha256": choice.expected_sha256,
+            "source_repository": choice.repo_id,
+            "source_revision": choice.revision,
+            "gguf_serialized_bytes": choice.expected_size_bytes,
+            "license": choice.license,
+        },
+        "source_verified": True, "model_license_accepted": False,
+        "model_locally_verified": False,
+        "native_cuda_weights_mib": None, "runtime_measurements": {},
+        "context_profiles": {}, "inference_verified": False,
+        "production_qualified": False,
+    }
+    _atomic_write(target, profile)
+    return {"status": "local_profile_initialized_unknown",
+            "profile_file": str(target), "git_updated": False,
+            "unknowns_preserved_as_null": True,
+            "model_license_accepted": False,
+            "model_locally_verified": False}
+
+
+
 def record_local_profile(
     evidence_file: Path, *, project_root: Path = PROJECT_ROOT,
     hardware: dict | None = None,
