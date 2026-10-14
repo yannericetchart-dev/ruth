@@ -225,18 +225,22 @@ def _publish_authenticated_proposal(
     user = _gh(["api", "user", "--jq", ".login"], run)
     if not _LOGIN.fullmatch(user):
         raise ValueError("Unexpected GitHub login")
-    # gh rejects --remote when OWNER/REPO is given. --clone=false is enough
-    # to create the user's fork without touching Ruth's local git remotes.
-    try:
-        existing = json.loads(_gh(["api", f"repos/{user}/ruth"], run))
-    except RuntimeError:
-        existing = None
-    if existing is None:
-        _gh(["repo", "fork", UPSTREAM, "--clone=false"], run)
-    elif existing.get("fork") is not True or (
-        existing.get("parent") or {}).get("full_name", "").lower() != UPSTREAM.lower():
-        raise ValueError("A repository named ruth already exists but is not Ruth's fork")
-    fork = f"{user}/ruth"
+    if user.lower() == UPSTREAM.split("/")[0].lower():
+        # Repository owner cannot fork their own repository: use a distinct
+        # proposal branch, never writing to the baseline branch.
+        fork = UPSTREAM
+    else:
+        # gh repo fork OWNER/REPO --clone=false leaves local git remotes alone.
+        try:
+            existing = json.loads(_gh(["api", f"repos/{user}/ruth"], run))
+        except RuntimeError:
+            existing = None
+        if existing is None:
+            _gh(["repo", "fork", UPSTREAM, "--clone=false"], run)
+        elif existing.get("fork") is not True or (
+            existing.get("parent") or {}).get("full_name", "").lower() != UPSTREAM.lower():
+            raise ValueError("A repository named ruth already exists but is not Ruth's fork")
+        fork = f"{user}/ruth"
     head_json = _gh(["api", f"repos/{fork}/git/ref/heads/{BASE_BRANCH}"], run)
     head = json.loads(head_json)["object"]["sha"]
     if not re.fullmatch("[0-9a-f]{40}", head):
