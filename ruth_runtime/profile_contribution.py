@@ -79,6 +79,45 @@ def build_proposal(profile_file: Path, *, project_root: Path = PROJECT_ROOT) -> 
         "review_required": True,
         "measurements_pending": not bool(clean),
     }
+    context_data = data.get("context_profiles", {})
+    if not isinstance(context_data, dict) or len(context_data) > 128:
+        raise ValueError("Malformed native context memory profiles")
+    context_fields = (
+        "n_ctx_requested", "kv_size_native", "kv_padding",
+        "flash_attention", "kv_type_k", "kv_type_v",
+        "gpu_kv_buffer_mib", "gpu_compute_buffer_mib",
+        "backend", "verified_native_allocations_only", "inference_verified",
+    )
+    public_contexts = []
+    for context_key, ctx in context_data.items():
+        if (not isinstance(context_key, str) or len(context_key) > 384
+            or not isinstance(ctx, dict)):
+            raise ValueError("Invalid context memory entry")
+        record = {key: ctx.get(key) for key in context_fields}
+        if (record["backend"] != "llama.cpp"
+            or record["verified_native_allocations_only"] is not True
+            or record["inference_verified"] is not False
+            or type(record["n_ctx_requested"]) is not int
+            or not 1 <= record["n_ctx_requested"] <= 131072):
+            raise ValueError("Unverified CUDA KV/compute profile")
+        # Exact runtime identity is in the local context key and remains
+        # separate from the quantization/filename namespace.
+        matching = [row for key, row in rows.items()
+                    if context_key.startswith(key + "/n_ctx=")
+                    and context_key.split("/n_ctx=")[1].startswith(
+                        str(record["n_ctx_requested"]) + "/")]
+        if len(matching) != 1:
+            raise ValueError("Context runtime identity ambiguous or mismatched")
+        runtime = matching[0]
+        record["architecture"] = runtime.get("architecture")
+        record["cuda_backend"] = runtime.get("cuda_backend")
+        record["driver_version"] = runtime.get("driver_version")
+        record["llama_cpp_binding"] = runtime.get("llama_cpp_binding")
+        public_contexts.append(record)
+    if public_contexts:
+        proposal["context_profiles"] = sorted(
+            public_contexts, key=lambda q: (q["architecture"], q["driver_version"],
+                                           q["cuda_backend"], q["n_ctx_requested"]))
     observed = data.get("minimal_context_inference", [])
     if not isinstance(observed, list) or len(observed) > 64:
         raise ValueError("Malformed minimal-context evidence")
@@ -133,7 +172,7 @@ def validate_submitted_proposal(
         or set(payload) - {"schema", "model", "runtime_measurements",
                           "verified_inference", "production_qualified",
                           "review_required", "measurements_pending",
-                          "minimal_context_inference"}
+                          "minimal_context_inference", "context_profiles"}
         or not {"schema", "model", "runtime_measurements",
                 "verified_inference", "production_qualified",
                 "review_required", "measurements_pending"}.issubset(payload)
@@ -190,6 +229,36 @@ def validate_submitted_proposal(
             if value is not None and (type(value) not in (int, float) or
                                        not 0 <= value < 1_000_000):
                 raise ValueError("Invalid CUDA buffer measurement")
+    public_contexts = payload.get("context_profiles", [])
+    if not isinstance(public_contexts, list) or len(public_contexts) > 128:
+        raise ValueError("Invalid published CUDA context profiles")
+    if public_contexts:
+        context_fields = {
+            "n_ctx_requested", "kv_size_native", "kv_padding",
+            "flash_attention", "kv_type_k", "kv_type_v",
+            "gpu_kv_buffer_mib", "gpu_compute_buffer_mib", "backend",
+            "verified_native_allocations_only", "inference_verified",
+            "architecture", "cuda_backend", "driver_version",
+            "llama_cpp_binding",
+        }
+        for ctx in public_contexts:
+            if (not isinstance(ctx, dict) or set(ctx) != context_fields
+                or ctx["backend"] != "llama.cpp"
+                or ctx["verified_native_allocations_only"] is not True
+                or ctx["inference_verified"] is not False
+                or type(ctx["n_ctx_requested"]) is not int
+                or not 1 <= ctx["n_ctx_requested"] <= 131072
+                or not any(row.get("architecture") == ctx["architecture"]
+                           and row.get("driver_version") == ctx["driver_version"]
+                           and row.get("cuda_backend") == ctx["cuda_backend"]
+                           and row.get("llama_cpp_binding") == ctx["llama_cpp_binding"]
+                           for row in rows)):
+                raise ValueError("Context claims not linked to exact native runtime")
+            for value in (ctx["gpu_kv_buffer_mib"], ctx["gpu_compute_buffer_mib"]):
+                if value is not None and (
+                    type(value) not in (float, int)
+                    or not 0 <= value <= 1000000):
+                    raise ValueError("Invalid native buffer allocation")
     minimal = payload.get("minimal_context_inference", [])
     if not isinstance(minimal, list) or len(minimal) > 64:
         raise ValueError("Invalid minimal CUDA inference records")
