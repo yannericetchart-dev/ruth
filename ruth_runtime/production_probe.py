@@ -18,6 +18,7 @@ from .dependencies import PROJECT_ROOT
 from .inference_probe import _valid_local_gguf, _select_unique_gpu, _parse_offload
 from .model_catalog import select_model
 from .native_library import verify_native_library
+from .native_failure_diagnostics import diagnose_cuda_failure
 from .venv_packages import inspect_python_environment
 from .production_probe_worker import (
     SCHEMA, PREFIX, N_CTX, N_BATCH, N_UBATCH, MAX_TOKENS,
@@ -56,6 +57,12 @@ class ProductionCandidateProbe:
     cpu_fallback_selected: bool
     download_started: bool
     error: str | None
+    native_failure_category: str | None
+    native_failure_signals: tuple[str, ...]
+    native_log_excerpt: tuple[str, ...]
+    native_cuda_buffer_mib_reported: float | None
+    worker_exit_code: int | None
+    generic_python_load_error_only: bool
 
     def to_dict(self) -> dict:
         return asdict(self)
@@ -73,6 +80,9 @@ def _empty(status: str, **updates) -> ProductionCandidateProbe:
         gpu_memory_peak_mib_observed=None, gpu_inference_verified=False,
         context_calibration_pending=True, runtime_profile_published=False,
         cpu_fallback_selected=False, download_started=False, error=None,
+        native_failure_category=None, native_failure_signals=(),
+        native_log_excerpt=(), native_cuda_buffer_mib_reported=None,
+        worker_exit_code=None, generic_python_load_error_only=False,
     )
     d.update(updates)
     return ProductionCandidateProbe(**d)
@@ -124,19 +134,32 @@ def probe_production_candidate(
         results = [line[len(PREFIX):] for line in (proc.stdout or "").splitlines()
                    if line.startswith(PREFIX)]
         if len(results) != 1:
-            return _empty("worker_failed_or_no_result", model_verified=True,
-                          native_library_verified=True, gpu_uuid=uuid,
-                          gpu_pci_bus=pci,
-                          error="No unique structured result; native OOM/crash possible")
+            native = diagnose_cuda_failure(
+                proc.stderr or "", returncode=proc.returncode,
+            )
+            return _empty(
+                "worker_failed_or_no_result", model_verified=True,
+                native_library_verified=True, gpu_uuid=uuid,
+                gpu_pci_bus=pci,
+                error="No unique structured worker result; consult native diagnostics",
+                **native,
+            )
         result = json.loads(results[0])
         if not isinstance(result, dict) or result.get("schema") != SCHEMA:
             raise ValueError("Unrecognized worker result")
         if proc.returncode:
-            return _empty("production_min_context_worker_failed",
-                          model_verified=True, native_library_verified=True,
-                          gpu_uuid=uuid, gpu_pci_bus=pci,
-                          error=str(result.get("error") or
-                                    "Worker ended without a successful generation")[:220])
+            message = str(result.get("error") or
+                          "Worker ended without a successful generation")[:220]
+            native = diagnose_cuda_failure(
+                proc.stderr or "", worker_error=message,
+                returncode=proc.returncode,
+            )
+            return _empty(
+                "production_min_context_worker_failed",
+                model_verified=True, native_library_verified=True,
+                gpu_uuid=uuid, gpu_pci_bus=pci,
+                error=message, **native,
+            )
         if result.get("purpose") != "production" or \
                 result.get("gpu_uuid") != uuid or \
                 type(result.get("worker_pid")) is not int or \

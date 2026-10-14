@@ -14,6 +14,7 @@ from unittest.mock import patch
 import unittest
 
 from ruth_runtime.model_catalog import select_model, load_catalog
+from ruth_runtime.native_failure_diagnostics import diagnose_cuda_failure
 from ruth_runtime.model_download import _local_path, _manifest, download_pinned_model
 from ruth_runtime.production_probe import (
     COMMAND, N_CTX, PREFIX, probe_production_candidate,
@@ -51,12 +52,15 @@ def fixture(root, *, accepted=True):
 
 class FakeProcess:
     def __init__(self, *, layers=51, total=51, observed=True, tokens=12,
-                 pid=3456, mem=5800, exitcode=0, error=None):
+                 pid=3456, mem=5800, exitcode=0, error=None,
+                 native_log=None, emit_result=True):
         self.calls = []
         self.layers, self.total = layers, total
         self.observed, self.tokens = observed, tokens
         self.pid, self.mem, self.exitcode = pid, mem, exitcode
         self.error = error
+        self.native_log = native_log
+        self.emit_result = emit_result
 
     def __call__(self, cmd, **kw):
         self.calls.append((cmd, kw))
@@ -81,7 +85,9 @@ class FakeProcess:
             data["error"] = self.error
         log = f"llama_model_load_tensors: offloaded {self.layers}/{self.total} layers to GPU"
         return subprocess.CompletedProcess(
-            cmd, self.exitcode, PREFIX + json.dumps(data) + "\n", log,
+            cmd, self.exitcode,
+            PREFIX + json.dumps(data) + "\n" if self.emit_result else "",
+            log if self.native_log is None else self.native_log,
         )
 
 
@@ -209,6 +215,86 @@ class GemmaMinimumContextProbeTests(unittest.TestCase):
             self.assertEqual(result.status, "production_min_context_worker_failed")
             self.assertIn("out of memory", result.error)
             self.assertFalse(result.runtime_profile_published)
+
+    def test_native_cuda_oom_is_reported_from_real_native_signal(self):
+        log = (
+            "llama_model_load_tensors: CUDA0 buffer size = 5812.50 MiB\\n"
+            "ggml_cuda: cudaMalloc failed: out of memory\\n"
+            "llama_model_load: failed to load model from /home/test/gguf/model.gguf\\n"
+        ).replace("\\\\n", "\\n")
+        with TemporaryDirectory() as temp:
+            result, _ = self.run_fake(
+                Path(temp), worker=FakeProcess(
+                    exitcode=2, error="ValueError: Failed to load model from file",
+                    native_log=log,
+                )
+            )
+        self.assertEqual(result.status, "production_min_context_worker_failed")
+        self.assertEqual(result.native_failure_category, "cuda_out_of_memory_reported")
+        self.assertIn("explicit_out_of_memory", result.native_failure_signals)
+        self.assertEqual(result.native_cuda_buffer_mib_reported, 5812.5)
+        self.assertNotIn("/home/test", repr(result.native_log_excerpt))
+        self.assertFalse(result.gpu_inference_verified)
+        self.assertEqual(result.worker_exit_code, 2)
+
+    def test_generic_python_load_error_does_not_prove_oom(self):
+        with TemporaryDirectory() as temp:
+            result, _ = self.run_fake(
+                Path(temp), worker=FakeProcess(
+                    exitcode=2,
+                    error="ValueError: Failed to load model from file",
+                    native_log="llama_model_load: failed to load model",
+                ),
+            )
+        self.assertEqual(result.native_failure_category,
+                         "native_model_load_failed_cause_unknown")
+        self.assertNotIn("explicit_out_of_memory", result.native_failure_signals)
+        self.assertFalse(result.gpu_inference_verified)
+
+    def test_native_unsupported_gguf_is_not_misclassified_as_oom(self):
+        with TemporaryDirectory() as temp:
+            result, _ = self.run_fake(
+                Path(temp), worker=FakeProcess(
+                    exitcode=2, error="Failed to load model",
+                    native_log="llama_model_loader: unsupported tensor type",
+                ),
+            )
+        self.assertEqual(result.native_failure_category,
+                         "gguf_or_backend_unsupported_reported")
+        self.assertFalse(result.gpu_inference_verified)
+
+    def test_crash_without_json_still_preserves_native_diagnostics(self):
+        with TemporaryDirectory() as temp:
+            result, _ = self.run_fake(
+                Path(temp), worker=FakeProcess(
+                    exitcode=-6, emit_result=False,
+                    native_log="ggml_cuda: cudaMalloc failed: out of memory",
+                ),
+            )
+        self.assertEqual(result.status, "worker_failed_or_no_result")
+        self.assertEqual(result.native_failure_category, "cuda_out_of_memory_reported")
+        self.assertEqual(result.worker_exit_code, -6)
+        self.assertFalse(result.runtime_profile_published)
+
+    def test_no_diagnostic_signal_has_unknown_classification_not_oom(self):
+        result = diagnose_cuda_failure(
+            "", worker_error="ValueError: Failed to load model from file",
+            returncode=2,
+        )
+        self.assertEqual(result["native_failure_category"],
+                         "native_failure_cause_unknown")
+        self.assertTrue(result["generic_python_load_error_only"])
+        self.assertEqual(result["native_failure_signals"], [])
+        self.assertIsNone(result["native_cuda_buffer_mib_reported"])
+
+    def test_native_log_excerpt_is_bounded_and_redacted(self):
+        logs = "\\n".join(
+            "ggml_cuda: error loading /home/example/private/model.gguf"
+            for _ in range(40)
+        ).replace("\\\\n", "\\n")
+        report = diagnose_cuda_failure(logs, returncode=2)
+        self.assertLessEqual(len(report["native_log_excerpt"]), 8)
+        self.assertNotIn("/home/example", repr(report["native_log_excerpt"]))
 
     def test_worker_hash_change_refused(self):
         with TemporaryDirectory() as temp:
