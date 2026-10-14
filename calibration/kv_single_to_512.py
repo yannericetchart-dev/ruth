@@ -718,6 +718,14 @@ def main(argv=None):
     parser.add_argument("--target-ctx", type=int, default=512)
     parser.add_argument("--max-new-loads", type=int)
     parser.add_argument("--max-new-benchmarks", type=int)
+    parser.add_argument(
+        "--retry-failed-inferences", type=int, default=0,
+        help="Riprova N benchmark falliti, conservando gli esiti in inference_history.",
+    )
+    parser.add_argument(
+        "--retry-only", action="store_true",
+        help="Esegui solo i benchmark falliti selezionati, senza nuove configurazioni.",
+    )
     parser.add_argument("--benchmark-repeats", type=int, default=2)
     parser.add_argument("--timeout", type=int, default=600)
     args = parser.parse_args(argv)
@@ -747,6 +755,8 @@ def main(argv=None):
             max_new_benchmarks=args.max_new_benchmarks,
             benchmark_repeats=args.benchmark_repeats,
             timeout=args.timeout,
+            retry_failed_inferences=args.retry_failed_inferences,
+            retry_only=args.retry_only,
             progress=lambda row: print(
                 json.dumps(row, ensure_ascii=False), flush=True
             ),
