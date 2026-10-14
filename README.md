@@ -1521,3 +1521,56 @@ ma senza `--stop-on-cuda-futility`. Il checkpoint originario
 
 L'esecuzione richiede la GPU CUDA dell'utente;
 nessun risultato a 512 e dichiarato valido prima della prova.
+
+
+### Recupero checkpoint f16/f16 FA ON a 512 falsato da import worker
+
+Nel checkpoint `phase2_single_to_512_f16_f16_faon.json`
+analizzato, i primi 48 benchmark hanno fallimenti CUDA reali
+durante il prefill, ma al candidato 49 il worker smette di
+importare `calibration.mapping_phase` e tutti i 413 load-only
+rimanenti falliscono con
+`No module named calibration.kv_single_to_512`.
+Questi non sono OOM: il report era stato marcato
+`completed_no_singleton_inference` pur non rappresentando
+462 test CUDA validi.
+
+**Prima di riprendere**, verificare dalla directory reale del
+repository e con l'ambiente virtuale corretto che i due moduli
+siano importabili:
+
+```bash
+cd /home/yann/Dev/ruth
+source .venv/bin/activate
+python -m calibration.kv_single_to_512 --help
+python -m calibration.mapping_phase --help
+git pull
+# Eseguire nuovamente i due comandi --help dopo l'aggiornamento.
+```
+
+Con il codice aggiornato, il report **gia esistente** e recuperato
+automaticamente: gli esiti compromessi vengono archiviati in
+`load_only_history` / `inference_history`, poi rieseguiti; i
+48 fallimenti CUDA reali e i caricamenti positivi non vengono
+ripetuti. Usare **esattamente gli stessi nomi file**, senza 768:
+
+```bash
+cp phase2_single_to_512_f16_f16_faon.json \
+   phase2_single_to_512_f16_f16_faon.before_worker_repair.json
+
+python -m calibration.kv_single_to_512 \
+  --census phase2_single_tensor_census_256.json \
+  --target-ctx 512 --flash-attn on \
+  --type-k f16 --type-v f16 \
+  --baseline-profile phase2_f16_f16_faon_baseline_256.json \
+  --output phase2_single_to_512_f16_f16_faon.json \
+  --benchmark-repeats 2 \
+  --stop-on-cuda-futility
+```
+
+L'arresto su errori d'importazione del worker e immediato,
+con `status=worker_infrastructure_failure` e
+`completed=false`: **nessun errore Python viene contato come
+test fallito del tensore**. Se il problema si ripresenta,
+verificare il working directory e l'importabilita dei moduli
+prima di riprendere lo stesso checkpoint.
