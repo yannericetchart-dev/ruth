@@ -26,7 +26,7 @@ import time
 from hardware import GPUManager
 from model.inspect import inspect_gguf
 
-from .gpu_context import context_limit, verify_native_kv_config
+from .gpu_context import context_limit, verify_native_kv_config, validate_kv_config
 from .mapping_grouping import native_tensor_trial
 from .mapping_native_validation import verify_override_logs
 from .mapping_phase import PROBE_BATCH, probe_native_mapping, verify_mapping_kv_runtime
@@ -42,8 +42,10 @@ CENSUS_SCHEMA = "ruth-phase2-single-tensor-census-v1"
 
 
 def _load_worker(model_path: Path, model_id: str, names: list[str],
-                 n_ctx: int) -> dict:
+                 n_ctx: int, *, flash_attn: bool = False,
+                 type_k: str = "f16", type_v: str = "f16") -> dict:
     """Isolated CUDA worker: instantiate llama context only. No eval/decode."""
+    validate_kv_config(flash_attn, type_k, type_v)
     import pynvml
     from llama_cpp.llama_cpp import llama_supports_gpu_offload
     from inference.adapters.llama_cpp_python import LlamaCppPythonMappingAdapter
@@ -71,7 +73,7 @@ def _load_worker(model_path: Path, model_id: str, names: list[str],
         "n_ctx": n_ctx, "n_gpu_layers": n_gpu_layers,
         "n_batch": PROBE_BATCH, "n_ubatch": PROBE_BATCH,
         "offload_kqv": True, "kv_target": "gpu",
-        "flash_attn": False, "kv_type_k": "f16", "kv_type_v": "f16",
+        "flash_attn": flash_attn, "kv_type_k": type_k, "kv_type_v": type_v,
         "evaluated_tokens": 0, "generated_tokens": 0,
         "measurements": {}, "error": None,
     }
@@ -108,8 +110,8 @@ def _load_worker(model_path: Path, model_id: str, names: list[str],
             llm, _ = LlamaCppPythonMappingAdapter().load(
                 model_path, n_gpu_layers=n_gpu_layers, rules=trial["rules"],
                 n_ctx=n_ctx, n_batch=PROBE_BATCH, n_ubatch=PROBE_BATCH,
-                offload_kqv=True, flash_attn=False,
-                type_k="f16", type_v="f16",
+                offload_kqv=True, flash_attn=flash_attn,
+                type_k=type_k, type_v=type_v,
             )
             measurements["load_s"] = round(time.perf_counter() - start, 5)
             measurements["vram_after_load_mib"] = used()
@@ -149,13 +151,18 @@ def _load_worker(model_path: Path, model_id: str, names: list[str],
 
 
 def probe_load_only(model_path: Path, model_id: str, trial: dict,
-                    *, n_ctx: int, timeout: int = 600) -> dict:
+                    *, n_ctx: int, timeout: int = 600,
+                    flash_attn: bool = False, type_k: str = "f16",
+                    type_v: str = "f16") -> dict:
     """Run a fresh CUDA subprocess, verify mapping and KV without inference."""
+    validate_kv_config(flash_attn, type_k, type_v)
     cmd = [
         sys.executable, "-m", "calibration.kv_single_to_512",
         "--worker", "--model-path", str(model_path),
         "--model-id", model_id, "--n-ctx", str(n_ctx),
         "--tensor-names", json.dumps(trial["host_tensor_names"]),
+        "--flash-attn", "on" if flash_attn else "off",
+        "--type-k", type_k, "--type-v", type_v,
     ]
     try:
         proc = subprocess.run(cmd, capture_output=True, text=True,
@@ -178,7 +185,7 @@ def probe_load_only(model_path: Path, model_id: str, trial: dict,
     native = parse_native_memory(proc.stderr)
     gpu_kv = verify_mapping_kv_runtime(native, host_kv=False)
     precision = verify_native_kv_config(
-        proc.stderr, flash_attn=False, type_k="f16", type_v="f16"
+        proc.stderr, flash_attn=flash_attn, type_k=type_k, type_v=type_v
     )
     measurement = payload.get("measurements") or {}
     load_ok = bool(
@@ -210,6 +217,7 @@ def probe_load_only(model_path: Path, model_id: str, trial: dict,
         "success": load_ok,
         "n_ctx": n_ctx, "host_tensor_names": trial["host_tensor_names"],
         "mapping_id": trial["id"],
+        "flash_attn": flash_attn, "type_k": type_k, "type_v": type_v,
         "worker_returncode": proc.returncode,
         "worker_signal": (-proc.returncode if proc.returncode < 0 else None),
         "failure_class": (
@@ -375,6 +383,8 @@ def run_single_to_512(
     *, census_path: Path, output: Path, target_ctx: int = 512,
     max_new_loads: int | None = None, max_new_benchmarks: int | None = None,
     benchmark_repeats: int = 2, timeout: int = 600,
+    flash_attn: bool = False, type_k: str = "f16", type_v: str = "f16",
+    baseline_profile_path: Path | None = None,
     retry_failed_inferences: int = 0, retry_only: bool = False,
     progress=None, load_probe=probe_load_only,
     inference_probe=probe_native_mapping,
@@ -389,6 +399,7 @@ def run_single_to_512(
         or any(v is not None and (type(v) is not int or v < 1)
             for v in (max_new_loads, max_new_benchmarks))):
         raise ValueError("Budget o ripetizioni non validi.")
+    validate_kv_config(flash_attn, type_k, type_v)
     source = Path(census_path).expanduser().resolve()
     output = Path(output).expanduser().resolve()
     if output == source:
@@ -401,7 +412,45 @@ def run_single_to_512(
         or p.get("type_k") != "f16"
         or p.get("type_v") != "f16"
         or p.get("n_ctx") >= target_ctx):
-        raise ValueError("Census deve usare KV FP16 GPU e FA OFF.")
+        raise ValueError("Il census origine deve essere f16/f16, FA OFF.")
+    alternate_profile = (flash_attn is not False
+                         or type_k != "f16" or type_v != "f16")
+    baseline_profile_sha = None
+    if alternate_profile:
+        if baseline_profile_path is None:
+            raise ValueError(
+                "Serve --baseline-profile verificato per un profilo KV differente."
+            )
+        base_path = Path(baseline_profile_path).expanduser().resolve()
+        if base_path in (source, output):
+            raise ValueError("Report baseline separato da census e output.")
+        baseline_profile_sha = hashlib.sha256(base_path.read_bytes()).hexdigest()
+        baseline_profile = json.loads(base_path.read_text("utf-8"))
+        expected = baseline_profile.get("parameters") or {}
+        if (baseline_profile.get("schema") !=
+                "ruth-phase2-kv-baseline-native-v1"
+            or baseline_profile.get("completed") is not True
+            or baseline_profile.get("success") is not True
+            or expected.get("census_sha256") !=
+                hashlib.sha256(raw).hexdigest()
+            or expected.get("model_id") != p["model_id"]
+            or expected.get("model_path") !=
+                str(Path(p["model_path"]).expanduser().resolve())
+            or expected.get("n_ctx") != p["n_ctx"]
+            or expected.get("generated_tokens") != p["generated_tokens"]
+            or expected.get("flash_attn") is not flash_attn
+            or expected.get("type_k") != type_k
+            or expected.get("type_v") != type_v
+            or not _native_verified(
+                baseline_profile.get("inference") or {},
+                n_ctx=p["n_ctx"], names=[],
+                trial_id=baseline_profile.get("mapping_id"),
+                repeats=expected.get("benchmark_repeats"),
+                tokens=p["generated_tokens"],
+            )):
+            raise ValueError(
+                "Baseline alternativa non compatibile o non verificata a 256."
+            )
     model_path = Path(p["model_path"]).resolve()
     model_id = p["model_id"]
     layout = inspect_gguf(model_path, n_ctx=target_ctx)
@@ -415,11 +464,17 @@ def run_single_to_512(
         "model_id": model_id, "model_path": str(model_path),
         "source_n_ctx": p["n_ctx"], "target_n_ctx": target_ctx,
         "generated_tokens": p["generated_tokens"],
-        "flash_attn": False, "type_k": "f16", "type_v": "f16",
+        "flash_attn": flash_attn, "type_k": type_k, "type_v": type_v,
         "benchmark_repeats": benchmark_repeats, "timeout": timeout,
         "candidate_count": len(ranked),
         "selection_rule": "all_singles_descending_verified_post_load_256_gain_peak_tiebreak_v2",
     }
+    if alternate_profile:
+        identity["baseline_profile_sha256"] = baseline_profile_sha
+        identity["ranking_source_note"] = (
+            "Solo ranking da f16/f16 FA OFF n_ctx=256; NON una misura "
+            "di memoria o throughput per il profilo KV alternativo."
+        )
     initial = {}
     if output.exists():
         previous = json.loads(output.read_text("utf-8"))
@@ -490,8 +545,9 @@ def run_single_to_512(
             "certified_exclusions": [],
             "count": 0,
             "explanation": (
-                "Delta NVML misurato a 256 NON e un upper bound dimostrato "
-                "del saving a 512. Nessuna esclusione preventiva certa. "
+                "Delta NVML misurato a 256 sul profilo FP16/FP16 NON e "
+                "un upper bound dimostrato del saving sul target KV. "
+                "Nessuna esclusione preventiva certa. "
                 "Caricamenti falliti sono esclusi dai benchmark, non dalla "
                 "futura ricerca per coppie/terne."
             ),
@@ -579,9 +635,13 @@ def run_single_to_512(
     if control is None:
         base_trial = native_tensor_trial(layout, [])
         try:
+            opts = (
+                {"flash_attn": flash_attn, "type_k": type_k,
+                 "type_v": type_v} if alternate_profile else {}
+            )
             control = load_probe(
                 model_path, model_id, base_trial, n_ctx=target_ctx,
-                timeout=timeout,
+                timeout=timeout, **opts,
             )
         except Exception as exc:
             control = {
@@ -613,9 +673,13 @@ def run_single_to_512(
             if max_new_loads is not None and new_loads >= max_new_loads:
                 break
             try:
+                opts = (
+                    {"flash_attn": flash_attn, "type_k": type_k,
+                     "type_v": type_v} if alternate_profile else {}
+                )
                 entry["load_only"] = load_probe(
                     model_path, model_id, trial, n_ctx=target_ctx,
-                    timeout=timeout,
+                    timeout=timeout, **opts,
                 )
             except Exception as exc:
                 entry["load_only"] = {
@@ -655,8 +719,8 @@ def run_single_to_512(
                 raw_result = inference_probe(
                     model_path, model_id, trial,
                     n_ctx=target_ctx, tokens=p["generated_tokens"],
-                    timeout=timeout, flash_attn=False,
-                    type_k="f16", type_v="f16",
+                    timeout=timeout, flash_attn=flash_attn,
+                    type_k=type_k, type_v=type_v,
                 )
                 observations.append(_probe_summary(raw_result))
             except Exception as exc:
@@ -716,6 +780,13 @@ def main(argv=None):
     parser.add_argument("--output", type=Path,
                         default=Path("phase2_single_to_512.json"))
     parser.add_argument("--target-ctx", type=int, default=512)
+    parser.add_argument("--flash-attn", choices=("on", "off"), default="off")
+    parser.add_argument("--type-k", choices=("f16", "q8_0", "q4_0"),
+                        default="f16")
+    parser.add_argument("--type-v", choices=("f16", "q8_0", "q4_0"),
+                        default="f16")
+    parser.add_argument("--baseline-profile", type=Path,
+                        help="Prova nativa a 256 obbligatoria per KV alternativo.")
     parser.add_argument("--max-new-loads", type=int)
     parser.add_argument("--max-new-benchmarks", type=int)
     parser.add_argument(
@@ -738,7 +809,9 @@ def main(argv=None):
             if not isinstance(names, list):
                 raise ValueError("Lista tensori malformata.")
             result = _load_worker(
-                args.model_path, args.model_id, names, args.n_ctx
+                args.model_path, args.model_id, names, args.n_ctx,
+                flash_attn=args.flash_attn == "on",
+                type_k=args.type_k, type_v=args.type_v,
             )
         except Exception as exc:
             result = {
@@ -751,6 +824,9 @@ def main(argv=None):
         result = run_single_to_512(
             census_path=args.census, output=args.output,
             target_ctx=args.target_ctx,
+            flash_attn=args.flash_attn == "on",
+            type_k=args.type_k, type_v=args.type_v,
+            baseline_profile_path=args.baseline_profile,
             max_new_loads=args.max_new_loads,
             max_new_benchmarks=args.max_new_benchmarks,
             benchmark_repeats=args.benchmark_repeats,
