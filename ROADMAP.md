@@ -1,9 +1,9 @@
 # Ruth — Roadmap del branch `model-profiling`
 
-> **Versione:** 0.1 — proposta da revisionare, non approvata.
+> **Versione:** 1.0 — roadmap approvata il 14 ottobre 2026, con riserva esplicita di modifiche future.
 > **Branch:** `model-profiling` (riscrittura da zero sulla base minimale di `main`).
 > **Riferimento storico:** `feature/minimal-chat` è consultabile per imparare dalle prove precedenti, **non** è una dipendenza né una base di codice da copiare.
-> **Stato attuale:** solo questa roadmap; nessuna fase implementativa autorizzata.
+> **Stato attuale:** roadmap approvata; fase 00 avviata come progettazione, senza autorizzazione a implementare codice.
 
 ## 1. Obiettivo e confini
 
@@ -45,7 +45,7 @@ Ogni fase qui sotto è uno **stop obbligatorio**. Prima di iniziarla, concordiam
 5. **Come si verifica:** test unitari, integrazione ed evidenza nativa richiesta.
 6. **Esito:** approvato, da correggere o sospeso.
 
-Il commit della fase contiene **solo** quanto concordato, inclusi test e documentazione. Le modifiche alla roadmap si fanno con commit separati o chiaramente identificabili e con approvazione dell'utente. Nessuna fase è approvata per il solo fatto di essere elencata.
+Il commit della fase contiene **solo** quanto concordato, inclusi test e documentazione. Le modifiche alla roadmap sono sempre ammesse su richiesta dell'utente, anche dopo l'approvazione generale: si documentano motivazione, impatto sulle fasi e versione aggiornata, tramite commit identificabili. Nessuna fase implementativa è approvata per il solo fatto di essere elencata. La riserva di modifiche future è parte dell'approvazione.
 
 ## 3. Roadmap dettagliata
 
@@ -298,7 +298,8 @@ Queste non sono domande da risolvere tutte subito: ciascuna viene affrontata **p
 
 | Fase | Stato | Nota |
 | --- | --- | --- |
-| Roadmap | **In revisione** | Questa versione è una proposta; approvazione da confermare |
-| 00–16 | **Non iniziate** | Nessuna implementazione autorizzata |
+| Roadmap | **Approvata, modificabile** | Approvazione generale del 14 ottobre 2026; revisioni future consentite |
+| 00 | **Progettazione avviata** | Proposta tecnica da discutere; nessuna decisione implementativa approvata |
+| 01–16 | **Non iniziate** | Nessuna implementazione autorizzata |
 
-**Prossima azione:** revisione di questa roadmap e delle sue eventuali correzioni. Solo dopo approvazione inizierà la **Fase 00**, con le decisioni architetturali preliminari. Nessuna implementazione è implicita nell'approvazione di questo documento.
+**Prossima azione:** discutere la proposta della **Fase 00** e approvare separatamente policy, comportamento automatico e contratto operativo. Nessuna implementazione è implicita nell'approvazione generale della roadmap.
