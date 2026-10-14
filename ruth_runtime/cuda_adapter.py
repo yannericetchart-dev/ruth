@@ -63,7 +63,7 @@ class _NoDiskCacheSession:
     def cache_disabled(self) -> bool:
         return not self._closed and getattr(self._llm, "cache", object()) is None
 
-    def generate(self, prompt: str, *, max_tokens: int = 32) -> str:
+    def _completion(self, prompt: str, *, max_tokens: int) -> dict:
         if self._closed:
             raise UnverifiedCudaEngine("Inference session already closed")
         if not self.cache_disabled:
@@ -75,7 +75,20 @@ class _NoDiskCacheSession:
             raise ValueError("max_tokens must be between 1 and 1024")
         result = self._llm.create_completion(
             prompt=prompt, max_tokens=max_tokens, stream=False)
-        return str(result["choices"][0]["text"])
+        return result
+
+    def generate(self, prompt: str, *, max_tokens: int = 32) -> str:
+        return str(self._completion(prompt, max_tokens=max_tokens)["choices"][0]["text"])
+
+    def generate_report(self, prompt: str, *, max_tokens: int = 32) -> dict:
+        """Return actual API token count, not a heuristic based on characters."""
+        result = self._completion(prompt, max_tokens=max_tokens)
+        usage = result.get("usage") or {}
+        tokens = usage.get("completion_tokens")
+        if type(tokens) is not int or tokens < 0:
+            raise UnverifiedCudaEngine("Native completion token count not available")
+        return {"completion_tokens": tokens,
+                "text": str(result["choices"][0]["text"])}
 
     def close(self) -> None:
         if not self._closed:
@@ -91,6 +104,7 @@ class CudaLlamaAdapter:
     Requires a real native backend with the supported GPU-offload symbol.
     """
     load_backend: Callable[[str], Any] = importlib.import_module
+    native_diagnostics: bool = False
 
     def load(
         self, model_path: Path, selection: StackSelection,
@@ -123,7 +137,7 @@ class CudaLlamaAdapter:
             n_batch=selected["n_batch"],
             n_ubatch=selected["n_ubatch"],
             vocab_only=False,
-            verbose=False,
+            verbose=self.native_diagnostics,
         )
         if getattr(llm, "cache", object()) is not None:
             try:
