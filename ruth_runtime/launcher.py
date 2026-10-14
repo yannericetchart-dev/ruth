@@ -81,7 +81,7 @@ def main(argv: list[str] | None = None) -> int:
     models = sub.add_parser("models", help="Read-only hierarchical model catalog and HF provenance")
     model_sub = models.add_subparsers(dest="model_action")
     model_sub.add_parser("list", help="List families, GGUF models and defaults (offline)")
-    for operation in ("select", "resolve", "download", "smoke", "profile", "quantizations", "recommend", "probe-production", "probe-load", "profiles"):
+    for operation in ("select", "resolve", "download", "smoke", "profile", "quantizations", "recommend", "probe-production", "probe-load", "profiles", "hardware"):
         mp = model_sub.add_parser(operation, help=(
             "Offline model selection" if operation == "select" else
             "Resolve HF immutable revision and GGUF checksum (metadata only)"
@@ -101,6 +101,8 @@ def main(argv: list[str] | None = None) -> int:
             "Pinned CUDA weights/context allocation only (NO inference)"
             if operation == "probe-load" else
             "Read-only capacity classes and host-compatible GPU profiles"
+            if operation == "profiles" else
+            "Read-only strict Tensor Core/CC/VRAM/CUDA and driver compatibility check"
         ))
         mp.add_argument("--purpose", choices=("production", "test"),
                         default="production" if operation in ("probe-production", "probe-load") else "test")
@@ -152,8 +154,18 @@ def main(argv: list[str] | None = None) -> int:
             if args.model_action == "list":
                 _print({"action": "models", **list_models()})
                 return 0
-            if args.model_action not in {"select", "resolve", "download", "smoke", "profile", "quantizations", "recommend", "probe-production", "probe-load", "profiles"}:
-                raise CatalogError("Choose models list, select, resolve, download, smoke, profile, quantizations, recommend, probe-production, probe-load or profiles")
+            if args.model_action not in {"select", "resolve", "download", "smoke", "profile", "quantizations", "recommend", "probe-production", "probe-load", "profiles", "hardware"}:
+                raise CatalogError("Choose models list, select, resolve, download, smoke, profile, quantizations, recommend, probe-production, probe-load, profiles or hardware")
+            if args.model_action == "hardware":
+                from .hardware_eligibility import inspect_host_hardware
+                try:
+                    checked = inspect_host_hardware()
+                    _print({"action": "models", **checked})
+                    return 0 if checked["status"] == "hardware_eligible_native_backend_unverified" else 2
+                except (OSError, ValueError, TypeError, KeyError) as exc:
+                    _print({"action": "models", "status": "hardware_inspection_unverified",
+                            "error": type(exc).__name__ + ": " + str(exc)[:240]})
+                    return 2
             if args.model_action == "profiles":
                 from .model_memory_profiles import build_profile_matrix
                 try:
