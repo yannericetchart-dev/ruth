@@ -42,7 +42,7 @@ class FakeWorker:
             "cuda_free_mib_after_model_load": 300 if self.loaded else None,
             "cuda_free_mib_after_context_init": 250 if self.context else None,
             "error": self.error,
-            "n_ctx": 128 if self.mode == "context" else None,
+            "n_ctx": int(args[-1]) if self.mode == "context" else None,
             "n_batch": 64 if self.mode == "context" else None,
             "n_ubatch": 64 if self.mode == "context" else None,
         }
@@ -115,6 +115,12 @@ class LoadOnlyTests(unittest.TestCase):
         self.assertEqual(len(worker.calls), 1)
         self.assertTrue(result["full_gpu_offload_observed"])
         self.assertFalse(result["runtime_profile_published"])
+
+    def test_native_kv_padding_observed_not_inferred(self):
+        result, worker = self.execute(mode="context")
+        self.assertEqual(result["n_ctx"], 128)
+        self.assertEqual(result["native_kv_sizes"], [])
+        self.assertFalse(result["inference_executed"])
 
     def test_context_buffers_without_generation(self):
         result, _ = self.execute(mode="context")
