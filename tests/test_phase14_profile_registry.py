@@ -8,7 +8,9 @@ import unittest
 from ruth_runtime.dependencies import PROJECT_ROOT
 from ruth_runtime.install_plan import WHEEL_VERSION
 from ruth_runtime.model_catalog import select_model
-from ruth_runtime.profile_registry import record_local_profile, SCHEMA
+from ruth_runtime.profile_registry import (
+    record_local_profile, initialize_model_profile, SCHEMA,
+)
 
 UUID = "GPU-5a841828-882b-85d9-c98e-3a0d29e66e00"
 
@@ -60,6 +62,27 @@ class ProfileRegistryTests(unittest.TestCase):
         self.evidence.write_text(json.dumps(evidence() if report is None else report))
         return record_local_profile(
             self.evidence, project_root=self.root, hardware=hw())
+
+    def test_remote_pinned_metadata_creates_only_unknown_profile(self):
+        choice = select_model("production")
+        meta = {
+            "status": "source_metadata_verified_license_pending",
+            "repo_id": choice.repo_id, "sha256": choice.expected_sha256,
+            "revision": choice.revision, "size_bytes": choice.expected_size_bytes,
+        }
+        result = initialize_model_profile(choice, meta, project_root=self.root)
+        self.assertEqual(result["status"], "local_profile_initialized_unknown")
+        obj = json.loads(Path(result["profile_file"]).read_text())
+        self.assertTrue(obj["source_verified"])
+        self.assertFalse(obj["model_license_accepted"])
+        self.assertFalse(obj["model_locally_verified"])
+        self.assertIsNone(obj["native_cuda_weights_mib"])
+        self.assertEqual(obj["runtime_measurements"], {})
+        second = initialize_model_profile(choice, meta, project_root=self.root)
+        self.assertEqual(second["status"], "local_profile_already_exists")
+        bad = dict(meta, revision="0"*40)
+        with self.assertRaises(ValueError):
+            initialize_model_profile(choice, bad, project_root=self.root)
 
     def test_first_observation_creates_profile_and_preserves_unknowns(self):
         result = self.store()
