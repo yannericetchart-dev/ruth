@@ -233,3 +233,22 @@ def publish_proposal_pr(
     return {"status": "git_profile_pull_request_opened",
             "git_updated": False, "review_required": True,
             "pull_request_url": url, "branch": branch, "repository_path": path}
+
+def main(argv: list[str] | None = None) -> int:
+    """Offline validation entrypoint for untrusted community pull requests."""
+    import argparse
+    p = argparse.ArgumentParser(description="Validate pinned profile submission (offline)")
+    p.add_argument("--validate", type=Path, required=True)
+    args = p.parse_args(argv)
+    try:
+        result = validate_submitted_proposal(args.validate)
+        print(json.dumps(result, sort_keys=True))
+        return 0
+    except (OSError, ValueError, TypeError, KeyError) as exc:
+        print(json.dumps({"status": "submitted_profile_rejected",
+                          "error": type(exc).__name__ + ": " + str(exc)[:200]}))
+        return 2
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
