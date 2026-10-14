@@ -1,4 +1,4 @@
-"""Native all-GPU KV baseline at 256, with optional gated promotion to 512.
+"""Native all-GPU KV baseline at a source n_ctx, optionally promoting by 256.
 
 No tensor is moved to CPU. The ordinary mapping-phase BASELINE_MODE is NOT
 used because that mode places KV on host! An empty native_tensor_trial maps
@@ -102,9 +102,10 @@ def run_kv_profile_baseline(
         "status": "partial_checkpoint",
         "inference": None,
         "note": (
-            "Probe all-GPU nativo a 256 con offload_kqv=True; "
-            "il profiling f16/f16 NON e una misura del KV alternativo. "
-            "Una mancata conferma non dimostra impossibilita in generale."
+            f"Probe all-GPU nativo a n_ctx={n_ctx} con offload_kqv=True; "
+            "il profiling f16/f16 a 256 NON e una misura del KV "
+            "alternativo. Una mancata conferma non dimostra "
+            "impossibilita in generale."
         ),
     }
 
@@ -163,7 +164,7 @@ def run_kv_profile_baseline(
 
 def main(argv=None):
     parser = argparse.ArgumentParser(
-        description="Verifica all-GPU KV q8_0/f16 FA OFF a 256 e, opzionalmente, promuove a 512."
+        description="Verifica baseline all-GPU con KV in GPU al contesto sorgente e, opzionalmente, promuove al target."
     )
     parser.add_argument("--census", type=Path,
                         default=Path("phase2_single_tensor_census_256.json"))
@@ -185,6 +186,10 @@ def main(argv=None):
                         default=Path("phase2_q8_0_f16_faoff_allgpu_512.json"))
     parser.add_argument("--max-new-loads", type=int)
     parser.add_argument("--max-new-benchmarks", type=int)
+    parser.add_argument("--stop-on-cuda-futility", action="store_true",
+                        help="Arresto euristico e riprendibile dopo errori CUDA nativi ripetuti; NON certifica i rimanenti.")
+    parser.add_argument("--cuda-futility-witness-count", type=int,
+                        default=12)
     args = parser.parse_args(argv)
     progress = lambda row: print(json.dumps(row, ensure_ascii=False), flush=True)
     try:
@@ -241,6 +246,8 @@ def main(argv=None):
             timeout=args.timeout,
             max_new_loads=args.max_new_loads,
             max_new_benchmarks=args.max_new_benchmarks,
+            stop_on_cuda_futility=args.stop_on_cuda_futility,
+            cuda_futility_witness_count=args.cuda_futility_witness_count,
             progress=progress,
         )
         print(json.dumps({
