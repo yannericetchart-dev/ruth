@@ -1,0 +1,17 @@
+#!/bin/sh
+# Ruth entry point. Only the project's isolated .venv executes Python code.
+set -eu
+ROOT=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd -P)
+VENV="$ROOT/.venv"
+ACTION=${1:-doctor}
+if [ ! -x "$VENV/bin/python" ]; then
+    if [ "$ACTION" = "setup" ]; then
+        # Explicit setup may create the isolated .venv, never system packages.
+        sh "$ROOT/bootstrap.sh" --create-venv || exit 2
+    else
+        printf '%s\n' "Ruth .venv missing: run ./ruth setup first." >&2
+        exit 2
+    fi
+fi
+cd "$ROOT"
+exec "$VENV/bin/python" "$ROOT/main.py" "$@"

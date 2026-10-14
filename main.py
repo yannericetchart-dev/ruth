@@ -1,6 +1,5 @@
-def main() -> None:
-    print("Ruth: progetto inizializzato.")
-
+"""Ruth CLI entrypoint (the native inference engine is not yet qualified)."""
+from ruth_runtime.launcher import main
 
 if __name__ == "__main__":
-    main()
+    raise SystemExit(main())

@@ -129,7 +129,7 @@ case "$1" in
         check_python || exit 1
         check_venv || exit 1
         printf '%s\n' "OK: Python and the project-local Ruth .venv are available."
-        printf '%s\n' "Next: .venv/bin/python -m ruth_runtime.dependencies"
+        printf '%s\n' "Next: ./ruth doctor (uses only the project .venv)"
         ;;
     --create-venv)
         check_platform || exit 1

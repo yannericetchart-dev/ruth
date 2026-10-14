@@ -36,6 +36,8 @@ L'ultimo comando esamina `git`, `cmake --version` (minimo 3.21), `c++`, `make`, 
 
 Campi attesi in fase iniziale: `build_prerequisites_met=true` se tutti i tool sono disponibili; `source_status=missing` finché non si acquisiscono i sorgenti; `dependency_lock_ready=false`, `ready_to_build=false`, `build_authorized=false`. Il piano **non** usa automaticamente il wheel qualora un prerequisito manchi.
 
+L'**ingresso applicativo principale** è adesso `./ruth`: `./ruth doctor` diagnostica la `.venv`, `./ruth plan` analizza anche la build CUDA e `./ruth setup --allow-downloads` richiama il medesimo acquisitore Git con un'unica autorizzazione al download dei sorgenti. La vecchia interfaccia `source_build_plan --prepare` resta disponibile come comando tecnico. Questo non avvia ancora installazioni Python: vedere `docs/phase-02-venv-runtime.md`.
+
 ## 2. Acquisizione automatica dei sorgenti — un solo comando autorizzato
 
 La preparazione dei sorgenti **non richiede operazioni Git manuali**. Il flusso esamina i prerequisiti, scarica il commit fissato di `llama-cpp-python` e il submodule `llama.cpp`, controlla provenienza, commit e albero pulito, poi verifica il checkout finale.
