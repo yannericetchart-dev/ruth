@@ -224,13 +224,15 @@ def select_model(
     raise CatalogError("Model path/quantization not registered; no automatic fallback")
 
 
-def fetch_huggingface_metadata(repo_id: str) -> dict:
+def fetch_huggingface_metadata(repo_id: str, *, revision: str = "main") -> dict:
     """Read only public HF metadata. Never follow a redirect off Hugging Face."""
     if not REPO_ID.fullmatch(repo_id):
         raise CatalogError("Invalid Hugging Face repository ID")
+    if revision != "main" and not GIT_SHA.fullmatch(revision):
+        raise CatalogError("Hugging Face metadata revision must be immutable SHA")
     url = ("https://huggingface.co/api/models/" +
            "/".join(quote(x, safe="") for x in repo_id.split("/")) +
-           "/revision/main?blobs=true")
+           "/revision/" + quote(revision, safe="") + "?blobs=true")
     req = Request(url, headers={"User-Agent": "Ruth-model-catalog/1"})
     with urlopen(req, timeout=20) as response:
         if urlsplit(response.url).hostname != "huggingface.co" \
