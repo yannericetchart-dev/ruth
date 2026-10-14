@@ -1,0 +1,40 @@
+name: Ruth portable CUDA profile PR checks
+
+on:
+  pull_request:
+    branches: [model-profiling]
+    paths:
+      - "profiles/submissions/**"
+      - "ruth_runtime/hardware_eligibility.py"
+      - "ruth_runtime/model_memory_profiles.py"
+      - "ruth_runtime/profile_registry.py"
+      - "ruth_runtime/profile_contribution.py"
+      - "catalog/nvidia_architecture_policy.json"
+      - "catalog/gpu_capacity_profiles.json"
+      - "tests/test_phase1[2345]*.py"
+
+permissions:
+  contents: read
+
+jobs:
+  validate-offline:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Validate hardware and publication regression tests
+        run: |
+          python -m unittest \
+            tests.test_phase12_model_memory_profiles \
+            tests.test_phase13_hardware_architecture \
+            tests.test_phase14_profile_registry \
+            tests.test_phase15_profile_contribution -v
+      - name: Validate all submitted profile JSON (never execute contributor code)
+        shell: bash
+        run: |
+          shopt -s nullglob
+          for file in profiles/submissions/*/*.json; do
+            python -m ruth_runtime.profile_contribution --validate "$file"
+          done
