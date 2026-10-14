@@ -111,7 +111,7 @@ def marginal_value(current: dict, candidate: dict, *,
 
 def _probe_summary(probe: dict) -> dict:
     m = probe.get("measurements") or {}
-    return {
+    summary = {
         "success": probe.get("success") is True,
         "failure_class": probe.get("failure_class"),
         "error": probe.get("error"),
@@ -149,9 +149,34 @@ def _probe_summary(probe: dict) -> dict:
         "prompt_tokens": m.get("prompt_tokens"),
         "generated_tokens": m.get("generated_tokens"),
         "total_tokens": m.get("total_tokens"),
-        "host_peak_rss_mib": m.get("host_peak_rss_mib"),
+        "host_peak_rss_mib": m.get("host_peak_rss_mib"), 
     }
-
+    if summary["success"] is not True:
+        # The inference subprocess already captured and classified stderr.
+        # Preserve its bounded diagnostics in the output checkpoint: without
+        # this step SIGABRT had no actionable native details in stage 2.
+        keys = (
+            "suspected_cuda_oom",
+            "native_cuda_resource_allocation_failed",
+            "context_creation_failed",
+            "native_evidence_available",
+            "failure_hint",
+            "last_worker_phase",
+            "failed_during",
+            "abort_signal_detected",
+            "fatal_native_lines",
+            "cuda_diagnostics",
+            "stderr_tail",
+            "diagnostic_note",
+        )
+        summary["failure_diagnostics"] = {
+            key: probe.get(key) for key in keys
+            if key in probe
+        }
+        # A subprocess without valid JSON can still have phase markers,
+        # but its failure must remain explicitly labeled as unverified.
+        summary["worker_json_valid"] = probe.get("worker_json_valid")
+    return summary
 
 def summarize_probe_repeats(rows: list[dict], expected: int) -> dict:
     success = len(rows) == expected and all(row["success"] for row in rows)
