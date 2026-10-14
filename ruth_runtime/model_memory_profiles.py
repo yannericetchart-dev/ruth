@@ -260,6 +260,16 @@ def build_profile_matrix(
         "schema": "ruth-model-memory-profiles-v1",
         "status": "host_profile_matrix_ready" if host else "profile_catalog_ready",
         "capacity_classes_gib": classes, "profiles": records,
+        "available_profile_ids": [r["id"] for r in records],
+        "host_context_allocations_observed": [
+            r["id"] for r in records
+            if r["host_status"] == "host_context_allocation_observed_inference_unverified"
+        ],
+        "host_production_compatible_profile_ids": [],
+        "host_force_experiment_options": [
+            r["id"] for r in records
+            if r["experiment_allowed_in_separate_probe"]
+        ],
         "host": host,
         "force_is_selection_only": True, "gpu_inference_executed": False,
         "gpu_allocations_executed": False,
