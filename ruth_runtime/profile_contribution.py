@@ -1,8 +1,8 @@
-"""Privacy-minimized model profile proposals and opt-in GitHub fork PR.
+"""Publish privacy-minimized memory profiles via GitHub identity gates.
 
-Never commits or pushes into the upstream repository from arbitrary users.
-Requires authenticated GitHub CLI, exact explicit operator approval and a
-reviewable fork PR; no token read/printed, no shell invocation.
+Authenticated repository owner writes immutable measurements DIRECTLY to
+model-profiling; all other accounts are PR-only and require owner's review.
+Never reads or prints credentials or invokes a shell.
 """
 from __future__ import annotations
 
@@ -89,7 +89,7 @@ def build_proposal(profile_file: Path, *, project_root: Path = PROJECT_ROOT) -> 
 def validate_submitted_proposal(
     file: Path, *, project_root: Path = PROJECT_ROOT,
 ) -> dict:
-    """CI-side, no network, reject noncanonical, unauthenticated profile claims.
+    """CI-side, no network, validate proposal and owner-direct measurement files.
 
     This establishes only schema/provenance consistency, NOT that a stranger's
     physical measurements are trustworthy. Human review is still mandatory.
@@ -97,7 +97,7 @@ def validate_submitted_proposal(
     path = Path(file)
     parts = path.parts
     if (len(parts) < 4 or parts[-4] != "profiles"
-        or parts[-3] != "submissions"
+        or parts[-3] not in ("submissions", "measurements")
         or not re.fullmatch("[0-9a-f]{64}", parts[-2])
         or not re.fullmatch("[0-9a-f]{64}\.json", parts[-1])):
         raise ValueError("Invalid submission path")
