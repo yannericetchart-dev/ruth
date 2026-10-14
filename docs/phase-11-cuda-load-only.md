@@ -97,3 +97,55 @@ can itself alter context setup order or allocator behavior. Interpret alongside
 the earlier standard `--load-mode weights` baseline; a causal claim requires
 additional comparison. No driver restart, module blacklist, quantization
 switch, or CPU fallback is part of this diagnostic.
+
+## Host result: explicit CUDA primary context (2026-10-14)
+
+On the RTX 4050 6141 MiB with NVIDIA driver 595.99.02, in a clean
+`module_blacklist=nvidia_drm,nvidia_modeset` boot, the user ran the
+`weights --cuda-preinit` path. All 11 isolated regression tests passed.
+The native CUDA driver API returned **5682.81 MiB free after activating
+the primary context, before the GGUF model-load call**. NVIDIA-SMI reported
+5773 MiB free before the worker. Thus the measured difference across the
+two APIs/times is 90.19 MiB. The GGUF model CUDA buffer requested
+**5700.31 MiB**, exceeding the pre-load measurement by **17.50 MiB**.
+The model-load API returned null, the native trace reported `cudaMalloc
+out of memory`, `weights_loaded=false`, `context_initialized=false`,
+`generated_tokens=0`; no context/KV or inference step ran.
+
+This specifically establishes insufficient CUDA free memory for the reported
+weights buffer in the explicit primary-context experiment. It does not by
+itself prove the *cause* of all 369 MiB driver-reserved memory, nor the
+size/sequence of possible later KV/compute allocations. Avoid claiming
+the difference in separate NVML and CUDA samples is an exact breakdown
+of CUDA context allocations.
+
+## Reconciliation with historical `feature/minimal-chat`
+
+The historical branch `model/manager.py` sets its **default file to
+`gemma-2-9b-it-Q4_K_M.gguf`**. The early
+`calibration/probe.py` starts with **`--gpu-layers 20`** when that argument
+is omitted; it passes that layer count to `Llama(n_gpu_layers=...)`.
+Conversely, the `model-profiling` default is Q4_K_L with full layer
+offload requested. For the pinned files currently in the neutral catalog:
+
+- Q4_K_L: 5983265728 serialized bytes.
+- Q4_K_M: 5761057728 serialized bytes.
+- File-size difference: 222208000 bytes, approximately 211.91 MiB.
+
+Thus a historically successful *default* load is **not necessarily an
+equivalent A/B** of Q4_K_L, full GPU weights, on the current wheel and
+driver. Later old-branch experiments use full-GPU tensor overrides and
+explicit GGUF baseline manifests, which must be evaluated separately.
+
+To reproduce the old default as an **explicit diagnostic only**, with
+full GPU offload still requested and no inference, use:
+
+```bash
+./ruth models probe-load --quantization Q4_K_M --load-mode weights --allow-gpu-load
+```
+
+This requires the separate, pinned Q4_K_M GGUF to be locally available
+and verified; otherwise the command fails closed. Do not download
+anything or change the production default as part of this test. A
+successful Q4_K_M weights load would not prove the Q4_K_L load can
+succeed, and does not certify that KV/compute buffers also fit.
