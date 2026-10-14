@@ -123,6 +123,18 @@ def main(argv: list[str] | None = None) -> int:
             mp.add_argument("--accept-model-license", action="store_true",
                             help="Confirm you reviewed and accept the original model license terms")
         if operation == "profiles":
+            mp.add_argument("--offline-fit", action="store_true",
+                            help="Explain full-GPU weights fit from committed Git measurements; NO CUDA/nvidia-smi/network")
+            mp.add_argument("--vram-gib", type=int,
+                            help="Nominal host VRAM class for offline fit, e.g. 6")
+            mp.add_argument("--architecture",
+                            help="Override saved architecture only for explicit offline hypothetical comparison")
+            mp.add_argument("--driver-version",
+                            help="Exact known NVIDIA driver for offline comparison")
+            mp.add_argument("--cuda-backend",
+                            help="Exact CUDA backend version for offline comparison")
+            mp.add_argument("--native-binding",
+                            help="Pinned llama-cpp-python version for offline comparison")
             mp.add_argument("--initialize", action="store_true",
                             help="After explicit Hugging Face pin metadata verification, create unknown-only local model profile")
             mp.add_argument("--allow-metadata-network", action="store_true",
@@ -185,6 +197,29 @@ def main(argv: list[str] | None = None) -> int:
             if args.model_action == "profiles":
                 from .model_memory_profiles import build_profile_matrix
                 try:
+                    if args.offline_fit:
+                        if (args.host or args.record_local or args.initialize
+                                or args.evidence_file or args.profile_file
+                                or args.sync_git or args.publish_pr
+                                or args.force):
+                            raise ValueError("--offline-fit does not accept host, probes, evidence or Git synchronization")
+                        from .offline_memory_fit import explain_offline_weights_fit
+                        outcome = explain_offline_weights_fit(
+                            quantization=args.quantization or "Q4_K_L",
+                            architecture=args.architecture,
+                            vram_gib=args.vram_gib,
+                            driver_version=args.driver_version,
+                            backend_cuda=args.cuda_backend,
+                            binding_version=args.native_binding,
+                        )
+                        _print({"action": "models", **outcome})
+                        return (0 if outcome["status"] in (
+                            "full_gpu_weights_cannot_fit_nominal_bound",
+                            "weights_possible_context_unverified",
+                        ) else 2)
+                    if (args.vram_gib is not None or args.architecture or
+                        args.driver_version or args.cuda_backend or args.native_binding):
+                        raise ValueError("Offline comparison selectors require --offline-fit")
                     if args.force and not args.host:
                         raise ValueError("--force is only meaningful with --host")
                     explicit_sync = args.sync_git or args.publish_pr
