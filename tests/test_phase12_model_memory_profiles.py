@@ -36,6 +36,17 @@ def fake_preflight(uuid):
     )
 
 
+def fake_architecture(*, project_root):
+    return {
+        "status": "hardware_eligible_native_backend_unverified",
+        "gpu_uuid": UUID, "pci_bus": PCI, "architecture": "ada",
+        "compute_capability": "8.9", "vram_class_gib": 6,
+        "tensor_core_generation": 4, "min_cuda": "11.8",
+        "driver_cuda_max": "13.2", "toolkit_cuda": "13.2",
+        "backend_cuda": "13.2", "errors": [], "warnings": [],
+    }
+
+
 def fake_drm(bus):
     assert bus == PCI
     return {"status": "drm_not_loaded", "module_loaded": False,
@@ -73,12 +84,13 @@ class MemoryProfileMatrixTests(unittest.TestCase):
         return build_profile_matrix(project_root=PROJECT_ROOT,
                                     gpu_inspector=fake_gpu,
                                     preflight=fake_preflight,
-                                    drm_inspector=fake_drm, **kw)
+                                    drm_inspector=fake_drm,
+                                    hardware_inspector=fake_architecture, **kw)
 
     def test_class_listing_no_hardware_calls_or_allocations(self):
         matrix = self.matrix()
         self.assertEqual(matrix["status"], "profile_catalog_ready")
-        self.assertEqual(matrix["capacity_classes_gib"][:3], [4, 6, 8])
+        self.assertEqual(matrix["capacity_classes_gib"][:3], [6, 8, 12])
         self.assertIsNone(matrix["host"])
         self.assertFalse(matrix["gpu_allocations_executed"])
         self.assertFalse(matrix["gpu_inference_executed"])
@@ -97,8 +109,9 @@ class MemoryProfileMatrixTests(unittest.TestCase):
         self.assertEqual(row["source_evidence"]["observed_nvml_to_cuda_delta_mib"], 90.19)
         self.assertIsNone(row["source_evidence"]["native_kv_gpu_buffer_mib"])
         self.assertIsNone(row["source_evidence"]["native_compute_gpu_buffer_mib"])
-        self.assertEqual(classes[4]["status"],
-                         "insufficient_nominal_vram_for_measured_weights")
+        self.assertNotIn(4, classes)
+        self.assertTrue(all(p["tensor_core_generation"] >= 4
+                            for p in row["capacity_classes"]))
         self.assertEqual(classes[6]["status"],
                          "weights_physically_possible_unverified")
         self.assertEqual(classes[8]["status"],
@@ -162,7 +175,8 @@ class MemoryProfileMatrixTests(unittest.TestCase):
             })
         m = build_profile_matrix(project_root=PROJECT_ROOT, check_host=True,
                                  force=True, gpu_inspector=fake_gpu,
-                                 preflight=busy, drm_inspector=fake_drm)
+                                 preflight=busy, drm_inspector=fake_drm,
+                                 hardware_inspector=fake_architecture)
         self.assertFalse(m["host"]["exclusivity_verified"])
         self.assertFalse(any(x["experiment_allowed_in_separate_probe"]
                              for x in m["profiles"]))
@@ -173,7 +187,8 @@ class MemoryProfileMatrixTests(unittest.TestCase):
                     "associated_cards": ["card1"]}
         m = build_profile_matrix(project_root=PROJECT_ROOT, check_host=True,
                                  force=True, gpu_inspector=fake_gpu,
-                                 preflight=fake_preflight, drm_inspector=active)
+                                 preflight=fake_preflight, drm_inspector=active,
+                                 hardware_inspector=fake_architecture)
         self.assertFalse(m["host"]["compute_only_verified"])
         self.assertFalse(any(p["experiment_allowed_in_separate_probe"]
                              for p in m["profiles"]))
