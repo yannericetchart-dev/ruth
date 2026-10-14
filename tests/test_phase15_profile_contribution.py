@@ -48,6 +48,51 @@ class ProfileContributionTests(unittest.TestCase):
         }))
         return file
 
+    def test_context_kv_and_compute_profile_survive_sanitized_git_roundtrip(self):
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            local = self.prepare(root)
+            choice = select_model("production")
+            data = json.loads(local.read_text())
+            data["model"].update({
+                "gguf_sha256": choice.expected_sha256,
+                "source_repository": choice.repo_id,
+                "source_revision": choice.revision,
+                "version": choice.version,
+                "quantization": choice.quantization,
+            })
+            runtime_key = next(iter(data["runtime_measurements"]))
+            data["context_profiles"] = {
+                runtime_key + "/n_ctx=128/flash=unknown/k=unknown/v=unknown": {
+                    "n_ctx_requested": 128, "kv_size_native": [256],
+                    "kv_padding": None, "flash_attention": None,
+                    "kv_type_k": None, "kv_type_v": None,
+                    "gpu_kv_buffer_mib": 12.5,
+                    "gpu_compute_buffer_mib": 56.0,
+                    "backend": "llama.cpp",
+                    "verified_native_allocations_only": True,
+                    "inference_verified": False,
+                },
+            }
+            local.write_text(json.dumps(data))
+            proposal = build_proposal(local, project_root=root)
+            self.assertEqual(proposal["proposal"]["context_profiles"][0]
+                             ["gpu_kv_buffer_mib"], 12.5)
+            self.assertIsNone(proposal["proposal"]["context_profiles"][0]
+                              ["kv_padding"])
+            public = root / proposal["repository_path"].replace(
+                "profiles/submissions/", "profiles/measurements/", 1)
+            public.parent.mkdir(parents=True)
+            public.write_text(json.dumps(proposal["proposal"]))
+            self.assertEqual(
+                validate_submitted_proposal(public)["status"],
+                "submitted_profile_schema_verified_review_required")
+            tampered = json.loads(public.read_text())
+            tampered["context_profiles"][0]["inference_verified"] = True
+            public.write_text(json.dumps(tampered))
+            with self.assertRaises(ValueError):
+                validate_submitted_proposal(public)
+
     def test_proposal_rejects_temporary_profile_outside_project(self):
         # CLI orchestration tests mock build_proposal because their fixtures
         # live in temporary roots; real runtime must stay project-root-only.
