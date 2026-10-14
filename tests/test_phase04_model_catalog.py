@@ -14,10 +14,10 @@ from ruth_runtime.model_catalog import (
 from ruth_runtime.launcher import main
 
 
-def metadata(choice, *, revision="1" * 40, sha=None, filename=None,
+def metadata(choice, *, revision=None, sha=None, filename=None,
              size=808000000, license_name=None, gated=False):
     return {
-        "sha": revision, "private": False, "gated": gated,
+        "sha": revision if revision is not None else (choice.revision or "1" * 40), "private": False, "gated": gated,
         "cardData": {"license": license_name or choice.license},
         "siblings": [
             {"rfilename": filename or choice.filename, "size": size,
@@ -59,6 +59,8 @@ class CatalogTests(unittest.TestCase):
         self.assertEqual(selected.expected_sha256,
                          "6f85a640a97cf2bf5b8e764087b1e83da0fdb51d7c9fab7d0fece9385611df83")
         self.assertFalse(selected.gpu_offload_executed)
+        self.assertEqual(selected.revision, "067b946cf014b7c697f3654f621d577a3e3afd1c")
+        self.assertEqual(selected.expected_size_bytes, 807694464)
 
     def test_explicit_hierarchical_selection(self):
         selected = select_model(
@@ -121,10 +123,10 @@ class HfMetadataTests(unittest.TestCase):
             selected, authorize_metadata_network=True, fetch=fake)
         self.assertEqual(observed, [selected.repo_id])
         self.assertEqual(response["status"], "source_metadata_verified_license_pending")
-        self.assertEqual(response["revision"], "1" * 40)
+        self.assertEqual(response["revision"], selected.revision)
         self.assertEqual(response["sha256"], selected.expected_sha256)
         self.assertEqual(response["size_bytes"], 808000000)
-        self.assertIn("/blob/" + "1" * 40 + "/", response["model_url"])
+        self.assertIn("/blob/" + selected.revision + "/", response["model_url"])
         self.assertFalse(response["license_accepted"])
         self.assertFalse(response["download_started"])
         self.assertFalse(response["gpu_offload_executed"])
@@ -143,6 +145,20 @@ class HfMetadataTests(unittest.TestCase):
             selected, authorize_metadata_network=True,
             fetch=lambda _: metadata(selected, revision="main"))
         self.assertEqual(result["status"], "source_metadata_unverified")
+
+    def test_remote_byte_size_changed_is_refused(self):
+        selected = select_model()
+        response = resolve_model_metadata(
+            selected, authorize_metadata_network=True,
+            fetch=lambda _: metadata(selected, size=123456789))
+        self.assertEqual(response["status"], "source_metadata_unverified")
+
+    def test_remote_revision_changed_is_refused(self):
+        selected = select_model()
+        response = resolve_model_metadata(
+            selected, authorize_metadata_network=True,
+            fetch=lambda _: metadata(selected, revision="f" * 40))
+        self.assertEqual(response["status"], "source_metadata_unverified")
 
     def test_missing_file_refused(self):
         selected = select_model()

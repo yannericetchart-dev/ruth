@@ -81,10 +81,12 @@ def main(argv: list[str] | None = None) -> int:
     models = sub.add_parser("models", help="Read-only hierarchical model catalog and HF provenance")
     model_sub = models.add_subparsers(dest="model_action")
     model_sub.add_parser("list", help="List families, GGUF models and defaults (offline)")
-    for operation in ("select", "resolve"):
+    for operation in ("select", "resolve", "download"):
         mp = model_sub.add_parser(operation, help=(
             "Offline model selection" if operation == "select" else
             "Resolve HF immutable revision and GGUF checksum (metadata only)"
+            if operation == "resolve" else
+            "Explicit, resumable SHA256-verified HF GGUF download"
         ))
         mp.add_argument("--purpose", choices=("production", "test"), default="test")
         mp.add_argument("--family")
@@ -95,6 +97,11 @@ def main(argv: list[str] | None = None) -> int:
         if operation == "resolve":
             mp.add_argument("--allow-metadata-network", action="store_true",
                             help="Authorize public HF JSON metadata requests; never download weights")
+        if operation == "download":
+            mp.add_argument("--allow-model-download", action="store_true",
+                            help="Authorize network transfer of this pinned GGUF file")
+            mp.add_argument("--accept-model-license", action="store_true",
+                            help="Confirm you reviewed and accept the original model license terms")
     sub.add_parser("run", help="Start the CUDA runtime only after verification")
     args = parser.parse_args(argv)
 
@@ -107,8 +114,8 @@ def main(argv: list[str] | None = None) -> int:
             if args.model_action == "list":
                 _print({"action": "models", **list_models()})
                 return 0
-            if args.model_action not in {"select", "resolve"}:
-                raise CatalogError("Choose models list, select or resolve")
+            if args.model_action not in {"select", "resolve", "download"}:
+                raise CatalogError("Choose models list, select, resolve or download")
             choice = select_model(
                 purpose=args.purpose, family=args.family, model=args.model,
                 version=args.version, format=args.format,
@@ -119,6 +126,14 @@ def main(argv: list[str] | None = None) -> int:
                         "selection": choice.to_dict(),
                         "download_started": False})
                 return 0
+            if args.model_action == "download":
+                from .model_download import download_pinned_model
+                report = download_pinned_model(
+                    choice, allow_download=args.allow_model_download,
+                    acknowledge_model_license=args.accept_model_license,
+                )
+                _print({"action": "models", **report.to_dict()})
+                return 0 if report.model_verified else 2
             resolved = resolve_model_metadata(
                 choice, authorize_metadata_network=args.allow_metadata_network,
             )

@@ -45,6 +45,7 @@ class ModelChoice:
     license_acknowledgement_required: bool
     expected_sha256: str
     approx_size_mb: int
+    expected_size_bytes: int | None
     revision: str | None
     assessment: str
     local_model_ready: bool
@@ -112,6 +113,10 @@ def load_catalog(project_root: Path = PROJECT_ROOT) -> dict:
             quant = item.get("quantization")
             if not isinstance(quant, str) or not SEGMENT.fullmatch(quant):
                 raise CatalogError("Invalid quantization identifier")
+            exact_size = item.get("expected_size_bytes")
+            if exact_size is not None and (type(exact_size) is not int or
+                                           exact_size < 1024 * 1024):
+                raise CatalogError("Invalid exact GGUF size pin")
             revision = item.get("revision")
             if revision is not None and (not isinstance(revision, str) or
                                          not GIT_SHA.fullmatch(revision)):
@@ -209,6 +214,7 @@ def select_model(
                         license_acknowledgement_required=True,
                         expected_sha256=item["expected_sha256"],
                         approx_size_mb=item["approx_size_mb"],
+                        expected_size_bytes=item.get("expected_size_bytes"),
                         revision=item["revision"],
                         assessment=item["assessment"],
                         local_model_ready=False, downloadable=False,
@@ -280,6 +286,8 @@ def resolve_model_metadata(
         size = entry.get("size", lfs.get("size"))
         if type(size) is not int or size < 1024 * 1024:
             raise CatalogError("GGUF size missing or invalid")
+        if choice.expected_size_bytes is not None and size != choice.expected_size_bytes:
+            raise CatalogError("Remote GGUF size differs from catalog pin")
         if info.get("private") is True:
             raise CatalogError("Private repository requires separate authentication")
         license_reported = None

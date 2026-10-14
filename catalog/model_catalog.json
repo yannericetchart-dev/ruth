@@ -80,12 +80,13 @@
           "filename": "Llama-3.2-1B-Instruct-Q4_K_M.gguf",
           "expected_sha256": "6f85a640a97cf2bf5b8e764087b1e83da0fdb51d7c9fab7d0fece9385611df83",
           "approx_size_mb": 808,
-          "revision": null,
+          "revision": "067b946cf014b7c697f3654f621d577a3e3afd1c",
           "assessment": "lightweight_functional_tests_only",
-          "note": "Use for lightweight integration/smoke tests; not a substitute for production VRAM/performance profiling."
+          "note": "Use for lightweight integration/smoke tests; not a substitute for production VRAM/performance profiling.",
+          "expected_size_bytes": 807694464
         }
       ]
     }
   ],
-  "scope": "Read-only catalog/metadata resolution; no downloads, no auto-acceptance of model licenses."
+  "scope": "Catalog metadata and pinned test GGUF; no model download or automatic license acceptance."
 }

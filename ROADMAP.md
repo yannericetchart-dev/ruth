@@ -1,9 +1,9 @@
 # Ruth — Roadmap del branch `model-profiling`
 
-> **Versione:** 2.16 — roadmap approvata e modificabile. Fase 04: **catalogo gerarchico model/family/version/format/quantization, Hugging Face default, Kaggle TO DO**, CLI offline e resolver metadata implementati; test nuovi da verificare sul PC. Test/production default registrati, nessun download GGUF.
+> **Versione:** 2.17 — roadmap approvata e modificabile. Fase 04/06: **233 test e metadati HF test GGUF verificati sul PC; downloader GGUF con SHA-256 e resume implementato**, nuovi test da eseguire. Nessun download del modello avviato.
 > **Branch:** `model-profiling` (riscrittura da zero sulla base minimale di `main`).
 > **Riferimento storico:** `feature/minimal-chat` è consultabile per imparare dalle prove precedenti, **non** è una dipendenza né una base di codice da copiare.
-> **Stato attuale:** Fase 01 e ambiente CUDA runtime qualificati: **211 test superati sul PC** e `./ruth setup --verify-native-library`→ `native_library_dual_abi_verified`; C ABI diretta e Python condividono gli stessi file `.so` su RTX 4050. Il progetto NON ha ancora caricato un GGUF né misurato inferenza/offload effettivi. L'utente ha scelto provider Hugging Face come default, Kaggle come **TO DO**, famiglie `gemma/llama/qwen/mistral`, produzione `gemma-2-9B-it`, test leggero `llama-3.2-1B-instruct` quando non servono misurazioni VRAM effettive. Implementati `catalog/model_catalog.json`, `ruth_runtime/model_catalog.py` e `./ruth models list|select|resolve`; catalogo GGUF Q4_K_M con digest SHA256 attesi da Hugging Face, meta-only resolver con consenso esplicito e nessun download. **22 nuovi test previsti**, totale **233 test** da eseguire sul PC. Produzione Gemma Q4_K_M ~5,76 GB può non rientrare interamente in 6GiB con KV/overhead: nessuna promessa offload completo, nessun fallback CPU. CVE `diskcache` resta TO DO non prioritario.
+> **Stato attuale:** Sul PC dell'utente **233 test superati in 2,147 s**, `./ruth models list` e `select` per test/produzione riusciti. `./ruth models resolve --purpose test --allow-metadata-network` ha verificato realmente `Llama-3.2-1B-Instruct-Q4_K_M.gguf`: repo Hugging Face `bartowski/Llama-3.2-1B-Instruct-GGUF`, revision Git `067b946cf014b7c697f3654f621d577a3e3afd1c`, SHA256 LFS `6f85a640a97cf2bf5b8e764087b1e83da0fdb51d7c9fab7d0fece9385611df83`, 807694464 byte, `gated=false`, licenza `llama3.2` segnalata ma **non accettata**. Implementato downloader `ruth_runtime/model_download.py`, con due consensi espliciti per network/licenza, nuova verifica dei metadati remote, download a revisione pinned, resume HTTP 206, controllo GGUF/size/SHA256, storage atomico in `models/` ignorata da Git; **20 nuovi test downloader + 2 nuovi test catalogo, totale previsto 255**, ancora da eseguire sul PC. Nessun download, modello caricato o inferenza reale finora. Gemma 2 9B IT rimane default produzione non ancora qualificato per 6GiB VRAM e senza revisione/size pinned; non autorizzato al download. CUDA native dual ABI già verificato; Kaggle TO DO, diskcache CVE TO DO.
 
 ## 1. Obiettivo e confini
 
@@ -185,12 +185,12 @@ Il commit della fase contiene **solo** quanto concordato, inclusi test e documen
 - **Gate:** scelta e costi prevedibili prima di usare risorse.
 
 ### Fase 06 — Download, cache e integrità
-- [ ] Preflight: spazio disponibile, dimensioni previste, permessi, rete e token dove necessari.
-- [ ] Download a checkpoint/ripresa, con file temporanei e promozione atomica.
-- [ ] Gestione shard, revisioni congelate e layout locale coerente.
-- [ ] Verificare hash/dimensioni dove disponibili e coerenza del formato dopo download.
-- [ ] Non eliminare né sovrascrivere asset preesistenti senza policy esplicita.
-- [ ] Gestire timeout, download parziali, autenticazione scaduta e repository irraggiungibili.
+- [x] Implementato preflight per **GGUF pubblico, non gated**, con size, SHA256, revisione Git, controllo symlink e spazio su disco (mancanti +128MiB). Auth token per gated resta TO DO.
+- [x] Implementato download Hugging Face a revisione immutabile; `*.gguf.part` + `*.part.json`, resume con Range+HTTP 206/Content-Range obbligatori, verifica totale prima di rinominare a GGUF finale; **prova reale da fare sul PC**.
+- [ ] Revisione Git singolo GGUF fissata e gerarchia locale `family/model/version/gguf/quantization` implementata. **Shard multipli ancora TO DO**, nessun download implicito.
+- [x] Controlli implementati: size byte esatta, SHA256 locale completo, GGUF magic, check metadati LFS/remoti ed esito `model_download_verified`. Test offline aggiunti; esecuzione reale ancora da verificare.
+- [x] Rifiuto symlink, destinazioni preesistenti alterate, resume manifest non corrispondenti e lock concorrenti; modello completo non sovrascritto.
+- [ ] Timeout/interruzioni trattati con conservazione del `.part` e ripresa. **Gated/authentication/rate-limit e retry/backoff avanzato TO DO**; codice fail-closed, test da verificare sul PC.
 - **Output:** manifest di artefatti locali verificati.
 - **Gate:** non avviare prove native su pesi incompleti o corrotti.
 
@@ -386,7 +386,8 @@ Queste non sono domande da risolvere tutte subito: ciascuna viene affrontata **p
 | 00 | **Bozza di contratto da revisionare** | Interfacce e catalogo dichiarativo nel codice, test CPU-only; nessun adapter operativo |
 | 01 | **Conclusa (inventario statico)** | 21 test dell'utente, hardware reale e snapshot processi NVIDIA verificati; recheck dinamico richiesto prima dei benchmark |
 | 02 | **211 test e libreria CUDA dual-ABI verificati sul PC** | 15 `.so`/alias e pinned wheel coerenti, stesso `libllama.so` C/Python, CUDA support e native init confermati; nessuna inferenza GGUF/offload layer ancora eseguita |
-| 04 | **Catalogo GGUF iniziale implementato, metadata da provare** | Hugging Face default, Kaggle TO DO; 4 famiglie; Gemma 9B production / Llama 1B test, 22 test nuovi, nessun download/licenza accettata |
+| 04 | **233 test OK e metadati HF reali verificati** | 4 famiglie, Gemma production / Llama test, pin immutabile del GGUF test (revision/SHA256/807694464 B); no license acceptance o download |
+| 06 | **Downloader GGUF resumable implementato, da testare sul PC** | Check size/SHA/GGUF, download su commit, Range/206, staging e promozione; 22 nuovi test e consenso separato per rete/licenza |
 | 03–16 | **Non iniziate** | Nessun runtime o profiling operativo ancora sviluppato |
 
-**Prossima azione:** eseguire `git pull --ff-only`, suite `unittest` (totale previsto **233**) e CLI read-only `./ruth models list`, `./ruth models select --purpose test`, `./ruth models select --purpose production`. Per fissare la revisione remota del GGUF Llama 1B, **solo previa autorizzazione ai metadati** eseguire `./ruth models resolve --purpose test --allow-metadata-network`; nessun download del modello e nessuna accettazione automatica licenze. Dopo, progettare il download a checkpoint con consensi espliciti e il worker CUDA inference GGUF reale; default Gemma 9B resta prodotto desiderato, ma con vincolo VRAM non ancora superato. `diskcache` resta TO DO.
+**Prossima azione:** utente esegue `git pull --ff-only` e test unitari completi (**255 attesi**), poi verifica con `./ruth models select --purpose test`. Per trasferire il GGUF da 807694464 B, l'utente deve **prima leggere/accettare i termini Llama 3.2** e poi autorizzare entrambi i flag nel comando `./ruth models download --purpose test --allow-model-download --accept-model-license`. NON eseguire il download senza consenso consapevole; completato il file hash-verified sulla macchina, implementare worker di inferenza con offload GPU/VRAM e generazione misurata. Non ricompilare/rinstallare CUDA, non scaricare Gemma 9B senza validazione hardware. Kaggle e diskcache CVE restano TO DO.
