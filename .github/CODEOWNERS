@@ -1,0 +1,9 @@
+# Repository owner reviews third-party model profiling contributions.
+# To ENFORCE approval, turn on branch/ruleset protection for model-profiling:
+# "Require a pull request before merging" and "Require review from Code Owners".
+/profiles/submissions/ @yannericetchart-dev
+/profiles/measurements/ @yannericetchart-dev
+/catalog/nvidia_architecture_policy.json @yannericetchart-dev
+/catalog/model_catalog.json @yannericetchart-dev
+/ruth_runtime/profile_contribution.py @yannericetchart-dev
+/.github/workflows/profile-validation.yml @yannericetchart-dev
