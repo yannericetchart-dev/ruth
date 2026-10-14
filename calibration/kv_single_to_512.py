@@ -28,6 +28,9 @@ from model.inspect import inspect_gguf
 
 from .gpu_context import context_limit, verify_native_kv_config, validate_kv_config
 from .kv_cuda_futility import observed_cuda_futility
+from .kv_worker_infrastructure import (
+    worker_import_failure, recover_worker_import_failures,
+)
 from .mapping_grouping import native_tensor_trial
 from .mapping_native_validation import verify_override_logs
 from .mapping_phase import PROBE_BATCH, probe_native_mapping, verify_mapping_kv_runtime
@@ -534,6 +537,11 @@ def run_single_to_512(
                     tokens=p["generated_tokens"]))
         ):
             raise ValueError("Checkpoint benchmark non valido: " + name)
+    # The previous runner incorrectly counted Python package import errors
+    # as CUDA-negative mappings. Preserve those outcomes in per-tensor
+    # histories and allow *only* the affected probes to run again.
+    # Successful mappings and genuine CUDA failures are never invalidated.
+    repaired_import_errors = recover_worker_import_failures(entries)
     # Optional diagnostic replay: keep the original failure intact in
     # inference_history and only replay previously FAILED inferences.
     # Runtime controls intentionally do not alter the checkpoint identity.
@@ -557,12 +565,15 @@ def run_single_to_512(
         retried_names.add(name)
     control = initial.get("control_load_only")
     futility_observation = None
+    worker_infrastructure_stop = None
     report = {
         "schema": SCHEMA, "parameters": identity,
         "status": "in_progress", "completed": False,
         "candidate_order": ranked, "control_load_only": control,
         "results": entries, "summary": {},
         "observed_cuda_futility_stop": None,
+        "worker_infrastructure_stop": None,
+        "recovered_worker_import_failures": repaired_import_errors,
         "hard_pruning": {
             "certified_exclusions": [],
             "count": 0,
@@ -646,9 +657,11 @@ def run_single_to_512(
         }
         done = report["summary"]["ready_for_phase3"] and control is not None
         report["observed_cuda_futility_stop"] = futility_observation
-        report["completed"] = done
+        report["worker_infrastructure_stop"] = worker_infrastructure_stop
+        report["completed"] = done and worker_infrastructure_stop is None
         report["status"] = (
-            "completed_singleton_benchmarks" if done and good_bench
+            "worker_infrastructure_failure" if worker_infrastructure_stop
+            else "completed_singleton_benchmarks" if done and good_bench
             else "completed_no_singleton_inference" if done
             else "observed_cuda_futility_stop" if futility_observation
             else "partial_checkpoint"
@@ -676,8 +689,31 @@ def run_single_to_512(
                 "failure_class": "load_probe_exception",
                 "error": f"{type(exc).__name__}: {exc}",
             }
+        if worker_import_failure(control):
+            worker_infrastructure_stop = {
+                "stage": "control_load_only",
+                "tensor": None,
+                "failure_class": "worker_python_module_import_error",
+                "stderr_tail": (
+                    (control.get("failure_diagnostics") or {})
+                    .get("stderr_tail")
+                ),
+                "note": (
+                    "Worker Python impossibile da importare; correggere "
+                    "l'ambiente prima di continuare. Nessun test CUDA "
+                    "e' stato eseguito in questa prova."
+                ),
+            }
+            # Do not cache an invalid baseline control as a failed GPU
+            # mapping. It will be checked again on the next invocation.
+            control = None
         report["control_load_only"] = control
         save()
+        if worker_infrastructure_stop:
+            if progress:
+                progress({"event": "worker_infrastructure_failure",
+                          **worker_infrastructure_stop})
+            return report
         if progress:
             progress({
                 "event": "control_load_only",
@@ -726,6 +762,25 @@ def run_single_to_512(
                     "failure_class": "load_probe_exception",
                     "error": f"{type(exc).__name__}: {exc}",
                 }
+            if worker_import_failure(entry["load_only"]):
+                invalid_load = entry.pop("load_only")
+                entry.setdefault("load_only_history", []).append(
+                    invalid_load
+                )
+                worker_infrastructure_stop = {
+                    "stage": "load_only", "tensor": name,
+                    "rank": item["rank"],
+                    "failure_class": "worker_python_module_import_error",
+                    "stderr_tail": (
+                        (invalid_load.get("failure_diagnostics") or {})
+                        .get("stderr_tail")
+                    ),
+                }
+                save()
+                if progress:
+                    progress({"event": "worker_infrastructure_failure",
+                              **worker_infrastructure_stop})
+                break
             new_loads += 1
             save()
             if progress:
@@ -766,8 +821,37 @@ def run_single_to_512(
                     "success": False, "failure_class": "inference_probe_exception",
                     "error": f"{type(exc).__name__}: {exc}",
                 })
+            if worker_import_failure(observations[-1]):
+                # Do not treat an unavailable Python module as evidence
+                # against this tensor. Retain original stderr for review.
+                invalid_inference = summarize_probe_repeats(
+                    observations, benchmark_repeats,
+                )
+                invalid_inference.update({
+                    "n_ctx": target_ctx, "host_tensor_names": [name],
+                    "mapping_id": trial["id"],
+                })
+                entry.setdefault("inference_history", []).append(
+                    invalid_inference
+                )
+                worker_infrastructure_stop = {
+                    "stage": "inference", "tensor": name,
+                    "rank": item["rank"],
+                    "failure_class": "worker_python_module_import_error",
+                    "stderr_tail": (
+                        (observations[-1].get("failure_diagnostics") or {})
+                        .get("stderr_tail")
+                    ),
+                }
+                save()
+                if progress:
+                    progress({"event": "worker_infrastructure_failure",
+                              **worker_infrastructure_stop})
+                break
             if observations[-1]["success"] is not True:
                 break
+        if worker_infrastructure_stop:
+            break
         aggregate = summarize_probe_repeats(observations, benchmark_repeats)
         aggregate.update({
             "n_ctx": target_ctx, "host_tensor_names": [name],
