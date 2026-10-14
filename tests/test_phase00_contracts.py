@@ -24,7 +24,7 @@ class CatalogContractTests(unittest.TestCase):
             (ComponentKind.CPU_VENDOR, "intel"),
             (ComponentKind.GPU_VENDOR, "nvidia"),
             (ComponentKind.GPU_BACKEND, "cuda"),
-            (ComponentKind.CPU_BACKEND, "ggml-cpu"),
+            (ComponentKind.NATIVE_LIBRARY, "ggml-cpu"),
             (ComponentKind.INFERENCE_ENGINE, "llama.cpp"),
             (ComponentKind.INITIALIZATION, "llama_cpp_python"),
         ):
@@ -47,11 +47,24 @@ class CatalogContractTests(unittest.TestCase):
                 self.assertEqual(values[name], DevelopmentState.TO_DO, (kind, name))
 
     def test_target_stacks_not_marked_runnable(self):
-        self.assertEqual(len(INITIAL_STACKS), 2)
+        self.assertEqual(len(INITIAL_STACKS), 1)
+        self.assertEqual(INITIAL_STACKS[0], StackSelection(
+            "gpu", "nvidia", "cuda", "llama.cpp", "llama_cpp_python"
+        ))
         for stack in INITIAL_STACKS:
             assessment = inspect_stack(stack)
             self.assertEqual(assessment.state, DevelopmentState.TARGET)
             self.assertFalse(assessment.runnable)
+
+    def test_ggml_cpu_is_library_not_selectable_backend(self):
+        self.assertEqual([c.identifier for c in components(ComponentKind.NATIVE_LIBRARY)], ["ggml-cpu"])
+        self.assertNotIn("ggml-cpu", [c.identifier for c in components(ComponentKind.CPU_BACKEND)])
+        with self.assertRaises(UnsupportedStackError):
+            inspect_stack(StackSelection("cpu", "intel", "ggml-cpu", "llama.cpp", "llama_cpp_python"))
+        # Tecnologie CPU future possono essere censite, mai promosse a TARGET di runtime.
+        future = inspect_stack(StackSelection("cpu", "intel", "onednn", "llama.cpp", "llama_cpp_python"))
+        self.assertEqual(future.state, DevelopmentState.TO_DO)
+        self.assertFalse(future.runnable)
 
     def test_cross_vendor_future_stack_not_marked_runnable(self):
         stack = StackSelection("gpu", "amd", "rocm", "llama.cpp", "cli")

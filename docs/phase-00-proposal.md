@@ -1,6 +1,6 @@
 # Fase 00 — Specifica preliminare di comportamento automatico
 
-> **Stato:** revisione 0.2 della proposta, **non approvata**. Requisiti forniti dall'utente inclusi come target e da confermare; **nessun adapter è già funzionante**.
+> **Stato:** revisione 0.3 della proposta, **non approvata**. Requisiti forniti dall'utente inclusi come target e da confermare; **nessun adapter è già funzionante**.
 > **Data:** 14 ottobre 2026.
 > **Roadmap:** [ROADMAP.md](../ROADMAP.md) (approvata con riserva di modifiche future).
 > **Regola:** documento ancora soggetto ad approvazione. Per avviare il lavoro è stata scritta una **bozza limitata** di contratti Python e di registro dichiarativo; nessuna installazione, download, prova hardware o runtime funzionante.
@@ -25,7 +25,8 @@ L'obiettivo architetturale è **un'unica API** che permetta a codice client iden
 | Architettura CPU | **x86_64 Intel** | **x86_64 AMD** |
 | GPU vendor | **NVIDIA** | **AMD, Intel** |
 | Backend GPU | **CUDA** | **Vulkan, ROCm, HIP, SYCL, oneAPI, XPU, OpenVINO GPU** |
-| Backend CPU | **GGML CPU** | **oneDNN, oneMKL, OpenVINO CPU, ONNX Runtime CPU, vLLM CPU, BLIS, OpenBLAS** |
+| Libreria nativa | **GGML CPU (utilizzata da llama.cpp, NON un backend)** | — |
+| Tecnologie CPU future | **Nessuna combinazione di inferenza CPU in sviluppo** | **oneDNN, oneMKL, OpenVINO CPU, ONNX Runtime CPU, vLLM CPU, BLIS, OpenBLAS** |
 | Motore di inferenza | **llama.cpp** | **vLLM, ONNX Runtime, PyTorch, OpenVINO, MLC LLM, IREE, SGLang** |
 | Inizializzazione di llama.cpp | **`llama_cpp_python`** | **`local-server`, `system-library`, `cli`** |
 
@@ -46,7 +47,8 @@ InferenceEngine: llama.cpp [PRIMO], vLLM / ONNX / ... [TO DO]
 InitializationAdapter: llama_cpp_python [PRIMO], server/library/cli [TO DO]
        |
        v
-ExecutionBackend: CUDA o GGML CPU [PRIMI], altri [TO DO]
+ExecutionBackend: CUDA [PRIMO], altri [TO DO]
+GGML CPU: libreria nativa usata da llama.cpp, NON un ExecutionBackend
        |
        v
 HardwareProvider: GNU/Linux x86_64; Intel CPU/NVIDIA GPU [PRIMI],
@@ -70,18 +72,18 @@ Il codice principale chiama sempre le API neutrali. Adapter o provider specifici
 
 ### D1 — Perimetro hardware / sistema operativo
 
-**Requisiti da confermare:** GNU/Linux soltanto, architettura CPU **x86_64 soltanto**. Per la prima implementazione verificabile: **CPU Intel e GPU NVIDIA**, con backend **GGML CPU** e **CUDA**. CPU AMD, GPU AMD/Intel e tutti gli altri backend rimangono `TO DO`, rappresentati nel codice sotto la stessa API universale.
+**Precisazione fornita dall'utente:** GNU/Linux e architettura CPU **x86_64**; CPU Intel come hardware host da rilevare, **GPU NVIDIA + CUDA come solo percorso d'inferenza iniziale**. GGML CPU è una **libreria utilizzata da llama.cpp**, non un backend CPU o una seconda combinazione. CPU AMD e GPU AMD/Intel rimangono `TO DO` come supporto nativo futuro.
 
 **Decisioni aperte:**
-- Il primo runtime deve supportare sia `CUDA` sia `GGML CPU`, oppure una sola modalità per volta?
-- CPU su macchina NVIDIA: modalità sempre selezionabile, oppure fallback solo se esplicitamente consentito?
+- **Vincolo chiarito:** l'unico runtime iniziale da implementare/provare usa NVIDIA + CUDA + llama.cpp + `llama_cpp_python`; nessun fallback CPU in questa fase.
+- **Vincolo chiarito:** GGML CPU è una dipendenza/libreria e non può essere passata come valore di `ExecutionBackend`.
 - Quanto deve rilevare il provider AMD/Intel in fase 01, prima degli adapter di inferenza: identificazione e diagnosi senza promessa di esecuzione oppure solo voce `TO DO`?
 
 **Nessuna proposta viene assunta come approvata** prima del confronto.
 
 ### D2 — Separazione provider / backend / motore / inizializzazione
 
-**Requisiti da confermare:** interfaccia unica e vendor-neutral, con registro esplicito delle combinazioni valide. Primo incrocio implementabile e testabile: **NVIDIA + CUDA + llama.cpp + `llama_cpp_python`**; sul percorso CPU: **Intel x86_64 + GGML CPU + llama.cpp + `llama_cpp_python`** (se confermato in D1).
+**Requisiti da confermare:** interfaccia unica e vendor-neutral, con registro esplicito delle combinazioni valide. **Unica combinazione da sviluppare e verificare:** **NVIDIA + CUDA + llama.cpp + `llama_cpp_python`**. La CPU Intel è l'host e GGML CPU è una libreria utilizzata: nessuna delle due aggiunge uno stack runtime CPU.
 
 Altri motori: vLLM, ONNX Runtime, PyTorch, OpenVINO, MLC LLM, IREE, SGLang. Altre modalità per llama.cpp: `local-server`, `system-library`, `cli`. Sono tutte voci di catalogo con stato `TO DO`, senza fallback nascosti.
 
@@ -204,9 +206,9 @@ Questo file è **temporaneo** e serve a discutere la fase 00. Dopo approvazione 
 ### Primo incremento di codice — contratto e catalogo (da approvare)
 
 - `ruth_runtime/contracts.py`: protocolli vendor-neutral e modelli dati di base, ancora soggetti a revisione.
-- `ruth_runtime/capabilities.py`: 33 voci, delle quali sei `target` (primi test) e 27 `TO DO`; nessuna voce `verified`.
+- `ruth_runtime/capabilities.py`: 33 voci, delle quali sei `target` (inclusi CPU Intel **solo host** e libreria GGML CPU) e 27 `TO DO`; nessuna voce `verified`. **Un solo stack iniziale**: NVIDIA/CUDA/llama.cpp/`llama_cpp_python`.
 - `ruth_runtime/__init__.py`: superficie di import pubblica preliminare.
-- `tests/test_phase00_contracts.py`: 7 test standard library per stati e combinazioni, senza accesso hardware.
+- `tests/test_phase00_contracts.py`: test standard library per stati e combinazioni; controllo esplicito che GGML CPU non sia selezionabile come backend.
 - Nessun adapter, driver, downloader, profiling o runtime di inferenza è stato implementato. I test eseguiti non costituiscono verifica CUDA.
 - **Punto di controllo:** revisione e approvazione del contratto prima della Fase 01.
 

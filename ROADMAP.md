@@ -1,6 +1,6 @@
 # Ruth — Roadmap del branch `model-profiling`
 
-> **Versione:** 1.1 — roadmap generale approvata il 14 ottobre 2026, sempre modificabile. I requisiti di compatibilità introdotti nella revisione 1.1 sono **da confermare separatamente nella fase 00**.
+> **Versione:** 1.2 — roadmap generale approvata il 14 ottobre 2026, sempre modificabile. Chiarimento sullo **stack operativo unico** e sulla classificazione di GGML CPU; specifiche della fase 00 ancora in revisione.
 > **Branch:** `model-profiling` (riscrittura da zero sulla base minimale di `main`).
 > **Riferimento storico:** `feature/minimal-chat` è consultabile per imparare dalle prove precedenti, **non** è una dipendenza né una base di codice da copiare.
 > **Stato attuale:** roadmap generale approvata; requisiti tecnici ancora da ratificare. Avviata una bozza di contratti Python e catalogo dichiarativo, senza backend, rilevamento hardware, download o profiling eseguibili.
@@ -39,7 +39,7 @@ Costruire da zero una procedura **automatica, misurabile, riprendibile e verific
 
 ## 1.1 Matrice preliminare di compatibilità (modificabile, da approvare nella fase 00)
 
-Il progetto è **solo GNU/Linux**, con **architettura CPU x86_64**. Il primo hardware fisicamente testabile è **CPU Intel x86_64 e GPU NVIDIA**; la disponibilità delle singole funzioni CUDA/CPU sarà accertata dai probe, non assunta. AMD/Intel GPU e AMD CPU sono target architetturali **`TO DO`** finché non avremo accesso a test nativi reali.
+Il progetto è **solo GNU/Linux**, con **architettura CPU x86_64**. Il primo hardware fisicamente testabile è **CPU Intel x86_64 (host) e GPU NVIDIA (inferenza)**. L'inventario CPU non abilita un percorso di inferenza CPU. Per il runtime si svilupperà **una sola combinazione NVIDIA + CUDA + llama.cpp + `llama_cpp_python`**; la disponibilità sarà accertata dai probe, non assunta. AMD/Intel GPU e AMD CPU sono target architetturali **`TO DO`** finché non avremo accesso a test nativi reali.
 
 **Convenzione:** `PRIMO` significa «da implementare e verificare per primo», **non** «già supportato». `TO DO` significa «voce prevista nel codice, senza adapter operativo e con rifiuto esplicito dell'esecuzione». L'utente può cambiare questa matrice prima e durante lo sviluppo.
 
@@ -49,7 +49,8 @@ Il progetto è **solo GNU/Linux**, con **architettura CPU x86_64**. Il primo har
 | CPU (x86_64) | Intel | AMD |
 | GPU | NVIDIA | AMD, Intel |
 | Backend GPU | CUDA | Vulkan, ROCm, HIP, SYCL, oneAPI, XPU, OpenVINO GPU |
-| Backend CPU | GGML CPU | oneDNN, oneMKL, OpenVINO CPU, ONNX Runtime CPU, vLLM CPU, BLIS, OpenBLAS |
+| Libreria nativa | GGML CPU (dipendenza utilizzata, **non** backend selezionabile) | — |
+| Tecnologie CPU future | Nessun backend CPU operativo | oneDNN, oneMKL, OpenVINO CPU, ONNX Runtime CPU, vLLM CPU, BLIS, OpenBLAS |
 | Motore di inferenza | llama.cpp | vLLM, ONNX Runtime, PyTorch, OpenVINO, MLC LLM, IREE, SGLang |
 | Inizializzazione llama.cpp | `llama_cpp_python` | `local-server`, `system-library`, `cli` |
 
@@ -76,7 +77,7 @@ Il commit della fase contiene **solo** quanto concordato, inclusi test e documen
 - [ ] Definire l'ambiente vincolante: **GNU/Linux, CPU x86_64**; test iniziali su CPU Intel e GPU NVIDIA, senza presumere le specifiche non ancora misurate.
 - [ ] Definire le modalità: ispezione senza effetti (`doctor`), anteprima (`plan`), esecuzione automatica (`run`), ripresa (`resume`), verifica (`verify`).
 - [ ] Stabilire priorità della scelta (qualità, latenza, throughput, VRAM, RAM, disco), soglie e budget.
-- [ ] Decidere quando è consentita la CPU: uso richiesto, backend CPU `GGML CPU` oppure fallback esplicitamente autorizzato; nessuna scelta implicita.
+- [ ] Confermare **solo lo stack GPU NVIDIA/CUDA**; il rilevamento CPU Intel x86_64 serve per diagnosi host, non per introdurre inferenza CPU o fallback. GGML CPU va classificata tra le **librerie native** utilizzate.
 - [ ] Definire come chiedere una sola volta le autorizzazioni (download/licenze/uso risorse), poi procedere in automatico nei limiti accordati.
 - [ ] Specificare il contratto del profilo operativo, stati `TO DO`, interfacce vendor-neutral, matrice delle combinazioni e codici di errore prima di scrivere il motore.
 - **Output:** specifica versionata delle policy e degli stati; nessun profiling reale.
@@ -95,7 +96,7 @@ Il commit della fase contiene **solo** quanto concordato, inclusi test e documen
 
 ### Fase 02 — Ambiente software e capacità native
 - [ ] Identificare OS, Python, architettura, runtime/CUDA/driver e librerie installate.
-- [ ] Verificare tramite probe che il binding `llama_cpp_python` supporti realmente CUDA o GGML CPU secondo device; elencare gli altri backend del registro come `TO DO` senza abilitarli.
+- [ ] Verificare tramite probe che `llama_cpp_python` supporti realmente CUDA e le librerie native richieste (inclusa GGML CPU); la presenza di GGML CPU **non** è una prova di backend CPU selezionabile. Tutte le altre tecnologie restano `TO DO`.
 - [ ] Distinguere compatibilità teorica, installazione disponibile e inferenza nativa verificata.
 - [ ] Progettare installazione/versionamento riproducibile del backend senza alterazioni silenziose dell'ambiente.
 - [ ] Diagnosticare dipendenze mancanti e incompatibilità fra versioni.
@@ -105,7 +106,7 @@ Il commit della fase contiene **solo** quanto concordato, inclusi test e documen
 ### Fase 03 — Backend e adattatore di inferenza
 - [ ] Definire API vendor-neutral separate per provider hardware, backend esecutivo, engine d'inferenza e modalità di inizializzazione; capacità, probe, caricamento, tokenizzazione, generazione, streaming, chiusura e metriche.
 - [ ] Registrare **tutti** i motori/backend/opzioni di inizializzazione elencati nella matrice §1.1; implementare solo l'incrocio iniziale verificabile e segnare il resto `TO DO` con errori espliciti.
-- [ ] Implementare e testare per primo `llama.cpp` attraverso `llama_cpp_python` e backend CUDA/GGML CPU nei casi approvati; `local-server`, `system-library`, `cli` restano `TO DO`.
+- [ ] Implementare e testare **soltanto** `NVIDIA + CUDA + llama.cpp + llama_cpp_python`; usare GGML CPU come libreria dipendente, non come backend. `local-server`, `system-library`, `cli` e inferenza CPU restano fuori dalla prima implementazione (`TO DO`).
 - [ ] Definire backend automatico, vincoli hardware e gestione dei fallimenti.
 - [ ] Isolare i processi di prova per errori nativi/CUDA senza contaminare l'orchestratore.
 - [ ] Verificare la corretta associazione GPU selezionata ↔ processo.

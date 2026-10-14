@@ -15,7 +15,8 @@ class ComponentKind(str, Enum):
     CPU_VENDOR = "cpu_vendor"
     GPU_VENDOR = "gpu_vendor"
     GPU_BACKEND = "gpu_backend"
-    CPU_BACKEND = "cpu_backend"
+    CPU_BACKEND = "cpu_backend"  # Integrazioni future: nessun backend CPU è target operativo.
+    NATIVE_LIBRARY = "native_library"  # Librerie usate, non backend selezionabili.
     INFERENCE_ENGINE = "inference_engine"
     INITIALIZATION = "initialization"
 
@@ -49,7 +50,7 @@ class DeviceInfo:
 
 @dataclass(frozen=True)
 class StackSelection:
-    """Le quattro scelte sono separate: nessun backend implicito nel vendor."""
+    """Stack di inferenza: librerie native come GGML CPU NON sono backend."""
 
     device_kind: str
     device_vendor: str

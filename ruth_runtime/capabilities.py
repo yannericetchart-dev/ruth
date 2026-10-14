@@ -29,10 +29,11 @@ CATALOG: tuple[Capability, ...] = (
     + _group(K.GPU_BACKEND, ("cuda",), (
         "vulkan", "rocm", "hip", "sycl", "oneapi", "xpu", "openvino-gpu",
     ))
-    + _group(K.CPU_BACKEND, ("ggml-cpu",), (
+    + _group(K.CPU_BACKEND, (), (
         "onednn", "onemkl", "openvino-cpu", "onnxruntime-cpu",
         "vllm-cpu", "blis", "openblas",
     ))
+    + _group(K.NATIVE_LIBRARY, ("ggml-cpu",), ())
     + _group(K.INFERENCE_ENGINE, ("llama.cpp",), (
         "vllm", "onnxruntime", "pytorch", "openvino", "mlc-llm",
         "iree", "sglang",
@@ -42,11 +43,11 @@ CATALOG: tuple[Capability, ...] = (
     ))
 )
 
-# Proposta iniziale: *solo* queste due combinazioni saranno sviluppate per prime.
-# Non sono utilizzabili finché i test hardware nativi non le certificano.
+# UNICO stack iniziale. GGML CPU è una libreria interna a llama.cpp,
+# NON un backend CPU o una seconda modalità di inferenza.
+# Non è utilizzabile finché prove hardware native non lo certificano.
 INITIAL_STACKS: tuple[StackSelection, ...] = (
     StackSelection("gpu", "nvidia", "cuda", "llama.cpp", "llama_cpp_python"),
-    StackSelection("cpu", "intel", "ggml-cpu", "llama.cpp", "llama_cpp_python"),
 )
 
 
@@ -61,6 +62,7 @@ def inspect_stack(selection: StackSelection) -> StackAssessment:
     if selection.device_kind == "gpu":
         vendor_kind, backend_kind = K.GPU_VENDOR, K.GPU_BACKEND
     elif selection.device_kind == "cpu":
+        # Soltanto possibilità future TO DO; ggml-cpu non è in CPU_BACKEND.
         vendor_kind, backend_kind = K.CPU_VENDOR, K.CPU_BACKEND
     else:
         raise UnsupportedStackError("Tipo dispositivo non riconosciuto: " + selection.device_kind)
