@@ -127,6 +127,8 @@ def main(argv: list[str] | None = None) -> int:
                             help="Inspect host GPU processes, DRM and free VRAM without CUDA init")
             mp.add_argument("--evidence-file",
                             help="Local JSON output from a pinned probe-load command")
+            mp.add_argument("--record-local", action="store_true",
+                            help="Explicit atomic update of local pinned runtime memory profile from verified evidence")
             mp.add_argument("--force", action="store_true",
                             help="Mark explicit experimental selection, NEVER execute a GPU probe")
         if operation == "probe-load":
@@ -171,11 +173,19 @@ def main(argv: list[str] | None = None) -> int:
                 try:
                     if args.force and not args.host:
                         raise ValueError("--force is only meaningful with --host")
+                    local_record = None
+                    if args.record_local:
+                        if not args.host or not args.evidence_file:
+                            raise ValueError("--record-local requires --host and --evidence-file")
+                        from .profile_registry import record_local_profile
+                        local_record = record_local_profile(Path(args.evidence_file))
                     result = build_profile_matrix(
                         check_host=args.host, force=args.force,
                         evidence_file=(Path(args.evidence_file)
                                        if args.evidence_file else None),
                     )
+                    if local_record is not None:
+                        result["local_profile_update"] = local_record
                     if args.quantization:
                         result["profiles"] = [
                             p for p in result["profiles"]
