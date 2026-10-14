@@ -115,6 +115,20 @@ def explain_offline_weights_fit(
         return _unverified("incomplete_native_memory_measurements", sha, source_identity)
     # Per key maxima are a conservative envelope of observations, not proof of
     # simultaneous memory usage. It supports a negative capacity bound only.
+    # Optional historical exact NVML/CUDA samples from this host's saved
+    # local profile. Never conflate them with current free VRAM; never use
+    # an 8 GiB hypothetical class with a stored 6 GiB host snapshot.
+    historical = {}
+    local_profile = root / ".ruth-build" / "profiles" / "models" / (sha + ".json")
+    if local_profile.is_file() and not local_profile.is_symlink():
+        import json
+        local_data = json.loads(local_profile.read_text(encoding="utf-8"))
+        snap = local_data.get("host_snapshot") or {}
+        if (snap.get("architecture") == arch_id
+            and snap.get("driver_version") == drv
+            and snap.get("vram_class_gib") == vram_gib
+            and snap.get("historical_measurement") is True):
+            historical = snap
     nominal_total = vram_gib * 1024
     driver_mib = max(reserved)
     init_mib = max(init)
@@ -153,6 +167,12 @@ def explain_offline_weights_fit(
             "vram_estimated_available_for_weights_mib": available,
             "vram_weights_deficit_mib": max(0., deficit),
             "measured_live_cuda_free_mib": None,
+            "historical_vram_observed_total_mib":
+                historical.get("vram_observed_total_mib"),
+            "historical_nvml_free_before_cuda_mib":
+                historical.get("nvml_free_before_cuda_mib"),
+            "historical_cuda_free_after_primary_ctx_init_mib":
+                historical.get("cuda_free_after_primary_ctx_init_mib"),
             "kv_buffer_mib": None,
             "compute_buffer_mib": None,
         },
