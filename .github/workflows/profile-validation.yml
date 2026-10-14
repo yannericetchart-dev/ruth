@@ -7,6 +7,7 @@ on:
     branches: [model-profiling]
     paths:
       - "profiles/submissions/**"
+      - "profiles/measurements/**"
       - "ruth_runtime/hardware_eligibility.py"
       - "ruth_runtime/model_memory_profiles.py"
       - "ruth_runtime/profile_registry.py"
@@ -33,10 +34,10 @@ jobs:
             tests.test_phase13_hardware_architecture \
             tests.test_phase14_profile_registry \
             tests.test_phase15_profile_contribution -v
-      - name: Validate all submitted profile JSON (never execute contributor code)
+      - name: Validate submitted and owner-measured JSON files (offline)
         shell: bash
         run: |
           shopt -s nullglob
-          for file in profiles/submissions/*/*.json; do
+          for file in profiles/submissions/*/*.json profiles/measurements/*/*.json; do
             python -m ruth_runtime.profile_contribution --validate "$file"
           done
