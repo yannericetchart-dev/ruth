@@ -23,7 +23,7 @@
       "model": "gemma-2",
       "version": "gemma-2-9B-it",
       "format": "gguf",
-      "quantization": "Q4_K_M"
+      "quantization": "Q4_K_L"
     },
     "test": {
       "family": "llama",
@@ -48,15 +48,28 @@
       ],
       "variants": [
         {
+          "quantization": "Q4_K_L",
+          "source": "huggingface",
+          "repo_id": "bartowski/gemma-2-9b-it-GGUF",
+          "filename": "gemma-2-9b-it-Q4_K_L.gguf",
+          "expected_sha256": "ed8573f0d1e3ca58e471498fd162a65d4f4253dffdec28a7ba394fdcae92f1f3",
+          "expected_size_bytes": 5983265728,
+          "approx_size_mb": 5983,
+          "revision": "d731033f3dc4018261fd39896e50984d398b4ac5",
+          "assessment": "selected_for_minimum_context_native_cuda_probe_not_qualified",
+          "note": "Chosen by Phase 05 quality heuristic with full free VRAM. GPU fit, runtime allocations and context not verified. Gemma license acknowledgement required."
+        },
+        {
           "quantization": "Q4_K_M",
           "source": "huggingface",
           "repo_id": "bartowski/gemma-2-9b-it-GGUF",
           "filename": "gemma-2-9b-it-Q4_K_M.gguf",
           "expected_sha256": "13b2a7b4115bbd0900162edcebe476da1ba1fc24e718e8b40d32f6e300f56dfe",
           "approx_size_mb": 5760,
-          "revision": null,
-          "assessment": "requires_real_hardware_profiling",
-          "note": "GGUF third-party quantization; Google Gemma terms apply; 6GiB VRAM does not guarantee full GPU residency."
+          "revision": "d731033f3dc4018261fd39896e50984d398b4ac5",
+          "assessment": "unselected_alternative_requires_real_hardware_profiling",
+          "note": "GGUF third-party quantization; Google Gemma terms apply; 6GiB VRAM does not guarantee full GPU residency.",
+          "expected_size_bytes": 5761057728
         }
       ]
     },
@@ -88,5 +101,5 @@
       ]
     }
   ],
-  "scope": "Catalog metadata and pinned test GGUF; no model download or automatic license acceptance."
+  "scope": "Production Gemma Q4_K_L selected and pinned, fallback quantization Q4_K_M pinned, test Llama Q4_K_M verified. No download, GPU inference or model-license acceptance authorized by catalog edits."
 }

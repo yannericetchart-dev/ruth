@@ -43,14 +43,17 @@ class CatalogTests(unittest.TestCase):
 
     def test_default_production_is_gemma_2_9b_it(self):
         selected = select_model("production")
-        self.assertEqual(selected.path, "gemma/gemma-2/gemma-2-9B-it/gguf/Q4_K_M")
+        self.assertEqual(selected.path, "gemma/gemma-2/gemma-2-9B-it/gguf/Q4_K_L")
         self.assertEqual(selected.repo_id, "bartowski/gemma-2-9b-it-GGUF")
         self.assertEqual(selected.license, "gemma")
         self.assertEqual(selected.assessment, "requires_real_hardware_profiling")
         self.assertEqual(len(selected.expected_sha256), 64)
         self.assertFalse(selected.downloadable)
         self.assertFalse(selected.local_model_ready)
-        self.assertIsNone(selected.revision)
+        self.assertEqual(selected.revision, "d731033f3dc4018261fd39896e50984d398b4ac5")
+        self.assertEqual(selected.expected_size_bytes, 5983265728)
+        self.assertEqual(selected.expected_sha256,
+                         "ed8573f0d1e3ca58e471498fd162a65d4f4253dffdec28a7ba394fdcae92f1f3")
 
     def test_default_lightweight_test_is_llama_3_2_1b(self):
         selected = select_model("test")
@@ -194,19 +197,16 @@ class HfMetadataTests(unittest.TestCase):
 
     def test_source_gated_is_reported_not_accepted(self):
         selected = select_model("production")
-        # Gemma's exact size is intentionally not pinned yet. For this
-        # metadata-only gated-state test supply a valid *synthetic* size;
-        # it must not be mistaken for a verified production artifact.
-        self.assertIsNone(selected.expected_size_bytes)
-        simulated_size = selected.approx_size_mb * 1_000_000
+        # Production default is pinned; this tests gated-state reporting
+        # using the exact verified size, without accepting any license.
+        self.assertEqual(selected.expected_size_bytes, 5983265728)
         result = resolve_model_metadata(
             selected, authorize_metadata_network=True,
-            fetch=lambda _: metadata(
-                selected, gated="auto", size=simulated_size))
+            fetch=lambda _: metadata(selected, gated="auto"))
         self.assertEqual(result["status"], "source_metadata_verified_license_pending")
         self.assertEqual(result["gated"], "auto")
         self.assertFalse(result["license_accepted"])
-        self.assertIsNone(selected.revision)
+        self.assertIsNotNone(selected.revision)
 
 
 class ModelsCliTests(unittest.TestCase):

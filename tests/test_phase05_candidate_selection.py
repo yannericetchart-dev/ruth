@@ -33,6 +33,10 @@ SIZES = {
 def metadata(variant_sizes=SIZES, *, wrong_pin=False, revision=REVISION,
              license_name="gemma", gated=False, missing_lfs=False):
     choice = select_model("production")
+    known_pins = {
+        "Q4_K_L": "ed8573f0d1e3ca58e471498fd162a65d4f4253dffdec28a7ba394fdcae92f1f3",
+        "Q4_K_M": "13b2a7b4115bbd0900162edcebe476da1ba1fc24e718e8b40d32f6e300f56dfe",
+    }
     return {
         "sha": revision, "gated": gated, "private": False,
         "cardData": {"license": license_name},
@@ -41,9 +45,8 @@ def metadata(variant_sizes=SIZES, *, wrong_pin=False, revision=REVISION,
                 "rfilename": "gemma-2-9b-it-" + q + ".gguf",
                 "size": size,
                 **({} if missing_lfs else {
-                    "lfs": {"sha256": ("0" * 64 if wrong_pin else
-                                        choice.expected_sha256)
-                            if q == "Q4_K_M" else "a" * 64,
+                    "lfs": {"sha256": ("0" * 64 if wrong_pin and q == "Q4_K_M"
+                                        else known_pins.get(q, "a" * 64)),
                             "size": size},
                 }),
             }
@@ -122,7 +125,7 @@ class QuantizationPolicyTests(unittest.TestCase):
         variants = {x["quantization"]: x for x in result["quantizations"]}
         self.assertEqual(variants["Q4_K_M"]["size_bytes"], Q4_SIZE)
         self.assertTrue(variants["Q4_K_M"]["catalog_pin_exists"])
-        self.assertFalse(variants["Q4_K_M"]["download_pin_ready"])
+        self.assertTrue(variants["Q4_K_M"]["download_pin_ready"])
         self.assertFalse(variants["IQ4_XS"]["catalog_pin_exists"])
         self.assertFalse(variants["IQ4_XS"]["full_gpu_residency_verified"])
         self.assertEqual(variants["Q4_0_4_4"]["exclusion_reason"],
@@ -226,7 +229,7 @@ class QuantizationPolicyTests(unittest.TestCase):
         result = discover_quantizations(
             authorize_metadata_network=True, fetch=lambda _: metadata())
         self.assertEqual(result["revision"], REVISION)
-        self.assertFalse(any(q["download_pin_ready"] for q in result["quantizations"]))
+        self.assertTrue(next(x for x in result["quantizations"] if x["quantization"] == "Q4_K_M")["download_pin_ready"])
 
     def test_hardware_free_memory_is_read_correctly(self):
         data = inspect_single_nvidia_gpu(run=nvidia)

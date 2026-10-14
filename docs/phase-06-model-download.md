@@ -47,8 +47,8 @@ binding CUDA, non carica modelli e non invoca inferenza.
 
 Dopo i due consensi il modulo `ruth_runtime/model_download.py`:
 1. Verifica che catalogo, commit Git, SHA256, nome GGUF e dimensione
-   siano pinnati. Il Gemma 9B predefinito rimane **non scaricabile**,
-   perché non ha ancora commit e dimensione esatta verificati.
+   siano pinnati. Gemma 2 9B IT Q4_K_L ha pin completi, ma **non viene scaricato** senza
+   autorizzazione distinta per i termini Gemma e il trasferimento.
 2. Rilegge in sola modalità metadata le informazioni di Hugging Face,
    richiedendo identità immutabile, LFS SHA256, bytes e licenza coerenti.
    Un repository gated non viene aperto implicitamente.
@@ -122,10 +122,10 @@ caricherà il modello di test nella stessa `.venv`, manterrà
 `n_gpu_layers=-1` ed esigerà misure oggettive di offload e token
 generati. Nessun fallback CPU automatico.
 
-`gemma-2-9B-it` resta default di produzione, ma il file Q4_K_M di
-circa 5,76 GB **non è ancora qualificato** per 6 GiB di VRAM
-(con KV cache e buffer inclusi). Non scaricarlo né dichiararlo
-compatibile sulla base del solo catalogo.
+`gemma-2-9B-it` resta default production con **Q4_K_L pinnata**
+(5983265728 byte), ma **non è ancora qualificata** per 6 GiB di VRAM.
+La Fase 05 non riserva VRAM; la prova nativa CUDA e il contesto
+saranno calibrati iniziando da n_ctx=128, dopo il download autorizzato.
 
 La CVE `diskcache` resta TO DO non prioritario e `LlamaDiskCache`
 rimane disabilitata. Il provider Kaggle resta TO DO.

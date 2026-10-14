@@ -11,9 +11,10 @@ sul PC dell'utente (vedere `docs/phase-07-repeated-profile.md`).
    output 64 token, contesto 512, mediana decode 160,983 tok/s, VRAM
    processo campionata 956 MiB. Prima di ottimizzare il runtime, servono
    più processi indipendenti e lunghezze di prompt/contesto variabili.
-2. **Fattibilità Gemma 2 9B IT production:** il default rimane
-   `gemma/gemma-2/gemma-2-9B-it/gguf/Q4_K_M`, ma il file è stimato
-   intorno a 5,76 GB contro una RTX 4050 Laptop da 6 GiB. Dimensione
+2. **Fattibilità Gemma 2 9B IT production:** il default ora è
+   `gemma/gemma-2/gemma-2-9B-it/gguf/Q4_K_L`, con pin esatti
+   **5983265728 byte** contro uno snapshot di 5759 MiB liberi.
+   Il prefiltro non dimostra caricabilità CUDA. Dimensione
    GGUF non equivale a occupazione VRAM: contano tensor allocation,
    KV cache, buffer computazionali, memoria già allocata e contesto.
    Non è dimostrato l'offload completo né la sua impossibilità.

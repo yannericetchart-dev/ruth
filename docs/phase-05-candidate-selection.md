@@ -33,10 +33,7 @@ un modello più piccolo o precisione F16 solo per i calcoli/KV.
 Questi casi **non** dimostrano residenza intera dei pesi F16
 nella VRAM dedicata.
 
-La policy non scarica nulla né cambia i default:
-`production=Gemma 2 9B IT Q4_K_M` resta una voce iniziale di
-catalogo, mentre `test=Llama 3.2 1B Instruct Q4_K_M` resta
-la baseline GPU verificata. `./ruth models recommend --purpose test
+La policy non scarica nulla. Il default production è stato **pinnato su Gemma 2 9B IT Q4_K_L**, con SHA256, revisione e dimensione esatta; Q4_K_M rimane una variante alternativa non selezionata. Il modello di test Llama 1B Q4_K_M resta invariato. `./ruth models recommend --purpose test
 --allow-metadata-network` ora può proporre F16 **come candidato**
 sulla base dei metadati, senza cambiare in automatico test/prod.
 
@@ -66,7 +63,7 @@ l'allocazione reale.
 - Provider predefinito: **Hugging Face**; **Kaggle TO DO**.
 - Famiglie registrate: **Gemma, Llama, Qwen, Mistral**.
 - Percorso: `family/model/version/gguf/quantization`.
-- Default production: **Gemma 2 9B IT** (quantizzazione da selezionare).
+- Default production: **Gemma 2 9B IT Q4_K_L** (pinnata, non ancora GPU-qualificata).
 - Default test: **Llama 3.2 1B Instruct Q4_K_M**, già verificato
   realmente su RTX 4050.
 
@@ -137,7 +134,7 @@ Dalla verifica HF eseguita sul PC:
 - NVIDIA RTX 4050 Laptop: **6141 MiB totali**, **5759 MiB liberi**
   nello snapshot riportato.
 
-**Q4_K_M passa il prefiltro** (5494,17 MiB <= 5759 MiB)
+**Q4_K_L passa il prefiltro** (5706,09 MiB <= 5759 MiB)
 e, secondo la policy attuale, è la priorità più alta fra i GGUF
 che rientrano nello stesso snapshot. La differenza teorica è circa
 **264,83 MiB** e **non** rappresenta memoria runtime garantita.
@@ -158,3 +155,7 @@ Dopo aver letto la shortlist reale:
 
 Il modello Llama 1B rimane la baseline verificata; la CVE
 `diskcache` rimane TO DO non prioritario con cache disabilitata.
+
+## Dopo la selezione
+
+Q4_K_L production ha pin Git `d731033f3dc4018261fd39896e50984d398b4ac5`, SHA256 `ed8573f0d1e3ca58e471498fd162a65d4f4253dffdec28a7ba394fdcae92f1f3` e 5983265728 byte. Nessuna licenza Gemma è stata accettata e nessun GGUF Gemma scaricato. Dopo consensi distinti al download e GPU, `./ruth models probe-production --allow-gpu-inference` potrà tentare una prima prova a n_ctx=128. Dettagli in `docs/phase-06-gemma-production-min-probe.md`.
