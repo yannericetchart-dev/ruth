@@ -192,7 +192,7 @@ def _validate_proposal_for_publication(proposal: dict) -> tuple[str, str]:
     path = proposal.get("repository_path")
     if (not isinstance(digest, str) or not re.fullmatch("[0-9a-f]{64}", digest)
         or not isinstance(path, str)
-        or not re.fullmatch(r"profiles/submissions/[0-9a-f]{64}/[0-9a-f]{64}\\.json", path)
+        or not re.fullmatch(r"profiles/submissions/[0-9a-f]{64}/[0-9a-f]{64}\.json", path)
         or not isinstance(proposal.get("proposal"), dict)):
         raise ValueError("Invalid immutable proposal identity")
     canonical = json.dumps(proposal["proposal"], sort_keys=True, separators=(",", ":"))
@@ -242,7 +242,7 @@ def _owner_direct_commit(
             "repository_path": path, "review_required": False,
         }
     stderr = response.stderr or ""
-    if not re.search(r"HTTP 404\\b", stderr):
+    if not re.search(r"HTTP 404\b", stderr):
         raise RuntimeError("GitHub profile lookup failed (not an absent path)")
     content = base64.b64encode(public_content.encode("utf-8")).decode("ascii")
     result = _gh([
