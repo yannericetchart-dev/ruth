@@ -257,6 +257,8 @@ def record_local_profile(
             "inference_verified": False,
         }
 
+    data["model_locally_verified"] = True
+    data["model_license_accepted"] = True
     _atomic_write(target, data)
     return {
         "status": "local_profile_updated", "profile_file": str(target),
