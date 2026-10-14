@@ -1374,7 +1374,11 @@ nativo: una prova fallita **non dimostra** l'impossibilita del profilo.
 Senza `--promote-if-valid` viene eseguita solo la baseline,
 che puo anche essere ripresa riutilizzando lo stesso output.
 
-Se la baseline passa, la fase 2 riusa il ranking del census
+Se la baseline a 256 passa, l'orchestratore controlla **prima
+l'inferenza all-GPU a 512 senza spostamenti CPU**, salvando il risultato
+in `phase2_q8_0_f16_faoff_allgpu_512.json`. Se questo controllo
+passa, il profilo e gia promosso a 512 e non occorre provare alcun
+offloading. Se non viene verificato, la fase 2 riusa il ranking del census
 `f16/f16 FA OFF 256` **soltanto come euristica d'ordine**;
 le misure di memoria e prestazioni per `q8_0/f16` sono acquisite
 nuovamente a `n_ctx=512`. I 462 candidati restano tutti ammissibili.
