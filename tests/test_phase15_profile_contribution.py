@@ -114,6 +114,8 @@ class ProfileContributionTests(unittest.TestCase):
                     "https://github.com/yannericetchart-dev/ruth/pull/123"})
             else:
                 output = "{}"
+            if args[:3] == ["gh", "api", "repos/contributor/ruth"]:
+                return SimpleNamespace(returncode=1, stdout="", stderr="Not Found")
             return SimpleNamespace(returncode=0, stdout=output, stderr="")
         result = publish_proposal_pr(proposal, permit_external_publication=True,
                                      run=run)
