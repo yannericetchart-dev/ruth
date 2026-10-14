@@ -86,24 +86,20 @@ git pull --ff-only origin model-profiling
 ./ruth models profiles --host --quantization Q4_K_L \
   --evidence-file /tmp/ruth-weights.json --record-local
 
-# Only after explicit opt-in, authenticated 'gh auth login' and fork access:
-./ruth models profiles --host --quantization Q4_K_L \
-  --evidence-file /tmp/ruth-weights.json --record-local \
-  --publish-pr --consent-publication
+# Owner automatically syncs on --record-local, if 'gh' is authenticated.
+# External contributors can explicitly open their review PR:
+./ruth models profiles --profile-file PATH_TO_SAVED_PROFILE --sync-git
 ```
 
 No GitHub credentials must be pasted into messages or committed to Ruth.
-The CLI uses the contributor's existing `gh` authentication and fork,
-submits an **immutable, allowlisted, privacy-reduced JSON file** in
-`profiles/submissions/<gguf-sha>/<content-digest>.json`, and opens a PR
-targeting `model-profiling`. The bot does not write directly to upstream.
-Publication is opt-in, and the PR is not a verified production memory
-profile until reviewed. Github Actions (read-only `pull_request`) validates
-the schema, hash and pinned source; branch protection/code owner review
-must be enabled by maintainers. If authentication, network or permissions
-are unavailable, the local result is retained and publication can be
-retried. This is the only safe way for arbitrary users to contribute;
-**unauthenticated arbitrary clients cannot push to the central Git repo**.
+Ruth checks the authenticated GitHub identity. For the repository owner,
+the privacy-reduced evidence is committed **directly** to `model-profiling`
+in `profiles/measurements/`, without a fork or a PR. Other users can only
+submit via `profiles/submissions/` and a review PR. All contributions
+are schema-checked; the repository must additionally enforce owner review
+through branch protection / CODEOWNERS. If GitHub access is missing, local
+measurement records are retained and synchronization can be retried.
+Unauthenticated clients cannot write to the central Git repository.
 
 ## Reusable profile separation
 
@@ -167,8 +163,9 @@ those properties as null even when context allocation succeeds.
 A `--record-local --publish-pr` command first atomically saves the
 measurement under `.ruth-build/profiles/models/<GGUF-SHA256>.json`.
 Publication can then fail independently, for example if `gh` is absent.
-**Do not rerun the native CUDA probe or --record-local only to retry GitHub
-publication**: that would count the same report twice.
+**Do not rerun the native CUDA probe just to retry Git publication.**
+The profile registry also deduplicates identical report JSON, avoiding
+duplicate observations even if it is recorded again.
 
 After installing GitHub CLI on Debian/Ubuntu via the approved distribution
 package (`sudo apt update && sudo apt install gh`), authenticate with
@@ -177,19 +174,19 @@ saved profile and publish that exact file:
 
 ```bash
 find .ruth-build/profiles/models -maxdepth 1 -type f -name '*.json' -print
-./ruth models profiles --publish-pr --consent-publication \
+./ruth models profiles --sync-git \
   --profile-file .ruth-build/profiles/models/<GGUF-SHA256>.json
 ```
 
 In the code, `git_publication.status=git_cli_missing` is now a **retryable
 publication issue**, reported separately from the successful
-`local_profile_update`. The command returns nonzero when the PR was not
-opened; the saved profile is preserved. Local listing and native memory
+`local_profile_update`. An explicit `--sync-git` returns nonzero if neither an owner commit
+nor a contributor PR is confirmed; the saved profile is preserved. Local listing and native memory
 measurements are unaffected.
 
-Users with a different GitHub login submit from a fork; the repository
-owner submits from a **dedicated proposal branch in their own repository**.
-Both create a PR and neither changes the `model-profiling` base directly.
+Users with a different GitHub login submit a PR from their fork,
+requiring the repository owner's review. The repository owner commits
+directly to `model-profiling` without a branch or PR proposal.
 
 
 ## Git sync: trusted repository owner versus external users
