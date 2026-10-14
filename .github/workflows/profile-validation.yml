@@ -14,7 +14,8 @@ on:
       - "ruth_runtime/profile_contribution.py"
       - "catalog/nvidia_architecture_policy.json"
       - "catalog/gpu_capacity_profiles.json"
-      - "tests/test_phase1[2345]*.py"
+      - "tests/test_phase1[23456]*.py"
+      - "ruth_runtime/offline_memory_fit.py"
 
 permissions:
   contents: read
@@ -33,7 +34,8 @@ jobs:
             tests.test_phase12_model_memory_profiles \
             tests.test_phase13_hardware_architecture \
             tests.test_phase14_profile_registry \
-            tests.test_phase15_profile_contribution -v
+            tests.test_phase15_profile_contribution \
+            tests.test_phase16_offline_memory_fit -v
       - name: Validate submitted and owner-measured JSON files (offline)
         shell: bash
         run: |
