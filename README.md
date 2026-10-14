@@ -1297,3 +1297,50 @@ mentre gli altri 336 restano comunque testabili e non sono
 esclusi a priori. La fase 3 (coppie) non parte automaticamente:
 l'orchestratore consegna esclusivamente i risultati e i contesti
 verificati, utili per progettare i filtri preliminari certi.
+
+
+### Diagnostica SIGABRT CUDA durante il benchmark di inferenza
+
+La fase 2 conserva adesso i log nativi **dei nuovi fallimenti**:
+`results[TENSOR].inference.samples[0].failure_diagnostics` contiene
+`last_worker_phase` (ultimo marker scritto e flushato dal worker),
+`failed_during` (`load`, `prefill`, `decode`, `unknown`),
+`abort_signal_detected`, `suspected_cuda_oom`,
+`native_cuda_resource_allocation_failed`,
+`fatal_native_lines`, `cuda_diagnostics` e uno
+`stderr_tail` limitato a 6000 caratteri. Il campione conserva
+anche `worker_signal` e `worker_returncode`.
+
+**Un SIGABRT non dimostra un OOM**: cercare prove native
+(`cudaMalloc failed`, `out of memory` o
+`CUDA error: the resource allocation failed`). L'ultimo marker
+segnala la fase raggiunta, non la causa del fallimento.
+
+Per arrestare e riprendere senza perdere i risultati:
+```bash
+# Ctrl+C, poi nella root del repository:
+git pull
+python -m calibration.kv_single_to_512 \
+  --census phase2_single_tensor_census_256.json \
+  --target-ctx 512 --benchmark-repeats 2 \
+  --output phase2_single_to_512.json
+```
+
+I benchmark già completati non vengono ripetuti; le informazioni di
+stderr **non possono essere ricostruite retroattivamente** per i
+fallimenti salvati con la versione precedente. Per diagnosticare
+**un singolo fallimento già registrato** senza creare nuovi caricamenti,
+si può ripetere lo stesso comando con:
+```bash
+python -m calibration.kv_single_to_512 \
+  --census phase2_single_tensor_census_256.json \
+  --target-ctx 512 --benchmark-repeats 2 \
+  --output phase2_single_to_512.json \
+  --retry-failed-inferences 1 --retry-only
+```
+
+Il risultato precedente viene archiviato in
+`results[TENSOR].inference_history[]`. La prova load-only non
+viene rieseguita e il report complessivo rimane compatibile
+con le esecuzioni precedenti. È possibile continuare normalmente
+in seguito eliminando le due opzioni di retry.
