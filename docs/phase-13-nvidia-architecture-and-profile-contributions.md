@@ -160,3 +160,34 @@ those properties as null even when context allocation succeeds.
   installation/token strategy and repository-maintainer approvals are needed.
 - Public profile submissions intentionally omit PCI BusID, GPU UUID,
   process lists, user paths, prompts and credentials.
+
+
+## Publication retry when `gh` is missing
+
+A `--record-local --publish-pr` command first atomically saves the
+measurement under `.ruth-build/profiles/models/<GGUF-SHA256>.json`.
+Publication can then fail independently, for example if `gh` is absent.
+**Do not rerun the native CUDA probe or --record-local only to retry GitHub
+publication**: that would count the same report twice.
+
+After installing GitHub CLI on Debian/Ubuntu via the approved distribution
+package (`sudo apt update && sudo apt install gh`), authenticate with
+`gh auth login` and confirm `gh auth status`. Then locate the already
+saved profile and publish that exact file:
+
+```bash
+find .ruth-build/profiles/models -maxdepth 1 -type f -name '*.json' -print
+./ruth models profiles --publish-pr --consent-publication \
+  --profile-file .ruth-build/profiles/models/<GGUF-SHA256>.json
+```
+
+In the code, `git_publication.status=git_cli_missing` is now a **retryable
+publication issue**, reported separately from the successful
+`local_profile_update`. The command returns nonzero when the PR was not
+opened; the saved profile is preserved. Local listing and native memory
+measurements are unaffected.
+
+Users with a different GitHub login submit from a fork; the repository
+owner submits from a **dedicated proposal branch in their own repository**.
+Both create a PR and neither changes the `model-profiling` base directly.
+
