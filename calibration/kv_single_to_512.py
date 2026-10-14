@@ -27,6 +27,7 @@ from hardware import GPUManager
 from model.inspect import inspect_gguf
 
 from .gpu_context import context_limit, verify_native_kv_config, validate_kv_config
+from .kv_cuda_futility import observed_cuda_futility
 from .mapping_grouping import native_tensor_trial
 from .mapping_native_validation import verify_override_logs
 from .mapping_phase import PROBE_BATCH, probe_native_mapping, verify_mapping_kv_runtime
@@ -386,6 +387,8 @@ def run_single_to_512(
     flash_attn: bool = False, type_k: str = "f16", type_v: str = "f16",
     baseline_profile_path: Path | None = None,
     retry_failed_inferences: int = 0, retry_only: bool = False,
+    stop_on_cuda_futility: bool = False,
+    cuda_futility_witness_count: int = 12,
     progress=None, load_probe=probe_load_only,
     inference_probe=probe_native_mapping,
 ) -> dict:
@@ -395,6 +398,9 @@ def run_single_to_512(
         or type(retry_failed_inferences) is not int
         or retry_failed_inferences < 0
         or type(retry_only) is not bool
+        or type(stop_on_cuda_futility) is not bool
+        or type(cuda_futility_witness_count) is not int
+        or cuda_futility_witness_count < 2
         or (retry_only and retry_failed_inferences == 0)
         or any(v is not None and (type(v) is not int or v < 1)
             for v in (max_new_loads, max_new_benchmarks))):
@@ -536,11 +542,13 @@ def run_single_to_512(
         history.append(entry.pop("inference"))
         retried_names.add(name)
     control = initial.get("control_load_only")
+    futility_observation = None
     report = {
         "schema": SCHEMA, "parameters": identity,
         "status": "in_progress", "completed": False,
         "candidate_order": ranked, "control_load_only": control,
         "results": entries, "summary": {},
+        "observed_cuda_futility_stop": None,
         "hard_pruning": {
             "certified_exclusions": [],
             "count": 0,
@@ -621,10 +629,12 @@ def run_single_to_512(
             ),
         }
         done = report["summary"]["ready_for_phase3"] and control is not None
+        report["observed_cuda_futility_stop"] = futility_observation
         report["completed"] = done
         report["status"] = (
             "completed_singleton_benchmarks" if done and good_bench
             else "completed_no_singleton_inference" if done
+            else "observed_cuda_futility_stop" if futility_observation
             else "partial_checkpoint"
         )
         atomic_json(output, report)
@@ -662,6 +672,18 @@ def run_single_to_512(
     new_loads = 0
     new_benchmarks = 0
     for item in ranked:
+        if stop_on_cuda_futility and not retry_only:
+            observation = observed_cuda_futility(
+                ranked, entries,
+                witness_count=cuda_futility_witness_count,
+            )
+            if observation is not None:
+                futility_observation = observation
+                save()
+                if progress:
+                    progress({"event": "observed_cuda_futility_stop",
+                              **observation})
+                break
         name = item["tensor"]
         if retry_only and name not in retried_names:
             continue
@@ -797,6 +819,14 @@ def main(argv=None):
         "--retry-only", action="store_true",
         help="Esegui solo i benchmark falliti selezionati, senza nuove configurazioni.",
     )
+    parser.add_argument(
+        "--stop-on-cuda-futility", action="store_true",
+        help="STOP EURISTICO non certificato, dopo errori CUDA ripetuti in banda inferiore: riprendibile senza questa opzione.",
+    )
+    parser.add_argument(
+        "--cuda-futility-witness-count", type=int, default=12,
+        help="Numero di fallimenti nativi CUDA consecutivi richiesti dopo un salto nel ranking (default 12).",
+    )
     parser.add_argument("--benchmark-repeats", type=int, default=2)
     parser.add_argument("--timeout", type=int, default=600)
     args = parser.parse_args(argv)
@@ -833,6 +863,8 @@ def main(argv=None):
             timeout=args.timeout,
             retry_failed_inferences=args.retry_failed_inferences,
             retry_only=args.retry_only,
+            stop_on_cuda_futility=args.stop_on_cuda_futility,
+            cuda_futility_witness_count=args.cuda_futility_witness_count,
             progress=lambda row: print(
                 json.dumps(row, ensure_ascii=False), flush=True
             ),
