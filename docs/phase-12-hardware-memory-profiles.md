@@ -134,3 +134,18 @@ Reference: https://github.com/ggml-org/llama.cpp/discussions/13816
 
 The advisor deliberately sets `production_qualified=false` everywhere.
 Actual production GPU qualification is a separate, stricter Ruth pipeline.
+
+
+### Interfaccia `--force`: disponibilità distinta da autorizzazione
+
+`host_force_experiment_options` e `experiment_force_available` elencano
+le prove sperimentali consentite dai controlli preliminari anche quando
+`--force` **non** è stato richiesto. Invece
+`experiment_force_requested` ed
+`experiment_allowed_in_separate_probe` rimangono false finché l'utente
+non passa esplicitamente `--force`. Nessuna delle due modalità esegue
+CUDA: per questo occorre sempre un secondo comando autorizzato.
+
+Un profilo con `host_measured_weights_cannot_fit` può comunque mostrare
+l'opzione sperimentale (per raccogliere nuove prove dopo modifiche reali
+all'ambiente); l'opzione non nega né altera la diagnosi negativa corrente.
