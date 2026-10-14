@@ -142,6 +142,13 @@ class GemmaMinimumContextProbeTests(unittest.TestCase):
                 verify_native=lambda **k: SimpleNamespace(
                     status="native_library_dual_abi_verified"),
                 discover_gpu=lambda **k: (UUID, PCI),
+                gpu_preflight=lambda uuid, **kw: SimpleNamespace(
+                    status="gpu_ready",
+                    to_dict=lambda: {"status": "gpu_ready", "gpu_uuid": uuid,
+                                     "memory_mib": {"total": 6141, "reserved": 369,
+                                                    "used": 0, "free": 5772},
+                                     "processes": [], "recommendations": []},
+                ),
             )
         return result, process
 
