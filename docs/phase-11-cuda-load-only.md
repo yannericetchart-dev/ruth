@@ -71,3 +71,29 @@ the user also reports that its earlier default, unmodified loading configuration
 succeeded. Both pieces of history must be kept separate: do not attribute
 this failure to overrides, Python versus C API, or driver update alone without
 a controlled comparison.
+
+## Additional controlled A/B: CUDA primary-context preinitialization
+
+The clean headless baseline (GPU processes 0; reserved=369 MiB, free=5773 MiB)
+still fails with CUDA `cudaMalloc` asking for a 5700.31 MiB model buffer.
+`cuMemGetInfo` only after failure reports 5682.81 MiB free; that value
+**is not** proof of the exact free memory at the instant of the failed call.
+
+An explicitly separate `--cuda-preinit` diagnostic retains and binds
+device-0's **primary CUDA context** via CUDA Driver API before model load,
+records `cuda_free_mib_after_primary_ctx_init` in the *same process*, then
+attempts the **same native weights-only GGUF load**. All additional context
+references are released during worker cleanup; no token generation occurs.
+
+```bash
+.venv/bin/python -m unittest tests.test_phase11_load_only_probe -v
+./ruth models probe-load --load-mode weights --allow-gpu-load --cuda-preinit
+```
+
+Compare the optional `cuda_free_mib_after_primary_ctx_init` to the required
+5700.31 MiB. This is a **controlled intervention**, not an exact passive
+measurement in the untouched loading path: explicitly preinitializing CUDA
+can itself alter context setup order or allocator behavior. Interpret alongside
+the earlier standard `--load-mode weights` baseline; a causal claim requires
+additional comparison. No driver restart, module blacklist, quantization
+switch, or CPU fallback is part of this diagnostic.
