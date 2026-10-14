@@ -1,5 +1,6 @@
 """Offline negative capacity bounds from public immutable Git CUDA records."""
 import json
+from io import StringIO
 from pathlib import Path
 import shutil
 from tempfile import TemporaryDirectory
@@ -9,6 +10,7 @@ from unittest.mock import patch
 from ruth_runtime.dependencies import PROJECT_ROOT
 from ruth_runtime.model_catalog import select_model
 from ruth_runtime.offline_memory_fit import explain_offline_weights_fit
+from ruth_runtime.launcher import main
 
 
 class OfflineMemoryFitTests(unittest.TestCase):
@@ -65,6 +67,42 @@ class OfflineMemoryFitTests(unittest.TestCase):
         self.assertFalse(result["no_gpu_queries"] is False)
         self.assertFalse(result["production_qualified"])
         self.assertTrue(result["evidence_files"])
+
+    def test_cli_offline_fit_does_not_inspect_host_or_trigger_git(self):
+        fake = {
+            "status": "full_gpu_weights_cannot_fit_nominal_bound",
+            "no_gpu_queries": True, "network_used": False,
+            "compatible_for_full_gpu_weights": False,
+        }
+        with patch("sys.stdout", new_callable=StringIO) as output, \
+             patch("ruth_runtime.offline_memory_fit.explain_offline_weights_fit",
+                   return_value=fake) as calc, \
+             patch("ruth_runtime.model_memory_profiles.build_profile_matrix",
+                   side_effect=AssertionError("Should never inspect host")), \
+             patch("ruth_runtime.profile_contribution.sync_profile_to_git",
+                   side_effect=AssertionError("Should never publish")):
+            status = main(["models", "profiles", "--offline-fit",
+                           "--quantization", "Q4_K_L", "--vram-gib", "6"])
+        self.assertEqual(status, 0)
+        self.assertEqual(calc.call_args.kwargs["vram_gib"], 6)
+        self.assertFalse(json.loads(output.getvalue())["compatible_for_full_gpu_weights"])
+
+    def test_locally_cached_historical_host_values_are_not_live(self):
+        local = self.root / ".ruth-build/profiles/models" / (self.sha + ".json")
+        data = json.loads(local.read_text())
+        data["host_snapshot"] = {
+            "architecture": "ada", "driver_version": "595.99.02",
+            "vram_class_gib": 6, "vram_observed_total_mib": 6141,
+            "nvml_free_before_cuda_mib": 5773,
+            "cuda_free_after_primary_ctx_init_mib": 5682.81,
+            "historical_measurement": True,
+        }
+        local.write_text(json.dumps(data))
+        result = self.report()
+        self.assertEqual(result["status"], "full_gpu_weights_cannot_fit_nominal_bound")
+        self.assertEqual(result["memory"]["historical_vram_observed_total_mib"], 6141)
+        self.assertEqual(result["memory"]["historical_cuda_free_after_primary_ctx_init_mib"], 5682.81)
+        self.assertIsNone(result["memory"]["measured_live_cuda_free_mib"])
 
     def test_eight_gib_is_possible_not_production_verified(self):
         outcome = self.report(vram_gib=8)
