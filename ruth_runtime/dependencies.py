@@ -30,13 +30,13 @@ VENV_GUIDE = (
     "e non installare dipendenze Python globalmente."
 )
 CUDA_BINDING_GUIDE = (
-    "Installa llama-cpp-python SOLO nella .venv di Ruth dopo aver selezionato "
-    "una versione/build CUDA compatibile e averla bloccata. Documentazione: "
+    "PRIORITÀ 1: preparare CUDA Toolkit 13.2 (nvcc), CMake e compilatore C++; "
+    "compilare llama.cpp e llama-cpp-python per CUDA 13.2/sm_89 da revisioni "
+    "sorgente fissate e dipendenze approvate. Documentazione: "
     "https://llama-cpp-python.readthedocs.io/en/stable/ . "
-    "Se scegli la build da sorgente prepara CUDA Toolkit/nvcc, CMake e "
-    "compilatore C++; usa CMAKE_ARGS='-DGGML_CUDA=on' "
-    "'.venv/bin/python -m pip install llama-cpp-python==<VERSIONE_APPROVATA>'. "
-    "La sola installazione non prova l'inferenza; evita wheel CPU-only."
+    "PRIORITÀ 2: usare il wheel CUDA 13.2 ufficiale solo previa scelta e "
+    "autorizzazione esplicita se la build nativa non è percorribile. "
+    "Usare sempre la .venv di Ruth; mai una build CPU-only o fallback silenzioso."
 )
 BINDING_PROBE = (
     "from llama_cpp.llama_cpp import llama_supports_gpu_offload; "
@@ -233,12 +233,13 @@ def inspect_dependencies(
             add("llama.cpp GPU offload", True, status, detail,
                 None if status == "ok" else CUDA_BINDING_GUIDE)
 
-    # Build tools are host prerequisites only when compiling from source.
-    # An existing compatible CUDA wheel does not require them. No pip probe.
+    # Build tools are mandatory for the PREFERRED source-build path, but not
+    # prerequisites for an explicitly authorized CUDA-wheel fallback.
+    # Generic runtime preflight must not conflate these paths. No host pip.
     optional_tools = (
         ("CMake", "cmake", "Per Debian/Ubuntu: sudo apt install cmake (solo build da sorgente)."),
         ("Compilatore C++", "c++", "Per Debian/Ubuntu: sudo apt install build-essential (solo build da sorgente)."),
-        ("CUDA Toolkit nvcc", "nvcc", "Toolchain NVIDIA: https://developer.nvidia.com/cuda-downloads (solo build da sorgente)."),
+        ("CUDA Toolkit nvcc", "nvcc", "PERCORSO PRINCIPALE: installare CUDA Toolkit 13.2 da https://docs.nvidia.com/cuda/archive/13.2.0/cuda-installation-guide-linux/ mantenendo il driver esistente; il wheel cu132 e' solo fallback approvato."),
     )
     for name, cmd, fix in optional_tools:
         path = which(cmd)

@@ -76,6 +76,8 @@ Il codice principale chiama sempre le API neutrali. Adapter o provider specifici
 
 **Requisito NVIDIA/CUDA aggiornato:** driver NVIDIA minimo **595.45.04** (ramo R595) e capacità dichiarata **CUDA 13.2** o superiore. Il driver e il CUDA Toolkit non sono la stessa cosa: l'eventuale versione di Toolkit e la build di `llama_cpp_python` saranno selezionate sulla base della compatibilità effettiva. Se il driver è stato aggiornato ma i servizi non sono stati riavviati, il preflight indica di riavviare prima di reinstallare.
 
+**Priorità di setup approvata:** Toolkit CUDA 13.2 installato sull'host (senza aggiornamenti driver) → build CUDA da sorgenti fissati di llama.cpp/llama-cpp-python nella `.venv` → verifica nativa; il wheel CUDA ufficiale `cu132` è ammesso **solo come fallback esplicito previa autorizzazione**, mai in automatico. Nessun fallback a inferenza CPU. Le decisioni su politica generale di fallback per modelli futuri restano indipendenti e aperte.
+
 **Decisioni aperte:**
 - **Vincolo chiarito:** l'unico runtime iniziale da implementare/provare usa NVIDIA + CUDA + llama.cpp + `llama_cpp_python`; nessun fallback CPU in questa fase.
 - **Vincolo chiarito:** GGML CPU è una dipendenza/libreria e non può essere passata come valore di `ExecutionBackend`.

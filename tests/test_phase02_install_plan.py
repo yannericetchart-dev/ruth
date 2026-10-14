@@ -2,9 +2,11 @@
 import unittest
 
 from ruth_runtime.dependencies import DependencyCheck, DependencyReport
+from ruth_runtime.toolkit import ToolkitCheck
 from ruth_runtime.install_plan import (
     WHEEL_FILENAME, WHEEL_SHA256, WHEEL_SIZE_BYTES, WHEEL_SOURCE,
     build_installation_plan, parse_glibc_version,
+    PRIMARY_METHOD, FALLBACK_METHOD, SOURCE_COMMIT, LLAMA_CPP_SUBMODULE_COMMIT,
     DIRECT_DEPENDENCIES, TRANSITIVE_DEPENDENCIES, DISKCACHE_ADVISORY,
 )
 
@@ -27,6 +29,17 @@ def dependencies(**overrides):
     return DependencyReport(checks)
 
 
+def toolkit(*, status="missing", native_ready=False):
+    return ToolkitCheck(
+        status=status, expected_version="13.2",
+        detected_version="13.2" if native_ready else None,
+        nvcc_path="/usr/local/cuda-13.2/bin/nvcc" if native_ready else None,
+        cmake_path="/usr/bin/cmake", cpp_compiler_path="/usr/bin/c++",
+        cuda_architecture="89", native_build_prerequisites=native_ready,
+        detail="fixture", remediation="install Toolkit" if not native_ready else None,
+    )
+
+
 class PlanTests(unittest.TestCase):
     def plan(self, checks=None, **kwargs):
         return build_installation_plan(
@@ -34,6 +47,7 @@ class PlanTests(unittest.TestCase):
             libc=kwargs.pop("libc", ("glibc", "2.39")),
             free_bytes=kwargs.pop("free_bytes", 6_000_000_000),
             interpreter="/repo/.venv/bin/python",
+            toolkit=kwargs.pop("toolkit", toolkit()),
             **kwargs,
         )
 
@@ -110,6 +124,43 @@ class PlanTests(unittest.TestCase):
         self.assertFalse(p.installation_ready)
         self.assertFalse(p.installation_implemented)
         self.assertFalse(p.installation_authorized)
+
+    def test_native_build_takes_priority_over_wheel(self):
+        p = self.plan(toolkit=toolkit(status="ok", native_ready=True))
+        self.assertEqual(p.strategy_priority, (PRIMARY_METHOD, FALLBACK_METHOD))
+        self.assertEqual(p.primary_method, "cuda-toolkit-native-build")
+        self.assertEqual(p.primary_toolkit_package, "cuda-toolkit-13-2")
+        self.assertTrue(p.primary_prerequisites_met)
+        self.assertEqual(p.native_build_cmake_args,
+                         "-DGGML_CUDA=ON -DCMAKE_CUDA_ARCHITECTURES=89")
+        self.assertEqual(p.cuda_architecture, "89")
+        self.assertEqual(len(SOURCE_COMMIT), 40)
+        self.assertEqual(len(LLAMA_CPP_SUBMODULE_COMMIT), 40)
+        self.assertIn("scikit-build-core", p.source_build_requirements[0])
+        self.assertFalse(p.installation_ready)
+
+    def test_no_toolkit_requires_remediation_not_autofallback(self):
+        p = self.plan(toolkit=toolkit(status="missing"))
+        self.assertFalse(p.primary_prerequisites_met)
+        self.assertTrue(p.fallback_review_eligible)
+        self.assertFalse(p.fallback_automatically_selected)
+        self.assertTrue(p.fallback_requires_explicit_authorization)
+        self.assertFalse(p.installation_authorized)
+        self.assertEqual(p.toolkit["status"], "missing")
+
+    def test_invalid_toolkit_must_not_promote_source(self):
+        p = self.plan(toolkit=toolkit(status="incompatible"))
+        self.assertFalse(p.primary_prerequisites_met)
+        self.assertEqual(p.strategy_priority[0], PRIMARY_METHOD)
+        self.assertFalse(p.fallback_automatically_selected)
+
+    def test_source_review_possible_when_wheel_not_compatible(self):
+        p = self.plan(toolkit=toolkit(status="ok", native_ready=True),
+                      libc=("glibc", "2.34"), free_bytes=12)
+        self.assertTrue(p.eligible_for_review)
+        self.assertTrue(p.primary_prerequisites_met)
+        self.assertFalse(p.fallback_review_eligible)
+        self.assertFalse(p.installation_ready)
 
     def test_json_compatible_payload_and_no_background_actions(self):
         import json
