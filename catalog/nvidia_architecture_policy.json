@@ -1,0 +1,124 @@
+{
+  "schema": "ruth-nvidia-architecture-policy-v1",
+  "latest_reviewed_cuda": "13.4",
+  "latest_reviewed_driver_branch": 615,
+  "minimum_tensor_core_generation": 4,
+  "nominal_vram_tolerance_percent": 3,
+  "architectures": [
+    {
+      "id": "ada",
+      "label": "Ada Lovelace",
+      "compute_capabilities": [
+        "8.9"
+      ],
+      "min_cuda": "11.8",
+      "tensor_core_generation": 4,
+      "vram_classes_gib": [
+        6,
+        8,
+        12,
+        16,
+        24,
+        48
+      ],
+      "tensor_engine": {
+        "FP16": "hardware_supported_backend_unverified",
+        "FP8": "te_supported_with_version_constraints",
+        "FP6": "unverified",
+        "FP4": "unsupported"
+      }
+    },
+    {
+      "id": "hopper",
+      "label": "Hopper",
+      "compute_capabilities": [
+        "9.0"
+      ],
+      "min_cuda": "11.8",
+      "tensor_core_generation": 4,
+      "vram_classes_gib": [
+        80,
+        94,
+        141
+      ],
+      "tensor_engine": {
+        "FP16": "hardware_supported_backend_unverified",
+        "FP8": "te_supported_with_version_constraints",
+        "FP6": "unverified",
+        "FP4": "unsupported"
+      }
+    },
+    {
+      "id": "blackwell-dc",
+      "label": "Blackwell Data Center",
+      "compute_capabilities": [
+        "10.0",
+        "10.3"
+      ],
+      "min_cuda": "12.8",
+      "tensor_core_generation": 5,
+      "vram_classes_gib": [
+        180,
+        192,
+        372
+      ],
+      "tensor_engine": {
+        "FP16": "hardware_supported_backend_unverified",
+        "FP8": "te_supported_with_version_constraints",
+        "FP6": "unverified",
+        "FP4": "te_supported_with_version_constraints"
+      }
+    },
+    {
+      "id": "blackwell-ws",
+      "label": "Blackwell Consumer / Workstation",
+      "compute_capabilities": [
+        "12.0"
+      ],
+      "min_cuda": "12.8",
+      "tensor_core_generation": 5,
+      "vram_classes_gib": [
+        12,
+        16,
+        24,
+        32,
+        48,
+        96
+      ],
+      "tensor_engine": {
+        "FP16": "hardware_supported_backend_unverified",
+        "FP8": "te_supported_with_version_constraints",
+        "FP6": "unverified",
+        "FP4": "te_partial_on_sm120"
+      }
+    }
+  ],
+  "driver_compatibility": {
+    "min_major_driver_branch": {
+      "11": 450,
+      "12": 525,
+      "13": 580
+    },
+    "corresponding_driver_branch_by_cuda_minor": {
+      "13.0": 580,
+      "13.1": 590,
+      "13.2": 595,
+      "13.3": 610,
+      "13.4": 615
+    },
+    "native_code_validation_required": true
+  },
+  "notes": [
+    "CUDA Version in nvidia-smi is the driver's API upper limit, NOT nvcc toolkit installation.",
+    "CUDA 12.8 is the first native Blackwell 10.x/12.0 toolkit; CUDA 12.0 is not sufficient for native Blackwell compilation.",
+    "NVFP4 on sm_120 is limited by Transformer Engine recipe; FP6 not universally verified as TE format.",
+    "Allowed VRAM classes are Ruth's policy, not an authoritative catalog of GPU SKUs. Exact GPU capability and memory both required.",
+    "Latest reviewed CUDA version is a pinned advisory baseline, not a live guarantee of upstream latest."
+  ],
+  "sources": [
+    "https://docs.nvidia.com/datacenter/tesla/drivers/latest/cuda-toolkit-driver-and-architecture-matrix.html",
+    "https://developer.nvidia.com/cuda/gpus",
+    "https://nvidia.github.io/TransformerEngine/support_matrix.html",
+    "https://docs.nvidia.com/cuda/cuda-toolkit-release-notes/index.html"
+  ]
+}
