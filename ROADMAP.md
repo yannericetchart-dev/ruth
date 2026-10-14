@@ -1,9 +1,9 @@
 # Ruth — Roadmap del branch `model-profiling`
 
-> **Versione:** 2.15 — roadmap approvata e modificabile. Fase 02: **211 test e librerie CUDA dual-ABI verificati sul PC**; piano di prova GGUF reale della Fase 03 preparato, senza download o inferenza anticipati. `diskcache` resta TO DO non prioritario.
+> **Versione:** 2.16 — roadmap approvata e modificabile. Fase 04: **catalogo gerarchico model/family/version/format/quantization, Hugging Face default, Kaggle TO DO**, CLI offline e resolver metadata implementati; test nuovi da verificare sul PC. Test/production default registrati, nessun download GGUF.
 > **Branch:** `model-profiling` (riscrittura da zero sulla base minimale di `main`).
 > **Riferimento storico:** `feature/minimal-chat` è consultabile per imparare dalle prove precedenti, **non** è una dipendenza né una base di codice da copiare.
-> **Stato attuale:** Fase 01 verificata; Fase 02 **211 test superati in 2,075 s sul PC** e `./ruth setup --verify-native-library` eseguito con `status=native_library_dual_abi_verified`, `error=null`, `wheel_provenance_verified=true`, `installed_binding_verified=true`, `shared_libraries_verified=true`, `direct_abi_verified=true`, `native_backend_initialized=true`, `cuda_support_direct=true`, `cuda_support_python=true`, `python_binding_same_library=true`. Verificate le 15 librerie `.so`/alias indicate dal risultato, incluse `libllama.so`, `libggml.so`, `libggml-cuda.so`. La stessa `libllama.so` pinned è accessibile mediante C API diretta e binding Python; nessuna nuova compilazione/installazione o fallback CPU. **Non sono ancora stati caricati pesi GGUF né eseguite inferenza e offload reali** (`model_loaded=false`, `gpu_offload_executed=false`, `inference_executed=false`). Il bug precedente del launcher risulta superato con l'intera suite. Il rischio `diskcache` CVE-2025-69872 resta TO DO non prioritario in attesa di release corretta, mitigazione cache disabilitata.
+> **Stato attuale:** Fase 01 e ambiente CUDA runtime qualificati: **211 test superati sul PC** e `./ruth setup --verify-native-library`→ `native_library_dual_abi_verified`; C ABI diretta e Python condividono gli stessi file `.so` su RTX 4050. Il progetto NON ha ancora caricato un GGUF né misurato inferenza/offload effettivi. L'utente ha scelto provider Hugging Face come default, Kaggle come **TO DO**, famiglie `gemma/llama/qwen/mistral`, produzione `gemma-2-9B-it`, test leggero `llama-3.2-1B-instruct` quando non servono misurazioni VRAM effettive. Implementati `catalog/model_catalog.json`, `ruth_runtime/model_catalog.py` e `./ruth models list|select|resolve`; catalogo GGUF Q4_K_M con digest SHA256 attesi da Hugging Face, meta-only resolver con consenso esplicito e nessun download. **22 nuovi test previsti**, totale **233 test** da eseguire sul PC. Produzione Gemma Q4_K_M ~5,76 GB può non rientrare interamente in 6GiB con KV/overhead: nessuna promessa offload completo, nessun fallback CPU. CVE `diskcache` resta TO DO non prioritario.
 
 ## 1. Obiettivo e confini
 
@@ -166,12 +166,12 @@ Il commit della fase contiene **solo** quanto concordato, inclusi test e documen
 - **Gate:** non basta un modello caricato; deve produrre token realmente.
 
 ### Fase 04 — Fonti dei modelli, catalogo e metadati
-- [ ] Decidere repository/fonti supportati (Hugging Face, eventuali alternative).
-- [ ] Definire identificatori immutabili: modello, revisione, variante, formato, quantizzazione e shard.
-- [ ] Leggere metadati e requisiti senza scaricare inutilmente pesi completi quando possibile.
-- [ ] Distinguere modelli aperti, modelli con licenza da accettare, modelli gated e credenziali necessarie.
-- [ ] Rifiutare formati non leggibili dal backend; distinguere catalogo da compatibilità reale.
-- [ ] Documentare i criteri per aggiungere/rimuovere candidati.
+- [x] Definite fonti: **Hugging Face** default e implementato come catalogo/metadata in lettura; **Kaggle TO DO** visibile e disabilitato fino a un provider implementato e verificato.
+- [x] Implementata gerarchia `family/model/version/format/quantization` e validazione SHA256 GGUF; `revision` Hugging Face resta non verificata finché resolver metadata non restituisce hash Git 40 caratteri. Shard multipli restano TO DO.
+- [x] Implementato `./ruth models resolve --purpose test|production --allow-metadata-network`: consulta metadata JSON HF, richiede commit immutabile, SHA256 LFS e size coerenti, **non scarica pesi**; test su PC da fare.
+- [x] Distinzione iniziale tra license expected (Gemma/Meta), upstream base model e repository terzo GGUF; campo gated informativo, `license_accepted=false`, nessun token/accesso gated automatico. Estendere a provider/autorizzazioni reali prima di download.
+- [x] Catalogo attuale ristretto a GGUF, rigetto formato/variant sconosciuti, test leggero Llama non valida compatibilità VRAM della produzione Gemma. `downloadable=false` e `model_loaded=false` finché risoluzione/approval/download non sono completati.
+- [x] Documentati schema e regole in `docs/phase-04-model-catalog.md`. Famiglie Qwen/Mistral registrate **senza modelli prevalidati**; no compatibilità inventata. 22 test offline da verificare.
 - **Output:** catalogo interrogabile, con provenienza e vincoli di licenza.
 - **Gate:** nessun download da fonti non autorizzate o con termini non accettati.
 
@@ -386,6 +386,7 @@ Queste non sono domande da risolvere tutte subito: ciascuna viene affrontata **p
 | 00 | **Bozza di contratto da revisionare** | Interfacce e catalogo dichiarativo nel codice, test CPU-only; nessun adapter operativo |
 | 01 | **Conclusa (inventario statico)** | 21 test dell'utente, hardware reale e snapshot processi NVIDIA verificati; recheck dinamico richiesto prima dei benchmark |
 | 02 | **211 test e libreria CUDA dual-ABI verificati sul PC** | 15 `.so`/alias e pinned wheel coerenti, stesso `libllama.so` C/Python, CUDA support e native init confermati; nessuna inferenza GGUF/offload layer ancora eseguita |
+| 04 | **Catalogo GGUF iniziale implementato, metadata da provare** | Hugging Face default, Kaggle TO DO; 4 famiglie; Gemma 9B production / Llama 1B test, 22 test nuovi, nessun download/licenza accettata |
 | 03–16 | **Non iniziate** | Nessun runtime o profiling operativo ancora sviluppato |
 
-**Prossima azione:** revisione/approvazione del piano `docs/phase-03-inference-test-plan.md` e scelta di un modello GGUF di prova con fonte, licenza, revisione e SHA256 verificabili. Dopo l'autorizzazione, implementare un test **vero** ma contenuto nella `.venv`: worker isolato che carica modello, forza `n_gpu_layers=-1`, osserva il processo GPU/VRAM e produce token. Non considerare verified né modello né offload sulla base dei soli 211 test, di `llama_supports_gpu_offload` o di `libllama.so`. Non ripetere build/installer/verify ABI già superati; nessun download automatico prima della scelta della fonte/modello/licenza/budget. `diskcache` CVE rimane TO DO non prioritario.
+**Prossima azione:** eseguire `git pull --ff-only`, suite `unittest` (totale previsto **233**) e CLI read-only `./ruth models list`, `./ruth models select --purpose test`, `./ruth models select --purpose production`. Per fissare la revisione remota del GGUF Llama 1B, **solo previa autorizzazione ai metadati** eseguire `./ruth models resolve --purpose test --allow-metadata-network`; nessun download del modello e nessuna accettazione automatica licenze. Dopo, progettare il download a checkpoint con consensi espliciti e il worker CUDA inference GGUF reale; default Gemma 9B resta prodotto desiderato, ma con vincolo VRAM non ancora superato. `diskcache` resta TO DO.

@@ -78,10 +78,56 @@ def main(argv: list[str] | None = None) -> int:
                        help="Explicitly authorize offline staged native CUDA binding install into Ruth .venv")
     setup.add_argument("--accept-diskcache-risk", action="store_true",
                        help="Explicitly acknowledge CVE-2025-69872 for installed diskcache 5.6.3; TODO stays open")
+    models = sub.add_parser("models", help="Read-only hierarchical model catalog and HF provenance")
+    model_sub = models.add_subparsers(dest="model_action")
+    model_sub.add_parser("list", help="List families, GGUF models and defaults (offline)")
+    for operation in ("select", "resolve"):
+        mp = model_sub.add_parser(operation, help=(
+            "Offline model selection" if operation == "select" else
+            "Resolve HF immutable revision and GGUF checksum (metadata only)"
+        ))
+        mp.add_argument("--purpose", choices=("production", "test"), default="test")
+        mp.add_argument("--family")
+        mp.add_argument("--model")
+        mp.add_argument("--version")
+        mp.add_argument("--format")
+        mp.add_argument("--quantization")
+        if operation == "resolve":
+            mp.add_argument("--allow-metadata-network", action="store_true",
+                            help="Authorize public HF JSON metadata requests; never download weights")
     sub.add_parser("run", help="Start the CUDA runtime only after verification")
     args = parser.parse_args(argv)
 
     action = args.action or "doctor"
+    if action == "models":
+        from .model_catalog import (
+            CatalogError, list_models, select_model, resolve_model_metadata,
+        )
+        try:
+            if args.model_action == "list":
+                _print({"action": "models", **list_models()})
+                return 0
+            if args.model_action not in {"select", "resolve"}:
+                raise CatalogError("Choose models list, select or resolve")
+            choice = select_model(
+                purpose=args.purpose, family=args.family, model=args.model,
+                version=args.version, format=args.format,
+                quantization=args.quantization,
+            )
+            if args.model_action == "select":
+                _print({"action": "models", "status": "selected_unverified",
+                        "selection": choice.to_dict(),
+                        "download_started": False})
+                return 0
+            resolved = resolve_model_metadata(
+                choice, authorize_metadata_network=args.allow_metadata_network,
+            )
+            _print({"action": "models", **resolved})
+            return 0 if resolved["status"] == "source_metadata_verified_license_pending" else 2
+        except CatalogError as exc:
+            _print({"action": "models", "status": "catalog_selection_blocked",
+                    "error": str(exc), "download_started": False})
+            return 2
     # Reject incompatible permissions BEFORE any preflight, Git checkout,
     # network access or build. Flag order must not change this boundary.
     standalone = (

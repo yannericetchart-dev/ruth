@@ -1,0 +1,91 @@
+{
+  "schema": "ruth-model-catalog-v1",
+  "default_source": "huggingface",
+  "sources": {
+    "huggingface": {
+      "status": "implemented",
+      "base_url": "https://huggingface.co"
+    },
+    "kaggle": {
+      "status": "TODO",
+      "reason": "Provider discovery, authentication, licensing and checksums not yet implemented"
+    }
+  },
+  "families": [
+    "gemma",
+    "llama",
+    "qwen",
+    "mistral"
+  ],
+  "defaults": {
+    "production": {
+      "family": "gemma",
+      "model": "gemma-2",
+      "version": "gemma-2-9B-it",
+      "format": "gguf",
+      "quantization": "Q4_K_M"
+    },
+    "test": {
+      "family": "llama",
+      "model": "llama-3.2",
+      "version": "llama-3.2-1B-instruct",
+      "format": "gguf",
+      "quantization": "Q4_K_M"
+    }
+  },
+  "models": [
+    {
+      "family": "gemma",
+      "model": "gemma-2",
+      "version": "gemma-2-9B-it",
+      "format": "gguf",
+      "publisher": "google",
+      "upstream_repo": "google/gemma-2-9b-it",
+      "license": "gemma",
+      "license_acknowledgement_required": true,
+      "purpose": [
+        "production"
+      ],
+      "variants": [
+        {
+          "quantization": "Q4_K_M",
+          "source": "huggingface",
+          "repo_id": "bartowski/gemma-2-9b-it-GGUF",
+          "filename": "gemma-2-9b-it-Q4_K_M.gguf",
+          "expected_sha256": "13b2a7b4115bbd0900162edcebe476da1ba1fc24e718e8b40d32f6e300f56dfe",
+          "approx_size_mb": 5760,
+          "revision": null,
+          "assessment": "requires_real_hardware_profiling",
+          "note": "GGUF third-party quantization; Google Gemma terms apply; 6GiB VRAM does not guarantee full GPU residency."
+        }
+      ]
+    },
+    {
+      "family": "llama",
+      "model": "llama-3.2",
+      "version": "llama-3.2-1B-instruct",
+      "format": "gguf",
+      "publisher": "meta-llama",
+      "upstream_repo": "meta-llama/Llama-3.2-1B-Instruct",
+      "license": "llama3.2",
+      "license_acknowledgement_required": true,
+      "purpose": [
+        "test"
+      ],
+      "variants": [
+        {
+          "quantization": "Q4_K_M",
+          "source": "huggingface",
+          "repo_id": "bartowski/Llama-3.2-1B-Instruct-GGUF",
+          "filename": "Llama-3.2-1B-Instruct-Q4_K_M.gguf",
+          "expected_sha256": "6f85a640a97cf2bf5b8e764087b1e83da0fdb51d7c9fab7d0fece9385611df83",
+          "approx_size_mb": 808,
+          "revision": null,
+          "assessment": "lightweight_functional_tests_only",
+          "note": "Use for lightweight integration/smoke tests; not a substitute for production VRAM/performance profiling."
+        }
+      ]
+    }
+  ],
+  "scope": "Read-only catalog/metadata resolution; no downloads, no auto-acceptance of model licenses."
+}
