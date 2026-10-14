@@ -47,7 +47,7 @@ class CatalogTests(unittest.TestCase):
         self.assertEqual(selected.repo_id, "bartowski/gemma-2-9b-it-GGUF")
         self.assertEqual(selected.license, "gemma")
         self.assertEqual(selected.assessment,
-                         "full_gpu_cuda_allocation_failed_on_rtx4050_6gib_nctx128")
+                         "cuda_full_gpu_unverified")
         self.assertEqual(len(selected.expected_sha256), 64)
         self.assertFalse(selected.downloadable)
         self.assertFalse(selected.local_model_ready)
