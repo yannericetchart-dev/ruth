@@ -169,6 +169,33 @@ class ProfileContributionTests(unittest.TestCase):
             publish_proposal_pr(proposal, permit_external_publication=True,
                                 run=lambda *args, **kwargs: self.fail("No network"))
 
+    def test_repository_owner_uses_proposal_branch_not_fork(self):
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            proposal = build_proposal(self.prepare(root), project_root=root)
+        calls = []
+        def run(args, **kwargs):
+            calls.append(args)
+            command = " ".join(args)
+            if args[:4] == ["gh", "api", "user", "--jq"]:
+                output = "yannericetchart-dev"
+            elif "git/ref/heads/model-profiling" in command:
+                output = json.dumps({"object": {"sha": "f" * 40}})
+            elif "repos/yannericetchart-dev/ruth/pulls" in command:
+                output = json.dumps({"html_url":
+                    "https://github.com/yannericetchart-dev/ruth/pull/321"})
+            else:
+                output = "{}"
+            return SimpleNamespace(returncode=0, stdout=output, stderr="")
+        result = publish_proposal_pr(proposal,
+                                     permit_external_publication=True, run=run)
+        self.assertEqual(result["status"], "git_profile_pull_request_opened")
+        self.assertFalse(any(x[1:3] == ["repo", "fork"] for x in calls))
+        self.assertTrue(any("repos/yannericetchart-dev/ruth/contents/" in
+                            " ".join(x) for x in calls))
+        self.assertTrue(any("refs/heads/ruth-profile-" in
+                            " ".join(x) for x in calls))
+
     def test_fork_pr_flow_is_user_authenticated_not_upstream_push(self):
         with TemporaryDirectory() as tmp:
             root = Path(tmp)
