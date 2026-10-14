@@ -99,7 +99,7 @@ class NvidiaArchitecturePolicyTests(unittest.TestCase):
         seen = []
         def run(args, **kw):
             seen.append(args)
-            if args[0] == "nvidia-smi" and "--query-gpu=" in args[1]:
+            if len(args) > 1 and args[0] == "nvidia-smi" and "--query-gpu=" in args[1]:
                 output = ("GPU-5a841828-882b-85d9-c98e-3a0d29e66e00, "
                           "00000000:01:00.0, NVIDIA RTX 4050, 8.9, 6141, 595.99.02")
             elif args[0] == "nvidia-smi":
