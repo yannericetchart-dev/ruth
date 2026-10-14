@@ -183,12 +183,36 @@ def record_local_profile(
     ):
         raise ValueError("Malformed existing evidence index")
     if evidence_digest in seen:
+        if data.get("host_snapshot") != snapshot:
+            data["host_snapshot"] = snapshot
+            _atomic_write(target, data)
         return {
             "status": "local_profile_already_recorded",
             "profile_file": str(target), "model_sha256": sha,
             "git_updated": False, "git_submission_pending": True,
             "observation_duplicated": False,
         }
+
+    # Historical host snapshot is LOCAL only. It allows a future offline
+    # diagnostic to reuse the exact observed GPU total/free values, without
+    # querying nvidia-smi or allocating CUDA again. It is never exported
+    # by the Git contribution allowlist.
+    memory = pre.get("memory_mib") or {}
+    snapshot = {
+        "architecture": hardware.get("architecture"),
+        "compute_capability": hardware.get("compute_capability"),
+        "driver_version": hardware.get("driver_version"),
+        "vram_class_gib": hardware.get("vram_class_gib"),
+        "vram_observed_total_mib": memory.get("total"),
+        "nvml_free_before_cuda_mib": memory.get("free"),
+        "driver_reserved_mib": memory.get("reserved"),
+        "cuda_free_after_primary_ctx_init_mib":
+            report.get("cuda_free_mib_after_primary_ctx_init"),
+        "historical_measurement": True,
+    }
+    old_snapshot = data.get("host_snapshot")
+    if old_snapshot != snapshot:
+        data["host_snapshot"] = snapshot
 
     gpu_cuda = hardware.get("driver_cuda_max")
     backend_cuda = hardware.get("backend_cuda")
