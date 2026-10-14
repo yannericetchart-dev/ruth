@@ -119,6 +119,8 @@ def main(argv: list[str] | None = None) -> int:
             mp.add_argument("--accept-model-license", action="store_true",
                             help="Confirm you reviewed and accept the original model license terms")
         if operation == "probe-load":
+            mp.add_argument("--n-ctx", type=int, default=128,
+                            help="Context size in context mode only (64..4096)")
             mp.add_argument("--load-mode", choices=("weights", "context"),
                             default="weights",
                             help="weights: load GGUF only; context: add KV/compute buffers")
@@ -175,7 +177,7 @@ def main(argv: list[str] | None = None) -> int:
                     raise CatalogError("Load-only probe requires production purpose")
                 result = probe_model_load(
                     quantization=choice.quantization, mode=args.load_mode,
-                    allow_gpu_load=args.allow_gpu_load,
+                    n_ctx=args.n_ctx, allow_gpu_load=args.allow_gpu_load,
                 )
                 _print({"action": "models", **result})
                 return 0 if result["status"] == "gpu_load_only_completed" else 2
