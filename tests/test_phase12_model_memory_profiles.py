@@ -132,11 +132,24 @@ class MemoryProfileMatrixTests(unittest.TestCase):
                          "missing_or_mismatched_gguf_sha256")
         self.assertIsNone(row["measured_weights_buffer_mib"])
 
+    def test_force_experiments_are_visible_before_authorization(self):
+        m = self.matrix(check_host=True)
+        self.assertEqual(m["host_force_experiment_options"], [
+            "gemma-2-9B-it/gguf/Q4_K_L",
+            "gemma-2-9B-it/gguf/Q4_K_M",
+        ])
+        row = next(p for p in m["profiles"] if p["id"].endswith("/Q4_K_L"))
+        self.assertTrue(row["experiment_force_available"])
+        self.assertFalse(row["experiment_force_requested"])
+        self.assertFalse(row["experiment_allowed_in_separate_probe"])
+        self.assertFalse(m["gpu_allocations_executed"])
+
     def test_force_only_marks_separate_experiment(self):
         with TemporaryDirectory() as temp:
             m = self.matrix(check_host=True, force=True,
                             evidence_file=self.create_evidence(temp))
         row = next(p for p in m["profiles"] if p["id"].endswith("/Q4_K_L"))
+        self.assertTrue(row["experiment_force_available"])
         self.assertTrue(row["experiment_allowed_in_separate_probe"])
         self.assertFalse(row["production_qualified"])
         self.assertFalse(m["gpu_allocations_executed"])
