@@ -7,6 +7,7 @@ separate reviewed PR workflow, not untrusted git push from user machines.
 from __future__ import annotations
 
 import json
+import hashlib
 import os
 from pathlib import Path
 import tempfile
@@ -171,6 +172,24 @@ def record_local_profile(
             "production_qualified": False,
         }
 
+    # Reusing the same immutable probe report must not create a second
+    # observation when an earlier Git publication needs to be retried.
+    evidence_digest = hashlib.sha256(
+        json.dumps(report, sort_keys=True, separators=(",", ":")).encode("utf-8")
+    ).hexdigest()
+    seen = data.get("observed_evidence_sha256s", [])
+    if not isinstance(seen, list) or any(
+        not isinstance(x, str) or len(x) != 64 for x in seen
+    ):
+        raise ValueError("Malformed existing evidence index")
+    if evidence_digest in seen:
+        return {
+            "status": "local_profile_already_recorded",
+            "profile_file": str(target), "model_sha256": sha,
+            "git_updated": False, "git_submission_pending": True,
+            "observation_duplicated": False,
+        }
+
     gpu_cuda = hardware.get("driver_cuda_max")
     backend_cuda = hardware.get("backend_cuda")
     if not gpu_cuda or not backend_cuda:
@@ -257,6 +276,7 @@ def record_local_profile(
             "inference_verified": False,
         }
 
+    data["observed_evidence_sha256s"] = [*seen, evidence_digest]
     data["model_locally_verified"] = True
     data["model_license_accepted"] = True
     _atomic_write(target, data)
