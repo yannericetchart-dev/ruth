@@ -67,6 +67,28 @@ class AlternativeKVBaselineTests(unittest.TestCase):
             self.assertEqual(candidate["summary"]["load_attempted"], 6)
             self.assertEqual(candidate["hard_pruning"]["count"], 0)
 
+    def test_all_gpu_target_is_probed_before_spending_cpu_offload_trials(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            layout, census = make_census(root)
+            target = root / "q8_allgpu_512.json"
+            attempts = []
+            def check(path, model_id, trial, **kwargs):
+                attempts.append((list(trial["host_tensor_names"]), kwargs["n_ctx"]))
+                return fake_native_probe(path, model_id, trial, **kwargs)
+            with patch("calibration.kv_profile_baseline.inspect_gguf",
+                       return_value=layout):
+                report = run_kv_profile_baseline(
+                    census_path=census, output=target,
+                    n_ctx=512, probe=check,
+                )
+            self.assertTrue(report["completed"])
+            self.assertFalse(report["success"])
+            self.assertEqual(report["status"], "native_baseline_not_verified")
+            self.assertEqual(attempts, [([], 512)])
+            self.assertEqual(report["parameters"]["n_ctx"], 512)
+            self.assertEqual(report["host_tensor_names"], [])
+
     def test_failure_blocks_promotion_without_claiming_impossibility(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
