@@ -114,6 +114,36 @@ implementare e testare l'adapter senza `LlamaDiskCache`, senza accesso
 a cache serializzate non attendibili, e definire una policy esplicita
 per il rischio residuo.
 
+## Adapter CUDA senza cache su disco (contratto preliminare)
+
+L'API reale di `llama-cpp-python v0.3.36` è stata controllata sul commit
+fissato: `Llama.__init__` crea `self.cache = None`;
+`Llama.set_cache(...)` può abilitarla esplicitamente;
+`LlamaDiskCache.__init__` costruisce `diskcache.Cache(cache_dir)`.
+
+Il nuovo `ruth_runtime.cuda_adapter.CudaLlamaAdapter` usa
+**esclusivamente** lo stack `gpu/nvidia/cuda/llama.cpp/llama_cpp_python`,
+rifiuta configurazioni di cache, directory, backend CPU e GPU layers
+manuali; richiede versione esatta del binding `0.3.36`,
+`llama_supports_gpu_offload() = true`, e crea `Llama` imponendo
+`n_gpu_layers=-1`. La sessione pubblica espone soltanto `generate`,
+`cache_disabled` e `close`, non `set_cache` o il motore nativo.
+Prima della generazione verifica che `Llama.cache is None`; un oggetto
+con cache inattesa viene chiuso e rifiutato.
+
+I test dell'adapter utilizzano un binding **simulato** e verificano
+esplicitamente che non siano create cache dal percorso gestito da Ruth.
+La prova non dimostra che librerie terze siano prive di code path
+vulnerabili, né che i pesi vengano realmente elaborati dalla GPU.
+Questo adapter non è ancora collegato al launcher `run` e non è stato
+eseguito con un modello GGUF reale.
+
+**CVE-2025-69872 rimane aperta**: la mitigazione riduce la superficie
+di attacco controllata da Ruth ma non corregge `diskcache` stessa.
+Il manifest resta `approved=false` e l'installazione è bloccata
+fino a revisione del rischio residuo, gestione sicurezza del filesystem
+ed evidenza nativa su un ambiente dedicato.
+
 ## Installazione automatica: gate da completare
 
 Non inventiamo hash approvati. Dopo il lock candidato restano la verifica
