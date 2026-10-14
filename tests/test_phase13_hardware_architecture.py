@@ -66,6 +66,17 @@ class NvidiaArchitecturePolicyTests(unittest.TestCase):
         self.assertIn("driver_cuda_below_backend_cuda", p["errors"])
         self.assertIn("driver_cuda_below_installed_toolkit", p["errors"])
 
+    def test_newer_minor_cuda_may_have_limited_driver_compatibility(self):
+        p = check(driver_cuda="13.2", toolkit="13.4", backend="13.4",
+                  drv="595.99.02")
+        self.assertEqual(p["status"],
+                         "hardware_eligible_native_backend_unverified")
+        self.assertIn("backend_newer_cuda_minor_than_driver_feature_compatibility_unverified",
+                      p["warnings"])
+        self.assertIn("toolkit_newer_cuda_minor_than_driver_feature_compatibility_unverified",
+                      p["warnings"])
+        self.assertFalse(p["backend_kernel_architecture_verified"])
+
     def test_old_cuda_above_arch_min_only_warns(self):
         p = check(toolkit="12.8", backend="12.8", driver_cuda="12.8",
                   drv="570.26")
