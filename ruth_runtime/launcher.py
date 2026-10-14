@@ -133,12 +133,16 @@ def main(argv: list[str] | None = None) -> int:
                             help="Existing locally saved model profile for publication-only retry")
             mp.add_argument("--evidence-file",
                             help="Local JSON output from a pinned probe-load command")
+            mp.add_argument("--sync-git", action="store_true",
+                            help="Owner: commit directly to model-profiling; contributor: propose review PR")
             mp.add_argument("--publish-pr", action="store_true",
-                            help="Publish sanitized existing/updated profile as PR via authenticated gh fork")
+                            help="Legacy alias for --sync-git (owner also commits directly)")
             mp.add_argument("--consent-publication", action="store_true",
                             help="Explicit consent to publish anonymized hardware measurement summary")
             mp.add_argument("--record-local", action="store_true",
-                            help="Explicit atomic update of local pinned runtime memory profile from verified evidence")
+                            help="Atomic local profile update; authenticated owner syncs Git automatically")
+            mp.add_argument("--no-git-sync", action="store_true",
+                            help="Disable automatic owner Git sync for this command")
             mp.add_argument("--force", action="store_true",
                             help="Mark explicit experimental selection, NEVER execute a GPU probe")
         if operation == "probe-load":
@@ -183,12 +187,13 @@ def main(argv: list[str] | None = None) -> int:
                 try:
                     if args.force and not args.host:
                         raise ValueError("--force is only meaningful with --host")
-                    if args.publish_pr and not args.consent_publication:
-                        raise ValueError("--publish-pr requires explicit --consent-publication")
-                    if args.publish_pr and not (args.record_local or args.initialize or args.profile_file):
-                        raise ValueError("--publish-pr requires --profile-file or --initialize/--record-local")
-                    if args.profile_file and (args.record_local or args.initialize or not args.publish_pr):
-                        raise ValueError("--profile-file is for publication-only retry; no re-recording")
+                    explicit_sync = args.sync_git or args.publish_pr
+                    if args.no_git_sync and explicit_sync:
+                        raise ValueError("--no-git-sync conflicts with explicit --sync-git")
+                    if explicit_sync and not (args.record_local or args.initialize or args.profile_file):
+                        raise ValueError("--sync-git requires --profile-file or --initialize/--record-local")
+                    if args.profile_file and (args.record_local or args.initialize or not explicit_sync):
+                        raise ValueError("--profile-file is for Git sync retry; no re-recording")
                     if args.initialize and args.record_local:
                         raise ValueError("--initialize and --record-local are separate steps")
                     if args.initialize and not args.allow_metadata_network:
@@ -217,14 +222,25 @@ def main(argv: list[str] | None = None) -> int:
                     )
                     if local_record is not None:
                         result["local_profile_update"] = local_record
-                    if args.publish_pr:
-                        from .profile_contribution import build_proposal, publish_proposal_pr
+                    if (explicit_sync or
+                        (local_record is not None and not args.no_git_sync)):
+                        from .profile_contribution import (
+                            build_proposal, sync_profile_to_git,
+                            sync_owner_profile_if_authenticated,
+                        )
                         source = (Path(args.profile_file) if args.profile_file
                                   else Path(local_record["profile_file"]))
                         try:
                             proposal = build_proposal(source)
-                            publication = publish_proposal_pr(
-                                proposal, permit_external_publication=True)
+                            if explicit_sync:
+                                # Explicit --sync-git is itself permission to
+                                # propose the data; owner requires no consent.
+                                publication = sync_profile_to_git(proposal)
+                            else:
+                                # Implicit sync is for the authenticated owner
+                                # only; other users keep their measurements local.
+                                publication = sync_owner_profile_if_authenticated(
+                                    proposal)
                         except (OSError, RuntimeError, ValueError, TypeError, KeyError) as exc:
                             publication = {
                                 "status": "git_publication_failed",
@@ -232,8 +248,7 @@ def main(argv: list[str] | None = None) -> int:
                                 "error": type(exc).__name__ + ": " + str(exc)[:200],
                             }
                         result["git_publication"] = publication
-                        result["local_profile_retained"] = bool(
-                            source.is_file())
+                        result["local_profile_retained"] = bool(source.is_file())
                     if args.quantization:
                         result["profiles"] = [
                             p for p in result["profiles"]
@@ -242,7 +257,11 @@ def main(argv: list[str] | None = None) -> int:
                         if not result["profiles"]:
                             raise ValueError("Requested quantization not registered")
                     _print({"action": "models", **result})
-                    if args.publish_pr and result["git_publication"]["status"] != "git_profile_pull_request_opened":
+                    if explicit_sync and result["git_publication"]["status"] not in (
+                        "git_profile_pull_request_opened",
+                        "git_profile_updated_model_profiling",
+                        "git_profile_already_current",
+                    ):
                         return 2
                     return 0
                 except (OSError, RuntimeError, ValueError, TypeError, KeyError) as exc:
