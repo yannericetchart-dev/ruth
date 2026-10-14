@@ -217,6 +217,9 @@ def probe_load_only(model_path: Path, model_id: str, trial: dict,
     failure = analyze_worker_failure(
         proc.stderr, payload.get("error"), proc.returncode, load_ok
     )
+    import_failed = worker_import_failure({
+        "success": False, "failure_diagnostics": failure,
+    })
     return {
         "success": load_ok,
         "n_ctx": n_ctx, "host_tensor_names": trial["host_tensor_names"],
@@ -226,6 +229,7 @@ def probe_load_only(model_path: Path, model_id: str, trial: dict,
         "worker_signal": (-proc.returncode if proc.returncode < 0 else None),
         "failure_class": (
             None if load_ok else
+            "worker_python_module_import_error" if import_failed else
             "native_cuda_oom" if failure["suspected_cuda_oom"] else
             "native_cuda_resource_allocation_failure"
             if failure["native_cuda_resource_allocation_failed"]
