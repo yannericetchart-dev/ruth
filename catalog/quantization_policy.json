@@ -1,0 +1,134 @@
+{
+  "schema": "ruth-quantization-policy-v1",
+  "source": "https://huggingface.co/bartowski/gemma-2-9b-it-GGUF",
+  "description": "Order is a subjective, qualitative HEURISTIC guided by uploader's variant descriptions; it is NOT a measured quality benchmark, precision score, or guarantee of compatibility. Rank only applies within the same model/version.",
+  "default_provisional_reserve_mib": 768,
+  "max_recommended_candidates": 5,
+  "quality_policy": [
+    {
+      "quantization": "Q8_0",
+      "priority": 200,
+      "tier": "near_original",
+      "cuda_status": "unverified"
+    },
+    {
+      "quantization": "Q6_K_L",
+      "priority": 190,
+      "tier": "very_high",
+      "cuda_status": "unverified"
+    },
+    {
+      "quantization": "Q6_K",
+      "priority": 180,
+      "tier": "very_high",
+      "cuda_status": "unverified"
+    },
+    {
+      "quantization": "Q5_K_L",
+      "priority": 170,
+      "tier": "high",
+      "cuda_status": "unverified"
+    },
+    {
+      "quantization": "Q5_K_M",
+      "priority": 160,
+      "tier": "high",
+      "cuda_status": "unverified"
+    },
+    {
+      "quantization": "Q5_K_S",
+      "priority": 150,
+      "tier": "high",
+      "cuda_status": "unverified"
+    },
+    {
+      "quantization": "Q4_K_L",
+      "priority": 140,
+      "tier": "balanced",
+      "cuda_status": "unverified"
+    },
+    {
+      "quantization": "Q4_K_M",
+      "priority": 130,
+      "tier": "balanced",
+      "cuda_status": "unverified"
+    },
+    {
+      "quantization": "Q4_K_S",
+      "priority": 120,
+      "tier": "balanced",
+      "cuda_status": "unverified"
+    },
+    {
+      "quantization": "IQ4_XS",
+      "priority": 110,
+      "tier": "balanced",
+      "cuda_status": "unverified"
+    },
+    {
+      "quantization": "Q3_K_XL",
+      "priority": 100,
+      "tier": "compact",
+      "cuda_status": "unverified"
+    },
+    {
+      "quantization": "Q3_K_L",
+      "priority": 90,
+      "tier": "compact",
+      "cuda_status": "unverified"
+    },
+    {
+      "quantization": "Q3_K_M",
+      "priority": 80,
+      "tier": "compact",
+      "cuda_status": "unverified"
+    },
+    {
+      "quantization": "IQ3_M",
+      "priority": 70,
+      "tier": "compact",
+      "cuda_status": "unverified"
+    },
+    {
+      "quantization": "IQ3_XS",
+      "priority": 60,
+      "tier": "low",
+      "cuda_status": "unverified"
+    },
+    {
+      "quantization": "Q3_K_S",
+      "priority": 50,
+      "tier": "low",
+      "cuda_status": "unverified"
+    },
+    {
+      "quantization": "IQ2_M",
+      "priority": 40,
+      "tier": "very_low",
+      "cuda_status": "unverified"
+    },
+    {
+      "quantization": "Q2_K_L",
+      "priority": 30,
+      "tier": "very_low",
+      "cuda_status": "unverified"
+    },
+    {
+      "quantization": "Q2_K",
+      "priority": 20,
+      "tier": "very_low",
+      "cuda_status": "unverified"
+    }
+  ],
+  "excluded_on_cuda": {
+    "Q4_0_4_4": "ARM-specific layout",
+    "Q4_0_4_8": "ARM i8mm layout",
+    "Q4_0_8_8": "ARM SVE layout"
+  },
+  "notes": [
+    "The reserve is user-adjustable, provisional and NOT a calibrated KV/compute budget.",
+    "GGUF disk bytes only approximate GPU weight residency; no VRAM-fit guarantee without isolated native probe.",
+    "Discovering a variant does not register, pin, download, or accept its license.",
+    "Future model-quality benchmarks may replace this ordering with verified comparisons."
+  ]
+}

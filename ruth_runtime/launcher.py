@@ -81,7 +81,7 @@ def main(argv: list[str] | None = None) -> int:
     models = sub.add_parser("models", help="Read-only hierarchical model catalog and HF provenance")
     model_sub = models.add_subparsers(dest="model_action")
     model_sub.add_parser("list", help="List families, GGUF models and defaults (offline)")
-    for operation in ("select", "resolve", "download", "smoke", "profile"):
+    for operation in ("select", "resolve", "download", "smoke", "profile", "quantizations", "recommend"):
         mp = model_sub.add_parser(operation, help=(
             "Offline model selection" if operation == "select" else
             "Resolve HF immutable revision and GGUF checksum (metadata only)"
@@ -91,6 +91,10 @@ def main(argv: list[str] | None = None) -> int:
             "Isolated native GGUF test with real CUDA offload/token evidence"
             if operation == "smoke" else
             "Repeated GPU GGUF profile: warmup, prefill/decode, VRAM, token/s"
+            if operation == "profile" else
+            "Discover all GGUF quantization metadata (no model files)"
+            if operation == "quantizations" else
+            "Quality heuristic and GPU free-memory provisional shortlist"
         ))
         mp.add_argument("--purpose", choices=("production", "test"), default="test")
         mp.add_argument("--family")
@@ -98,9 +102,14 @@ def main(argv: list[str] | None = None) -> int:
         mp.add_argument("--version")
         mp.add_argument("--format")
         mp.add_argument("--quantization")
-        if operation == "resolve":
+        if operation in ("resolve", "quantizations", "recommend"):
             mp.add_argument("--allow-metadata-network", action="store_true",
                             help="Authorize public HF JSON metadata requests; never download weights")
+        if operation == "recommend":
+            mp.add_argument("--reserve-mib", type=int, default=None,
+                            help="Provisional VRAM reserve MiB (unvalidated KV/compute budget)")
+            mp.add_argument("--top-k", type=int, default=None,
+                            help="Maximum number of shortlisted candidates")
         if operation == "download":
             mp.add_argument("--allow-model-download", action="store_true",
                             help="Authorize network transfer of this pinned GGUF file")
@@ -121,13 +130,32 @@ def main(argv: list[str] | None = None) -> int:
             if args.model_action == "list":
                 _print({"action": "models", **list_models()})
                 return 0
-            if args.model_action not in {"select", "resolve", "download", "smoke", "profile"}:
-                raise CatalogError("Choose models list, select, resolve, download, smoke or profile")
+            if args.model_action not in {"select", "resolve", "download", "smoke", "profile", "quantizations", "recommend"}:
+                raise CatalogError("Choose models list, select, resolve, download, smoke, profile, quantizations or recommend")
             choice = select_model(
                 purpose=args.purpose, family=args.family, model=args.model,
                 version=args.version, format=args.format,
                 quantization=args.quantization,
             )
+            if args.model_action in {"quantizations", "recommend"}:
+                from .candidate_selection import (
+                    discover_quantizations, recommend_quantization,
+                )
+                if args.model_action == "quantizations":
+                    result = discover_quantizations(
+                        purpose=args.purpose,
+                        authorize_metadata_network=args.allow_metadata_network,
+                    )
+                    _print({"action": "models", **result})
+                    return 0 if result["status"] == "quantizations_discovered" else 2
+                result = recommend_quantization(
+                    purpose=args.purpose,
+                    authorize_metadata_network=args.allow_metadata_network,
+                    reserve_mib=args.reserve_mib,
+                    max_candidates=args.top_k,
+                )
+                _print({"action": "models", **result})
+                return 0 if result["status"] == "provisional_shortlist_ready" else 2
             if args.model_action == "select":
                 _print({"action": "models", "status": "selected_unverified",
                         "selection": choice.to_dict(),
