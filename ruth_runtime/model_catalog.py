@@ -216,7 +216,7 @@ def select_model(
                         approx_size_mb=item["approx_size_mb"],
                         expected_size_bytes=item.get("expected_size_bytes"),
                         revision=item["revision"],
-                        assessment=item["assessment"],
+                        assessment=item.get("assessment", "not_gpu_qualified"),
                         local_model_ready=False, downloadable=False,
                         model_loaded=False, gpu_offload_executed=False,
                         inference_executed=False,
