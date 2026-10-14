@@ -154,6 +154,61 @@ class SingleTo512Tests(unittest.TestCase):
                 5800.,
             )
 
+    def test_observed_cuda_futility_stops_partial_and_resumes_without_flag(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            layout, census = make_census(root)
+            target = root / "futility.json"
+            loads = []
+            def loading(path, model_id, trial, **kwargs):
+                loads.append(tuple(trial["host_tensor_names"]))
+                return fake_load(path, model_id, trial, **kwargs)
+            def observation(ranked, entries, *, witness_count):
+                self.assertEqual(witness_count, 2)
+                if len(entries) < 2:
+                    return None
+                return {
+                    "stopped": True,
+                    "certified_exclusions": 0,
+                    "classification": "non_certified_observational_cuda_futility",
+                    "completed_rank_prefix": 2,
+                    "remaining_untested": 4,
+                }
+            with (
+                patch("calibration.kv_single_to_512.inspect_gguf",
+                      return_value=layout),
+                patch("calibration.kv_single_to_512.observed_cuda_futility",
+                      side_effect=observation),
+            ):
+                partial = run_single_to_512(
+                    census_path=census, output=target,
+                    stop_on_cuda_futility=True,
+                    cuda_futility_witness_count=2,
+                    load_probe=loading, inference_probe=fake_infer,
+                )
+            self.assertFalse(partial["completed"])
+            self.assertFalse(partial["summary"]["ready_for_phase3"])
+            self.assertEqual(partial["status"],
+                             "observed_cuda_futility_stop")
+            self.assertEqual(partial["hard_pruning"]["count"], 0)
+            self.assertEqual(partial["summary"]["load_attempted"], 2)
+            self.assertEqual(len(loads), 3)  # GPU-only control + 2 singles
+            self.assertEqual(
+                partial["observed_cuda_futility_stop"][
+                    "classification"],
+                "non_certified_observational_cuda_futility"
+            )
+            with patch("calibration.kv_single_to_512.inspect_gguf",
+                       return_value=layout):
+                resumed = run_single_to_512(
+                    census_path=census, output=target,
+                    load_probe=loading, inference_probe=fake_infer,
+                )
+            self.assertTrue(resumed["completed"])
+            self.assertEqual(resumed["summary"]["load_attempted"], 6)
+            self.assertEqual(len(loads), 7)
+            self.assertIsNone(resumed["observed_cuda_futility_stop"])
+
     def test_resume_between_load_and_inference_does_not_repeat_successful_load(self):
         with tempfile.TemporaryDirectory() as d:
             root = Path(d)
