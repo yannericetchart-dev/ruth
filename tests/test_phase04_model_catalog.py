@@ -15,7 +15,9 @@ from ruth_runtime.launcher import main
 
 
 def metadata(choice, *, revision=None, sha=None, filename=None,
-             size=808000000, license_name=None, gated=False):
+             size=None, license_name=None, gated=False):
+    if size is None:
+        size = choice.expected_size_bytes
     return {
         "sha": revision if revision is not None else (choice.revision or "1" * 40), "private": False, "gated": gated,
         "cardData": {"license": license_name or choice.license},
@@ -125,7 +127,7 @@ class HfMetadataTests(unittest.TestCase):
         self.assertEqual(response["status"], "source_metadata_verified_license_pending")
         self.assertEqual(response["revision"], selected.revision)
         self.assertEqual(response["sha256"], selected.expected_sha256)
-        self.assertEqual(response["size_bytes"], 808000000)
+        self.assertEqual(response["size_bytes"], selected.expected_size_bytes)
         self.assertIn("/blob/" + selected.revision + "/", response["model_url"])
         self.assertFalse(response["license_accepted"])
         self.assertFalse(response["download_started"])
@@ -172,7 +174,7 @@ class HfMetadataTests(unittest.TestCase):
         result = resolve_model_metadata(
             selected, authorize_metadata_network=True,
             fetch=lambda _: {"sha": "a" * 40, "siblings": [
-                {"rfilename": selected.filename, "size": 808000000}
+                {"rfilename": selected.filename, "size": selected.expected_size_bytes}
             ]})
         self.assertEqual(result["status"], "source_metadata_unverified")
 
