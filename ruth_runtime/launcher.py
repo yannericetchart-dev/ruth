@@ -125,10 +125,15 @@ def main(argv: list[str] | None = None) -> int:
         if not env.interpreter_in_project_venv or not report["setup_ready"]:
             _print({"action": "setup", "status": "blocked_preflight", "plan": report})
             return 2
-        if not args.allow_downloads and not args.allow_python_dependency_downloads \
-                and not args.verify_candidate and not args.review_security \
-                and not args.build_native and not args.plan_native_install
-                and not args.install_native:
+        if not any((
+            args.allow_downloads,
+            args.allow_python_dependency_downloads,
+            args.verify_candidate,
+            args.review_security,
+            args.build_native,
+            args.plan_native_install,
+            args.install_native,
+        )):
             _print({
                 "action": "setup", "status": "download_not_authorized",
                 "plan": report,
