@@ -93,6 +93,10 @@ class MemoryProfileMatrixTests(unittest.TestCase):
         row = next(p for p in m["profiles"] if p["id"].endswith("/Q4_K_L"))
         classes = {p["nominal_gib"]: p for p in row["capacity_classes"]}
         self.assertEqual(row["measured_weights_buffer_mib"], 5700.31)
+        self.assertEqual(row["source_evidence"]["driver_reserved_mib"], 369)
+        self.assertEqual(row["source_evidence"]["observed_nvml_to_cuda_delta_mib"], 90.19)
+        self.assertIsNone(row["source_evidence"]["native_kv_gpu_buffer_mib"])
+        self.assertIsNone(row["source_evidence"]["native_compute_gpu_buffer_mib"])
         self.assertEqual(classes[4]["status"],
                          "insufficient_nominal_vram_for_measured_weights")
         self.assertEqual(classes[6]["status"],
