@@ -56,7 +56,7 @@
           "expected_size_bytes": 5983265728,
           "approx_size_mb": 5983,
           "revision": "d731033f3dc4018261fd39896e50984d398b4ac5",
-          "assessment": "unverified_on_current_hardware"
+          "assessment": "cuda_full_gpu_unverified"
         },
         {
           "quantization": "Q4_K_M",
@@ -66,7 +66,7 @@
           "expected_sha256": "13b2a7b4115bbd0900162edcebe476da1ba1fc24e718e8b40d32f6e300f56dfe",
           "approx_size_mb": 5760,
           "revision": "d731033f3dc4018261fd39896e50984d398b4ac5",
-          "assessment": "unverified_on_current_hardware",
+          "assessment": "cuda_full_gpu_unverified",
           "expected_size_bytes": 5761057728
         }
       ]
@@ -92,7 +92,7 @@
           "expected_sha256": "6f85a640a97cf2bf5b8e764087b1e83da0fdb51d7c9fab7d0fece9385611df83",
           "approx_size_mb": 808,
           "revision": "067b946cf014b7c697f3654f621d577a3e3afd1c",
-          "assessment": "unverified_on_current_hardware",
+          "assessment": "lightweight_functional_tests_only",
           "expected_size_bytes": 807694464
         }
       ]
