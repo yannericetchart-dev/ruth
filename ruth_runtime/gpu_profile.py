@@ -15,6 +15,7 @@ import statistics
 import subprocess
 from typing import Any, Callable
 
+from .gpu_preflight import inspect_gpu_preflight
 from .dependencies import PROJECT_ROOT
 from .inference_probe import (
     _valid_local_gguf, _parse_offload, _select_unique_gpu,
@@ -62,6 +63,7 @@ class ProfileResult:
     diskcache_todo_open: bool
     saved_report: str | None
     error: str | None
+    gpu_preflight: dict | None
 
     def to_dict(self) -> dict:
         return asdict(self)
@@ -69,7 +71,8 @@ class ProfileResult:
 
 def _empty(status: str, *, model: Path | None = None, uuid: str | None = None,
            pci: str | None = None, verified: bool = False, native: bool = False,
-           error: str | None = None) -> ProfileResult:
+           error: str | None = None,
+           gpu_preflight: dict | None = None) -> ProfileResult:
     return ProfileResult(
         status=status, model=str(model) if model else None,
         gpu_uuid=uuid, gpu_pci_bus=pci, model_verified=verified,
@@ -79,7 +82,7 @@ def _empty(status: str, *, model: Path | None = None, uuid: str | None = None,
         gpu_memory_peak_mib_observed=None, model_load_seconds=None,
         statistics=None, measurements=(), gpu_profile_verified=False,
         model_inference_executed=False, cpu_fallback_selected=False,
-        diskcache_todo_open=True, saved_report=None, error=error,
+        diskcache_todo_open=True, saved_report=None, error=error, gpu_preflight=gpu_preflight,
     )
 
 
@@ -149,6 +152,7 @@ def run_gpu_profile(
     run: Callable[..., Any] = subprocess.run,
     native_check: Callable[..., Any] = verify_native_library,
     gpu_check: Callable[..., tuple[str, str]] = _select_unique_gpu,
+    gpu_preflight: Callable[..., Any] = inspect_gpu_preflight,
     now: Callable[[], datetime] = lambda: datetime.now(timezone.utc),
     save: bool = True,
 ) -> ProfileResult:
@@ -175,11 +179,23 @@ def run_gpu_profile(
             return _empty("native_runtime_unverified", model=file,
                           verified=True, error=native.status)
         uuid, pci = gpu_check(run=run)
+        gate = gpu_preflight(uuid, run=run)
+        if gate.status != "gpu_ready":
+            return _empty(gate.status, model=file, verified=True,
+                          native=True, uuid=uuid, pci=pci,
+                          gpu_preflight=gate.to_dict(),
+                          error=gate.error or "GPU occupata.")
         envvars = {**os.environ, "CUDA_VISIBLE_DEVICES": uuid,
                    "PYTHONNOUSERSITE": "1", "PYTHONDONTWRITEBYTECODE": "1"}
         envvars.pop("LLAMA_CPP_LIB_PATH", None)
         cmd = [str(root / ".venv/bin/python"), "-I", "-c",
                PROFILE_COMMAND, str(root), str(root), purpose, uuid]
+        gate = gpu_preflight(uuid, run=run)
+        if gate.status != "gpu_ready":
+            return _empty(gate.status, model=file, verified=True,
+                          native=True, uuid=uuid, pci=pci,
+                          gpu_preflight=gate.to_dict(),
+                          error=gate.error or "GPU occupata.")
         process = run(cmd, cwd=str(root), capture_output=True, text=True,
                       check=False, timeout=TIMEOUT, env=envvars)
         stdout = (process.stdout or "").splitlines()
@@ -222,6 +238,7 @@ def run_gpu_profile(
             gpu_profile_verified=True, model_inference_executed=True,
             cpu_fallback_selected=False, diskcache_todo_open=True,
             saved_report=None, error=None,
+            gpu_preflight=gate.to_dict(),
         )
         if save:
             folder = root / PROFILES
