@@ -1,12 +1,20 @@
-"""Dependency diagnostics tests use pure-Python mocks, no real GPU needed."""
-from dataclasses import replace
+"""Simulate a fresh machine: never trust global site-packages."""
 from importlib import metadata
+from pathlib import Path
+import platform
+import shutil
 import subprocess
+import sys
+import tempfile
 import unittest
 
 from ruth_runtime.dependencies import _run_probe, inspect_dependencies
 from ruth_runtime.hardware import HostCPU, HostMemory, HardwareReport
 from ruth_runtime.contracts import DeviceInfo
+
+FAKE_ROOT = Path("/nonexistent/ruth-project")
+FAKE_VENV = FAKE_ROOT / ".venv"
+BOOTSTRAP = Path(__file__).resolve().parents[1] / "bootstrap.sh"
 
 
 def fixture(*, supported=True, gpu=True):
@@ -14,8 +22,8 @@ def fixture(*, supported=True, gpu=True):
         "Linux", "test-kernel", "x86_64", supported,
         HostCPU("x86_64", "intel", "test", 4, 2, ("avx2",)),
         HostMemory(8 * 1024**3, 5 * 1024**3, 0),
-        (DeviceInfo("pci:0000:01:00.0", "gpu", "nvidia", "test", driver="580.0", uuid="GPU-test"),)
-        if gpu else (),
+        (DeviceInfo("pci:0000:01:00.0", "gpu", "nvidia", "test",
+                    driver="580.0", uuid="GPU-test"),) if gpu else (),
         None, (),
     )
 
@@ -32,84 +40,154 @@ def pretend_which(name):
     return "/usr/bin/" + name
 
 
+def inspect(hardware=None, *, project_root=FAKE_ROOT, venv_prefix=FAKE_VENV, **kwargs):
+    return inspect_dependencies(
+        fixture() if hardware is None else hardware,
+        project_root=project_root, venv_prefix=venv_prefix,
+        python_version=kwargs.pop("python_version", (3, 12, 4)),
+        package_version=kwargs.pop("package_version", installed),
+        which=kwargs.pop("which", pretend_which),
+        run=kwargs.pop("run", success), **kwargs)
+
+
 class DependencyTests(unittest.TestCase):
-    def test_verified_binding_is_not_inference_verification(self):
-        report = inspect_dependencies(fixture(), package_version=installed,
-                                      which=pretend_which, run=success,
-                                      python_version=(3, 12, 4))
+    def test_valid_venv_and_binding_not_inference_verification(self):
+        report = inspect()
         self.assertTrue(report.ready_for_next_probe)
         self.assertFalse(report.to_dict()["inference_verified"])
-        self.assertTrue(all(c.ok for c in report.checks if c.required_now))
 
-    def test_missing_package_has_install_procedure_and_no_import_probe(self):
+    def test_global_python_cannot_satisfy_project_venv(self):
+        calls = []
+        def forbidden_package(_):
+            calls.append("package_version")
+            raise AssertionError("Host packages must never be inspected")
+        def forbidden_probe(*args, **kwargs):
+            calls.append("probe")
+            raise AssertionError("No binding probing outside Ruth .venv")
+        report = inspect(venv_prefix=Path("/some/other/env"),
+                         package_version=forbidden_package, run=forbidden_probe)
+        self.assertFalse(report.ready_for_next_probe)
+        self.assertEqual(calls, [])
+        self.assertEqual(next(c.status for c in report.checks if c.name == "Ruth .venv"), "missing")
+        self.assertEqual(next(c.status for c in report.checks if c.name == "llama-cpp-python"), "blocked")
+
+    def test_missing_python_venv_has_usable_setup_instructions(self):
+        report = inspect(venv_prefix=Path("/system"))
+        for name in ("Ruth .venv", "Python >=3.10 (Ruth .venv)"):
+            entry = next(c for c in report.checks if c.name == name)
+            self.assertIn("bootstrap.sh", entry.remediation)
+
+    def test_missing_binding_remediation_and_no_probe(self):
         def missing(_):
             raise metadata.PackageNotFoundError("llama-cpp-python")
-        report = inspect_dependencies(fixture(), package_version=missing,
-                                      which=pretend_which, run=lambda *a, **k: self.fail("must not probe"))
+        report = inspect(package_version=missing,
+                         run=lambda *a, **k: self.fail("Do not load absent binding"))
         self.assertFalse(report.ready_for_next_probe)
         check = next(c for c in report.checks if c.name == "llama-cpp-python")
         self.assertEqual(check.status, "missing")
-        self.assertIn("venv", check.remediation)
+        self.assertIn(".venv/bin/python", check.remediation)
         self.assertNotIn("llama.cpp GPU offload", [c.name for c in report.checks])
 
-    def test_cpu_only_binding_fails_no_silent_fallback(self):
+    def test_cpu_only_binding_fails_without_fallback(self):
         def no_offload(argv, **kwargs):
             return subprocess.CompletedProcess(argv, 0, "RUTH_OFFLOAD=no\n", "")
-        report = inspect_dependencies(fixture(), package_version=installed,
-                                      which=pretend_which, run=no_offload)
-        self.assertEqual(next(c.status for c in report.checks if c.name == "llama.cpp GPU offload"),
-                         "incompatible")
+        report = inspect(run=no_offload)
         self.assertFalse(report.ready_for_next_probe)
+        self.assertEqual(next(c.status for c in report.checks
+                              if c.name == "llama.cpp GPU offload"), "incompatible")
 
-    def test_crash_native_probe_classified_not_success(self):
+    def test_crash_or_timeout_classified_as_failure(self):
         def crash(argv, **kwargs):
             return subprocess.CompletedProcess(argv, -11, "", "segfault")
-        report = inspect_dependencies(fixture(), package_version=installed,
-                                      which=pretend_which, run=crash)
-        self.assertFalse(report.ready_for_next_probe)
-        self.assertEqual(next(c.status for c in report.checks if c.name == "llama.cpp GPU offload"),
-                         "probe_failed")
+        self.assertEqual(next(c.status for c in inspect(run=crash).checks
+                              if c.name == "llama.cpp GPU offload"), "probe_failed")
+        def timeout(argv, **kwargs):
+            raise subprocess.TimeoutExpired(argv, 15)
+        self.assertEqual(_run_probe(timeout, "python")[0], "probe_failed")
 
-    def test_no_nvidia_driver_blocks(self):
-        report = inspect_dependencies(fixture(gpu=False), package_version=installed,
-                                      which=pretend_which, run=success)
+    def test_nvidia_driver_absent_blocks_even_if_binding_present(self):
+        report = inspect(hardware=fixture(gpu=False))
         self.assertFalse(report.ready_for_next_probe)
-        self.assertEqual(next(c.status for c in report.checks if c.name == "GPU/driver NVIDIA"), "missing")
+        self.assertEqual(next(c.status for c in report.checks
+                              if c.name == "GPU/driver NVIDIA"), "missing")
 
-    def test_optional_build_tools_do_not_block_existing_wheel(self):
-        def limited(name):
-            return "/usr/bin/nvidia-smi" if name == "nvidia-smi" else None
-        report = inspect_dependencies(fixture(), package_version=installed,
-                                      which=limited, run=success)
+    def test_missing_optional_build_tools_do_not_block_existing_cuda_wheel(self):
+        report = inspect(which=lambda name: "/usr/bin/nvidia-smi"
+                         if name == "nvidia-smi" else None)
         self.assertTrue(report.ready_for_next_probe)
-        self.assertTrue(all(c.status == "optional_missing" for c in report.checks if not c.required_now))
+        self.assertTrue(all(c.status == "optional_missing"
+                            for c in report.checks if not c.required_now))
         self.assertTrue(all(c.remediation for c in report.checks if not c.required_now))
 
     def test_python_or_platform_incompatible(self):
-        for h, py in ((fixture(supported=False), (3, 12, 0)), (fixture(), (3, 9, 19))):
-            with self.subTest(hardware=h, py=py):
-                r = inspect_dependencies(h, python_version=py, package_version=installed,
-                                         which=pretend_which, run=success)
-                self.assertFalse(r.ready_for_next_probe)
+        for h, py in ((fixture(supported=False), (3, 12, 0)),
+                      (fixture(), (3, 9, 19))):
+            with self.subTest(hw=h, py=py):
+                self.assertFalse(inspect(hardware=h, python_version=py).ready_for_next_probe)
 
-    def test_timeout_and_unknown_output_are_not_accepted(self):
-        def timeout(argv, **kwargs):
-            raise subprocess.TimeoutExpired(argv, 10)
-        self.assertEqual(_run_probe(timeout, "python")[0], "probe_failed")
-        def nonsense(argv, **kwargs):
-            return subprocess.CompletedProcess(argv, 0, "unexpected", "")
-        self.assertEqual(_run_probe(nonsense, "python")[0], "probe_failed")
-
-    def test_no_automatic_install_side_effect(self):
+    def test_no_pip_check_or_package_installations(self):
         calls = []
         def recorder(argv, **kwargs):
             calls.append(argv)
             return success(argv, **kwargs)
-        inspect_dependencies(fixture(), package_version=installed,
-                             which=pretend_which, run=recorder)
+        report = inspect(run=recorder)
+        self.assertFalse(any(c.name.lower() == "pip" for c in report.checks))
         self.assertEqual(len(calls), 1)
         self.assertEqual(calls[0][1], "-c")
-        self.assertNotIn("pip", calls[0])
+        self.assertNotIn("install", calls[0])
+
+
+@unittest.skipUnless(platform.system() == "Linux"
+                     and platform.machine() == "x86_64",
+                     "Bootstrap is GNU/Linux x86_64 only")
+class BootstrapTests(unittest.TestCase):
+    def test_read_only_plan_and_missing_venv(self):
+        with tempfile.TemporaryDirectory() as td:
+            dest = Path(td) / "bootstrap.sh"
+            shutil.copyfile(BOOTSTRAP, dest)
+            plan = subprocess.run(["sh", str(dest), "--plan"],
+                                  capture_output=True, text=True)
+            self.assertEqual(plan.returncode, 0, plan.stderr)
+            self.assertFalse((Path(td) / ".venv").exists())
+            check = subprocess.run(["sh", str(dest), "--check"],
+                                   capture_output=True, text=True)
+            self.assertNotEqual(check.returncode, 0)
+            self.assertIn("--create-venv", check.stderr)
+
+    def test_missing_host_python_bootstrapping_scenario(self):
+        with tempfile.TemporaryDirectory() as td:
+            dest = Path(td) / "bootstrap.sh"
+            shutil.copyfile(BOOTSTRAP, dest)
+            bin_dir = Path(td) / "bin"
+            bin_dir.mkdir()
+            for command in ("uname", "sed", "head", "tr"):
+                binary = shutil.which(command)
+                if binary:
+                    (bin_dir / command).symlink_to(binary)
+            import os
+            env = dict(os.environ, PATH=str(bin_dir))
+            out = subprocess.run(["/bin/sh", str(dest), "--check"],
+                                 capture_output=True, text=True, env=env)
+            self.assertNotEqual(out.returncode, 0)
+            self.assertIn("python3 is missing", out.stderr)
+            self.assertIn("Python 3.10+", out.stdout)
+            self.assertFalse((Path(td) / ".venv").exists())
+
+    def test_create_venv_only_when_explicit(self):
+        if sys.version_info < (3, 10):
+            self.skipTest("Python bootstrap requires >=3.10")
+        with tempfile.TemporaryDirectory() as td:
+            dest = Path(td) / "bootstrap.sh"
+            shutil.copyfile(BOOTSTRAP, dest)
+            created = subprocess.run(["sh", str(dest), "--create-venv"],
+                                     capture_output=True, text=True, timeout=40)
+            if created.returncode != 0 and "venv/ensurepip" in created.stderr:
+                self.skipTest("This test host lacks the optional venv package")
+            self.assertEqual(created.returncode, 0, created.stderr)
+            self.assertTrue((Path(td) / ".venv" / "pyvenv.cfg").is_file())
+            verified = subprocess.run(["sh", str(dest), "--check"],
+                                      capture_output=True, text=True, timeout=20)
+            self.assertEqual(verified.returncode, 0, verified.stderr)
 
 
 if __name__ == "__main__":

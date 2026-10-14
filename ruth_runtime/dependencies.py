@@ -1,7 +1,7 @@
-"""Read-only prerequisite diagnostics for NVIDIA/CUDA/llama.cpp/llama_cpp_python.
+"""Read-only diagnostics restricted to Ruth's project-local .venv.
 
-No installation and no CUDA/model initialization; a binding capability check is
-isolated in a child process. GPU execution is NOT verified at this stage.
+Python itself must first be made available on GNU/Linux (see bootstrap.sh).
+No host pip probe; no model loading, installations, downloads or CUDA init.
 """
 from __future__ import annotations
 
@@ -16,18 +16,23 @@ from typing import Callable
 
 from .hardware import HardwareReport, inspect_linux_hardware
 
-
-CUDA_WHEEL_GUIDE = (
-    "Crea un ambiente isolato: python3 -m venv .venv; source .venv/bin/activate; "
-    "python -m pip install --upgrade pip. Per un wheel CUDA scegli una versione "
-    "compatibile con GPU, Python e driver dalla guida ufficiale: "
-    "https://llama-cpp-python.readthedocs.io/en/stable/ "
-    "(CUDA 13.0: indice cu130, se supportato). "
-    "In alternativa installa CUDA Toolkit, CMake e compilatore C++ e compila "
-    'con CMAKE_ARGS="-DGGML_CUDA=on" python -m pip install llama-cpp-python. '
-    "Controlla sempre il backend GPU dopo l'installazione."
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
+VENV_GUIDE = (
+    "Un venv non può installare l'interprete Python sul sistema. Se necessario "
+    "installa Python >=3.10 e il modulo venv tramite il gestore pacchetti "
+    "(solo dopo autorizzazione). Esegui 'sh bootstrap.sh --plan' e poi "
+    "'sh bootstrap.sh --create-venv'. Usa sempre '.venv/bin/python' "
+    "e non installare dipendenze Python globalmente."
 )
-
+CUDA_BINDING_GUIDE = (
+    "Installa llama-cpp-python SOLO nella .venv di Ruth dopo aver selezionato "
+    "una versione/build CUDA compatibile e averla bloccata. Documentazione: "
+    "https://llama-cpp-python.readthedocs.io/en/stable/ . "
+    "Se scegli la build da sorgente prepara CUDA Toolkit/nvcc, CMake e "
+    "compilatore C++; usa CMAKE_ARGS='-DGGML_CUDA=on' "
+    "'.venv/bin/python -m pip install llama-cpp-python==<VERSIONE_APPROVATA>'. "
+    "La sola installazione non prova l'inferenza; evita wheel CPU-only."
+)
 BINDING_PROBE = (
     "from llama_cpp.llama_cpp import llama_supports_gpu_offload; "
     "print('RUTH_OFFLOAD=' + ('yes' if llama_supports_gpu_offload() else 'no'))"
@@ -38,7 +43,7 @@ BINDING_PROBE = (
 class DependencyCheck:
     name: str
     required_now: bool
-    status: str  # ok / missing / incompatible / probe_failed / optional_missing
+    status: str  # ok/missing/incompatible/probe_failed/optional_missing/blocked
     detail: str
     remediation: str | None = None
 
@@ -73,9 +78,9 @@ def _run_probe(run: Callable[..., object], executable: str) -> tuple[str, str]:
         return "probe_failed", "Import nativo non riuscito o subprocess terminato con errore"
     lines = result.stdout.splitlines()
     if "RUTH_OFFLOAD=yes" in lines:
-        return "ok", "Binding importabile; llama.cpp dichiara GPU offload disponibile (non prova inferenza)"
+        return "ok", "Binding importabile; llama.cpp dichiara GPU offload (non è prova di inferenza)"
     if "RUTH_OFFLOAD=no" in lines:
-        return "incompatible", "Binding presente ma compilato senza supporto GPU offload"
+        return "incompatible", "Binding presente ma privo del supporto GPU offload"
     return "probe_failed", "Il probe non ha restituito una risposta valida"
 
 
@@ -84,74 +89,104 @@ def inspect_dependencies(
     *,
     python_version: tuple[int, ...] | None = None,
     executable: str | None = None,
+    project_root: Path | None = None,
+    venv_prefix: Path | None = None,
     which: Callable[[str], str | None] = shutil.which,
     package_version: Callable[[str], str] = metadata.version,
     run: Callable[..., object] = subprocess.run,
 ) -> DependencyReport:
-    """No network, writes, installs, GPU benchmark or model imports in this process.
+    """Inspect only the active project .venv, never host site-packages.
 
-    Compiler/nvcc/cmake/pip are preparatory tools, not runtime requirements
-    for an already working CUDA wheel. Later phases extend the registry.
+    Inject venv_prefix in tests to simulate an isolated project venv.
+    Production mode always validates the real prefix and pyvenv.cfg marker.
     """
     hardware = hardware if hardware is not None else inspect_linux_hardware()
     python_version = python_version if python_version is not None else sys.version_info[:3]
     executable = executable if executable is not None else sys.executable
-    checks: list[DependencyCheck] = []
-    add = lambda n, req, status, detail, fix=None: checks.append(DependencyCheck(
-        n, req, status, detail, fix))
+    project_root = Path(project_root) if project_root is not None else PROJECT_ROOT
+    expected_venv = (project_root / ".venv").resolve()
+    actual_prefix = Path(venv_prefix) if venv_prefix is not None else Path(sys.prefix)
+    correct_prefix = actual_prefix.resolve() == expected_venv
+    has_venv_marker = (
+        venv_prefix is not None
+        or ((expected_venv / "pyvenv.cfg").is_file() and sys.prefix != sys.base_prefix)
+    )
+    active_venv = correct_prefix and has_venv_marker
 
-    add("GNU/Linux x86_64", True, "ok" if hardware.supported_platform else "incompatible",
+    checks: list[DependencyCheck] = []
+
+    def add(name: str, required: bool, status: str, detail: str,
+            fix: str | None = None) -> None:
+        checks.append(DependencyCheck(name, required, status, detail, fix))
+
+    add("GNU/Linux x86_64", True,
+        "ok" if hardware.supported_platform else "incompatible",
         f"OS={hardware.os_name}, arch={hardware.architecture}",
-        None if hardware.supported_platform else "Serve un host GNU/Linux x86_64.")
-    py_ok = tuple(python_version[:2]) >= (3, 10)
-    add("Python >=3.10", True, "ok" if py_ok else "incompatible",
-        "Python " + ".".join(str(v) for v in python_version),
-        None if py_ok else "Installa Python >= 3.10 e crea un ambiente virtuale dedicato.")
+        None if hardware.supported_platform else "Serve GNU/Linux x86_64.")
+    python_ok = tuple(python_version[:2]) >= (3, 10)
+    add("Python >=3.10 (Ruth .venv)", True,
+        "ok" if python_ok and active_venv else ("missing" if not active_venv else "incompatible"),
+        "Versione " + ".".join(map(str, python_version)) + (
+            "; interprete appartenente al progetto" if active_venv
+            else "; non stai usando l'interprete della .venv di Ruth"),
+        None if python_ok and active_venv else VENV_GUIDE)
+    add("Ruth .venv", True, "ok" if active_venv else "missing",
+        "Ambiente progetto verificato" if active_venv else
+        "Richiesta .venv del repository; pacchetti host ignorati",
+        None if active_venv else VENV_GUIDE)
+
     smi = which("nvidia-smi")
     add("nvidia-smi", True, "ok" if smi else "missing",
-        smi or "Comando non trovato nel PATH",
-        None if smi else "Verifica installazione e PATH del driver NVIDIA; consulta la documentazione della distribuzione GNU/Linux.")
-    identified = [g for g in hardware.gpus if g.vendor == "nvidia"
-                  and g.driver and g.uuid]
-    add("GPU/driver NVIDIA", True, "ok" if identified else "missing",
-        (str(len(identified)) + " GPU con identificazione nativa via nvidia-smi"
-         if identified else "Nessuna GPU NVIDIA con driver e UUID verificati"),
-        None if identified else "Esegui nvidia-smi; controlla driver, permessi e accessibilità GPU. Non reinstallare il driver alla cieca.")
+        smi or "Comando NVIDIA non presente nel PATH",
+        None if smi else "Installa/verifica il driver NVIDIA con la procedura della tua distribuzione; poi esegui nvidia-smi.")
+    gpus = [d for d in hardware.gpus if d.vendor == "nvidia" and d.driver and d.uuid]
+    add("GPU/driver NVIDIA", True, "ok" if gpus else "missing",
+        (str(len(gpus)) + " GPU identificate con driver/UUID"
+         if gpus else "Nessuna GPU NVIDIA con driver e UUID verificati"),
+        None if gpus else "Verifica con nvidia-smi driver, accesso GPU e permessi prima di modificare il sistema.")
 
-    try:
-        installed = package_version("llama-cpp-python")
-    except metadata.PackageNotFoundError:
-        installed = None
-    except Exception as exc:
-        add("llama-cpp-python", True, "probe_failed",
-            f"Impossibile leggere la versione del pacchetto: {type(exc).__name__}", CUDA_WHEEL_GUIDE)
-        installed = "ERROR"
-    if installed is None:
-        add("llama-cpp-python", True, "missing",
-            "Binding non installato nell'interprete Python corrente", CUDA_WHEEL_GUIDE)
-    elif installed != "ERROR":
-        add("llama-cpp-python", True, "ok", "Versione distribuzione " + installed)
-        status, detail = _run_probe(run, executable)
-        add("llama.cpp GPU offload", True, status, detail,
-            None if status == "ok" else CUDA_WHEEL_GUIDE)
+    if not active_venv or not python_ok:
+        add("llama-cpp-python", True, "blocked",
+            "Controllo sospeso: serve prima Python compatibile dentro Ruth .venv",
+            VENV_GUIDE)
+    else:
+        try:
+            installed = package_version("llama-cpp-python")
+        except metadata.PackageNotFoundError:
+            installed = None
+        except Exception as exc:
+            add("llama-cpp-python", True, "probe_failed",
+                f"Non è stato possibile ottenere la versione: {type(exc).__name__}",
+                CUDA_BINDING_GUIDE)
+            installed = "ERROR"
+        if installed is None:
+            add("llama-cpp-python", True, "missing",
+                "Pacchetto assente nella .venv di Ruth", CUDA_BINDING_GUIDE)
+        elif installed != "ERROR":
+            add("llama-cpp-python", True, "ok", "Versione " + installed)
+            status, detail = _run_probe(run, executable)
+            add("llama.cpp GPU offload", True, status, detail,
+                None if status == "ok" else CUDA_BINDING_GUIDE)
 
-    for name, command, fix in (
-        ("pip", "pip", "Per Ubuntu/Debian: sudo apt install python3-pip python3-venv; verificare nell'ambiente virtuale."),
-        ("CMake", "cmake", "Per Ubuntu/Debian: sudo apt install cmake; richiesto soltanto per compilare."),
-        ("C++ compiler", "c++", "Per Ubuntu/Debian: sudo apt install build-essential; richiesto soltanto per compilare."),
-        ("CUDA Toolkit nvcc", "nvcc", "Installa CUDA Toolkit seguendo https://developer.nvidia.com/cuda-downloads; necessario per compilare da sorgente, non per ogni wheel precompilato."),
-    ):
-        path = which(command)
+    # Build tools are host prerequisites only when compiling from source.
+    # An existing compatible CUDA wheel does not require them. No pip probe.
+    optional_tools = (
+        ("CMake", "cmake", "Per Debian/Ubuntu: sudo apt install cmake (solo build da sorgente)."),
+        ("Compilatore C++", "c++", "Per Debian/Ubuntu: sudo apt install build-essential (solo build da sorgente)."),
+        ("CUDA Toolkit nvcc", "nvcc", "Toolchain NVIDIA: https://developer.nvidia.com/cuda-downloads (solo build da sorgente)."),
+    )
+    for name, cmd, fix in optional_tools:
+        path = which(cmd)
         add(name, False, "ok" if path else "optional_missing",
-            path or "Non trovato (opzionale finché non è richiesta una build da sorgente)",
+            path or "Assente: richiesto soltanto se si compilerà da sorgente",
             None if path else fix)
     return DependencyReport(tuple(checks))
 
 
 def main() -> int:
-    data = inspect_dependencies().to_dict()
-    print(json.dumps(data, ensure_ascii=False, indent=2, sort_keys=True))
-    return 0 if data["ready_for_next_probe"] else 1
+    report = inspect_dependencies()
+    print(json.dumps(report.to_dict(), ensure_ascii=False, indent=2, sort_keys=True))
+    return 0 if report.ready_for_next_probe else 1
 
 
 if __name__ == "__main__":
