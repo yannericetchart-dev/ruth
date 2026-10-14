@@ -67,6 +67,97 @@ class AlternativeKVBaselineTests(unittest.TestCase):
             self.assertEqual(candidate["summary"]["load_attempted"], 6)
             self.assertEqual(candidate["hard_pruning"]["count"], 0)
 
+    def test_f16_f16_flash_on_256_to_512_has_isolated_outputs(self):
+        """FA ON f16/f16 is a distinct native profile, never reused from FA OFF."""
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            layout, census = make_census(root)
+            baseline = root / "phase2_f16_f16_faon_baseline_256.json"
+            target = root / "phase2_single_to_512_f16_f16_faon.json"
+            native_calls = []
+            def baseline_probe(path, model_id, trial, **kwargs):
+                native_calls.append((list(trial["host_tensor_names"]),
+                                     kwargs.copy()))
+                return fake_native_probe(path, model_id, trial, **kwargs)
+            with patch("calibration.kv_profile_baseline.inspect_gguf",
+                       return_value=layout):
+                report = run_kv_profile_baseline(
+                    census_path=census, output=baseline,
+                    flash_attn=True, type_k="f16", type_v="f16",
+                    n_ctx=256, probe=baseline_probe,
+                )
+            self.assertTrue(report["success"])
+            self.assertTrue(report["completed"])
+            self.assertEqual(len(native_calls), 2)
+            self.assertTrue(all(
+                names == [] and kwargs["flash_attn"] is True
+                and kwargs["type_k"] == kwargs["type_v"] == "f16"
+                and kwargs["n_ctx"] == 256 and kwargs["tokens"] == 16
+                for names, kwargs in native_calls
+            ))
+            loaded = []
+            inferred = []
+            def faon_load(path, model_id, trial, **kwargs):
+                loaded.append((tuple(trial["host_tensor_names"]),
+                               kwargs.copy()))
+                self.assertIs(kwargs.pop("flash_attn"), True)
+                self.assertEqual(kwargs.pop("type_k"), "f16")
+                self.assertEqual(kwargs.pop("type_v"), "f16")
+                return fake_load(path, model_id, trial, **kwargs)
+            def faon_inference(path, model_id, trial, **kwargs):
+                inferred.append((tuple(trial["host_tensor_names"]),
+                                 kwargs.copy()))
+                self.assertIs(kwargs["flash_attn"], True)
+                self.assertEqual(kwargs["type_k"], "f16")
+                self.assertEqual(kwargs["type_v"], "f16")
+                return fake_native_probe(path, model_id, trial, **kwargs)
+            with patch("calibration.kv_single_to_512.inspect_gguf",
+                       return_value=layout):
+                promoted = run_single_to_512(
+                    census_path=census, output=target,
+                    target_ctx=512, flash_attn=True,
+                    type_k="f16", type_v="f16",
+                    baseline_profile_path=baseline,
+                    load_probe=faon_load,
+                    inference_probe=faon_inference,
+                )
+            self.assertTrue(promoted["completed"])
+            self.assertEqual(promoted["parameters"]["source_n_ctx"], 256)
+            self.assertEqual(promoted["parameters"]["target_n_ctx"], 512)
+            self.assertIs(promoted["parameters"]["flash_attn"], True)
+            self.assertEqual(promoted["summary"]["inference_success"], 1)
+            self.assertEqual(len(loaded), 7)
+            self.assertEqual(len(inferred), 2)
+            self.assertTrue(all(kw["n_ctx"] == 512 for _, kw in loaded))
+            self.assertTrue(all(kw["n_ctx"] == 512 for _, kw in inferred))
+            self.assertFalse((root / "phase2_single_to_512.json").exists())
+            self.assertEqual(promoted["hard_pruning"]["count"], 0)
+
+    def test_f16_flash_on_promotion_needs_matching_native_proof(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            layout, census = make_census(root)
+            baseline = root / "f16_faoff_baseline.json"
+            with patch("calibration.kv_profile_baseline.inspect_gguf",
+                       return_value=layout):
+                proof = run_kv_profile_baseline(
+                    census_path=census, output=baseline,
+                    flash_attn=False, type_k="f16", type_v="f16",
+                    probe=fake_native_probe,
+                )
+            self.assertTrue(proof["success"])
+            with patch("calibration.kv_single_to_512.inspect_gguf",
+                       return_value=layout):
+                with self.assertRaisesRegex(ValueError, "non compatibile"):
+                    run_single_to_512(
+                        census_path=census,
+                        output=root / "should_not_exist.json",
+                        target_ctx=512, flash_attn=True,
+                        type_k="f16", type_v="f16",
+                        baseline_profile_path=baseline,
+                    )
+            self.assertFalse((root / "should_not_exist.json").exists())
+
     def test_all_gpu_target_is_probed_before_spending_cpu_offload_trials(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
