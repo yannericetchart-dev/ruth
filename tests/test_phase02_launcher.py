@@ -169,6 +169,55 @@ class LauncherTests(unittest.TestCase):
             self.assertEqual(main(["setup", "--verify-candidate"]), 2)
             self.assertIn("source_checkout_unverified", output.getvalue())
 
+    def test_security_review_runs_offline_and_never_installs(self):
+        from types import SimpleNamespace
+        plan = SimpleNamespace(source_verified=True, to_dict=lambda: {})
+        gate = SimpleNamespace(
+            mitigations_validated=True,
+            status="controls_verified_residual_risk",
+            to_dict=lambda: {
+                "lock_approved": False,
+                "security_review_passed": False,
+                "mitigations_validated": True,
+            },
+        )
+        with patch("ruth_runtime.launcher.inspect_python_environment",
+                   return_value=environment()), \
+             patch("ruth_runtime.launcher.build_launch_plan",
+                   return_value={"setup_ready": True}), \
+             patch("ruth_runtime.source_build_plan.create_source_build_plan",
+                   return_value=plan), \
+             patch("ruth_runtime.security_gate.review_diskcache_risk",
+                   return_value=gate) as review, \
+             patch("ruth_runtime.dependency_resolution.stage_dependency_candidate",
+                   side_effect=AssertionError("No downloads")), \
+             patch("ruth_runtime.source_acquisition.acquire_pinned_sources",
+                   side_effect=AssertionError("No cloning")), \
+             patch("sys.stdout", new_callable=StringIO) as output:
+            self.assertEqual(main(["setup", "--review-security"]), 0)
+            self.assertEqual(review.call_count, 1)
+            self.assertIn('"lock_approved": false', output.getvalue())
+            self.assertIn('"installation_started": false', output.getvalue())
+            self.assertIn("controls_verified_residual_risk", output.getvalue())
+
+    def test_security_review_failure_blocks(self):
+        from types import SimpleNamespace
+        gate = SimpleNamespace(
+            mitigations_validated=False, status="blocked",
+            to_dict=lambda: {"errors": ["Pinned cache source changed"]},
+        )
+        with patch("ruth_runtime.launcher.inspect_python_environment",
+                   return_value=environment()), \
+             patch("ruth_runtime.launcher.build_launch_plan",
+                   return_value={"setup_ready": True}), \
+             patch("ruth_runtime.source_build_plan.create_source_build_plan",
+                   return_value=SimpleNamespace(source_verified=True)), \
+             patch("ruth_runtime.security_gate.review_diskcache_risk",
+                   return_value=gate), \
+             patch("sys.stdout", new_callable=StringIO) as output:
+            self.assertEqual(main(["setup", "--review-security"]), 2)
+            self.assertIn('"status": "blocked"', output.getvalue())
+
     def test_run_never_pretends_llm_engine_implemented(self):
         with patch("ruth_runtime.launcher.inspect_python_environment",
                    return_value=environment()), \

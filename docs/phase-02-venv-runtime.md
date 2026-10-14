@@ -25,6 +25,7 @@ già verificato. Non installa pacchetti di sistema.
 | `./ruth setup --allow-downloads` | Autorizza e acquisisce automaticamente soltanto i sorgenti pinned, riutilizzando quelli già verificati. |
 | `./ruth setup --allow-python-dependency-downloads` | Se il checkout è già verificato, autorizza soltanto **pip download** di wheel binari runtime e build in staging. Genera il manifest candidato con SHA256 e si ferma prima dell'installazione. |
 | `./ruth setup --verify-candidate` | Verifica il candidato esistente: ricalcola gli hash, confronta digest e dimensioni con i metadati ufficiali PyPI e usa `pip --dry-run --no-index` per valutare chiusura e compatibilità senza installare. L'opzione autorizza la sola consultazione dei metadati PyPI. |
+| `./ruth setup --review-security` | Controllo offline del codice upstream, wheel `diskcache` e 12 test dell'adapter CUDA; non installa e non può approvare da solo il rischio residuo. |
 | `./ruth setup --allow-downloads --allow-python-dependency-downloads` | Acquisisce i sorgenti se mancanti e poi risolve i wheel candidati automaticamente, con due autorizzazioni dichiarate nella stessa invocazione. |
 | `./ruth run` | **Rifiuta** l'inferenza finché binding/adapter e modello non saranno realmente installati e verificati. |
 
@@ -143,6 +144,50 @@ di attacco controllata da Ruth ma non corregge `diskcache` stessa.
 Il manifest resta `approved=false` e l'installazione è bloccata
 fino a revisione del rischio residuo, gestione sicurezza del filesystem
 ed evidenza nativa su un ambiente dedicato.
+
+## Gate di sicurezza applicativa: `--review-security`
+
+Dopo aver acquisito i sorgenti pinned e aver verificato gli 8 wheel
+su PyPI, la verifica **offline** dell'adapter e del rischio cache si avvia con:
+
+```bash
+./ruth setup --review-security
+```
+
+Questo comando controlla automaticamente:
+- **source pin**: checkout verificato di `llama-cpp-python v0.3.36` e submodule
+  `llama.cpp`, ai commit già fissati;
+- **contratto upstream tramite AST**: `Llama.__init__` inizializza
+  `self.cache = None` ed espone `set_cache`; `LlamaDiskCache` esiste
+  e crea effettivamente `diskcache.Cache` (superficie di rischio nota);
+- **artefatto locale**: candidato `diskcache 5.6.3` e SHA-256 invariati;
+- **test del percorso Ruth**: esegue automaticamente i test di
+  `tests/test_phase02_cuda_adapter.py` e richiede esito `OK`
+  con almeno 12 test eseguiti.
+
+Un esito tecnico positivo produce `controls_verified_residual_risk`
+e `mitigations_validated=true`. Significa che il percorso **gestito da
+Ruth** non abilita la cache su disco nelle condizioni simulate e l'API
+upstream corrisponde alle assunzioni; non significa che il pacchetto
+sia corretto o che sia possibile eseguire Python non attendibile
+nello stesso processo.
+
+La vulnerabilità `CVE-2025-69872` richiede che un aggressore
+possa modificare i file di una cache successivamente deserializzata.
+Ruth non deve creare `LlamaDiskCache`, caricare cache serializzate,
+accettare percorsi di cache esterni o esporre `set_cache` nella sua
+API di produzione. Nessuna di queste mitigazioni rende
+`diskcache` un pacchetto sicuro contro usi da altro codice Python:
+**`security_review_passed=false`, `lock_approved=false` e
+`installation_authorized=false` restano veri anche quando i
+controlli sono superati**. Questo gate non importa `llama_cpp`,
+non installa pacchetti e non compila.
+
+Per sbloccare l'installazione resta una decisione esplicita sul rischio
+residuo, una revisione del confine di esecuzione (nessun plugin Python
+non attendibile nello stesso processo) e infine la build nativa
+con test di offload CUDA e inferenza GGUF reale. Evitare qualunque
+autorizzazione implicita nascosta nello stato di `setup`.
 
 ## Installazione automatica: gate da completare
 

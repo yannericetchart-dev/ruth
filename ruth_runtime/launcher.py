@@ -66,6 +66,8 @@ def main(argv: list[str] | None = None) -> int:
                        help="Authorize pip DOWNLOAD of binary Python dependencies only (not install)")
     setup.add_argument("--verify-candidate", action="store_true",
                        help="Audit staged wheel hashes and PyPI metadata; pip OFFLINE dry-run only")
+    setup.add_argument("--review-security", action="store_true",
+                       help="Offline upstream diskcache and CUDA adapter policy check; no install")
     sub.add_parser("run", help="Start the CUDA runtime only after verification")
     args = parser.parse_args(argv)
 
@@ -95,7 +97,7 @@ def main(argv: list[str] | None = None) -> int:
             _print({"action": "setup", "status": "blocked_preflight", "plan": report})
             return 2
         if not args.allow_downloads and not args.allow_python_dependency_downloads \
-                and not args.verify_candidate:
+                and not args.verify_candidate and not args.review_security:
             _print({
                 "action": "setup", "status": "download_not_authorized",
                 "plan": report,
@@ -115,6 +117,20 @@ def main(argv: list[str] | None = None) -> int:
                         "pip_started": False, "build_started": False})
                 return 2
             source_plan = create_source_build_plan()
+        if args.review_security:
+            from .security_gate import review_diskcache_risk
+            gate = review_diskcache_risk(
+                project_root=Path(env.project_root),
+                environment=env, source_plan=source_plan,
+            )
+            _print({
+                "action": "setup",
+                "status": gate.status,
+                "security_gate": gate.to_dict(),
+                "installation_started": False,
+                "build_started": False,
+            })
+            return 0 if gate.mitigations_validated else 2
         if args.verify_candidate:
             if not source_plan.source_verified:
                 _print({"action": "setup", "status": "source_checkout_unverified",
