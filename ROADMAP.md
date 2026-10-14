@@ -91,7 +91,7 @@ Il commit della fase contiene **solo** quanto concordato, inclusi test e documen
 - [ ] Misura dei processi concorrenti GPU e della contesa, con prova nativa sulla macchina dell'utente (**da progettare senza confondere grafica e compute**).
 - [x] Gestione di assenza di GPU, `nvidia-smi` mancante, dati incompleti e piattaforma non supportata senza metriche inventate.
 - [x] Test automatici offline per Intel/AMD/NVIDIA, casi con/ senza DRM, parsing CSV e PCI, senza affermare supporto di inferenza.
-- [ ] **Esecuzione e revisione dell'inventario sulla macchina GNU/Linux x86_64 NVIDIA dell'utente**.
+- [x] **Esecuzione e revisione dell'inventario reale**, riportata dall'utente il 14 ottobre 2026: `21` test standard-library superati; sistema Linux x86_64 compatibile; Intel Core Ultra 7 155H (16 core / 22 thread), circa 15,13 GiB RAM (8,92 GiB disponibili), swap assente; GPU Intel integrata rilevata e GPU NVIDIA RTX 4050 Laptop 6 GiB con driver 580.178.04, VRAM libera circa 5,63 GiB; `warnings: []`. L'identificativo univoco GPU e il report integrale non vengono conservati nel repository.
 - **Output:** `python -m ruth_runtime.hardware` stampa un `hardware_report` JSON di sola lettura. Non certifica CUDA, né uno stack LLM.
 - **Gate:** nessuna risorsa non rilevata viene considerata disponibile; chiudere soltanto dopo revisione dei risultati hardware e del punto sui processi concorrenti.
 
@@ -333,7 +333,7 @@ Queste non sono domande da risolvere tutte subito: ciascuna viene affrontata **p
 | --- | --- | --- |
 | Roadmap | **Approvata, modificabile** | Approvazione generale del 14 ottobre 2026; revisioni future consentite |
 | 00 | **Bozza di contratto da revisionare** | Interfacce e catalogo dichiarativo nel codice, test CPU-only; nessun adapter operativo |
-| 01 | **Implementazione da verificare** | Inventario Linux/DRM/NVIDIA e test offline; manca verifica sulla GPU dell'utente e occupazione processi |
+| 01 | **Inventario reale verificato; fase aperta** | 21 test passati sulla macchina dell'utente, Intel + NVIDIA e VRAM riportate correttamente; manca il censimento dei processi GPU e della contesa |
 | 02–16 | **Non iniziate** | Nessun backend/runtime/profiling operativo autorizzato |
 
-**Prossima azione:** discutere l'aggiornamento della **Fase 00**, con matrice `PRIMO`/`TO DO`, policy e API multilivello; approvare separatamente comportamento automatico e contratto operativo. Nessuna implementazione è implicita nell'approvazione generale della roadmap.
+**Prossima azione:** completare la **Fase 01** con verifica dei processi NVIDIA (graphics e compute) e policy di contesa. Non si passa a validazione CUDA o profiling prima della fase successiva. Le decisioni della Fase 00 ancora aperte vanno chiuse prima delle fasi che le richiedono; roadmap sempre modificabile.
