@@ -9,7 +9,8 @@ from ruth_runtime.dependencies import PROJECT_ROOT
 from ruth_runtime.install_plan import WHEEL_VERSION
 from ruth_runtime.model_catalog import select_model
 from ruth_runtime.profile_registry import (
-    record_local_profile, initialize_model_profile, SCHEMA,
+    record_local_profile, initialize_model_profile,
+    record_minimal_context_inference, SCHEMA,
 )
 
 UUID = "GPU-5a841828-882b-85d9-c98e-3a0d29e66e00"
@@ -148,6 +149,39 @@ class ProfileRegistryTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             record_local_profile(self.evidence, project_root=self.root,
                                  hardware=unsupported)
+
+    def test_verified_minimal_inference_is_stored_without_production_claim(self):
+        first = self.store()
+        choice = select_model("production")
+        inference = {
+            "candidate": "gemma-2-9B-it/gguf/Q4_K_L",
+            "gpu_inference_verified": True,
+            "full_gpu_offload_verified": True,
+            "gpu_process_observed": True,
+            "model_verified": True, "native_library_verified": True,
+            "model_loaded": True, "cpu_fallback_selected": False,
+            "context_calibration_pending": True,
+            "generated_tokens": 8, "n_ctx": 128,
+            "n_batch": 64, "n_ubatch": 64,
+            "offloaded_layers": 43, "total_layers": 43,
+            "gpu_uuid": UUID,
+            "gpu_preflight": {"driver_version": "595.99.02"},
+        }
+        status = record_minimal_context_inference(
+            Path(first["profile_file"]), inference, choice=choice, hardware=hw())
+        self.assertEqual(status["status"], "local_minimal_gpu_inference_verified")
+        profile = json.loads(Path(first["profile_file"]).read_text())
+        self.assertEqual(len(profile["minimal_context_inference"]), 1)
+        self.assertFalse(profile["minimal_context_inference"][0]["production_context_qualified"])
+        self.assertFalse(profile["production_qualified"])
+        record_minimal_context_inference(
+            Path(first["profile_file"]), inference, choice=choice, hardware=hw())
+        self.assertEqual(len(json.loads(Path(first["profile_file"]).read_text())
+                             ["minimal_context_inference"]), 1)
+        inference["gpu_inference_verified"] = False
+        with self.assertRaises(ValueError):
+            record_minimal_context_inference(
+                Path(first["profile_file"]), inference, choice=choice, hardware=hw())
 
     def test_context_remains_unknown_until_explicitly_observed(self):
         self.store()
