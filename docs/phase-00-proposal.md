@@ -74,6 +74,8 @@ Il codice principale chiama sempre le API neutrali. Adapter o provider specifici
 
 **Precisazione fornita dall'utente:** GNU/Linux e architettura CPU **x86_64**; CPU Intel come hardware host da rilevare, **GPU NVIDIA + CUDA come solo percorso d'inferenza iniziale**. GGML CPU è una **libreria utilizzata da llama.cpp**, non un backend CPU o una seconda combinazione. CPU AMD e GPU AMD/Intel rimangono `TO DO` come supporto nativo futuro.
 
+**Requisito NVIDIA/CUDA aggiornato:** driver NVIDIA minimo **595.45.04** (ramo R595) e capacità dichiarata **CUDA 13.2** o superiore. Il driver e il CUDA Toolkit non sono la stessa cosa: l'eventuale versione di Toolkit e la build di `llama_cpp_python` saranno selezionate sulla base della compatibilità effettiva. Se il driver è stato aggiornato ma i servizi non sono stati riavviati, il preflight indica di riavviare prima di reinstallare.
+
 **Decisioni aperte:**
 - **Vincolo chiarito:** l'unico runtime iniziale da implementare/provare usa NVIDIA + CUDA + llama.cpp + `llama_cpp_python`; nessun fallback CPU in questa fase.
 - **Vincolo chiarito:** GGML CPU è una dipendenza/libreria e non può essere passata come valore di `ExecutionBackend`.

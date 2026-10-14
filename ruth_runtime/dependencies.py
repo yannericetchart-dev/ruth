@@ -15,6 +15,11 @@ import sys
 from typing import Callable
 
 from .hardware import HardwareReport, inspect_linux_hardware
+from .requirements import (
+    MIN_NVIDIA_DRIVER, MIN_CUDA_VERSION, driver_meets_policy,
+    parse_driver_version, parse_reported_cuda_version, cuda_meets_policy,
+    render_version,
+)
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 VENV_GUIDE = (
@@ -94,6 +99,7 @@ def inspect_dependencies(
     which: Callable[[str], str | None] = shutil.which,
     package_version: Callable[[str], str] = metadata.version,
     run: Callable[..., object] = subprocess.run,
+    smi_run: Callable[..., object] = subprocess.run,
 ) -> DependencyReport:
     """Inspect only the active project .venv, never host site-packages.
 
@@ -152,10 +158,57 @@ def inspect_dependencies(
         smi or "Comando NVIDIA non presente nel PATH",
         None if smi else "Installa/verifica il driver NVIDIA con la procedura della tua distribuzione; poi esegui nvidia-smi.")
     gpus = [d for d in hardware.gpus if d.vendor == "nvidia" and d.driver and d.uuid]
-    add("GPU/driver NVIDIA", True, "ok" if gpus else "missing",
-        (str(len(gpus)) + " GPU identificate con driver/UUID"
-         if gpus else "Nessuna GPU NVIDIA con driver e UUID verificati"),
-        None if gpus else "Verifica con nvidia-smi driver, accesso GPU e permessi prima di modificare il sistema.")
+    versions = [parse_driver_version(d.driver) for d in gpus]
+    driver_ok = bool(versions) and all(
+        value is not None and value >= MIN_NVIDIA_DRIVER for value in versions
+    )
+    if not gpus:
+        driver_status = "missing"
+        driver_detail = "Nessuna GPU NVIDIA con driver e UUID verificati"
+    elif not driver_ok:
+        driver_status = "incompatible"
+        driver_detail = ("Driver rilevati: " + ", ".join(str(d.driver) for d in gpus)
+                         + "; minimo richiesto: " + render_version(MIN_NVIDIA_DRIVER))
+    else:
+        driver_status = "ok"
+        driver_detail = (str(len(gpus)) + " GPU NVIDIA, driver: "
+                         + ", ".join(sorted({str(d.driver) for d in gpus})))
+    add("GPU/driver NVIDIA", True, driver_status, driver_detail,
+        None if driver_status == "ok" else
+        ("Richiesta policy Ruth: driver NVIDIA >= " + render_version(MIN_NVIDIA_DRIVER)
+         + " (ramo R595, CUDA 13.2). Se hai appena aggiornato il driver, "
+         "riavvia e riprova prima di reinstallare. Per l'installazione usa "
+         "il gestore driver della distribuzione e le istruzioni NVIDIA, "
+         "con autorizzazione esplicita; non modificare i driver automaticamente."))
+
+    if not smi or not driver_ok:
+        add("CUDA supportata dal driver", True, "blocked",
+            "Serve prima un driver NVIDIA verificato conforme a R595/CUDA 13.2",
+            "Risolvi il controllo GPU/driver NVIDIA prima di verificare CUDA.")
+    else:
+        try:
+            smi_result = smi_run([smi], capture_output=True, text=True,
+                                 timeout=8, check=False)
+            if smi_result.returncode != 0:
+                cuda_status, cuda_detail = "probe_failed", (
+                    "nvidia-smi non ha completato correttamente la verifica CUDA")
+            else:
+                cuda_version = parse_reported_cuda_version(smi_result.stdout)
+                cuda_status = ("ok" if cuda_meets_policy(cuda_version)
+                               else "incompatible" if cuda_version is not None
+                               else "probe_failed")
+                cuda_detail = (
+                    "Massima versione CUDA dichiarata dal driver: "
+                    + (render_version(cuda_version) if cuda_version else "sconosciuta")
+                    + "; minimo Ruth: " + render_version(MIN_CUDA_VERSION)
+                    + ". Non certifica CUDA Toolkit né inferenza.")
+        except (OSError, subprocess.SubprocessError) as exc:
+            cuda_status = "probe_failed"
+            cuda_detail = "Impossibile verificare CUDA tramite nvidia-smi: " + type(exc).__name__
+        add("CUDA supportata dal driver", True, cuda_status, cuda_detail,
+            None if cuda_status == "ok" else
+            "Richiesto supporto CUDA >=13.2 nel driver NVIDIA. Riavvia se hai appena aggiornato "
+            "il driver; controlla nvidia-smi, versioni e compatibilità prima di installare.")
 
     if not active_venv or not python_ok:
         add("llama-cpp-python", True, "blocked",

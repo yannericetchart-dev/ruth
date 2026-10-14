@@ -1,6 +1,6 @@
 # Ruth — Roadmap del branch `model-profiling`
 
-> **Versione:** 1.3 — roadmap generale approvata, revisionabile. Fase 02: installazione pianificata da host vuoto, ambiente Python unico `.venv`; nessun controllo `pip` dell'host.
+> **Versione:** 1.4 — roadmap approvata e modificabile. Driver NVIDIA minimo **595.45.04**, baseline CUDA **13.2**; procedura host vuoto con `.venv` e diagnosi dei prerequisiti.
 > **Branch:** `model-profiling` (riscrittura da zero sulla base minimale di `main`).
 > **Riferimento storico:** `feature/minimal-chat` è consultabile per imparare dalle prove precedenti, **non** è una dipendenza né una base di codice da copiare.
 > **Stato attuale:** Fase 01 verificata su hardware reale. Fase 02: diagnosi dipendenze implementata, in attesa di esecuzione sul PC dell'utente. Nessuna inferenza/runtime/profiling operativo.
@@ -36,6 +36,7 @@ Costruire da zero una procedura **automatica, misurabile, riprendibile e verific
 - **API universale:** hardware, backend esecutivo, motore di inferenza e modalità di inizializzazione sono assi distinti. Interfacce comuni, implementazioni specifiche isolate per vendor e capacità negoziate esplicitamente: nessun `if nvidia` sparso nell'orchestratore.
 - **Solo ciò che si può provare:** implementazione reale soltanto sulle combinazioni verificabili sull'hardware dell'utente. Tutte le altre opzioni richieste figurano **nel registro del codice come `TO DO`**, non come funzionalità funzionanti. Le prove simulate verificano contratti, ma non certificano supporto hardware.
 - **Regola dipendenze:** ogni programma, libreria o toolchain necessari deve avere verifica di presenza/versione/capacità e, se mancante, diagnosi o installazione documentata. Nessuna installazione automatica, nessun fallback nascosto; distinguere tool di build opzionali dal runtime.
+- **Policy driver/CUDA:** driver NVIDIA **R595 o superiore**, con minimo tecnico **595.45.04** per CUDA **13.2 GA** su GNU/Linux. Richiedere CUDA almeno **13.2** dichiarata dal driver, distinguendola dalla presenza del CUDA Toolkit e dalla prova nativa di inferenza; per stack successivi la versione del binding/toolkit va compatibilizzata e verificata. Riferimento NVIDIA: https://docs.nvidia.com/cuda/archive/13.2.0/cuda-toolkit-release-notes/ (tabella driver per toolkit).
 - **Preparazione da host vuoto:** durante lo sviluppo si presume che **Python e tutte le altre dipendenze possano mancare**. La shell standard GNU/Linux avvia `bootstrap.sh --plan` anche senza Python; il comando `--create-venv`, solo su richiesta esplicita, crea `.venv` quando Python >=3.10 e venv sono disponibili. La versione base di Python deve essere installata sull'host (o gestita da un tool di bootstrap futuro) prima di creare il virtualenv.
 - **Dipendenze Python SOLO nella `.venv` di Ruth:** non usare pacchetti globali né considerare `pip` un requisito host da controllare. L'installer userà l'interprete `.venv/bin/python` e una selezione di versioni bloccate da approvare, quando sarà implementato. I controlli Python del progetto rifiutano interpreti estranei.
 - **Documenti di sviluppo temporanei:** i documenti di proposta sono rimossi da Git dopo la chiusura della relativa fase e il trasferimento delle decisioni stabili nei documenti permanenti, previa verifica con l'utente. Un normale commit di eliminazione **non cancella la cronologia**: riscritture/squash solo con approvazione esplicita.
@@ -100,11 +101,12 @@ Il commit della fase contiene **solo** quanto concordato, inclusi test e documen
 
 ### Fase 02 — Ambiente software e capacità native (**diagnostica realizzata; prova utente da eseguire**)
 - [x] Diagnosticare GNU/Linux x86_64, driver NVIDIA e `nvidia-smi`; Python >=3.10 e il pacchetto `llama-cpp-python` vengono letti **esclusivamente dall'interprete `.venv` di Ruth**, mai da site-packages dell'host.
+- [x] Applicare il minimo NVIDIA **595.45.04** e verificare il supporto dichiarato CUDA **>=13.2** con `nvidia-smi`; testare versioni minori, mancanti e output invalidi; non confondere con toolkit o inferenza reale.
 - [x] Interrogare `llama_supports_gpu_offload()` in un subprocess isolato, distinguendo pacchetto assente, import fallito, binding CPU-only, crash e timeout. GGML CPU è una libreria, non un backend CPU.
 - [x] Distinguere presenza pacchetto, GPU offload dichiarato e inferenza reale ancora **non** verificata.
 - [ ] Progettare installazione/versionamento riproducibile del backend senza alterazioni silenziose dell'ambiente.
 - [x] Diagnostica con `required_now`, `status`, messaggi e `remediation`. **Nessun controllo `pip`**; CMake, compilatore C++ e `nvcc` sono strumenti host opzionali per wheel CUDA valide, necessari soltanto in caso di compilazione da sorgente.
-- [x] Progettazione e primo bootstrap shell (`sh bootstrap.sh --plan|--check|--create-venv`) da **macchina senza Python**: diagnosi e istruzioni package manager senza installazioni OS; creazione del solo virtualenv con richiesta esplicita, senza installare pacchetti.
+- [x] Progettazione e primo bootstrap shell (`sh bootstrap.sh --plan|--check|--create-venv`) da **macchina senza Python**: diagnosi dinamica di Python e modulo venv, CMake/C++, `nvcc` e `nvidia-smi` con istruzioni per preparare i prerequisiti; nessuna installazione di sistema automatica. Solo `--create-venv` crea il virtualenv su richiesta esplicita.
 - [x] Test simulati per Python/pacchetti host assenti e venv mancante, ambiente sbagliato, build CUDA CPU-only e tool host assenti.
 - [ ] Definire versioni Python/binding approvate, artefatti, compatibilità driver, installazione riproducibile delle dipendenze **dentro .venv**, rollback e prove su macchina pulita.
 - [ ] L'utente esegue `sh bootstrap.sh --plan`, prepara la `.venv` se assente tramite `sh bootstrap.sh --create-venv`, quindi `.venv/bin/python -m ruth_runtime.dependencies`; eventuali installazioni di sistema o pacchetti Python saranno concordate prima.
@@ -342,7 +344,7 @@ Queste non sono domande da risolvere tutte subito: ciascuna viene affrontata **p
 | Roadmap | **Approvata, modificabile** | Approvazione generale del 14 ottobre 2026; revisioni future consentite |
 | 00 | **Bozza di contratto da revisionare** | Interfacce e catalogo dichiarativo nel codice, test CPU-only; nessun adapter operativo |
 | 01 | **Conclusa (inventario statico)** | 21 test dell'utente, hardware reale e snapshot processi NVIDIA verificati; recheck dinamico richiesto prima dei benchmark |
-| 02 | **Bootstrap/diagnostica da verificare** | Progettazione host vuoto, solo `.venv`, test assenza dipendenze; installazione versionata ancora da definire |
+| 02 | **Bootstrap/diagnostica da verificare** | Python/venv isolati, preflight driver NVIDIA >=595.45.04 e CUDA driver >=13.2; installazione versionata ancora da definire |
 | 03–16 | **Non iniziate** | Nessun runtime o profiling operativo ancora sviluppato |
 
-**Prossima azione:** provare `sh bootstrap.sh --plan`, poi creare/verificare la `.venv` con consenso e diagnosticare tramite `.venv/bin/python -m ruth_runtime.dependencies`. Definire l'installer Python/CUDA riproducibile prima di installare le dipendenze; inferenza ancora non verificata.
+**Prossima azione:** dopo il riavvio del driver, eseguire `sh bootstrap.sh --plan`, test e `.venv/bin/python -m ruth_runtime.dependencies` e confermare driver >=595.45.04, CUDA supportata >=13.2; se manca una dipendenza obbligatoria, preparare le istruzioni di installazione specifiche. Non installare pacchetti o driver automaticamente. Inferenza ancora non verificata.

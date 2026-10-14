@@ -51,6 +51,24 @@ check_python() {
     fi
 }
 
+check_venv_module() {
+    if ! python3 -c 'import venv, ensurepip' >/dev/null 2>&1; then
+        printf '%s\n' "ERROR: Python venv/ensurepip support is not installed." >&2
+        python_advice
+        return 1
+    fi
+}
+
+describe_tool() {
+    name="$1"
+    remediation="$2"
+    if command -v "$name" >/dev/null 2>&1; then
+        printf '%s\n' "OK: $name is available."
+    else
+        printf '%s\n' "OPTIONAL MISSING: $name. $remediation"
+    fi
+}
+
 check_venv() {
     if [ -L "$VENV" ]; then
         printf '%s\n' "ERROR: .venv must be a local directory, not a symlink." >&2
@@ -78,12 +96,31 @@ case "$1" in
     --plan)
         check_platform || exit 1
         printf '%s\n' "Ruth setup plan — no files will be changed."
-        python_advice
-        printf '%s\n' "1. Verify Python 3.10+ on the host (needed to create .venv)."
-        printf '%s\n' "2. Create .venv with: sh bootstrap.sh --create-venv"
-        printf '%s\n' "3. Install APPROVED, VERSION-PINNED Python dependencies inside .venv (not defined yet)."
-        printf '%s\n' "4. Verify NVIDIA driver, CUDA-capable llama.cpp binding and native inference separately."
-        printf '%s\n' "No system or Python dependencies are installed by this command."
+        if ! command -v python3 >/dev/null 2>&1; then
+            printf '%s\n' "MISSING: Python 3.10+. The virtualenv cannot be created yet."
+            python_advice
+        elif ! python3 -c 'import sys; sys.exit(0 if sys.version_info >= (3,10) else 1)' >/dev/null 2>&1; then
+            printf '%s\n' "INCOMPATIBLE: host Python <3.10."
+            python_advice
+        elif ! python3 -c 'import venv, ensurepip' >/dev/null 2>&1; then
+            printf '%s\n' "MISSING: Python venv/ensurepip support."
+            python_advice
+        else
+            printf '%s\n' "OK: Python >=3.10 with venv is available."
+        fi
+        if [ -f "$VENV/pyvenv.cfg" ] && [ -x "$VENV/bin/python" ]; then
+            printf '%s\n' "PRESENT: Ruth .venv (use --check to validate isolation)."
+        else
+            printf '%s\n' "MISSING: Ruth .venv; sh bootstrap.sh --create-venv"
+        fi
+        describe_tool nvidia-smi "NVIDIA driver installation and/or reboot required; see https://www.nvidia.com/Download/index.aspx"
+        describe_tool cmake "For source builds only; Debian/Ubuntu: sudo apt install cmake."
+        describe_tool c++ "For source builds only; Debian/Ubuntu: sudo apt install build-essential."
+        describe_tool nvcc "For source builds only; choose CUDA Toolkit from https://developer.nvidia.com/cuda-downloads."
+        printf '%s\n' "POLICY: NVIDIA driver >=595.45.04 (R595), corresponding CUDA >=13.2."
+        printf '%s\n' "The NVIDIA driver/CUDA versions will be verified by Ruth's .venv diagnostic."
+        printf '%s\n' "Python dependencies (including llama-cpp-python) are installed ONLY in Ruth .venv using approved pinned versions."
+        printf '%s\n' "No software is installed by --plan. Host package installation requires explicit approval."
         ;;
     --check)
         check_platform || exit 1
@@ -95,6 +132,7 @@ case "$1" in
     --create-venv)
         check_platform || exit 1
         check_python || exit 1
+        check_venv_module || exit 1
         if [ -e "$VENV" ] || [ -L "$VENV" ]; then
             check_venv || exit 1
             printf '%s\n' "OK: Existing Ruth .venv retained; no packages installed."

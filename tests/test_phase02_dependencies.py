@@ -1,5 +1,6 @@
 """Simulate a fresh machine: never trust global site-packages."""
 from importlib import metadata
+from dataclasses import replace
 from pathlib import Path
 import platform
 import shutil
@@ -9,6 +10,10 @@ import tempfile
 import unittest
 
 from ruth_runtime.dependencies import _run_probe, inspect_dependencies
+from ruth_runtime.requirements import (
+    MIN_NVIDIA_DRIVER, MIN_CUDA_VERSION, driver_meets_policy,
+    parse_driver_version, parse_reported_cuda_version, cuda_meets_policy,
+)
 from ruth_runtime.hardware import HostCPU, HostMemory, HardwareReport
 from ruth_runtime.contracts import DeviceInfo
 
@@ -23,7 +28,7 @@ def fixture(*, supported=True, gpu=True):
         HostCPU("x86_64", "intel", "test", 4, 2, ("avx2",)),
         HostMemory(8 * 1024**3, 5 * 1024**3, 0),
         (DeviceInfo("pci:0000:01:00.0", "gpu", "nvidia", "test",
-                    driver="580.0", uuid="GPU-test"),) if gpu else (),
+                    driver="595.58.03", uuid="GPU-test"),) if gpu else (),
         None, (),
     )
 
@@ -34,6 +39,11 @@ def installed(_):
 
 def success(argv, **kwargs):
     return subprocess.CompletedProcess(argv, 0, "RUTH_OFFLOAD=yes\n", "")
+
+
+def fake_nvidia_smi(argv, **kwargs):
+    return subprocess.CompletedProcess(argv, 0,
+        "NVIDIA-SMI 595.58.03  Driver Version: 595.58.03  CUDA Version: 13.2\n", "")
 
 
 def pretend_which(name):
@@ -47,7 +57,8 @@ def inspect(hardware=None, *, project_root=FAKE_ROOT, venv_prefix=FAKE_VENV, **k
         python_version=kwargs.pop("python_version", (3, 12, 4)),
         package_version=kwargs.pop("package_version", installed),
         which=kwargs.pop("which", pretend_which),
-        run=kwargs.pop("run", success), **kwargs)
+        run=kwargs.pop("run", success),
+        smi_run=kwargs.pop("smi_run", fake_nvidia_smi), **kwargs)
 
 
 class DependencyTests(unittest.TestCase):
@@ -128,6 +139,58 @@ class DependencyTests(unittest.TestCase):
         def timeout(argv, **kwargs):
             raise subprocess.TimeoutExpired(argv, 15)
         self.assertEqual(_run_probe(timeout, "python")[0], "probe_failed")
+
+    def test_driver_minimum_595_cuda_132_enforced(self):
+        self.assertEqual(MIN_NVIDIA_DRIVER, (595, 45, 4))
+        self.assertEqual(MIN_CUDA_VERSION, (13, 2))
+        self.assertEqual(parse_driver_version("595.45.04"), (595, 45, 4))
+        self.assertFalse(driver_meets_policy("595.0"))
+        self.assertFalse(driver_meets_policy("590.99.999"))
+        self.assertTrue(driver_meets_policy("595.45.04"))
+        self.assertTrue(driver_meets_policy("610.0.0"))
+        self.assertFalse(driver_meets_policy("garbage"))
+        self.assertEqual(parse_reported_cuda_version(
+            "NVIDIA-SMI ... CUDA Version: 13.2"), (13, 2))
+        self.assertTrue(cuda_meets_policy((13, 2)))
+        self.assertFalse(cuda_meets_policy((13, 1)))
+
+    def test_outdated_gpu_driver_blocks_even_with_valid_binding(self):
+        report = inspect(hardware=fixture())
+        self.assertTrue(report.ready_for_next_probe)
+        older = fixture()
+        older = replace(
+            older, gpus=(__import__("dataclasses").replace(
+                older.gpus[0], driver="580.178.04"),))
+        result = inspect(hardware=older)
+        self.assertFalse(result.ready_for_next_probe)
+        d = next(c for c in result.checks if c.name == "GPU/driver NVIDIA")
+        self.assertEqual(d.status, "incompatible")
+        self.assertIn("595.45.04", d.remediation or "")
+        self.assertEqual(next(c.status for c in result.checks
+                              if c.name == "CUDA supportata dal driver"), "blocked")
+
+    def test_cuda_version_below_target_and_unreadable_fail(self):
+        def old_cuda(argv, **kwargs):
+            return subprocess.CompletedProcess(argv, 0,
+                "NVIDIA-SMI ... CUDA Version: 13.1", "")
+        def invalid_cuda(argv, **kwargs):
+            return subprocess.CompletedProcess(argv, 0, "unexpected", "")
+        self.assertEqual(next(c.status for c in inspect(smi_run=old_cuda).checks
+                              if c.name == "CUDA supportata dal driver"),
+                         "incompatible")
+        self.assertEqual(next(c.status for c in inspect(smi_run=invalid_cuda).checks
+                              if c.name == "CUDA supportata dal driver"),
+                         "probe_failed")
+        self.assertFalse(inspect(smi_run=old_cuda).ready_for_next_probe)
+
+    def test_nvidia_smi_failure_is_not_missing_driver(self):
+        def reboot_pending(argv, **kwargs):
+            return subprocess.CompletedProcess(argv, 9, "", "Driver/library mismatch")
+        result = inspect(smi_run=reboot_pending)
+        self.assertEqual(next(c.status for c in result.checks
+                              if c.name == "CUDA supportata dal driver"),
+                         "probe_failed")
+        self.assertFalse(result.ready_for_next_probe)
 
     def test_nvidia_driver_absent_blocks_even_if_binding_present(self):
         report = inspect(hardware=fixture(gpu=False))
