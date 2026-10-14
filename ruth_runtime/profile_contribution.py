@@ -170,9 +170,16 @@ def validate_submitted_proposal(
             "production_qualified": False}
 
 
+class GitHubCLIMissing(RuntimeError):
+    """The external GitHub CLI is not installed on the host."""
+
+
 def _gh(args: list[str], run: Callable[..., Any]) -> str:
-    result = run(["gh", *args], capture_output=True, text=True,
-                 timeout=30, check=False)
+    try:
+        result = run(["gh", *args], capture_output=True, text=True,
+                     timeout=30, check=False)
+    except FileNotFoundError as exc:
+        raise GitHubCLIMissing("GitHub CLI 'gh' not found on PATH") from exc
     if result.returncode != 0:
         raise RuntimeError("Authenticated GitHub CLI operation failed: " +
                            " ".join(args[:2]))
@@ -190,6 +197,21 @@ def publish_proposal_pr(
     """
     if not permit_external_publication:
         return {"status": "git_publication_not_authorized", "git_updated": False}
+    try:
+        return _publish_authenticated_proposal(proposal, run=run)
+    except GitHubCLIMissing:
+        return {
+            "status": "git_cli_missing",
+            "git_updated": False,
+            "review_required": True,
+            "retryable": True,
+            "remediation": "Install GitHub CLI (gh), run gh auth login, then retry publication from the existing local profile.",
+        }
+
+
+def _publish_authenticated_proposal(
+    proposal: dict, *, run: Callable[..., Any],
+) -> dict:
     digest = proposal.get("content_digest")
     path = proposal.get("repository_path")
     if (not isinstance(digest, str) or not re.fullmatch("[0-9a-f]{64}", digest)
