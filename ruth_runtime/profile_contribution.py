@@ -16,6 +16,8 @@ from typing import Any, Callable
 
 from .dependencies import PROJECT_ROOT
 from .profile_registry import SCHEMA
+from .model_catalog import load_catalog
+from .hardware_eligibility import load_architecture_policy
 
 UPSTREAM = "yannericetchart-dev/ruth"
 BASE_BRANCH = "model-profiling"
@@ -81,6 +83,86 @@ def build_proposal(profile_file: Path, *, project_root: Path = PROJECT_ROOT) -> 
     digest = hashlib.sha256(raw.encode("utf-8")).hexdigest()
     return {"proposal": proposal, "content_digest": digest,
             "repository_path": f"profiles/submissions/{sha}/{digest}.json"}
+
+
+
+def validate_submitted_proposal(
+    file: Path, *, project_root: Path = PROJECT_ROOT,
+) -> dict:
+    """CI-side, no network, reject noncanonical, unauthenticated profile claims.
+
+    This establishes only schema/provenance consistency, NOT that a stranger's
+    physical measurements are trustworthy. Human review is still mandatory.
+    """
+    path = Path(file)
+    parts = path.parts
+    if (len(parts) < 4 or parts[-4] != "profiles"
+        or parts[-3] != "submissions"
+        or not re.fullmatch("[0-9a-f]{64}", parts[-2])
+        or not re.fullmatch("[0-9a-f]{64}\\.json", parts[-1])):
+        raise ValueError("Invalid submission path")
+    if path.is_symlink() or not path.is_file() or path.stat().st_size > 200_000:
+        raise ValueError("Unsafe or oversized submission")
+    payload = json.loads(path.read_text(encoding="utf-8"))
+    if (not isinstance(payload, dict)
+        or set(payload) != {"schema", "model", "runtime_measurements",
+                           "verified_inference", "production_qualified",
+                           "review_required", "measurements_pending"}
+        or payload["schema"] != "ruth-community-model-memory-proposal-v1"
+        or payload["verified_inference"] is not False
+        or payload["production_qualified"] is not False
+        or payload["review_required"] is not True):
+        raise ValueError("Unsupported or overclaimed submission")
+    model = payload["model"]
+    if not isinstance(model, dict) or model.get("gguf_sha256") != parts[-2]:
+        raise ValueError("Submitted model SHA mismatch")
+    catalog = load_catalog(project_root)
+    pinned = False
+    for item in catalog["models"]:
+        for v in item["variants"]:
+            if (model.get("gguf_sha256") == v["expected_sha256"]
+                and model.get("quantization") == v["quantization"]
+                and model.get("source_repository") == v["repo_id"]
+                and model.get("source_revision") == v["revision"]
+                and model.get("version") == item["version"]):
+                pinned = True
+    if not pinned:
+        raise ValueError("Unregistered GGUF source")
+    rows = payload["runtime_measurements"]
+    if (not isinstance(rows, list) or len(rows) > 128 or
+        payload["measurements_pending"] is not (len(rows) == 0)):
+        raise ValueError("Invalid runtime measurement list")
+    architectures = load_architecture_policy(project_root)["architectures"]
+    for row in rows:
+        if not isinstance(row, dict):
+            raise ValueError("Invalid runtime row")
+        if not set(row).issubset({
+            "architecture", "compute_capability", "tensor_core_generation",
+            "cuda_backend", "cuda_driver_max", "cuda_toolkit", "driver_version",
+            "llama_cpp_binding", "cuda_init_observed_nvml_delta_mib_max",
+            "driver_reserved_mib_max", "weights_buffer_mib_max",
+            "kv_buffer_mib", "compute_buffer_mib", "n_ctx",
+            "flash_attention", "kv_type_k", "kv_type_v",
+        }):
+            raise ValueError("Unknown or private runtime field")
+        matching = [a for a in architectures
+                    if a["id"] == row.get("architecture")
+                    and row.get("compute_capability") in a["compute_capabilities"]]
+        if len(matching) != 1 or row.get("tensor_core_generation") != matching[0]["tensor_core_generation"]:
+            raise ValueError("Architecture/compute capability mismatch")
+        for n in ("weights_buffer_mib_max", "cuda_init_observed_nvml_delta_mib_max",
+                  "driver_reserved_mib_max", "kv_buffer_mib", "compute_buffer_mib"):
+            value = row.get(n)
+            if value is not None and (type(value) not in (int, float) or
+                                       not 0 <= value < 1_000_000):
+                raise ValueError("Invalid CUDA buffer measurement")
+    canonical = json.dumps(payload, sort_keys=True, separators=(",", ":"))
+    digest = hashlib.sha256(canonical.encode("utf-8")).hexdigest()
+    if parts[-1] != digest + ".json":
+        raise ValueError("Submission digest invalid or content altered")
+    return {"status": "submitted_profile_schema_verified_review_required",
+            "model_sha256": model["gguf_sha256"], "observations": len(rows),
+            "production_qualified": False}
 
 
 def _gh(args: list[str], run: Callable[..., Any]) -> str:
