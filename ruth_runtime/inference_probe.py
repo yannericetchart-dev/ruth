@@ -15,6 +15,7 @@ import re
 import subprocess
 from typing import Callable, Any
 
+from .gpu_preflight import inspect_gpu_preflight
 from .dependencies import PROJECT_ROOT
 from .model_catalog import ModelChoice, select_model
 from .model_download import _local_path, _manifest
@@ -53,6 +54,7 @@ class GpuInferenceReport:
     cpu_fallback_selected: bool
     diskcache_todo_open: bool
     error: str | None
+    gpu_preflight: dict | None
 
     def to_dict(self) -> dict:
         return asdict(self)
@@ -62,7 +64,8 @@ def _report(status: str, *, model: Path | None = None, verified: bool = False,
             native: bool = False, uuid: str | None = None, pci: str | None = None,
             loaded: bool = False, tokens: int = 0, offloaded: int = 0,
             total: int = 0, process: bool = False, memory: int | None = None,
-            duration: float | None = None, error: str | None = None) -> GpuInferenceReport:
+            duration: float | None = None, error: str | None = None,
+            gpu_preflight: dict | None = None) -> GpuInferenceReport:
     # GPU execution is never inferred merely from a supported CUDA symbol.
     has_gpu_evidence = bool(offloaded > 0 and total >= offloaded and process
                             and memory is not None and memory > 0)
@@ -82,6 +85,7 @@ def _report(status: str, *, model: Path | None = None, verified: bool = False,
         gpu_inference_verified=verified_all,
         duration_seconds=duration, cpu_fallback_selected=False,
         diskcache_todo_open=True, error=error,
+        gpu_preflight=gpu_preflight,
     )
 
 
@@ -157,6 +161,7 @@ def probe_inference(
     run: Callable[..., Any] = subprocess.run,
     native_verification: Callable[..., Any] = verify_native_library,
     gpu_discovery: Callable[..., tuple[str, str]] = _select_unique_gpu,
+    gpu_preflight: Callable[..., Any] = inspect_gpu_preflight,
 ) -> GpuInferenceReport:
     root = Path(project_root)
     if not authorize_gpu_inference:
@@ -183,12 +188,22 @@ def probe_inference(
             return _report("native_runtime_unverified", model=model, verified=True,
                            error=native.status)
         uuid, pci = gpu_discovery(run=run)
+        gate = gpu_preflight(uuid, run=run)
+        if gate.status != "gpu_ready":
+            return _report(gate.status, model=model, verified=True,
+                           native=True, uuid=uuid, pci=pci,
+                           gpu_preflight=gate.to_dict(), error=gate.error or "GPU occupata.")
         # Binding selects main_gpu=0; the visible device is pinned by UUID.
         child_env = {**os.environ, "CUDA_VISIBLE_DEVICES": uuid,
                      "PYTHONNOUSERSITE": "1", "PYTHONDONTWRITEBYTECODE": "1"}
         child_env.pop("LLAMA_CPP_LIB_PATH", None)
         cmd = [str(root / ".venv/bin/python"), "-I", "-c", WORKER_SCRIPT,
                str(root), str(root), purpose, uuid]
+        gate = gpu_preflight(uuid, run=run)
+        if gate.status != "gpu_ready":
+            return _report(gate.status, model=model, verified=True,
+                           native=True, uuid=uuid, pci=pci,
+                           gpu_preflight=gate.to_dict(), error=gate.error or "GPU occupata.")
         completed = run(
             cmd, cwd=str(root), capture_output=True, text=True,
             check=False, timeout=TIMEOUT_SECONDS, env=child_env,
@@ -232,6 +247,7 @@ def probe_inference(
             model=model, verified=True, native=True, uuid=uuid, pci=pci,
             loaded=loaded, tokens=tokens, offloaded=offloaded, total=total,
             process=observed, memory=mem, duration=duration,
+            gpu_preflight=gate.to_dict(),
             error=None if passed else (
                 "Incomplete CUDA evidence; check worker exit, layer-offload "
                 "diagnostics and nvidia-smi worker PID/UUID observation"
