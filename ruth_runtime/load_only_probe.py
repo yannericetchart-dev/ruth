@@ -116,9 +116,19 @@ def probe_model_load(
         native_kv_sizes = [int(x) for x in KV_SIZE.findall(worker.stderr or "")]
         lines = [s[len(PREFIX):] for s in (worker.stdout or "").splitlines()
                  if s.startswith(PREFIX)]
-        data = json.loads(lines[0]) if len(lines) == 1 else {}
+        if len(lines) != 1:
+            diagnosis = diagnose_cuda_failure(worker.stderr or "",
+                                              returncode=worker.returncode)
+            return finish(
+                "gpu_load_worker_failed_or_no_result",
+                gpu_uuid=uuid, gpu_pci_bus=pci, gpu_preflight=pre.to_dict(),
+                native_buffers=native_buffers, native_kv_sizes=native_kv_sizes,
+                error="Worker did not emit a unique structured result",
+                **diagnosis,
+            )
+        data = json.loads(lines[0])
         if not isinstance(data, dict) or data.get("schema") != SCHEMA:
-            raise ValueError("Worker did not provide a unique valid result")
+            raise ValueError("Unrecognized worker result schema")
         if (data.get("mode") != mode
             or data.get("quantization") != quantization
             or data.get("gpu_uuid") != uuid
