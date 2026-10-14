@@ -10,6 +10,66 @@ La suite di 278 test precedenti è stata successivamente confermata
 verbalmente dall'utente. Il precedente smoke non era un benchmark:
 la durata include più fasi e la VRAM è campionata.
 
+## Prima baseline reale verificata — 14 ottobre 2026
+
+Sul PC Ubuntu/RTX 4050 Laptop l'utente ha eseguito
+`./ruth models profile --purpose test --allow-gpu-inference`.
+
+**Risultato:** `status=gpu_profile_verified`, `error=null`,
+`gpu_profile_verified=true`, `model_inference_executed=true`,
+`model_verified=true`, `native_library_verified=true`,
+`gpu_process_observed=true`, `cpu_fallback_selected=false`.
+**296/296 test OK** in **2,146 s**.
+
+- **GPU:** PCI `00000000:01:00.0`, UUID
+  `GPU-5a841828-882b-85d9-c98e-3a0d29e66e00`.
+- **Layer sul dispositivo:** `17/17` (offload completo del modello di test).
+- **VRAM massima campionata per il processo:** **956 MiB** (non un massimo
+  fisico garantito e non una curva temporale).
+- **Caricamento modello:** **0,596538359 s**, misurato **una volta**.
+- **Protocollo:** `n_ctx=512`, `seed=42`, `max_tokens=64`, 1 warmup escluso,
+  5 round misurati con 45 token di prompt e 64 token di output ciascuno
+  (63 token temporizzati come decode, primo token misurato separatamente).
+- **Manifest GGUF:** `Llama-3.2-1B-Instruct-Q4_K_M.gguf`,
+  SHA256 `6f85a640a97cf2bf5b8e764087b1e83da0fdb51d7c9fab7d0fece9385611df83`,
+  revision Hugging Face `067b946cf014b7c697f3654f621d577a3e3afd1c`.
+- **Report JSON conservato localmente:**
+  `.ruth-build/profiles/llama-3.2-1b-q4km-20261014T095718617642Z.json`.
+  Il file è nella cartella locale ignorata da Git; non dichiararlo presente
+  sul server remoto.
+
+| Metrica | Min | Mediana | Max |
+|---|---:|---:|---:|
+| Decode (token/s, 63 token successivi al primo) | 158,551 | **160,983** | 164,005 |
+| Prefill (token/s, prompt 45 token) | 20.655,173 | **21.094,208** | 21.452,159 |
+| Decode (secondi) | 0,384133 | 0,391347 | 0,397348 |
+| Prefill (secondi) | 0,002098 | 0,002133 | 0,002179 |
+| Sample del primo token (secondi) | 0,010568 | 0,010602 | 0,011434 |
+| Tokenizzazione (secondi) | 0,000298 | 0,000302 | 0,000326 |
+
+Velocità decode per round (token/s, dato osservato):
+`[164.005494, 158.551181, 162.668360, 160.982529, 160.136227]`.
+Media circa **161,269 token/s**, deviazione standard campionaria circa
+**2,133 token/s** (CV circa **1,32%**) su **cinque round nella stessa sessione
+calda**. Non sono cinque cold start indipendenti né un intervallo di
+confidenza per altre lunghezze del contesto.
+
+**Interpretazione e limiti:** le misure prefill sono su **soli 45 token**,
+quindi particolarmente sensibili a overhead e cache CUDA; i ~21k token/s
+non generalizzano a prompt lunghi. `first_token_seconds` è solo
+`sample()` dai logits del prefill, **non TTFT end-to-end**.
+I **956 MiB** misurano il picco campionato per processo con `nvidia-smi`,
+e non sono un margine di VRAM trasferibile ai modelli di altra dimensione.
+Il precedente smoke di **940 MiB** è una misura distinta con finestra di
+campionamento diversa, non evidenza di regressione di memoria.
+Il tempo di caricamento **0,597 s** non va sommato implicitamente ad
+ogni richiesta generata in una sessione persistente.
+
+**Conclusione:** baseline CUDA funzionale e ripetibile per il *caso test*
+Llama 1B, ma non una qualificazione del modello production Gemma 2 9B IT
+né dei 6 GiB in contesti prolungati. Occorrono misure su più prompt/context,
+termica/power e più processi di benchmark indipendenti prima di generalizzare.
+
 ## Comando (nessuna installazione / nessun download)
 
 ```bash
