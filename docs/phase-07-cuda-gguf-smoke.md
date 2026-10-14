@@ -1,5 +1,39 @@
 # Ruth — Prima inferenza GGUF CUDA reale (Fase 07)
 
+## Risultato reale: superato sulla RTX 4050
+
+Il comando `./ruth models smoke --purpose test --allow-gpu-inference`
+è stato eseguito sul PC dell'utente con il GGUF Llama 3.2 1B Instruct
+Q4_K_M precedentemente verificato:
+
+| Evidenza | Misura reale |
+|---|---|
+| Esito | `gpu_gguf_inference_verified` |
+| Modello e librerie | `model_verified=true`, `native_library_verified=true` |
+| Modello caricato | `model_loaded=true` |
+| Inferenza generativa | `inference_executed=true`, **24 token** |
+| Layer CUDA | `gpu_offload_executed=true`, **17/17 layer** |
+| Processo GPU osservato | `gpu_process_observed=true` |
+| VRAM di processo (massimo campionato) | **940 MiB** |
+| Durata del worker | **0,834 s** |
+| GPU | `GPU-5a841828-882b-85d9-c98e-3a0d29e66e00` |
+| PCI | `00000000:01:00.0` |
+| Fallback CPU | `cpu_fallback_selected=false` |
+| Errore | `null` |
+
+**Interpretazione:** prova funzionale **confermata**, sulla GPU e nel
+perimetro di questo GGUF/questa configurazione. Non è un benchmark
+di throughput: durata worker comprende più fasi; massimo VRAM
+campionato ogni 200 ms e non necessariamente assoluto. Non estendere
+questo successo a Gemma 2 9B IT né dichiarare capacità prestazionali
+di produzione senza profiling ripetibile.
+
+I 278 test unitari previsti dall'ultima implementazione non risultano
+ancora esplicitamente confermati tramite log sul PC. La riuscita dello
+smoke reale non sostituisce quella verifica.
+
+---
+
 ## Prerequisiti verificati sul PC
 
 Il primo download Hugging Face del GGUF di test è concluso con
