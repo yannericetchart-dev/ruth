@@ -5,7 +5,10 @@ from tempfile import TemporaryDirectory
 from types import SimpleNamespace
 import unittest
 
-from ruth_runtime.profile_contribution import build_proposal, publish_proposal_pr
+from ruth_runtime.profile_contribution import (
+    build_proposal, publish_proposal_pr, validate_submitted_proposal,
+)
+from ruth_runtime.model_catalog import select_model
 from ruth_runtime.profile_registry import SCHEMA
 
 
@@ -54,6 +57,31 @@ class ProfileContributionTests(unittest.TestCase):
         self.assertIn("5700.31", raw)
         self.assertFalse(a["proposal"]["production_qualified"])
         self.assertTrue(a["proposal"]["review_required"])
+
+    def test_ci_rejects_tampered_submission_and_accepts_reviewable_schema(self):
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            local = self.prepare(root)
+            choice = select_model("production")
+            data = json.loads(local.read_text())
+            data["model"]["gguf_sha256"] = choice.expected_sha256
+            data["model"]["source_repository"] = choice.repo_id
+            data["model"]["source_revision"] = choice.revision
+            data["model"]["version"] = choice.version
+            data["model"]["quantization"] = choice.quantization
+            local.write_text(json.dumps(data))
+            proposal = build_proposal(local, project_root=root)
+            public = root / proposal["repository_path"]
+            public.parent.mkdir(parents=True)
+            public.write_text(json.dumps(proposal["proposal"]))
+            good = validate_submitted_proposal(public)
+            self.assertEqual(good["status"],
+                             "submitted_profile_schema_verified_review_required")
+            tampered = json.loads(public.read_text())
+            tampered["production_qualified"] = True
+            public.write_text(json.dumps(tampered))
+            with self.assertRaises(ValueError):
+                validate_submitted_proposal(public)
 
     def test_without_consent_never_calls_external_process(self):
         result = publish_proposal_pr({}, permit_external_publication=False,
