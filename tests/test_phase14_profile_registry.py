@@ -101,6 +101,17 @@ class ProfileRegistryTests(unittest.TestCase):
         self.assertIsNone(row["kv_buffer_mib"])
         self.assertIsNone(row["flash_attention"])
 
+    def test_same_evidence_is_not_counted_twice_for_git_retry(self):
+        original = self.store()
+        repeated = self.store()
+        self.assertEqual(repeated["status"], "local_profile_already_recorded")
+        self.assertFalse(repeated["observation_duplicated"])
+        obj = json.loads(Path(original["profile_file"]).read_text())
+        self.assertEqual(
+            next(iter(obj["runtime_measurements"].values()))["observations"], 1
+        )
+        self.assertEqual(len(obj["observed_evidence_sha256s"]), 1)
+
     def test_repeat_updates_max_and_emits_growth_warning(self):
         first = self.store()
         more = evidence()
