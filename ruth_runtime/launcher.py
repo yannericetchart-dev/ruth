@@ -231,7 +231,8 @@ def main(argv: list[str] | None = None) -> int:
                     )
                     _print({"action": "models", "plan": planned,
                             "execution": executed, "status": executed["status"]})
-                    return 0 if executed["status"] == "production_candidate_min_context_gpu_verified" else 2
+                    return 0 if executed["status"] in ("production_candidate_min_context_gpu_verified",
+                           "production_previous_minimal_gpu_profile_reused") else 2
                 except (OSError, ValueError, TypeError, RuntimeError, CatalogError) as exc:
                     _print({"action": "models", "status": "production_selection_blocked",
                             "error": type(exc).__name__ + ": " + str(exc)[:250],
