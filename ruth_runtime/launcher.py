@@ -106,8 +106,6 @@ def main(argv: list[str] | None = None) -> int:
             mp.add_argument("--allow-metadata-network", action="store_true",
                             help="Authorize public HF JSON metadata requests; never download weights")
         if operation == "recommend":
-            mp.add_argument("--reserve-mib", type=int, default=None,
-                            help="Provisional VRAM reserve MiB (unvalidated KV/compute budget)")
             mp.add_argument("--top-k", type=int, default=None,
                             help="Maximum number of shortlisted candidates")
         if operation == "download":
@@ -151,7 +149,6 @@ def main(argv: list[str] | None = None) -> int:
                 result = recommend_quantization(
                     purpose=args.purpose,
                     authorize_metadata_network=args.allow_metadata_network,
-                    reserve_mib=args.reserve_mib,
                     max_candidates=args.top_k,
                 )
                 _print({"action": "models", **result})

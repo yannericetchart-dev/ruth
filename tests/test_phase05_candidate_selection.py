@@ -62,8 +62,9 @@ def nvidia(*args, **kwargs):
 class QuantizationPolicyTests(unittest.TestCase):
     def test_policy_is_heuristic_not_measured_quality(self):
         obj = load_quantization_policy()
-        self.assertEqual(obj["schema"], "ruth-quantization-policy-v1")
-        self.assertEqual(obj["default_provisional_reserve_mib"], 768)
+        self.assertEqual(obj["schema"], "ruth-quantization-policy-v2")
+        self.assertNotIn("default_provisional_reserve_mib", obj)
+        self.assertEqual(obj["initial_probe_n_ctx"], 128)
         self.assertIn("HEURISTIC", obj["description"])
         self.assertEqual(obj["excluded_on_cuda"]["Q4_0_4_4"],
                          "ARM-specific layout")
@@ -160,55 +161,99 @@ class QuantizationPolicyTests(unittest.TestCase):
                 run=lambda *a, **k: SimpleNamespace(
                     returncode=0, stdout=f"{UUID}, {PCI}, 6141, 7000\n"))
 
-    def test_recommendation_prioritizes_heuristic_quality_with_reserve(self):
+    def test_recommendation_uses_entire_free_vram_and_quality_heuristic(self):
         result = recommend_quantization(
             authorize_metadata_network=True,
             fetch=lambda _: metadata(), run=nvidia,
         )
         self.assertEqual(result["status"], "provisional_shortlist_ready", result)
-        self.assertEqual(result["first_candidate_quantization"], "IQ4_XS")
-        self.assertEqual(result["reserve_mib"], 768)
-        self.assertEqual(result["size_budget_mib"], 4991)
+        self.assertEqual(result["first_candidate_quantization"], "Q4_K_M")
+        self.assertNotIn("reserve_mib", result)
+        self.assertEqual(result["size_budget_mib"], 5759)
+        self.assertEqual(result["size_budget_bytes"], 5759 * 1024 * 1024)
+        self.assertEqual(result["initial_probe_n_ctx"], 128)
+        self.assertTrue(result["runtime_memory_calibration_pending"])
+        self.assertTrue(result["context_calibration_pending"])
         self.assertFalse(result["candidate_is_production_qualified"])
         self.assertFalse(result["catalog_modified"])
         self.assertFalse(result["gpu_inference_executed"])
         self.assertEqual(result["candidates"][0]["size_only_prefilter"],
                          "pass_requires_native_test")
+        self.assertEqual(result["candidates"][0]["quantization"], "Q4_K_M")
+
+    def test_lower_available_vram_selects_next_quality_variant(self):
+        def lower_free(*args, **kwargs):
+            return SimpleNamespace(
+                returncode=0, stdout=f"{UUID}, {PCI}, 6141, 5000\n")
+        result = recommend_quantization(
+            authorize_metadata_network=True,
+            fetch=lambda _: metadata(), run=lower_free)
+        self.assertEqual(result["status"], "provisional_shortlist_ready")
+        self.assertEqual(result["first_candidate_quantization"], "IQ4_XS")
+        self.assertEqual(result["size_budget_mib"], 5000)
         self.assertNotIn("Q4_K_M", [c["quantization"] for c in result["candidates"]])
 
-    def test_larger_reserve_causes_conservative_lower_quant_candidate(self):
+    def test_selection_does_not_claim_full_gpu_fit(self):
         result = recommend_quantization(
-            authorize_metadata_network=True, reserve_mib=1024,
-            fetch=lambda _: metadata(), run=nvidia)
-        self.assertEqual(result["status"], "provisional_shortlist_ready")
-        self.assertEqual(result["first_candidate_quantization"], "Q3_K_M")
-
-    def test_zero_reserve_may_prefilter_q4_but_does_not_verify_gpu(self):
-        result = recommend_quantization(
-            authorize_metadata_network=True, reserve_mib=0,
+            authorize_metadata_network=True,
             fetch=lambda _: metadata(), run=nvidia)
         self.assertEqual(result["first_candidate_quantization"], "Q4_K_M")
         self.assertFalse(result["candidate_is_production_qualified"])
         self.assertFalse(result["candidates"][0]["full_gpu_residency_verified"])
+        self.assertEqual(result["selection_rule"],
+                         "gguf_size_bytes_le_current_free_vram_bytes")
 
-    def test_insufficient_budget_has_no_magic_fallback(self):
+    def test_exact_file_size_equal_to_free_vram_is_eligible(self):
+        free_bytes = 5759 * 1024 * 1024
         result = recommend_quantization(
-            authorize_metadata_network=True, reserve_mib=5759,
-            fetch=lambda _: metadata(), run=nvidia)
-        self.assertEqual(result["status"], "no_quantization_passed_provisional_budget")
+            authorize_metadata_network=True,
+            fetch=lambda _: metadata({"Q3_K_M": free_bytes}),
+            run=nvidia)
+        self.assertEqual(result["first_candidate_quantization"], "Q3_K_M")
+        self.assertEqual(result["candidates"][0]["estimated_remaining_mib_after_file"], 0)
+        self.assertFalse(result["candidate_is_production_qualified"])
+
+    def test_file_one_byte_larger_than_free_vram_is_not_eligible(self):
+        free_bytes = 5759 * 1024 * 1024
+        result = recommend_quantization(
+            authorize_metadata_network=True,
+            fetch=lambda _: metadata({"Q3_K_M": free_bytes + 1}),
+            run=nvidia)
+        self.assertEqual(result["status"], "no_quantization_with_gguf_file_within_free_vram")
+        self.assertEqual(result["candidates"], [])
+        self.assertFalse(result["runtime_profile_published"])
+
+    def test_insufficient_free_vram_has_no_magic_fallback(self):
+        def busy_gpu(*args, **kwargs):
+            return SimpleNamespace(
+                returncode=0, stdout=f"{UUID}, {PCI}, 6141, 0\n")
+        result = recommend_quantization(
+            authorize_metadata_network=True,
+            fetch=lambda _: metadata(), run=busy_gpu)
+        self.assertEqual(result["status"], "no_quantization_with_gguf_file_within_free_vram")
         self.assertIsNone(result["first_candidate_quantization"])
         self.assertEqual(result["candidates"], [])
         self.assertFalse(result["runtime_profile_published"])
 
-    def test_invalid_reserve_or_limit_blocks_before_download(self):
-        for reserve, limit in ((-1, 5), (20000, 5), (768, 0), (768, 11)):
-            with self.subTest(reserve=reserve, limit=limit):
+    def test_invalid_limit_blocks_before_download(self):
+        for limit in (0, 11, -1, True):
+            with self.subTest(limit=limit):
                 result = recommend_quantization(
                     authorize_metadata_network=True,
-                    reserve_mib=reserve, max_candidates=limit,
+                    max_candidates=limit,
                     fetch=lambda _: self.fail("No HF fetch"),
                     run=lambda *a, **k: self.fail("No GPU fetch"))
                 self.assertEqual(result["status"], "provisional_selection_blocked")
+
+    def test_legacy_reserve_policy_is_rejected(self):
+        data = load_quantization_policy()
+        data["default_provisional_reserve_mib"] = 768
+        with TemporaryDirectory() as temp:
+            path = Path(temp) / POLICY_PATH
+            path.parent.mkdir()
+            path.write_text(json.dumps(data))
+            with self.assertRaises(CandidateError):
+                load_quantization_policy(Path(temp))
 
 
 class ModelChoiceCliTests(unittest.TestCase):
@@ -239,6 +284,13 @@ class ModelChoiceCliTests(unittest.TestCase):
         self.assertEqual(result["status"], "quantizations_discovered")
         self.assertFalse(result["download_started"])
 
+    def test_removed_reserve_argument_is_not_accepted_by_cli(self):
+        with patch("sys.stderr", new_callable=StringIO):
+            with self.assertRaises(SystemExit) as err:
+                main(["models", "recommend", "--purpose", "production",
+                      "--reserve-mib", "768", "--allow-metadata-network"])
+        self.assertEqual(err.exception.code, 2)
+
     def test_cli_candidate_recommendation_is_read_only(self):
         with patch("ruth_runtime.candidate_selection.fetch_huggingface_metadata",
                    return_value=metadata()), \
@@ -248,11 +300,12 @@ class ModelChoiceCliTests(unittest.TestCase):
                        to_dict=lambda: {"uuid": UUID, "free_mib": 5759,
                                         "total_mib": 6141, "pci_bus": PCI})):
             code, result = self.invoke([
-                "recommend", "--purpose", "production", "--reserve-mib", "768",
+                "recommend", "--purpose", "production",
                 "--allow-metadata-network", "--top-k", "2",
             ])
         self.assertEqual(code, 0, result)
-        self.assertEqual(result["first_candidate_quantization"], "IQ4_XS")
+        self.assertEqual(result["first_candidate_quantization"], "Q4_K_M")
+        self.assertEqual(result["initial_probe_n_ctx"], 128)
         self.assertEqual(len(result["candidates"]), 2)
         self.assertFalse(result["gpu_inference_executed"])
         self.assertFalse(result["download_started"])

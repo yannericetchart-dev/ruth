@@ -1,8 +1,7 @@
 {
-  "schema": "ruth-quantization-policy-v1",
+  "schema": "ruth-quantization-policy-v2",
   "source": "https://huggingface.co/bartowski/gemma-2-9b-it-GGUF",
   "description": "Order is a subjective, qualitative HEURISTIC guided by uploader's variant descriptions; it is NOT a measured quality benchmark, precision score, or guarantee of compatibility. Rank only applies within the same model/version.",
-  "default_provisional_reserve_mib": 768,
   "max_recommended_candidates": 5,
   "quality_policy": [
     {
@@ -126,9 +125,12 @@
     "Q4_0_8_8": "ARM SVE layout"
   },
   "notes": [
-    "The reserve is user-adjustable, provisional and NOT a calibrated KV/compute budget.",
-    "GGUF disk bytes only approximate GPU weight residency; no VRAM-fit guarantee without isolated native probe.",
-    "Discovering a variant does not register, pin, download, or accept its license.",
-    "Future model-quality benchmarks may replace this ordering with verified comparisons."
-  ]
+    "Phase 05 selects highest heuristic quality with complete GGUF file bytes no greater than free VRAM reported by NVIDIA; zero VRAM reserve.",
+    "Initial probe uses n_ctx=128 as the explicitly chosen small starting context, not a measurement or architectural minimum; find operational context during Phase 09 calibration.",
+    "Runtime allocations, KV cache, buffer overhead, failures/OOM and actual model residency belong to isolated post-selection calibration.",
+    "Full GGUF disk bytes are only a proxy for weight residency and cannot certify actual GPU loadability.",
+    "Discovery does not register, pin, download, or accept the model's license; quality priority remains unmeasured."
+  ],
+  "initial_probe_n_ctx": 128,
+  "selection_rule": "GGUF file size in exact bytes <= current reported free GPU memory in MiB * 1048576; no VRAM reserve and no runtime/KV/compute overhead at this step. Not a guarantee of loadability."
 }

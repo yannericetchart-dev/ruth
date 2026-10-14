@@ -1,126 +1,118 @@
-# Ruth — Fase 05: catalogo dinamico e selezione delle quantizzazioni
+# Ruth — Fase 05: selezione quantizzazioni con **tutta la VRAM libera**
 
-## Priorità architetturale corretta
+## Decisione approvata
 
-La Fase 05 precede la decisione di scaricare o provare il modello di produzione.
-Il default resta la **famiglia/versione Gemma 2 9B IT**; `Q4_K_M` è la
-quantizzazione inizialmente registrata nel catalogo, **non** una scelta
-automaticamente ottima né un profilo autorizzato su 6 GiB.
+**Nessuna riserva di VRAM durante la selezione.** Ruth sceglie la
+quantizzazione migliore in termini di `quality_priority_heuristic`
+fra quelle il cui **file GGUF esatto in byte** non supera la
+**VRAM libera riportata da NVIDIA** al momento della ricerca.
 
-Lo scopo è scegliere il *candidato da verificare*, non pubblicare un
-profilo con la sola dimensione del file GGUF.
+```
+file_gguf_size_bytes <= nvidia_free_mib * 1048576
+```
 
-## Fonte ed elenco disponibile
+La Fase 05 **non** sottrae memorie arbitrarie per
+runtime, kernel CUDA, buffer computazionali, KV cache, cache allocator
+o margini di sicurezza. Non prende decisioni con una formula
+di riserva fissa. La quantità risultante è la dimensione del file
+su disco contro la memoria libera istantanea, *non* una dimostrazione
+di caricabilità CUDA: non confondere una prova dimensionale con
+l'allocazione reale.
 
-Fonte predefinita: Hugging Face. Per Gemma 2 9B IT:
+## Gerarchia e discovery
 
-- Originale: https://huggingface.co/google/gemma-2-9b-it
-- Varianti GGUF: https://huggingface.co/bartowski/gemma-2-9b-it-GGUF
-
-Il catalogo `catalog/model_catalog.json` continua a contenere **soltanto
-varianti pinned autorizzate**. La discovery legge la risposta
-`/api/models/{repo}/revision/main?blobs=true` per lo **stesso**
-repository GGUF registrato, estrae tutti i file corrispondenti a
-`{model_prefix}-{quant}.gguf` con **dimensione intera esatta e hash
-LFS SHA-256**, blocca duplicati, revisioni/licenze diverse da un pin
-preesistente e source gated. Non inventa dimensioni per file mancanti.
-Non aggiorna il catalogo, non scarica modelli né accetta licenze.
+- Provider predefinito: **Hugging Face**; **Kaggle TO DO**.
+- Famiglie registrate: **Gemma, Llama, Qwen, Mistral**.
+- Percorso: `family/model/version/gguf/quantization`.
+- Default production: **Gemma 2 9B IT** (quantizzazione da selezionare).
+- Default test: **Llama 3.2 1B Instruct Q4_K_M**, già verificato
+  realmente su RTX 4050.
 
 ```bash
 ./ruth models quantizations --purpose production --allow-metadata-network
-```
-
-La lista presenta **tutte le varianti risolte con LFS metadata**,
-inclusi gli stati `architecture_or_unranked` (es. Q4_0 ARM) e
-`cuda_support_verified=false`. Una quantizzazione trovata nel catalogo
-remoto **non** è automaticamente supportata dall'eseguibile pinned:
-la prova vera arriverà dopo pin e download separatamente autorizzati.
-
-## Policy di qualità e memoria
-
-Politica riproducibile e modificabile in
-`catalog/quantization_policy.json`. L'ordine a priorità decrescente
-segue descrizioni qualitative e classe di compressione pubblicate
-dall'autore del GGUF, non un benchmark indipendente.
-`quality_priority_heuristic` è **una regola ordinativa**, non
-un punteggio di qualità misurata né una garanzia di prestazioni.
-Q4_K_S, IQ4_XS e altri algoritmi non si possono confrontare con
-precisione senza prove sullo stesso workload.
-
-Il dispositivo viene inventariato **in sola lettura** con
-`nvidia-smi --query-gpu=uuid,pci.bus_id,memory.total,memory.free`.
-In presenza di GPU multiple/telemetria ambigua si blocca la
-selezione. Il pre-filtro prende un budget provvisorio:
-
-`budget_bytes = max(0, free_mib - reserve_mib) * 1048576`
-
-Si propone una variante solo se la **dimensione GGUF intera in byte**
-non supera questo budget. Il margine `reserve_mib` di default è
-**768 MiB**, volutamente **modificabile dall'utente**; non equivale
-alla misurazione della KV cache/compute buffer ed è un criterio
-provvisorio, NON un budget GPU qualificato. L'uso dei byte su disco
-è un proxy approssimato della dimensione dei pesi in GPU:
-il runtime può allocare più memoria o scegliere layout diversi.
-
-```bash
 ./ruth models recommend --purpose production --allow-metadata-network
-./ruth models recommend --purpose production --allow-metadata-network --reserve-mib 1024 --top-k 5
 ```
 
-La shortlist è ordinata per priorità di qualità euristica fra le sole
-varianti che superano il **prefiltro per dimensione**. Riporta
-`provisional_shortlist_ready`, `size_only_prefilter`,
-`estimated_remaining_mib_after_file`, SHA256, revisione Git,
-`full_gpu_residency_verified=false`,
-`candidate_is_production_qualified=false`,
-`download_started=false` e `catalog_modified=false`.
+`quantizations` legge metadata HF (revision Git immutable, LFS
+SHA256, dimensione intera per file). `recommend` in più legge
+`nvidia-smi --query-gpu=uuid,pci.bus_id,memory.total,memory.free`:
+accetta solo una GPU identificabile, ordina le candidate per qualità
+euristica e presenta quelle entro **tutta** la VRAM libera.
 
-Se nessuna candidata soddisfa il budget, si restituisce
-`no_quantization_passed_provisional_budget`. Non si modifica
-automaticamente famiglia/modello, non si scarica una variante peggiore
-di nascosto e **non** si abilita inferenza CPU per compensare VRAM
-insufficiente.
+**Non esiste più `--reserve-mib`** e non viene usata alcuna
+riserva implicita. Il limite di shortlist rimane personalizzabile
+con `--top-k` (da 1 a 10; default 5).
 
-## Dati reali forniti dall'utente — 14 ottobre 2026
+Risultati:
+- `size_budget_mib` = memoria GPU *libera* (senza detrazioni).
+- `size_budget_bytes` = `free_mib * 1048576`.
+- `size_only_prefilter=pass_requires_native_test` per una candidata.
+- `estimated_remaining_mib_after_file` = differenza teorica fra
+  VRAM libera e dimensione del GGUF; può essere molto piccola o zero.
+- `first_candidate_quantization` = variante migliore secondo il
+  ranking **qualitativo euristico** fra quelle che passano.
+- `candidate_is_production_qualified=false` e
+  `full_gpu_residency_verified=false` fino ai test CUDA reali.
+- `context_calibration_pending=true` e
+  `runtime_memory_calibration_pending=true`.
 
-- NVIDIA GeForce RTX 4050 Laptop GPU: **6141 MiB totali**,
-  **5759 MiB liberi** nel momento dello snapshot (15 MiB `used`
-  riportati; le grandezze non sommano al totale e sono da trattare
-  come telemetria istantanea del driver, non come un bilancio contabile).
-- Gemma 2 9B IT Q4_K_M: **5761057728 byte**,
-  circa **5494,17 MiB** su disco e appena circa **265 MiB**
-  tra byte del file e VRAM libera prima di qualunque altra allocazione.
-- Revisione `d731033f3dc4018261fd39896e50984d398b4ac5`,
-  SHA256 `13b2a7b4115bbd0900162edcebe476da1ba1fc24e718e8b40d32f6e300f56dfe`,
-  licenza `gemma`, `gated=false`. Questi valori sono stati
-  confermati con la precedente chiamata `resolve` sul PC.
+La quality policy versionata, in
+`catalog/quantization_policy.json`, usa un ordine di preferenza
+non misurato. Differenti algoritmi (ad esempio K-quant e IQ-quant)
+richiederanno confronti reali a parità di modello e workload.
+I GGUF speciali ARM sono esclusi dalla scelta CUDA.
 
-L'autore Hugging Face dichiara anche varianti **Q4_K_S (~5,48 GB)**,
-**IQ4_XS (~5,18 GB)** e **Q3_K_L (~5,13 GB)**; le dimensioni
-**esatte e gli hash** verranno ottenuti dal nuovo comando; non
-copiamo una stima arrotondata dentro un pin.
+## Contesto minimo: inizio della calibrazione, NON filtro
 
-La qualità percepita non è semplicemente il numero dei bit.
-Il ranking è una prima politica dichiarata e dovrà essere sostituito/
-calibrato con verifiche di qualità (e, ove disponibili, perplexity/
-benchmarks rappresentativi) solo dopo aver trovato candidati che
-possano effettivamente essere caricati sul dispositivo.
+Il candidato selezionato è proposto con
+**`initial_probe_n_ctx=128`**. È un *contesto iniziale piccolo e
+dichiarato*, non un minimo architetturale garantito per qualunque modello.
+Il valore non influenza la selezione del file, né implica un consumo KV
+stimato. Nel primo futuro worker di produzione:
 
-## Gate dalla Fase 05 alla Fase 06/07
+1. Usare questo contesto piccolo e un prompt/test output che vi entri.
+2. Caricare il GGUF in un **processo CUDA isolato**, chiedendo offload
+   completo e senza fallback CPU.
+3. Misurare davvero model load, allocazioni CUDA/KV e generazione.
+4. In **Fase 09**, ricercare `n_ctx` maggiore con prove ripetute,
+   misurando VRAM, offload, throughput e affidabilità.
+5. Se il candidato fallisce all'avvio con contesto minimo, registrare
+   errore/OOM senza classificare falsamente un successo e valutare
+   la prossima quantizzazione; non introdurre riserve arbitrarie
+   retroattivamente nella Fase 05.
 
-La shortlist **non scarica** nulla. Per un candidato proposto:
-1. Revision, filename, SHA256 LFS e byte devono essere **pinnati**
-   in `catalog/model_catalog.json`, con modifica tracciata.
-2. Termini della licenza Gemma vanno valutati e accettati
-   esplicitamente, **separatamente** dall'autorizzazione al download.
-3. Scaricare soltanto il candidato effettivamente approvato e
-   verificare SHA256 locale.
-4. Worker CUDA isolato con modello reale e KV cache/compute buffer,
-   layer offloaded e memoria PID/GPU, n_ctx crescente e margine
-   operativo verificato. Una GPU con memoria insufficiente deve
-   portare a fallimento esplicito, **mai** a fallback CPU silenzioso.
-5. Solo dopo le prove di qualità/prestazioni/contenuto si può
-   qualificare `Gemma-2-9B-it` come profilo production.
+La fase di selezione non carica pesi, non usa CPU, non cambia la
+`.venv` e non autorizza alcun download o accettazione di licenza.
 
-Nessun nuovo wheel/installazione/compilazione si rende necessario.
-`Kaggle` e la CVE `diskcache` rimangono TO DO.
+## Dati reali del caso Gemma 2 9B / RTX 4050
+
+Dalla verifica HF eseguita sul PC:
+- Variante GGUF `Q4_K_M`, SHA256
+  `13b2a7b4115bbd0900162edcebe476da1ba1fc24e718e8b40d32f6e300f56dfe`.
+- Revision Git
+  `d731033f3dc4018261fd39896e50984d398b4ac5`.
+- File esatto: **5761057728 byte ≈ 5494,17 MiB**.
+- NVIDIA RTX 4050 Laptop: **6141 MiB totali**, **5759 MiB liberi**
+  nello snapshot riportato.
+
+**Q4_K_M passa il prefiltro** (5494,17 MiB <= 5759 MiB)
+e, secondo la policy attuale, è la priorità più alta fra i GGUF
+che rientrano nello stesso snapshot. La differenza teorica è circa
+**264,83 MiB** e **non** rappresenta memoria runtime garantita.
+Se il caricamento reale non riesce, questa quantizzazione **non** sarà
+qualificata per production; la calibrazione potrà valutarne altre.
+
+## Gate successivo (esplicito, non automatico)
+
+Dopo aver letto la shortlist reale:
+1. Scegliere e pinning in catalogo di quantizzazione, filename,
+   SHA256, commit e dimensione verificati; nessuna mutazione da
+   `recommend`.
+2. Leggere e accettare la licenza originale Gemma e autorizzare
+   separatamente il download (nessun download attualmente avviato).
+3. Provare il contesto iniziale piccolo con worker CUDA isolato.
+4. Calibrare contesto, VRAM e performance usando dati osservati.
+5. Pubblicare un profilo production **solo** dopo verifica effettiva.
+
+Il modello Llama 1B rimane la baseline verificata; la CVE
+`diskcache` rimane TO DO non prioritario con cache disabilitata.

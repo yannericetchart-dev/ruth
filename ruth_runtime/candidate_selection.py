@@ -1,8 +1,9 @@
 """Phase 05: discover GGUF quantizations and make a provisional GPU shortlist.
 
 Public Hugging Face metadata ONLY, no weights, no side effects, no CPU fallback.
-A size-based shortlist cannot prove model runtime residency, KV usage, quality,
-or CUDA backend support. Discovery never silently mutates the pinned catalog.
+A file-size-based shortlist uses all reported free GPU memory (zero reserve).
+It cannot prove runtime residency, KV usage, quality or backend support.
+Discovery never silently mutates the pinned catalog.
 """
 from __future__ import annotations
 
@@ -49,13 +50,14 @@ def load_quantization_policy(root: Path = PROJECT_ROOT) -> dict:
         data = json.loads((Path(root) / POLICY_PATH).read_text(encoding="utf-8"))
     except (OSError, ValueError, UnicodeError) as exc:
         raise CandidateError("Unable to load versioned quantization policy") from exc
-    if not isinstance(data, dict) or data.get("schema") != "ruth-quantization-policy-v1":
+    if not isinstance(data, dict) or data.get("schema") != "ruth-quantization-policy-v2":
         raise CandidateError("Unexpected quantization policy schema")
-    reserve = data.get("default_provisional_reserve_mib")
+    initial_ctx = data.get("initial_probe_n_ctx")
     limit = data.get("max_recommended_candidates")
-    if type(reserve) is not int or not 0 <= reserve <= 16384 or \
-            type(limit) is not int or not 1 <= limit <= 10:
-        raise CandidateError("Invalid provisional reserve or candidate limit")
+    if type(initial_ctx) is not int or not 32 <= initial_ctx <= 512 or \
+            type(limit) is not int or not 1 <= limit <= 10 or \
+            "default_provisional_reserve_mib" in data:
+        raise CandidateError("Invalid minimal context, candidate limit or legacy reserve policy")
     choices = data.get("quality_policy")
     if not isinstance(choices, list) or not choices:
         raise CandidateError("Empty quantization quality policy")
@@ -253,11 +255,16 @@ def discover_quantizations(
 def recommend_quantization(
     *, project_root: Path = PROJECT_ROOT, purpose: str = "production",
     authorize_metadata_network: bool = False,
-    reserve_mib: int | None = None, max_candidates: int | None = None,
+    max_candidates: int | None = None,
     fetch: Callable[[str], dict] | None = None,
     run: Callable[..., Any] = subprocess.run,
 ) -> dict:
-    """Quality-ordered size-only prefilter; NEVER a VRAM-fit certification."""
+    """Use ALL currently free VRAM for a GGUF-file-size quality shortlist.
+
+    No reserve, runtime footprint, KV cache or compute buffers are deducted
+    here. An initial small n_ctx is a suggestion for the first native probe,
+    not part of sizing; runtime fit/context are checked during calibration.
+    """
     base = {"status": "metadata_network_not_authorized",
             "download_started": False, "license_accepted": False,
             "gpu_inference_executed": False, "catalog_modified": False,
@@ -267,13 +274,10 @@ def recommend_quantization(
     try:
         root = Path(project_root)
         policy = load_quantization_policy(root)
-        reserve = (policy["default_provisional_reserve_mib"]
-                   if reserve_mib is None else reserve_mib)
         limit = (policy["max_recommended_candidates"]
                  if max_candidates is None else max_candidates)
-        if type(reserve) is not int or not 0 <= reserve <= 16384 or \
-                type(limit) is not int or not 1 <= limit <= 10:
-            raise CandidateError("Invalid reserve MiB or shortlist limit")
+        if type(limit) is not int or not 1 <= limit <= 10:
+            raise CandidateError("Invalid shortlist limit")
         remote = discover_quantizations(
             project_root=root, purpose=purpose,
             authorize_metadata_network=True, fetch=fetch,
@@ -282,7 +286,9 @@ def recommend_quantization(
             return {**base, "status": remote["status"],
                     "error": remote.get("error")}
         gpu = inspect_single_nvidia_gpu(run=run)
-        budget_bytes = max(0, gpu.free_mib - reserve) * _MIB
+        # Phase 05 considers only GGUF bytes versus free VRAM bytes.
+        # No headroom is reserved for runtime/KV/compute at this stage.
+        budget_bytes = gpu.free_mib * _MIB
         considered = []
         for row in remote["quantizations"]:
             reason = row["exclusion_reason"]
@@ -291,9 +297,9 @@ def recommend_quantization(
                 **row, "size_only_prefilter": (
                     "pass_requires_native_test" if qualifies else
                     "architecture_or_unranked" if reason is not None else
-                    "exceeds_provisional_size_budget"
+                    "gguf_file_larger_than_free_vram"
                 ),
-                "provisional_budget_bytes": budget_bytes,
+                "available_free_vram_bytes": budget_bytes,
                 "estimated_remaining_mib_after_file": round(
                     gpu.free_mib - row["size_bytes"] / _MIB, 2,
                 ),
@@ -305,19 +311,23 @@ def recommend_quantization(
         return {
             **base,
             "status": ("provisional_shortlist_ready" if chosen
-                       else "no_quantization_passed_provisional_budget"),
+                       else "no_quantization_with_gguf_file_within_free_vram"),
             "purpose": purpose, "repo_id": remote["repo_id"],
             "model_path": remote["model_path"], "revision": remote["revision"],
             "quality_policy": remote["quality_policy"],
-            "gpu": gpu.to_dict(), "reserve_mib": reserve,
-            "reserve_kind": "user_adjustable_unvalidated_budget_not_kv_measurement",
-            "size_budget_mib": max(0, gpu.free_mib - reserve),
+            "gpu": gpu.to_dict(),
+            "size_budget_mib": gpu.free_mib,
+            "size_budget_bytes": budget_bytes,
+            "selection_rule": "gguf_size_bytes_le_current_free_vram_bytes",
+            "initial_probe_n_ctx": policy["initial_probe_n_ctx"],
+            "context_calibration_pending": True,
+            "runtime_memory_calibration_pending": True,
             "candidates": chosen, "all_quantizations": considered,
             "first_candidate_quantization": (
                 chosen[0]["quantization"] if chosen else None
             ),
             "candidate_is_production_qualified": False,
-            "next_gate": "pin_license_download_then_real_gpu_offload_kv_and_latency_probes",
+            "next_gate": "pin_license_download_then_native_probe_minimal_n_ctx_and_calibrate_runtime",
             "counters": remote["counters"],
         }
     except (CatalogError, CandidateError, OSError, ValueError,
