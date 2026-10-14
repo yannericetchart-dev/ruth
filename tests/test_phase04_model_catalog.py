@@ -41,6 +41,15 @@ class CatalogTests(unittest.TestCase):
                          "registered_no_verified_candidate")
         self.assertFalse(catalog["download_started"])
 
+    def test_model_catalog_never_pins_a_device_specific_oom(self):
+        catalog = load_catalog()
+        for model in catalog["models"]:
+            for variant in model["variants"]:
+                self.assertNotIn("note", variant)
+                self.assertNotIn("4050", json.dumps(variant).lower())
+                self.assertNotIn("cuda_out_of_memory", json.dumps(variant).lower())
+                self.assertNotIn("gpu_allocation_failed", json.dumps(variant).lower())
+
     def test_default_production_is_gemma_2_9b_it(self):
         selected = select_model("production")
         self.assertEqual(selected.path, "gemma/gemma-2/gemma-2-9B-it/gguf/Q4_K_L")
