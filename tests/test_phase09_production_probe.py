@@ -207,6 +207,46 @@ class GemmaMinimumContextProbeTests(unittest.TestCase):
             self.assertFalse(result.cpu_fallback_selected)
             self.assertEqual(len(proc.calls), 1)
 
+    def test_xorg_blocks_before_cuda_and_reports_host_recommendations(self):
+        with TemporaryDirectory() as temp:
+            root = Path(temp)
+            choice, _, env = fixture(root)
+            def blocked(uuid, **kwargs):
+                return SimpleNamespace(
+                    status="gpu_busy", error=None,
+                    to_dict=lambda: {
+                        "status": "gpu_busy",
+                        "gpu_uuid": uuid,
+                        "memory_mib": {
+                            "total": 6141, "reserved": 369,
+                            "used": 15, "free": 5759,
+                        },
+                        "processes": [{
+                            "pid": 3032, "name": "/usr/lib/xorg/Xorg",
+                            "type": "G", "gpu_memory_mib": 4,
+                        }],
+                        "recommendations": [
+                            "Usare TTY o SSH, salvare il lavoro e valutare stop display-manager",
+                        ],
+                    },
+                )
+            with patch("ruth_runtime.production_probe.select_model",
+                       return_value=choice):
+                result = probe_production_candidate(
+                    project_root=root, authorize_gpu_inference=True,
+                    environment=env,
+                    run=lambda *a, **kw: self.fail("No CUDA worker allowed"),
+                    verify_native=lambda **k: SimpleNamespace(
+                        status="native_library_dual_abi_verified"),
+                    discover_gpu=lambda **k: (UUID, PCI),
+                    gpu_preflight=blocked,
+                )
+            self.assertEqual(result.status, "gpu_busy")
+            self.assertFalse(result.gpu_inference_verified)
+            self.assertFalse(result.runtime_profile_published)
+            self.assertEqual(result.gpu_preflight["processes"][0]["pid"], 3032)
+            self.assertIn("TTY", result.gpu_preflight["recommendations"][0])
+
     def test_partial_offload_does_not_pass_even_with_tokens(self):
         with TemporaryDirectory() as temp:
             result, _ = self.run_fake(Path(temp),
