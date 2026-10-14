@@ -92,3 +92,23 @@ Offline tests include:
 Real GPU validation must run on the host only after removing all concurrent GPU
 processes and must compare the same GGUF, wheel, native build and load options
 against `feature/minimal-chat`.
+
+## Observed clean-Wayland follow-up (2026-10-14)
+
+With Xorg removed by logging into Wayland (without modifying Xorg files),
+NVIDIA reported no running GPU processes, total=6141 MiB, reserved=369 MiB,
+used=2 MiB and free=5772 MiB. The same Q4_K_L production worker still failed
+allocating 5700.31 MiB with `cudaMalloc out of memory`. Available pre-worker
+VRAM exceeded that particular allocation by only 71.69 MiB; this is not a
+guarantee that the CUDA context and additional allocations can fit. Xorg is
+therefore not a sufficient explanation for the failure. Driver reservation
+remained at 369 MiB in both graphical configurations.
+
+There is also an implementation difference between Git branches: the
+`feature/minimal-chat` calibration path invokes
+`LlamaCppPythonMappingAdapter` with `all_gpu_rules()` and
+`tensor_buft_overrides`, whereas `model-profiling` uses a direct
+`llama_cpp.Llama(n_gpu_layers=-1)` path. Do **not** infer a driver regression
+from the successful historic load without a controlled comparison of these
+different mapping/allocator paths on the same host, GGUF and wheel. Preserve
+all native failure evidence, do not blacklist the GPU model class.
