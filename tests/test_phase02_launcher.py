@@ -384,6 +384,45 @@ class LauncherTests(unittest.TestCase):
                 self.assertEqual(main(["setup", "--install-native", flag]), 2)
                 self.assertIn("conflicting_build_options", output.getvalue())
 
+    def test_native_shared_library_verification_is_read_only(self):
+        from types import SimpleNamespace
+        verified = SimpleNamespace(
+            status="native_library_dual_abi_verified",
+            to_dict=lambda: {
+                "shared_libraries_verified": True,
+                "python_binding_same_library": True,
+                "inference_executed": False,
+            },
+        )
+        with patch("ruth_runtime.launcher.inspect_python_environment",
+                   return_value=environment()), \
+             patch("ruth_runtime.launcher.build_launch_plan",
+                   return_value={"setup_ready": True}), \
+             patch("ruth_runtime.source_build_plan.create_source_build_plan",
+                   return_value=SimpleNamespace(source_verified=True)), \
+             patch("ruth_runtime.native_library.verify_native_library",
+                   return_value=verified) as checker, \
+             patch("ruth_runtime.native_builder.build_native_cuda_wheel",
+                   side_effect=AssertionError("No recompilation")), \
+             patch("ruth_runtime.native_installer.install_native_cuda",
+                   side_effect=AssertionError("No installation")), \
+             patch("sys.stdout", new_callable=StringIO) as output:
+            self.assertEqual(main(["setup", "--verify-native-library"]), 0)
+            self.assertEqual(checker.call_count, 1)
+            self.assertIn('"inference_executed": false', output.getvalue())
+            self.assertIn('"installation_started": false', output.getvalue())
+
+    def test_native_shared_library_verification_rejects_combined_actions(self):
+        for flag in ("--allow-downloads", "--allow-python-dependency-downloads",
+                     "--build-native", "--install-native", "--review-security",
+                     "--plan-native-install"):
+            with self.subTest(flag=flag), \
+                 patch("ruth_runtime.launcher.inspect_python_environment",
+                       side_effect=AssertionError("No preflight before flag check")), \
+                 patch("sys.stdout", new_callable=StringIO) as output:
+                self.assertEqual(main(["setup", "--verify-native-library", flag]), 2)
+                self.assertIn('"conflicting_build_options"', output.getvalue())
+
     def test_run_never_pretends_llm_engine_implemented(self):
         with patch("ruth_runtime.launcher.inspect_python_environment",
                    return_value=environment()), \

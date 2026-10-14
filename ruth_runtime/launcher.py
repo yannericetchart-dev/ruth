@@ -72,6 +72,8 @@ def main(argv: list[str] | None = None) -> int:
                        help="Authorize offline CUDA sm_89 wheel compilation in isolated staging; no .venv install")
     setup.add_argument("--plan-native-install", action="store_true",
                        help="Read-only audit of the existing native CUDA wheel and runtime inputs")
+    setup.add_argument("--verify-native-library", action="store_true",
+                       help="Read-only installed llama.cpp shared-library integrity and direct/Python C ABI probe")
     setup.add_argument("--install-native", action="store_true",
                        help="Explicitly authorize offline staged native CUDA binding install into Ruth .venv")
     setup.add_argument("--accept-diskcache-risk", action="store_true",
@@ -82,8 +84,10 @@ def main(argv: list[str] | None = None) -> int:
     action = args.action or "doctor"
     # Reject incompatible permissions BEFORE any preflight, Git checkout,
     # network access or build. Flag order must not change this boundary.
-    standalone = (args.build_native, args.plan_native_install, args.install_native) \
-        if action == "setup" else (False, False, False)
+    standalone = (
+        args.build_native, args.plan_native_install,
+        args.install_native, args.verify_native_library,
+    ) if action == "setup" else (False, False, False, False)
     conflicting = (
         sum(bool(x) for x in standalone) > 1 or
         (any(standalone) and (
@@ -133,6 +137,7 @@ def main(argv: list[str] | None = None) -> int:
             args.build_native,
             args.plan_native_install,
             args.install_native,
+            args.verify_native_library,
         )):
             _print({
                 "action": "setup", "status": "download_not_authorized",
@@ -153,6 +158,17 @@ def main(argv: list[str] | None = None) -> int:
                         "pip_started": False, "build_started": False})
                 return 2
             source_plan = create_source_build_plan()
+        if args.verify_native_library:
+            from .native_library import verify_native_library
+            inspected = verify_native_library(
+                project_root=Path(env.project_root), environment=env,
+            )
+            _print({
+                "action": "setup", "status": inspected.status,
+                "native_library": inspected.to_dict(),
+                "installation_started": False, "build_started": False,
+            })
+            return 0 if inspected.status == "native_library_dual_abi_verified" else 2
         if args.plan_native_install:
             from .native_installer import inspect_native_install_inputs
             verified, _wheels = inspect_native_install_inputs(
