@@ -26,27 +26,54 @@ from .model_catalog import (
 MODEL_ROOT = Path("models")
 BUFFER = 1024 * 1024
 SPARE_BYTES = 128 * 1024 * 1024
+# Exact HTTPS hostnames, NOT wildcard trust. Hugging Face documents the
+# active endpoints here (model download / firewall allowlist):
+# https://huggingface.co/docs/hub/models-downloading
+# Retain older known HF endpoints for already-mirrored GGUF files. Review
+# and explicitly pin new hostnames if upstream infrastructure changes.
 ALLOWED_DOWNLOAD_HOSTS = frozenset({
-    "huggingface.co", "cdn-lfs.huggingface.co", "cdn-lfs.hf.co",
-    "cas-bridge.xethub.hf.co", "cas-server.xethub.hf.co",
+    "huggingface.co",
+    "cas-server.xethub.hf.co",
+    "cas-server.xethub-eu.hf.co",
     "transfer.xethub.hf.co",
+    "transfer.xethub-eu.hf.co",
+    "us.aws.cdn.hf.co",
+    "us.gcp.cdn.hf.co",
+    "cdn-lfs-us-1.hf.co",
+    "cdn-lfs-eu-1.hf.co",
+    "cdn-lfs.hf.co",
+    "cdn-lfs.huggingface.co",
+    "cas-bridge.xethub.hf.co",
 })
 RANGE_RE = re.compile(r"^bytes (\d+)-(\d+)/(\d+)$")
 
 
+def _validate_hf_download_url(url: str, *, origin: bool = False) -> str:
+    """Accept only exact documented HF HTTPS hosts; never expose signed URLs.
+
+    The hostname alone may be included in a diagnostic, not a URL with
+    potentially sensitive Xet/LFS query parameters or bearer signatures.
+    """
+    parsed = urlsplit(url)
+    host = parsed.hostname
+    trusted = host == "huggingface.co" if origin else host in ALLOWED_DOWNLOAD_HOSTS
+    if parsed.scheme != "https" or not trusted or parsed.username \
+            or parsed.password or parsed.port not in (None, 443):
+        raise ValueError(
+            "Untrusted HTTPS Hugging Face download host: " +
+            str(host or "<no host>")
+        )
+    return host
+
+
 class _SafeHfRedirect(HTTPRedirectHandler):
     def redirect_request(self, req, fp, code, msg, headers, newurl):
-        parsed = urlsplit(newurl)
-        if parsed.scheme != "https" or parsed.hostname not in ALLOWED_DOWNLOAD_HOSTS \
-                or parsed.username or parsed.password or parsed.port not in (None, 443):
-            raise ValueError("Model redirect outside allowlisted HTTPS Hugging Face CDN")
+        _validate_hf_download_url(newurl)
         return super().redirect_request(req, fp, code, msg, headers, newurl)
 
 
 def open_hf_request(request: Request):
-    url = urlsplit(request.full_url)
-    if url.scheme != "https" or url.hostname != "huggingface.co":
-        raise ValueError("Model download must originate at Hugging Face HTTPS")
+    _validate_hf_download_url(request.full_url, origin=True)
     return build_opener(_SafeHfRedirect()).open(request, timeout=45)
 
 
@@ -263,10 +290,9 @@ def download_pinned_model(
             })
             started = True
             with open_request(request) as response:
-                address = urlsplit(response.geturl())
-                if address.scheme != "https" or \
-                        address.hostname not in ALLOWED_DOWNLOAD_HOSTS:
-                    raise ValueError("Untrusted file source URL")
+                # Defense in depth: validate the final URL even for injected
+                # transports, not only redirects from the real urllib opener.
+                _validate_hf_download_url(response.geturl())
                 status = response.status
                 if status != (206 if offset else 200):
                     raise ValueError("Unexpected HTTP status; resumptions require 206")

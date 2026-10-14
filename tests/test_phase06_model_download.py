@@ -12,8 +12,10 @@ from unittest.mock import patch
 from ruth_runtime.launcher import main
 from ruth_runtime.model_catalog import select_model
 from ruth_runtime.model_download import (
+    ALLOWED_DOWNLOAD_HOSTS, _SafeHfRedirect, _validate_hf_download_url,
     _manifest, _local_path, download_pinned_model,
 )
+from urllib.request import Request
 
 PAYLOAD = b"GGUF" + b"R" * (1024 * 1024 + 23)
 
@@ -246,6 +248,81 @@ class ResumableModelDownloadTests(unittest.TestCase):
             report = self.call(root, model, fetch=lambda _: metadata(model, gated="auto"),
                                download=lambda _: self.fail("No gated transfers"))
             self.assertEqual(report.status, "gated_model_not_supported")
+
+    def test_official_hf_cdn_hostnames_are_explicitly_allowed(self):
+        official = {
+            "huggingface.co",
+            "cas-server.xethub.hf.co",
+            "cas-server.xethub-eu.hf.co",
+            "transfer.xethub.hf.co",
+            "transfer.xethub-eu.hf.co",
+            "us.aws.cdn.hf.co",
+            "us.gcp.cdn.hf.co",
+            "cdn-lfs-us-1.hf.co",
+            "cdn-lfs-eu-1.hf.co",
+        }
+        self.assertTrue(official.issubset(ALLOWED_DOWNLOAD_HOSTS))
+        for host in official:
+            with self.subTest(host=host):
+                self.assertEqual(
+                    _validate_hf_download_url("https://" + host + "/asset"),
+                    host,
+                )
+
+    def test_documented_hf_cdn_response_can_download_and_pass_sha(self):
+        for host in ("us.aws.cdn.hf.co", "us.gcp.cdn.hf.co",
+                     "cdn-lfs-eu-1.hf.co", "cas-server.xethub-eu.hf.co"):
+            with self.subTest(host=host), TemporaryDirectory() as temp:
+                model = choice()
+                result = self.call(
+                    Path(temp), model,
+                    download=FakeDownload(
+                        override_url="https://" + host + "/test-signed-file"
+                    ),
+                )
+                self.assertEqual(result.status, "model_download_verified")
+                self.assertTrue(result.model_verified)
+
+    def test_redirect_handler_enforces_exact_https_fqdn(self):
+        original = Request("https://huggingface.co/ns/repo/resolve/file.gguf")
+        handler = _SafeHfRedirect()
+        for host in ("us.aws.cdn.hf.co", "cdn-lfs-us-1.hf.co",
+                     "cas-server.xethub-eu.hf.co"):
+            with self.subTest(host=host):
+                redirected = handler.redirect_request(
+                    original, None, 302, "Found", {},
+                    "https://" + host + "/test-file?signature=private"
+                )
+                self.assertEqual(redirected.full_url.split("/")[2], host)
+
+    def test_external_redirects_and_downgrade_rejected_without_query_leak(self):
+        bad = (
+            "https://attacker.example/asset?token=SECRET",
+            "https://hf.co.attacker.example/asset?token=SECRET",
+            "https://us.aws.cdn.hf.co.attacker.example/asset?token=SECRET",
+            "http://us.aws.cdn.hf.co/asset?token=SECRET",
+            "https://someone@us.aws.cdn.hf.co/asset?token=SECRET",
+            "https://us.aws.cdn.hf.co:8443/asset?token=SECRET",
+            "file:///etc/passwd",
+        )
+        original = Request("https://huggingface.co/ns/repo/resolve/file.gguf")
+        handler = _SafeHfRedirect()
+        for url in bad:
+            with self.subTest(url=url):
+                with self.assertRaises(ValueError) as err:
+                    handler.redirect_request(original, None, 302, "Found", {}, url)
+                self.assertNotIn("SECRET", str(err.exception))
+
+    def test_starting_endpoint_must_be_huggingface_co(self):
+        with self.assertRaises(ValueError):
+            _validate_hf_download_url(
+                "https://us.aws.cdn.hf.co/asset", origin=True)
+        self.assertEqual(
+            _validate_hf_download_url(
+                "https://huggingface.co/ns/repo/resolve/commit/file.gguf",
+                origin=True),
+            "huggingface.co",
+        )
 
     def test_untrusted_redirect_url_cannot_write_model(self):
         with TemporaryDirectory() as temp:

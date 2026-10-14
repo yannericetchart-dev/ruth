@@ -58,6 +58,38 @@ Dopo i due consensi il modulo `ruth_runtime/model_download.py`:
    `https://huggingface.co/{repo}/resolve/{commit}/{filename}?download=true`;
    sono ammessi **solo HTTPS e host Hugging Face/CDN/Xet esplicitamente
    elencati**. Non invia credenziali a provider esterni.
+### Redirect CDN Hugging Face (fix dopo primo download)
+
+Il primo tentativo reale di download del modello Llama 1B è stato fermato
+prima di ricevere byte: `ValueError: Model redirect outside allowlisted HTTPS
+Hugging Face CDN`. Il file `*.part` risultava vuoto (`bytes_present=0`);
+questo **non** costituisce fallimento del checksum o incompatibilità GGUF.
+
+La lista iniziale di hostname era incompleta. L'elenco esplicito nel downloader
+ora include i CDN regionali documentati da Hugging Face:
+
+- `us.aws.cdn.hf.co`, `us.gcp.cdn.hf.co`
+- `cdn-lfs-us-1.hf.co`, `cdn-lfs-eu-1.hf.co`
+- `cas-server.xethub.hf.co`, `cas-server.xethub-eu.hf.co`
+- `transfer.xethub.hf.co`, `transfer.xethub-eu.hf.co`
+
+Sono conservati i precedenti host Xet/LFS specifici. Non si abilita
+un wildcard `*.hf.co`, non si autorizzano indirizzi esterni, HTTP,
+credenziali embedded negli URL o porte inattese. I redirect vengono
+verificati e la destinazione finale è ricontrollata. I messaggi di errore
+mostrano **solo il nome host** e non pubblicano query firmate.
+
+**Fonte ufficiale:** https://huggingface.co/docs/hub/models-downloading
+(sezione download dietro proxy/firewall, elenco host CDN).
+
+Dopo `git pull --ff-only` e i test, è possibile ripetere lo stesso comando
+di download già autorizzato **solo se l'utente intende nuovamente avviare
+il trasferimento**, sempre con entrambi i flag espliciti. La directory
+parziale da zero byte viene riusata in sicurezza. Una differente
+destinazione CDN non comporta mai la riduzione delle verifiche di SHA256,
+dimensione e revisione Git; se compare un altro host, Ruth fallisce e ne
+riporta il solo hostname per verifica prima di modificare la policy.
+
 5. Scrive `*.gguf.part` e relativo `*.part.json`. Per riprendere da
    un'interruzione invia `Range: bytes=N-` e richiede
    `HTTP 206` + `Content-Range` e dimensione dei byte rigorosi.
