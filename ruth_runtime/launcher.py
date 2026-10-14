@@ -68,6 +68,8 @@ def main(argv: list[str] | None = None) -> int:
                        help="Audit staged wheel hashes and PyPI metadata; pip OFFLINE dry-run only")
     setup.add_argument("--review-security", action="store_true",
                        help="Offline upstream diskcache and CUDA adapter policy check; no install")
+    setup.add_argument("--build-native", action="store_true",
+                       help="Authorize offline CUDA sm_89 wheel compilation in isolated staging; no .venv install")
     sub.add_parser("run", help="Start the CUDA runtime only after verification")
     args = parser.parse_args(argv)
 
@@ -97,7 +99,8 @@ def main(argv: list[str] | None = None) -> int:
             _print({"action": "setup", "status": "blocked_preflight", "plan": report})
             return 2
         if not args.allow_downloads and not args.allow_python_dependency_downloads \
-                and not args.verify_candidate and not args.review_security:
+                and not args.verify_candidate and not args.review_security \
+                and not args.build_native:
             _print({
                 "action": "setup", "status": "download_not_authorized",
                 "plan": report,
@@ -117,6 +120,24 @@ def main(argv: list[str] | None = None) -> int:
                         "pip_started": False, "build_started": False})
                 return 2
             source_plan = create_source_build_plan()
+        if args.build_native:
+            if args.allow_downloads or args.allow_python_dependency_downloads \
+                    or args.verify_candidate or args.review_security:
+                _print({"action": "setup", "status": "conflicting_build_options",
+                        "error": "Run --build-native alone; no implicit downloads or other steps"})
+                return 2
+            from .native_builder import build_native_cuda_wheel
+            built = build_native_cuda_wheel(
+                project_root=Path(env.project_root),
+                environment=env, source_plan=source_plan,
+            )
+            _print({
+                "action": "setup", "status": built.status,
+                "native_wheel": built.to_dict(),
+                "installation_started": False,
+                "risk_todo_open": True,
+            })
+            return 0 if built.status == "native_cuda_wheel_built" else 2
         if args.review_security:
             from .security_gate import review_diskcache_risk
             gate = review_diskcache_risk(

@@ -218,6 +218,69 @@ class LauncherTests(unittest.TestCase):
             self.assertEqual(main(["setup", "--review-security"]), 2)
             self.assertIn('"status": "blocked"', output.getvalue())
 
+    def test_explicit_native_build_stages_only_wheel(self):
+        from types import SimpleNamespace
+        plan = SimpleNamespace(source_verified=True, to_dict=lambda: {})
+        result = SimpleNamespace(
+            status="native_cuda_wheel_built",
+            to_dict=lambda: {
+                "native_build_started": True,
+                "installed_in_ruth_venv": False,
+                "fallback_automatically_selected": False,
+            },
+        )
+        with patch("ruth_runtime.launcher.inspect_python_environment",
+                   return_value=environment()), \
+             patch("ruth_runtime.launcher.build_launch_plan",
+                   return_value={"setup_ready": True}), \
+             patch("ruth_runtime.source_build_plan.create_source_build_plan",
+                   return_value=plan), \
+             patch("ruth_runtime.native_builder.build_native_cuda_wheel",
+                   return_value=result) as builder, \
+             patch("ruth_runtime.source_acquisition.acquire_pinned_sources",
+                   side_effect=AssertionError("No Git download")), \
+             patch("ruth_runtime.dependency_resolution.stage_dependency_candidate",
+                   side_effect=AssertionError("No PyPI download")), \
+             patch("sys.stdout", new_callable=StringIO) as output:
+            self.assertEqual(main(["setup", "--build-native"]), 0)
+            self.assertEqual(builder.call_count, 1)
+            self.assertIn('"installation_started": false', output.getvalue())
+            self.assertIn('"risk_todo_open": true', output.getvalue())
+
+    def test_native_build_never_auto_fallback_on_failure(self):
+        from types import SimpleNamespace
+        failure = SimpleNamespace(
+            status="cuda_compile_failed",
+            to_dict=lambda: {"fallback_automatically_selected": False},
+        )
+        with patch("ruth_runtime.launcher.inspect_python_environment",
+                   return_value=environment()), \
+             patch("ruth_runtime.launcher.build_launch_plan",
+                   return_value={"setup_ready": True}), \
+             patch("ruth_runtime.source_build_plan.create_source_build_plan",
+                   return_value=SimpleNamespace(source_verified=True)), \
+             patch("ruth_runtime.native_builder.build_native_cuda_wheel",
+                   return_value=failure), \
+             patch("sys.stdout", new_callable=StringIO) as output:
+            self.assertEqual(main(["setup", "--build-native"]), 2)
+            self.assertIn('"fallback_automatically_selected": false', output.getvalue())
+
+    def test_native_build_conflicting_network_options_denied(self):
+        from types import SimpleNamespace
+        with patch("ruth_runtime.launcher.inspect_python_environment",
+                   return_value=environment()), \
+             patch("ruth_runtime.launcher.build_launch_plan",
+                   return_value={"setup_ready": True}), \
+             patch("ruth_runtime.source_build_plan.create_source_build_plan",
+                   return_value=SimpleNamespace(source_verified=True)), \
+             patch("ruth_runtime.native_builder.build_native_cuda_wheel",
+                   side_effect=AssertionError("Never build with ambiguous consent")), \
+             patch("sys.stdout", new_callable=StringIO) as output:
+            self.assertEqual(main([
+                "setup", "--build-native", "--allow-downloads"
+            ]), 2)
+            self.assertIn('"conflicting_build_options"', output.getvalue())
+
     def test_run_never_pretends_llm_engine_implemented(self):
         with patch("ruth_runtime.launcher.inspect_python_environment",
                    return_value=environment()), \
