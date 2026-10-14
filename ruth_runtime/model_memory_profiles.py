@@ -20,6 +20,15 @@ from .model_catalog import load_catalog
 CAPACITY_FILE = Path("catalog/gpu_capacity_profiles.json")
 _MIB = 1024 * 1024
 _CARD = re.compile(r"card[0-9]+$")
+_PCI_BUS = re.compile(r"^([0-9a-fA-F]{4,8}):([0-9a-fA-F]{2}):([0-9a-fA-F]{2})\\.([0-7])$")
+
+
+def _canonical_pci_bus(raw: str) -> str | None:
+    match = _PCI_BUS.fullmatch(raw)
+    if match is None:
+        return None
+    domain, bus, device, function = match.groups()
+    return f"{int(domain,16):04x}:{bus.lower()}:{device.lower()}.{function}"
 
 
 def inspect_gpu_drm(pci_bus: str, *, sysroot: Path = Path("/sys")) -> dict:
@@ -28,6 +37,10 @@ def inspect_gpu_drm(pci_bus: str, *, sysroot: Path = Path("/sys")) -> dict:
     A loaded nvidia_drm module is not itself proof that it uses this GPU.
     This is a sysfs-only observation; no module removal or driver changes.
     """
+    expected_bus = _canonical_pci_bus(pci_bus)
+    if expected_bus is None:
+        return {"status": "drm_telemetry_unverified", "module_loaded": None,
+                "associated_cards": []}
     root = Path(sysroot)
     base = root / "class/drm"
     mod = root / "module/nvidia_drm"
@@ -38,7 +51,7 @@ def inspect_gpu_drm(pci_bus: str, *, sysroot: Path = Path("/sys")) -> dict:
     cards = []
     try:
         for path in base.iterdir():
-            if _CARD.fullmatch(path.name) and (path / "device").resolve().name.lower() == pci_bus.lower():
+            if _CARD.fullmatch(path.name) and _canonical_pci_bus((path / "device").resolve().name) == expected_bus:
                 cards.append(path.name)
     except OSError:
         return {"status": "drm_telemetry_unverified", "module_loaded": loaded,
