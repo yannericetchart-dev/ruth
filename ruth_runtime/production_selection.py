@@ -267,6 +267,12 @@ def execute_production_candidate(
                 "download_started": dr.download_started}
     last_report = None
     recording = []
+    def publish_measured_profile() -> dict | None:
+        if not recording:
+            return None
+        proposal = build(Path(recording[-1]["profile_file"]))
+        return publish_owner(proposal)
+
     # Keep weights and context distinct, to profile KV allocations independently.
     for mode in ("weights", "context"):
         report = load(project_root=root, quantization=candidate, mode=mode,
@@ -284,15 +290,21 @@ def execute_production_candidate(
                 temp.flush()
                 recording.append(record(Path(temp.name), project_root=root))
         if report.get("status") != "gpu_load_only_completed" or not report.get("weights_loaded"):
+            publication = publish_measured_profile()
             return {**base, "status": "production_native_weights_failed" if mode == "weights"
                     else "production_native_context_failed",
                     "candidate": candidate, "last_native_status": report.get("status"),
                     "download_started": dr.download_started, "gpu_allocations_executed": True,
                     "local_records": recording,
+                    "git_publication": publication,
+                    "git_updated": bool(publication and publication.get("git_updated")),
                     "next_step": "Inspect failure and Git measurement; never auto-switch quantization blindly"}
         if mode == "context" and not report.get("context_initialized"):
+            publication = publish_measured_profile()
             return {**base, "status": "production_native_context_failed",
                     "candidate": candidate, "local_records": recording,
+                    "git_publication": publication,
+                    "git_updated": bool(publication and publication.get("git_updated")),
                     "gpu_allocations_executed": True}
     result = infer(project_root=root, authorize_gpu_inference=True,
                    quantization=candidate)
@@ -307,8 +319,7 @@ def execute_production_candidate(
             Path(recording[-1]["profile_file"]),
             result.to_dict(), choice=choice, hardware=host)
     if recording:
-        proposal = build(Path(recording[-1]["profile_file"]))
-        publication = publish_owner(proposal)
+        publication = publish_measured_profile()
     smaller = [r["quantization"] for r in plan["models"]
                if r.get("quality_priority_heuristic") is not None
                and row.get("quality_priority_heuristic") is not None
