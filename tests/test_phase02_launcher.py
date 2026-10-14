@@ -302,6 +302,88 @@ class LauncherTests(unittest.TestCase):
                 self.assertIn('"installation_started": false', output.getvalue())
                 self.assertIn('"build_started": false', output.getvalue())
 
+    def test_native_install_preflight_is_read_only(self):
+        from types import SimpleNamespace
+        outcome = SimpleNamespace(
+            status="ready_for_explicit_install_authorization",
+            to_dict=lambda: {"native_wheel_verified": True, "installation_started": False},
+        )
+        with patch("ruth_runtime.launcher.inspect_python_environment",
+                   return_value=environment()), \
+             patch("ruth_runtime.launcher.build_launch_plan",
+                   return_value={"setup_ready": True}), \
+             patch("ruth_runtime.source_build_plan.create_source_build_plan",
+                   return_value=SimpleNamespace(source_verified=True)), \
+             patch("ruth_runtime.native_installer.inspect_native_install_inputs",
+                   return_value=(outcome, ())) as inspection, \
+             patch("ruth_runtime.native_installer.install_native_cuda",
+                   side_effect=AssertionError("No install in plan")), \
+             patch("sys.stdout", new_callable=StringIO) as output:
+            self.assertEqual(main(["setup", "--plan-native-install"]), 0)
+            self.assertEqual(inspection.call_count, 1)
+            self.assertIn('"installation_started": false', output.getvalue())
+
+    def test_native_install_passes_separate_explicit_risk_consent(self):
+        from types import SimpleNamespace
+        outcome = SimpleNamespace(
+            status="native_cuda_binding_installed",
+            to_dict=lambda: {"installed_in_ruth_venv": True,
+                             "diskcache_todo_open": True},
+        )
+        with patch("ruth_runtime.launcher.inspect_python_environment",
+                   return_value=environment()), \
+             patch("ruth_runtime.launcher.build_launch_plan",
+                   return_value={"setup_ready": True}), \
+             patch("ruth_runtime.source_build_plan.create_source_build_plan",
+                   return_value=SimpleNamespace(source_verified=True)), \
+             patch("ruth_runtime.native_installer.install_native_cuda",
+                   return_value=outcome) as install, \
+             patch("sys.stdout", new_callable=StringIO) as output:
+            self.assertEqual(main([
+                "setup", "--install-native", "--accept-diskcache-risk"
+            ]), 0)
+            self.assertTrue(install.call_args.kwargs["authorize_install"])
+            self.assertTrue(install.call_args.kwargs["accept_diskcache_risk"])
+            self.assertIn('"diskcache_todo_open": true', output.getvalue())
+
+    def test_install_native_without_risk_acknowledgement_is_not_assumed(self):
+        from types import SimpleNamespace
+        outcome = SimpleNamespace(
+            status="explicit_install_and_risk_consent_required",
+            to_dict=lambda: {"installation_started": False},
+        )
+        with patch("ruth_runtime.launcher.inspect_python_environment",
+                   return_value=environment()), \
+             patch("ruth_runtime.launcher.build_launch_plan",
+                   return_value={"setup_ready": True}), \
+             patch("ruth_runtime.source_build_plan.create_source_build_plan",
+                   return_value=SimpleNamespace(source_verified=True)), \
+             patch("ruth_runtime.native_installer.install_native_cuda",
+                   return_value=outcome) as install, \
+             patch("sys.stdout", new_callable=StringIO) as output:
+            self.assertEqual(main(["setup", "--install-native"]), 2)
+            self.assertFalse(install.call_args.kwargs["accept_diskcache_risk"])
+            self.assertIn("explicit_install_and_risk_consent_required", output.getvalue())
+
+    def test_risk_flag_alone_never_authorizes_actions(self):
+        with patch("ruth_runtime.launcher.inspect_python_environment",
+                   side_effect=AssertionError("Conflict must be rejected first")), \
+             patch("sys.stdout", new_callable=StringIO) as output:
+            self.assertEqual(main(["setup", "--accept-diskcache-risk"]), 2)
+            self.assertIn("conflicting_build_options", output.getvalue())
+
+    def test_install_cannot_combine_with_network_build_or_audits(self):
+        incompatible = ("--allow-downloads", "--allow-python-dependency-downloads",
+                        "--build-native", "--verify-candidate",
+                        "--review-security", "--plan-native-install")
+        for flag in incompatible:
+            with self.subTest(flag=flag), \
+                 patch("ruth_runtime.launcher.inspect_python_environment",
+                       side_effect=AssertionError("No side effects before consent validation")), \
+                 patch("sys.stdout", new_callable=StringIO) as output:
+                self.assertEqual(main(["setup", "--install-native", flag]), 2)
+                self.assertIn("conflicting_build_options", output.getvalue())
+
     def test_run_never_pretends_llm_engine_implemented(self):
         with patch("ruth_runtime.launcher.inspect_python_environment",
                    return_value=environment()), \

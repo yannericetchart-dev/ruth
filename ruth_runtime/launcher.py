@@ -70,20 +70,33 @@ def main(argv: list[str] | None = None) -> int:
                        help="Offline upstream diskcache and CUDA adapter policy check; no install")
     setup.add_argument("--build-native", action="store_true",
                        help="Authorize offline CUDA sm_89 wheel compilation in isolated staging; no .venv install")
+    setup.add_argument("--plan-native-install", action="store_true",
+                       help="Read-only audit of the existing native CUDA wheel and runtime inputs")
+    setup.add_argument("--install-native", action="store_true",
+                       help="Explicitly authorize offline staged native CUDA binding install into Ruth .venv")
+    setup.add_argument("--accept-diskcache-risk", action="store_true",
+                       help="Explicitly acknowledge CVE-2025-69872 for installed diskcache 5.6.3; TODO stays open")
     sub.add_parser("run", help="Start the CUDA runtime only after verification")
     args = parser.parse_args(argv)
 
     action = args.action or "doctor"
     # Reject incompatible permissions BEFORE any preflight, Git checkout,
     # network access or build. Flag order must not change this boundary.
-    if action == "setup" and args.build_native and (
-        args.allow_downloads or args.allow_python_dependency_downloads
-        or args.verify_candidate or args.review_security
-    ):
+    standalone = (args.build_native, args.plan_native_install, args.install_native) \
+        if action == "setup" else (False, False, False)
+    conflicting = (
+        sum(bool(x) for x in standalone) > 1 or
+        (any(standalone) and (
+            args.allow_downloads or args.allow_python_dependency_downloads
+            or args.verify_candidate or args.review_security
+        )) or
+        (action == "setup" and args.accept_diskcache_risk and not args.install_native)
+    )
+    if conflicting:
         _print({
-            "action": "setup",
-            "status": "conflicting_build_options",
-            "error": "Run --build-native alone; no implicit downloads or other steps",
+            "action": "setup", "status": "conflicting_build_options",
+            "error": "Native build/install actions must be separate; "
+                     "no implicit downloads, build, or risk acceptance",
             "installation_started": False,
             "build_started": False,
         })
@@ -114,7 +127,8 @@ def main(argv: list[str] | None = None) -> int:
             return 2
         if not args.allow_downloads and not args.allow_python_dependency_downloads \
                 and not args.verify_candidate and not args.review_security \
-                and not args.build_native:
+                and not args.build_native and not args.plan_native_install
+                and not args.install_native:
             _print({
                 "action": "setup", "status": "download_not_authorized",
                 "plan": report,
@@ -134,6 +148,30 @@ def main(argv: list[str] | None = None) -> int:
                         "pip_started": False, "build_started": False})
                 return 2
             source_plan = create_source_build_plan()
+        if args.plan_native_install:
+            from .native_installer import inspect_native_install_inputs
+            verified, _wheels = inspect_native_install_inputs(
+                project_root=Path(env.project_root), environment=env,
+            )
+            _print({
+                "action": "setup", "status": verified.status,
+                "install_preflight": verified.to_dict(),
+                "installation_started": False, "build_started": False,
+            })
+            return 0 if verified.status == "ready_for_explicit_install_authorization" else 2
+        if args.install_native:
+            from .native_installer import install_native_cuda
+            outcome = install_native_cuda(
+                project_root=Path(env.project_root), environment=env,
+                authorize_install=True,
+                accept_diskcache_risk=args.accept_diskcache_risk,
+            )
+            _print({
+                "action": "setup", "status": outcome.status,
+                "native_install": outcome.to_dict(),
+                "build_started": False,
+            })
+            return 0 if outcome.status == "native_cuda_binding_installed" else 2
         if args.build_native:
             from .native_builder import build_native_cuda_wheel
             built = build_native_cuda_wheel(

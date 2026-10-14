@@ -1,0 +1,12 @@
+{
+  "schema": "ruth-native-wheel-lock-v1",
+  "source_commit": "1652066e0af45f2313b339670ef9555e8a54e545",
+  "llama_cpp_commit": "0c1e57098bba43ac29e6e3b677cdceebdd22334f",
+  "python": "3.12",
+  "cuda_architecture": "89",
+  "wheel_filename": "llama_cpp_python-0.3.36-py3-none-linux_x86_64.whl",
+  "wheel_sha256": "ad5057352154d90f95a473d01d039c975f1987cd9b25f8ad7a83cf6c7e80ee74",
+  "gpu_offload_executed": false,
+  "inference_executed": false,
+  "security_todo": "diskcache 5.6.3 CVE-2025-69872; requires separate risk authorization before installation"
+}
