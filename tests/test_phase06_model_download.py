@@ -125,13 +125,20 @@ class ResumableModelDownloadTests(unittest.TestCase):
             self.assertFalse(blocked.download_started)
 
     def test_unpinned_production_variant_cannot_download(self):
+        # Gemma Q4_K_L is now fully pinned in the catalog. Deliberately
+        # remove the immutable revision in this negative test so the
+        # downloader must refuse BEFORE metadata network or transfer.
         with TemporaryDirectory() as temp:
             root = Path(temp)
+            incomplete = replace(select_model("production"), revision=None)
             blocked = self.call(
-                root, model=select_model("production"),
+                root, model=incomplete,
                 fetch=lambda _: self.fail("No metadata"),
                 download=lambda _: self.fail("No download"))
             self.assertEqual(blocked.status, "model_metadata_not_pinned")
+            self.assertFalse(blocked.download_started)
+            self.assertFalse(blocked.model_verified)
+            self.assertFalse((root / "models").exists())
 
     def test_full_download_verifies_hash_and_promotes_exact_file(self):
         with TemporaryDirectory() as temp:

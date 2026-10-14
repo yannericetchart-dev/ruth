@@ -46,7 +46,8 @@ class CatalogTests(unittest.TestCase):
         self.assertEqual(selected.path, "gemma/gemma-2/gemma-2-9B-it/gguf/Q4_K_L")
         self.assertEqual(selected.repo_id, "bartowski/gemma-2-9b-it-GGUF")
         self.assertEqual(selected.license, "gemma")
-        self.assertEqual(selected.assessment, "requires_real_hardware_profiling")
+        self.assertEqual(selected.assessment,
+                         "selected_for_minimum_context_native_cuda_probe_not_qualified")
         self.assertEqual(len(selected.expected_sha256), 64)
         self.assertFalse(selected.downloadable)
         self.assertFalse(selected.local_model_ready)
