@@ -14,6 +14,7 @@ from pathlib import Path
 import subprocess
 from typing import Any, Callable
 
+from .gpu_preflight import inspect_gpu_preflight
 from .dependencies import PROJECT_ROOT
 from .inference_probe import _valid_local_gguf, _select_unique_gpu, _parse_offload
 from .model_catalog import select_model
@@ -64,6 +65,7 @@ class ProductionCandidateProbe:
     native_cuda_buffer_mib_reported: float | None
     worker_exit_code: int | None
     generic_python_load_error_only: bool
+    gpu_preflight: dict | None
 
     def to_dict(self) -> dict:
         return asdict(self)
@@ -84,6 +86,7 @@ def _empty(status: str, **updates) -> ProductionCandidateProbe:
         native_failure_category=None, native_failure_signals=(),
         native_log_excerpt=(), native_cuda_buffer_mib_reported=None,
         worker_exit_code=None, generic_python_load_error_only=False,
+        gpu_preflight=None,
     )
     d.update(updates)
     return ProductionCandidateProbe(**d)
@@ -97,6 +100,7 @@ def probe_production_candidate(
     run: Callable[..., Any] = subprocess.run,
     verify_native: Callable[..., Any] = verify_native_library,
     discover_gpu: Callable[..., tuple[str, str]] = _select_unique_gpu,
+    gpu_preflight: Callable[..., Any] = inspect_gpu_preflight,
 ) -> ProductionCandidateProbe:
     """Probe only after explicit GPU consent and verified local license manifest."""
     def outcome(status: str, **updates) -> ProductionCandidateProbe:
@@ -132,11 +136,27 @@ def probe_production_candidate(
             return outcome("native_runtime_unverified", model_verified=True,
                           error=native.status)
         uuid, pci = discover_gpu(run=run)
+        gate = gpu_preflight(uuid, run=run)
+        if gate.status != "gpu_ready":
+            return outcome(
+                gate.status, model_verified=True,
+                native_library_verified=True, gpu_uuid=uuid, gpu_pci_bus=pci,
+                gpu_preflight=gate.to_dict(),
+                error=gate.error or "GPU occupata: chiudere i processi concorrenti sull'host.",
+            )
         child_env = {**os.environ, "CUDA_VISIBLE_DEVICES": uuid,
                      "PYTHONNOUSERSITE": "1", "PYTHONDONTWRITEBYTECODE": "1"}
         child_env.pop("LLAMA_CPP_LIB_PATH", None)
         cmd = [str(root / ".venv/bin/python"), "-I", "-c", COMMAND,
                str(root), str(root), uuid, quantization]
+        second_gate = gpu_preflight(uuid, run=run)
+        if second_gate.status != "gpu_ready":
+            return outcome(
+                second_gate.status, model_verified=True,
+                native_library_verified=True, gpu_uuid=uuid, gpu_pci_bus=pci,
+                gpu_preflight=second_gate.to_dict(),
+                error=second_gate.error or "Nuovi processi GPU rilevati prima del worker.",
+            )
         proc = run(
             cmd, cwd=str(root), capture_output=True, text=True,
             check=False, timeout=TIMEOUT, env=child_env,
@@ -150,7 +170,7 @@ def probe_production_candidate(
             return outcome(
                 "worker_failed_or_no_result", model_verified=True,
                 native_library_verified=True, gpu_uuid=uuid,
-                gpu_pci_bus=pci,
+                gpu_pci_bus=pci, gpu_preflight=second_gate.to_dict(),
                 error="No unique structured worker result; consult native diagnostics",
                 **native,
             )
@@ -168,7 +188,7 @@ def probe_production_candidate(
                 "production_min_context_worker_failed",
                 model_verified=True, native_library_verified=True,
                 gpu_uuid=uuid, gpu_pci_bus=pci,
-                error=message, **native,
+                gpu_preflight=second_gate.to_dict(), error=message, **native,
             )
         if result.get("purpose") != "production" or \
                 result.get("quantization") != quantization or \
@@ -200,7 +220,7 @@ def probe_production_candidate(
             else "gemma_min_context_inconclusive",
             model_verified=True, native_library_verified=True,
             gpu_uuid=uuid, gpu_pci_bus=pci,
-            model_loaded=loaded, generated_tokens=tokens,
+            gpu_preflight=second_gate.to_dict(), model_loaded=loaded, generated_tokens=tokens,
             offloaded_layers=layers, total_layers=total,
             full_gpu_offload_verified=full,
             gpu_process_observed=observed,
