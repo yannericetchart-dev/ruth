@@ -1,5 +1,6 @@
 """Auto-production GGUF selection: quality, published OOM, guarded first unknown."""
 import json
+from io import StringIO
 from pathlib import Path
 import shutil
 from tempfile import TemporaryDirectory
@@ -9,6 +10,8 @@ import unittest
 
 from ruth_runtime.dependencies import PROJECT_ROOT
 from ruth_runtime.model_catalog import select_model
+from ruth_runtime.launcher import main
+from ruth_runtime.profile_contribution import build_proposal
 from ruth_runtime.production_selection import (
     plan_production, execute_production_candidate,
 )
@@ -131,6 +134,9 @@ class ProductionSelectionTests(unittest.TestCase):
                 publish_owner=lambda proposal: {
                     "status": "git_profile_updated_model_profiling",
                     "git_updated": True},
+                save_minimal_inference=lambda *a, **kw: {
+                    "status": "local_minimal_gpu_inference_verified"},
+                hardware=host(),
             )
         self.assertEqual(reports, ["weights", "context"])
         self.assertEqual(result["status"],
@@ -139,6 +145,67 @@ class ProductionSelectionTests(unittest.TestCase):
         self.assertIn("Q4_K_S", result["smaller_formats_preliminary_size_candidates"])
         self.assertEqual(result["smaller_formats_full_gpu_verified"], [])
         self.assertFalse(result["production_qualified"])
+
+    def test_confirmed_q4m_minimal_gpu_tokens_are_reused_from_git(self):
+        # The public evidence is specific to the exact quant, runtime and ctx.
+        model = self.pin_m
+        local = self.root / ".ruth-build/profiles/models" / (model.expected_sha256 + ".json")
+        local.parent.mkdir(parents=True)
+        local.write_text(json.dumps({
+            "schema": "ruth-model-runtime-memory-registry-v1",
+            "source_verified": True,
+            "model": {
+                "family": "gemma", "model": "gemma-2",
+                "version": "gemma-2-9B-it", "format": "gguf",
+                "quantization": "Q4_K_M",
+                "gguf_sha256": model.expected_sha256,
+                "source_repository": model.repo_id, "source_revision": model.revision,
+                "gguf_serialized_bytes": model.expected_size_bytes, "license": model.license,
+            },
+            "runtime_measurements": {
+                "llama.cpp/ada/13.2": {
+                    "architecture": "ada", "compute_capability": "8.9",
+                    "tensor_core_generation": 4,
+                    "cuda_backend": "13.2", "cuda_driver_max": "13.2",
+                    "cuda_toolkit": None, "driver_version": "595.99.02",
+                    "llama_cpp_binding": "0.3.36",
+                    "cuda_init_observed_nvml_delta_mib_max": 90.19,
+                    "driver_reserved_mib_max": 369,
+                    "weights_buffer_mib_max": 5500.00,
+                },
+            },
+            "minimal_context_inference": [{
+                "verified": True, "n_ctx": 128, "n_batch": 64, "n_ubatch": 64,
+                "generated_tokens": 8, "full_gpu_offload_layers": 43,
+                "architecture": "ada", "driver_version": "595.99.02",
+                "cuda_backend": "13.2", "llama_cpp_binding": "0.3.36",
+                "flash_attention": None, "kv_type_k": None, "kv_type_v": None,
+                "production_context_qualified": False,
+            }],
+        }))
+        public = build_proposal(local, project_root=self.root)
+        path = self.root / public["repository_path"].replace(
+            "profiles/submissions/", "profiles/measurements/", 1)
+        path.parent.mkdir(parents=True)
+        path.write_text(json.dumps(public["proposal"]))
+        plan = self.plan()
+        state = {x["quantization"]: x["status"] for x in plan["models"]}
+        self.assertEqual(state["Q4_K_M"], "minimal_context_gpu_verified_from_git")
+        self.assertIsNone(plan["first_candidate_to_test"])
+        reused = execute_production_candidate(plan=plan, project_root=self.root)
+        self.assertEqual(reused["status"], "production_previous_minimal_gpu_profile_reused")
+        self.assertFalse(reused["current_live_inference_executed"])
+
+    def test_cli_planning_never_downloads_without_execute(self):
+        planned = self.plan()
+        with patch("sys.stdout", new_callable=StringIO) as out, \
+             patch("ruth_runtime.production_selection.plan_production",
+                   return_value=planned), \
+             patch("ruth_runtime.production_selection.execute_production_candidate",
+                   side_effect=AssertionError("Do not execute")):
+            code = main(["models", "auto-production", "--allow-metadata-network"])
+        self.assertEqual(code, 0)
+        self.assertEqual(json.loads(out.getvalue())["first_candidate_to_test"], "Q4_K_M")
 
     def test_larger_gguf_prefilter_is_not_tensor_allocation_proof(self):
         result = self.plan()
