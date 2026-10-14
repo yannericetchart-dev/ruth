@@ -48,6 +48,14 @@ class ProfileContributionTests(unittest.TestCase):
         }))
         return file
 
+    def test_proposal_rejects_temporary_profile_outside_project(self):
+        # CLI orchestration tests mock build_proposal because their fixtures
+        # live in temporary roots; real runtime must stay project-root-only.
+        with TemporaryDirectory() as tmp:
+            outside = self.prepare(Path(tmp))
+            with self.assertRaisesRegex(ValueError, "Only a local Ruth memory"):
+                build_proposal(outside)
+
     def test_proposal_is_canonical_and_privacy_minimized(self):
         with TemporaryDirectory() as tmp:
             root = Path(tmp)
