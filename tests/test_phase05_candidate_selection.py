@@ -52,6 +52,30 @@ def metadata(variant_sizes=SIZES, *, wrong_pin=False, revision=REVISION,
     }
 
 
+def llama_f16_metadata(*, f16_size=2480000000, include_f16=True):
+    """Synthetic fixture: not a downloaded, pinned or verified F16 GGUF."""
+    choice = select_model("test")
+    files = [
+        {
+            "rfilename": choice.filename,
+            "size": choice.expected_size_bytes,
+            "lfs": {"sha256": choice.expected_sha256,
+                    "size": choice.expected_size_bytes},
+        },
+    ]
+    if include_f16:
+        files.append({
+            "rfilename": "Llama-3.2-1B-Instruct-f16.gguf",
+            "size": f16_size,
+            "lfs": {"sha256": "b" * 64, "size": f16_size},
+        })
+    return {
+        "sha": choice.revision, "gated": False, "private": False,
+        "cardData": {"license": choice.license},
+        "siblings": files,
+    }
+
+
 def nvidia(*args, **kwargs):
     return SimpleNamespace(
         returncode=0,
@@ -106,6 +130,66 @@ class QuantizationPolicyTests(unittest.TestCase):
         self.assertEqual(result["license"], "gemma")
         self.assertFalse(result["catalog_modified"])
         self.assertFalse(result["download_started"])
+
+    def test_f16_is_discovered_on_llama_1b_not_skipped(self):
+        result = discover_quantizations(
+            purpose="test", authorize_metadata_network=True,
+            fetch=lambda _: llama_f16_metadata(),
+        )
+        self.assertEqual(result["status"], "quantizations_discovered", result)
+        files = {item["quantization"]: item for item in result["quantizations"]}
+        self.assertIn("f16", files)
+        self.assertEqual(files["f16"]["filename"],
+                         "Llama-3.2-1B-Instruct-f16.gguf")
+        self.assertEqual(files["f16"]["quality_priority_heuristic"], 220)
+        self.assertIsNone(files["f16"]["exclusion_reason"])
+        self.assertFalse(files["f16"]["download_pin_ready"])
+
+    def test_llama_f16_passes_six_gb_prefilter_and_outranks_q4(self):
+        result = recommend_quantization(
+            purpose="test", authorize_metadata_network=True,
+            fetch=lambda _: llama_f16_metadata(), run=nvidia,
+        )
+        self.assertEqual(result["status"], "provisional_shortlist_ready", result)
+        self.assertEqual(result["first_candidate_quantization"], "f16")
+        self.assertEqual(result["candidates"][0]["size_bytes"], 2480000000)
+        self.assertFalse(result["candidate_is_production_qualified"])
+        self.assertFalse(result["candidates"][0]["full_gpu_residency_verified"])
+        self.assertFalse(result["catalog_modified"])
+        self.assertFalse(result["download_started"])
+
+    def test_f16_larger_than_free_vram_is_filtered_without_fake_fit(self):
+        result = recommend_quantization(
+            purpose="test", authorize_metadata_network=True,
+            fetch=lambda _: llama_f16_metadata(f16_size=18000000000),
+            run=nvidia,
+        )
+        self.assertEqual(result["first_candidate_quantization"], "Q4_K_M")
+        f16 = next(x for x in result["all_quantizations"]
+                   if x["quantization"] == "f16")
+        self.assertEqual(f16["size_only_prefilter"],
+                         "gguf_file_larger_than_free_vram")
+        self.assertNotIn("f16", [c["quantization"] for c in result["candidates"]])
+
+    def test_real_gemma_q4_kl_bytes_outrank_q4_km_without_reserve(self):
+        # The two exact sizes come from the user's actual HF metadata output.
+        real_bytes = {"Q4_K_L": 5983265728, "Q4_K_M": 5761057728}
+        result = recommend_quantization(
+            purpose="production", authorize_metadata_network=True,
+            fetch=lambda _: metadata(real_bytes), run=nvidia,
+        )
+        self.assertEqual(result["first_candidate_quantization"], "Q4_K_L")
+        self.assertEqual(result["candidates"][0]["size_bytes"], 5983265728)
+        self.assertGreater(result["candidates"][0]["estimated_remaining_mib_after_file"], 0)
+
+    def test_gemma_f16_absent_in_selected_repo_not_invented(self):
+        result = discover_quantizations(
+            purpose="production", authorize_metadata_network=True,
+            fetch=lambda _: metadata(),
+        )
+        self.assertEqual(result["status"], "quantizations_discovered")
+        self.assertNotIn("f16", [x["quantization"]
+                                 for x in result["quantizations"]])
 
     def test_known_catalog_pin_mismatch_refused(self):
         result = discover_quantizations(

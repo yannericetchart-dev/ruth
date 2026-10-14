@@ -1,5 +1,47 @@
 # Ruth — Fase 05: selezione quantizzazioni con **tutta la VRAM libera**
 
+## Diagnosi F16 — differenza tra modello e formato
+
+Il log reale riportato il **14 ottobre 2026** evidenzia
+`321 test OK` e la shortlist Gemma 2 9B IT: **Q4_K_L** viene prima
+di Q4_K_M, perché nel repository GGUF specifico sono presenti
+`Q4_K_L=5983265728 byte` (~5706 MiB) e `Q4_K_M=5761057728 byte`
+(~5494 MiB), contro **5759 MiB di VRAM libera**. Il margine apparente
+per Q4_K_L è appena ~53 MiB; ciò non ne prova la caricabilità CUDA.
+
+L'assenza di F16 nel report Gemma dipende da **due cause differenti**:
+
+1. Ruth legge il **repository selezionato**, non tutte le famiglie e
+   quantizzazioni contemporaneamente. `bartowski/gemma-2-9b-it-GGUF`
+   elenca F32 e Q8/Q6/Q5/Q4/Q3/Q2, **non un file GGUF F16**.
+2. La prima quality policy non contemplava `f16`; anche un file
+   esistente sarebbe stato erroneamente classificato `unranked`
+   ed escluso dalla shortlist. **Corretto:** `f16` è ora riconosciuta
+   e prioritizzata sopra `Q8_0` dove un GGUF con SHA256 e byte esatti
+   viene pubblicato nel repo selezionato.
+
+Fonti dei file GGUF:
+- Gemma Bartowski: https://huggingface.co/bartowski/gemma-2-9b-it-GGUF
+- **Llama 3.2 1B Instruct F16:** https://huggingface.co/bartowski/Llama-3.2-1B-Instruct-GGUF
+  (~**2,48 GB**; coerente con RTX 4050 da 6 GiB per il solo prefiltro)
+- **Gemma 2 9B IT F16 alternativa:** https://huggingface.co/second-state/gemma-2-9b-it-GGUF
+  (~**18,5 GB**; NON entra interamente nei 6 GiB GPU)
+
+Un caricamento che sembra consentire Gemma 9B F16 su hardware da
+6 GiB può riguardare offload CPU, memoria condivisa/oversubscription,
+un modello più piccolo o precisione F16 solo per i calcoli/KV.
+Questi casi **non** dimostrano residenza intera dei pesi F16
+nella VRAM dedicata.
+
+La policy non scarica nulla né cambia i default:
+`production=Gemma 2 9B IT Q4_K_M` resta una voce iniziale di
+catalogo, mentre `test=Llama 3.2 1B Instruct Q4_K_M` resta
+la baseline GPU verificata. `./ruth models recommend --purpose test
+--allow-metadata-network` ora può proporre F16 **come candidato**
+sulla base dei metadati, senza cambiare in automatico test/prod.
+
+
+
 ## Decisione approvata
 
 **Nessuna riserva di VRAM durante la selezione.** Ruth sceglie la
