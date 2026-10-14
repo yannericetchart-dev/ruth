@@ -103,7 +103,7 @@ def observed_cuda_futility(
         return None
     tested_lower = ranked[boundary:prefix]
     if any(
-        (entries.get(row["tensor"]) or {}).get("inference", {})
+        ((entries.get(row["tensor"]) or {}).get("inference") or {})
         .get("success") is True
         for row in tested_lower
     ):
