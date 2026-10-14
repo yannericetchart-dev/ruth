@@ -1402,3 +1402,67 @@ python -m calibration.kv_single_to_512 \
 
 Il report baseline e identificato da SHA256 nel checkpoint 512
 alternativo: cambiando la baseline bisogna scegliere un output diverso.
+
+
+### Arresto anticipato opzionale per trend di errori CUDA a 512
+
+Il censimento completo dei singoli rimane la modalita predefinita.
+Per **risparmiare tempo** si puo aggiungere
+`--stop-on-cuda-futility --cuda-futility-witness-count 12`
+a qualunque invocazione di `calibration.kv_single_to_512`,
+sia `f16/f16 FA OFF` sia `q8_0/f16 FA OFF`.
+
+L'arresto e **osservazionale / euristico, non una dimostrazione
+di impossibilita**. Serve evidenza in sequenza al **contesto target**:
+tutti i candidati di priorita superiore devono essere stati
+effettivamente testati, la scansione deve superare la piu grande
+discontinuita misurata nel ranking di risparmio after-load a 256
+(per il censimento Gemma: tra il rank 126 e 127, da 24 a 8 MiB),
+e devono risultare almeno 12 fallimenti nativi CUDA di memoria/
+allocazione consecutivi oltre questa discontinuita.
+Un `SIGABRT` generico, un timeout o un errore di verifica del
+placement **non** attivano l'arresto. Se e stato osservato un
+successo tra i candidati della banda inferiore non si ferma,
+per non perdere evidenza di un possibile secondo ramo di successi.
+
+Un `SIGABRT` con `cublasCreate_v2(...)` e
+`CUDA error: the resource allocation failed` supporta un
+problema di risorse, ma non permette di dedurre un limite fisico
+certo per **altri** mapping. Neppure la VRAM dopo load misurata
+a 256 e un upper bound rigoroso al contesto target: nessun
+tensore non testato e segnato come `hard_excluded`.
+
+Se l'opzione attiva l'arresto, il checkpoint contiene
+`observed_cuda_futility_stop`, lo stato
+`observed_cuda_futility_stop` e **`completed=false`**:
+la lista dei singoli e incompleta e `ready_for_phase3=false`.
+Per ottenere la lista completa dei tensori riusciti e
+completare la fase, riprendere **senza** l'opzione.
+
+Esempio per i due profili (eseguire **uno alla volta** sulla GPU):
+
+```bash
+# FP16/FP16: mantiene lo stesso checkpoint gia avviato.
+python -m calibration.kv_single_to_512 \
+  --census phase2_single_tensor_census_256.json \
+  --target-ctx 512 --output phase2_single_to_512.json \
+  --stop-on-cuda-futility
+
+# Q8_0/F16: e obbligatoria la baseline verificata.
+python -m calibration.kv_single_to_512 \
+  --census phase2_single_tensor_census_256.json \
+  --target-ctx 512 --flash-attn off \
+  --type-k q8_0 --type-v f16 \
+  --baseline-profile phase2_q8_0_f16_faoff_baseline_256.json \
+  --output phase2_single_to_512_q8_0_f16_faoff.json \
+  --stop-on-cuda-futility
+```
+
+Il controllo `control_load_only` esegue **solo** il
+caricamento all-GPU: non equivale a un benchmark di inferenza
+all-GPU a 512. Quest'ultimo ha un report separato:
+`phase2_q8_0_f16_faoff_allgpu_512.json`.
+Se quel report contiene `success=true`, il profilo
+q8_0/f16 arriva a 512 senza spostare alcun tensore; altrimenti
+i singoli CPU verificati rimangono comunque configurazioni
+valide.
