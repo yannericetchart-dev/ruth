@@ -1466,3 +1466,58 @@ Se quel report contiene `success=true`, il profilo
 q8_0/f16 arriva a 512 senza spostare alcun tensore; altrimenti
 i singoli CPU verificati rimangono comunque configurazioni
 valide.
+
+
+### Promozione a 512: f16/f16 con Flash Attention ON (nessuna ricerca a 768)
+
+Il prossimo profilo da promuovere e **K=f16, V=f16, FA ON**.
+Il benchmark f16/f16 FA OFF e quello q8_0/f16 FA OFF sono
+**checkpoint indipendenti** e non sono ripetuti qui.
+Il censimento completato con FA OFF a n_ctx=256 serve SOLO per
+identificare il modello e ordinare euristicamente i 462 tensori:
+non certifica il profilo con FA ON.
+
+Eseguire **solo con GPU libera**, dopo aver aggiornato il branch:
+
+```bash
+git pull
+
+python -m calibration.kv_profile_baseline \
+  --census phase2_single_tensor_census_256.json \
+  --n-ctx 256 \
+  --target-ctx 512 \
+  --flash-attn on --type-k f16 --type-v f16 \
+  --benchmark-repeats 2 \
+  --output phase2_f16_f16_faon_baseline_256.json \
+  --target-control-output phase2_f16_f16_faon_allgpu_512.json \
+  --promotion-output phase2_single_to_512_f16_f16_faon.json \
+  --promote-if-valid \
+  --stop-on-cuda-futility
+```
+
+Il comando e **sequenziale** e NON prova 768:
+1. Due ripetizioni di baseline GPU nativa a 256 con FA ON,
+   input di 240 token + 16 generati e controlli placement/KV.
+2. Se 256 e verificato, tenta fino a due ripetizioni di
+   inferenza all-GPU a 512 (496+16) e ne salva la diagnostica.
+3. Se anche il controllo GPU a 512 passa, il profilo e
+   promosso senza alcun tensor offload.
+4. Se il controllo GPU a 512 non passa, testa i singoli
+   tensori CPU con le stesse verifiche native. L'opzione
+   `--stop-on-cuda-futility` permette di interrompere
+   empiricamente dopo fallimenti CUDA ripetuti, lasciando
+   `completed=false` e i candidati non testati senza
+   esclusioni definitive.
+
+Report dedicati:
+- `phase2_f16_f16_faon_baseline_256.json`
+- `phase2_f16_f16_faon_allgpu_512.json`
+- `phase2_single_to_512_f16_f16_faon.json`
+
+Per riprendere una ricerca di singoli interrotta senza la
+soglia euristica, riavviare il comando **con gli stessi output**
+ma senza `--stop-on-cuda-futility`. Il checkpoint originario
+`phase2_single_to_512.json` resta invariato.
+
+L'esecuzione richiede la GPU CUDA dell'utente;
+nessun risultato a 512 e dichiarato valido prima della prova.
