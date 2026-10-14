@@ -281,6 +281,27 @@ class LauncherTests(unittest.TestCase):
             ]), 2)
             self.assertIn('"conflicting_build_options"', output.getvalue())
 
+    def test_native_build_conflicts_rejected_before_environment_or_io(self):
+        forbidden_flags = (
+            "--allow-downloads", "--allow-python-dependency-downloads",
+            "--verify-candidate", "--review-security",
+        )
+        for flag in forbidden_flags:
+            with self.subTest(flag=flag), \
+                 patch("ruth_runtime.launcher.inspect_python_environment",
+                       side_effect=AssertionError("conflicts must block before venv probe")), \
+                 patch("ruth_runtime.launcher.build_launch_plan",
+                       side_effect=AssertionError("conflicts must block before preflight")), \
+                 patch("ruth_runtime.source_acquisition.acquire_pinned_sources",
+                       side_effect=AssertionError("must not clone")), \
+                 patch("ruth_runtime.native_builder.build_native_cuda_wheel",
+                       side_effect=AssertionError("must not compile")), \
+                 patch("sys.stdout", new_callable=StringIO) as output:
+                self.assertEqual(main(["setup", "--build-native", flag]), 2)
+                self.assertIn('"conflicting_build_options"', output.getvalue())
+                self.assertIn('"installation_started": false', output.getvalue())
+                self.assertIn('"build_started": false', output.getvalue())
+
     def test_run_never_pretends_llm_engine_implemented(self):
         with patch("ruth_runtime.launcher.inspect_python_environment",
                    return_value=environment()), \

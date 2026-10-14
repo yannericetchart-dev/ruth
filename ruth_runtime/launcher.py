@@ -74,6 +74,20 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
 
     action = args.action or "doctor"
+    # Reject incompatible permissions BEFORE any preflight, Git checkout,
+    # network access or build. Flag order must not change this boundary.
+    if action == "setup" and args.build_native and (
+        args.allow_downloads or args.allow_python_dependency_downloads
+        or args.verify_candidate or args.review_security
+    ):
+        _print({
+            "action": "setup",
+            "status": "conflicting_build_options",
+            "error": "Run --build-native alone; no implicit downloads or other steps",
+            "installation_started": False,
+            "build_started": False,
+        })
+        return 2
     env = inspect_python_environment()
     if action == "doctor":
         _print({
@@ -121,11 +135,6 @@ def main(argv: list[str] | None = None) -> int:
                 return 2
             source_plan = create_source_build_plan()
         if args.build_native:
-            if args.allow_downloads or args.allow_python_dependency_downloads \
-                    or args.verify_candidate or args.review_security:
-                _print({"action": "setup", "status": "conflicting_build_options",
-                        "error": "Run --build-native alone; no implicit downloads or other steps"})
-                return 2
             from .native_builder import build_native_cuda_wheel
             built = build_native_cuda_wheel(
                 project_root=Path(env.project_root),
