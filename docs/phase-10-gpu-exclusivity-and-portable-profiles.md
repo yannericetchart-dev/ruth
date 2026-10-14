@@ -74,6 +74,19 @@ downgrade quantization or fall back to CPU.
 
 ## Validation
 
+Always run Ruth's offline tests through the **project virtual environment**,
+not the host's default `python` executable:
+
+```bash
+cd ~/Dev/ruth-model-profiling
+test -x .venv/bin/python || { echo "Missing project .venv"; exit 1; }
+.venv/bin/python -V
+.venv/bin/python -m unittest discover -s tests -v
+```
+
+Do not claim tests passed unless executed successfully with that interpreter.
+The GitHub connector cannot execute tests in the developer's host venv.
+
 Offline tests include:
 `tests/test_phase10_gpu_preflight.py` and the production guard regression test.
 Real GPU validation must run on the host only after removing all concurrent GPU
