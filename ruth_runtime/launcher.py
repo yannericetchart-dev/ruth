@@ -105,7 +105,7 @@ def main(argv: list[str] | None = None) -> int:
             "Read-only strict Tensor Core/CC/VRAM/CUDA and driver compatibility check"
         ))
         mp.add_argument("--purpose", choices=("production", "test"),
-                        default="production" if operation in ("probe-production", "probe-load") else "test")
+                        default="production" if operation in ("probe-production", "probe-load", "profiles") else "test")
         mp.add_argument("--family")
         mp.add_argument("--model")
         mp.add_argument("--version")
@@ -123,6 +123,10 @@ def main(argv: list[str] | None = None) -> int:
             mp.add_argument("--accept-model-license", action="store_true",
                             help="Confirm you reviewed and accept the original model license terms")
         if operation == "profiles":
+            mp.add_argument("--initialize", action="store_true",
+                            help="After explicit Hugging Face pin metadata verification, create unknown-only local model profile")
+            mp.add_argument("--allow-metadata-network", action="store_true",
+                            help="Permit verified source metadata lookup for --initialize only")
             mp.add_argument("--host", action="store_true",
                             help="Inspect host GPU processes, DRM and free VRAM without CUDA init")
             mp.add_argument("--evidence-file",
@@ -177,9 +181,24 @@ def main(argv: list[str] | None = None) -> int:
                 try:
                     if args.force and not args.host:
                         raise ValueError("--force is only meaningful with --host")
-                    if args.publish_pr and not (args.record_local and args.consent_publication):
-                        raise ValueError("--publish-pr requires --record-local and --consent-publication")
+                    if args.publish_pr and not ((args.record_local or args.initialize) and args.consent_publication):
+                        raise ValueError("--publish-pr requires --initialize/--record-local and --consent-publication")
+                    if args.initialize and args.record_local:
+                        raise ValueError("--initialize and --record-local are separate steps")
+                    if args.initialize and not args.allow_metadata_network:
+                        raise ValueError("--initialize requires --allow-metadata-network")
                     local_record = None
+                    if args.initialize:
+                        from .model_catalog import select_model, resolve_model_metadata
+                        from .profile_registry import initialize_model_profile
+                        choice = select_model(
+                            purpose=args.purpose, family=args.family, model=args.model,
+                            version=args.version, format=args.format,
+                            quantization=args.quantization,
+                        )
+                        metadata = resolve_model_metadata(
+                            choice, authorize_metadata_network=True)
+                        local_record = initialize_model_profile(choice, metadata)
                     if args.record_local:
                         if not args.host or not args.evidence_file:
                             raise ValueError("--record-local requires --host and --evidence-file")
