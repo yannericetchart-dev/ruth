@@ -107,11 +107,20 @@ def inspect_dependencies(
     expected_venv = (project_root / ".venv").resolve()
     actual_prefix = Path(venv_prefix) if venv_prefix is not None else Path(sys.prefix)
     correct_prefix = actual_prefix.resolve() == expected_venv
-    has_venv_marker = (
-        venv_prefix is not None
-        or ((expected_venv / "pyvenv.cfg").is_file() and sys.prefix != sys.base_prefix)
+    cfg = expected_venv / "pyvenv.cfg"
+    try:
+        config_text = cfg.read_text(encoding="utf-8") if cfg.is_file() else ""
+    except OSError:
+        config_text = ""
+    allows_global = any(
+        line.strip().lower().replace(" ", "") == "include-system-site-packages=true"
+        for line in config_text.splitlines()
     )
-    active_venv = correct_prefix and has_venv_marker
+    has_venv_marker = (
+        venv_prefix is not None  # test injection, never used by main()
+        or (cfg.is_file() and sys.prefix != sys.base_prefix)
+    )
+    active_venv = correct_prefix and has_venv_marker and not allows_global
 
     checks: list[DependencyCheck] = []
 

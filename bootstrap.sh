@@ -57,6 +57,11 @@ check_venv() {
         printf '%s\n' "Run: sh bootstrap.sh --create-venv (explicitly creates it)." >&2
         return 1
     fi
+    if grep -Eiq '^[[:space:]]*include-system-site-packages[[:space:]]*=[[:space:]]*true' "$VENV/pyvenv.cfg"; then
+        printf '%s\n' "ERROR: .venv exposes global site-packages: unsupported for Ruth." >&2
+        printf '%s\n' "Create a fresh isolated virtualenv after approving cleanup of the existing one." >&2
+        return 1
+    fi
     if ! "$VENV/bin/python" -c 'import pathlib,sys; sys.exit(0 if pathlib.Path(sys.prefix).resolve() == pathlib.Path(sys.argv[1]).resolve() else 1)' "$VENV"; then
         printf '%s\n' "ERROR: Ruth .venv is invalid or belongs to another path." >&2
         printf '%s\n' "No existing environment will be overwritten automatically." >&2
