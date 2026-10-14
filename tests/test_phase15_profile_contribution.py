@@ -88,6 +88,19 @@ class ProfileContributionTests(unittest.TestCase):
                                      run=lambda *args, **kwargs: self.fail("Network call"))
         self.assertEqual(result["status"], "git_publication_not_authorized")
 
+    def test_missing_gh_reports_retryable_publication_without_exception(self):
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            proposal = build_proposal(self.prepare(root), project_root=root)
+        def missing(*args, **kwargs):
+            raise FileNotFoundError(2, "No such file or directory", "gh")
+        result = publish_proposal_pr(
+            proposal, permit_external_publication=True, run=missing)
+        self.assertEqual(result["status"], "git_cli_missing")
+        self.assertFalse(result["git_updated"])
+        self.assertTrue(result["retryable"])
+        self.assertTrue(result["review_required"])
+
     def test_tampered_digest_blocked_before_auth(self):
         with TemporaryDirectory() as tmp:
             root = Path(tmp)
