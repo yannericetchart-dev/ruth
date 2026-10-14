@@ -124,6 +124,10 @@ class ProfileContributionTests(unittest.TestCase):
                 "gpu_allocations_executed": False,
             }
             with patch("sys.stdout", new_callable=StringIO) as output, \
+                 patch("ruth_runtime.profile_contribution.build_proposal",
+                       return_value={"proposal": {"test": True},
+                                     "repository_path": "profiles/submissions/test.json",
+                                     "content_digest": "a" * 64}), \
                  patch("ruth_runtime.model_memory_profiles.build_profile_matrix",
                        return_value=matrix), \
                  patch("ruth_runtime.profile_contribution.sync_profile_to_git",
@@ -146,6 +150,10 @@ class ProfileContributionTests(unittest.TestCase):
             matrix = {"status": "profile_catalog_ready", "profiles": [],
                       "gpu_allocations_executed": False}
             with patch("sys.stdout", new_callable=StringIO) as output, \
+                 patch("ruth_runtime.profile_contribution.build_proposal",
+                       return_value={"proposal": {"test": True},
+                                     "repository_path": "profiles/submissions/test.json",
+                                     "content_digest": "a" * 64}), \
                  patch("ruth_runtime.model_memory_profiles.build_profile_matrix",
                        return_value=matrix), \
                  patch("ruth_runtime.profile_registry.record_local_profile",
@@ -172,6 +180,10 @@ class ProfileContributionTests(unittest.TestCase):
             profile = self.prepare(Path(tmp))
             matrix = {"status": "profile_catalog_ready", "profiles": []}
             with patch("sys.stdout", new_callable=StringIO) as output, \
+                 patch("ruth_runtime.profile_contribution.build_proposal",
+                       return_value={"proposal": {"test": True},
+                                     "repository_path": "profiles/submissions/test.json",
+                                     "content_digest": "a" * 64}), \
                  patch("ruth_runtime.model_memory_profiles.build_profile_matrix",
                        return_value=matrix), \
                  patch("ruth_runtime.profile_registry.record_local_profile",
@@ -193,6 +205,10 @@ class ProfileContributionTests(unittest.TestCase):
             profile = self.prepare(Path(tmp))
             matrix = {"status": "profile_catalog_ready", "profiles": []}
             with patch("sys.stdout", new_callable=StringIO) as output, \
+                 patch("ruth_runtime.profile_contribution.build_proposal",
+                       return_value={"proposal": {"test": True},
+                                     "repository_path": "profiles/submissions/test.json",
+                                     "content_digest": "a" * 64}), \
                  patch("ruth_runtime.model_memory_profiles.build_profile_matrix",
                        return_value=matrix), \
                  patch("ruth_runtime.profile_contribution.sync_profile_to_git",
