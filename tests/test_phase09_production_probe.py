@@ -217,11 +217,11 @@ class GemmaMinimumContextProbeTests(unittest.TestCase):
             self.assertFalse(result.runtime_profile_published)
 
     def test_native_cuda_oom_is_reported_from_real_native_signal(self):
-        log = (
-            "llama_model_load_tensors: CUDA0 buffer size = 5812.50 MiB\\n"
-            "ggml_cuda: cudaMalloc failed: out of memory\\n"
-            "llama_model_load: failed to load model from /home/test/gguf/model.gguf\\n"
-        ).replace("\\\\n", "\\n")
+        log = "\n".join((
+            "llama_model_load_tensors: CUDA0 buffer size = 5812.50 MiB",
+            "ggml_cuda: cudaMalloc failed: out of memory",
+            "llama_model_load: failed to load model from /home/test/gguf/model.gguf",
+        )) + "\n"
         with TemporaryDirectory() as temp:
             result, _ = self.run_fake(
                 Path(temp), worker=FakeProcess(
@@ -288,10 +288,10 @@ class GemmaMinimumContextProbeTests(unittest.TestCase):
         self.assertIsNone(result["native_cuda_buffer_mib_reported"])
 
     def test_native_log_excerpt_is_bounded_and_redacted(self):
-        logs = "\\n".join(
+        logs = "\n".join(
             "ggml_cuda: error loading /home/example/private/model.gguf"
             for _ in range(40)
-        ).replace("\\\\n", "\\n")
+        )
         report = diagnose_cuda_failure(logs, returncode=2)
         self.assertLessEqual(len(report["native_log_excerpt"]), 8)
         self.assertNotIn("/home/example", repr(report["native_log_excerpt"]))
