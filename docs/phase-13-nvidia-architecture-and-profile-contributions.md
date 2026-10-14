@@ -191,3 +191,54 @@ Users with a different GitHub login submit from a fork; the repository
 owner submits from a **dedicated proposal branch in their own repository**.
 Both create a PR and neither changes the `model-profiling` base directly.
 
+
+## Git sync: trusted repository owner versus external users
+
+Ruth now authenticates the account via `gh api user`, **never by an arbitrary
+username in a local file or a provided command-line argument**.
+
+- Authenticated `yannericetchart-dev`: when `--record-local` or
+  `--initialize` creates/updates a local profile, Ruth **automatically
+  commits the privacy-reduced measurement directly** to the
+  `yannericetchart-dev/ruth` **`model-profiling`** branch. No fork, PR, or
+  per-measurement authorization is needed. `--no-git-sync` opts out for one
+  invocation. `--sync-git --profile-file PATH` retries a previously saved
+  measurement without recording it a second time. Existing immutable files
+  are detected as already current instead of overwritten.
+- Other authenticated contributors: Ruth saves data locally but does not
+  upload it implicitly. When they explicitly request `--sync-git`, a fork PR
+  targets `model-profiling`. **The repository owner must approve/merge**
+  that contribution. Having collaborator permissions is not sufficient to
+  take the owner-direct route.
+- `gh` missing, unauthenticated, insufficient GitHub rights, rejected branch
+  protection, network errors: **local profile retained**; the diagnostic
+  exposes `git_publication.status` separately and does not claim that a
+  remote Git update succeeded.
+
+Owner-direct public profiles live in the **append-only**
+`profiles/measurements/<GGUF-SHA256>/<content-digest>.json` directory on the
+branch. Contributor proposals use
+`profiles/submissions/<GGUF-SHA256>/<content-digest>.json` until reviewed.
+These files contain only vetted fields, not machine UUID, PCI BusID, local
+paths or prompts. Both paths undergo schema/integrity validation in CI. A
+commit directly to `model-profiling` is still **not** evidence of successful
+inference when only loading-memory measurements are available.
+
+The direct route uses GitHub's Contents API, and GitHub enforces the actual
+authenticated identity and branch permissions. The repository owner must
+already have `gh` installed and authenticated once; no Ruth-specific
+publication token or recurring confirmation prompt is required.
+
+### Retry the existing local Gemma profile, without a new CUDA probe
+
+```bash
+cd ~/Dev/ruth-model-profiling
+git pull --ff-only origin model-profiling
+gh auth status
+PROFILE=".ruth-build/profiles/models/$(.venv/bin/python -c 'import json; print(json.load(open("/tmp/ruth-weights.json"))["model_sha256"])').json"
+test -f "$PROFILE"
+./ruth models profiles --profile-file "$PROFILE" --sync-git
+```
+
+The legacy `--publish-pr` option remains an alias to explicit sync; for
+the owner it now commits **directly**, not through a PR.
