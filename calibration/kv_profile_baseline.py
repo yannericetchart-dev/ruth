@@ -51,7 +51,8 @@ def run_kv_profile_baseline(
     params = census.get("parameters") or {}
     if (census.get("schema") != CENSUS_SCHEMA
         or census.get("completed") is not True
-        or params.get("n_ctx") != n_ctx
+        or type(params.get("n_ctx")) is not int
+        or n_ctx < params["n_ctx"]
         or params.get("flash_attn") is not False
         or params.get("type_k") != "f16"
         or params.get("type_v") != "f16"):
@@ -180,6 +181,8 @@ def main(argv=None):
     parser.add_argument("--target-ctx", type=int, default=512)
     parser.add_argument("--promotion-output", type=Path,
                         default=Path("phase2_single_to_512_q8_0_f16_faoff.json"))
+    parser.add_argument("--target-control-output", type=Path,
+                        default=Path("phase2_q8_0_f16_faoff_allgpu_512.json"))
     parser.add_argument("--max-new-loads", type=int)
     parser.add_argument("--max-new-benchmarks", type=int)
     args = parser.parse_args(argv)
@@ -205,6 +208,28 @@ def main(argv=None):
             # alternative or change of execution environment can work.
             return 2
         if not args.promote_if_valid:
+            return 0
+        # First check whether full-GPU weights + GPU KV ALREADY reaches
+        # the target; that would require no tensor offloading at all.
+        # A target failure is not a rejection of CPU-offload promotion.
+        target_control = run_kv_profile_baseline(
+            census_path=args.census, output=args.target_control_output,
+            n_ctx=args.target_ctx, flash_attn=args.flash_attn == "on",
+            type_k=args.type_k, type_v=args.type_v,
+            benchmark_repeats=args.benchmark_repeats,
+            timeout=args.timeout, progress=progress,
+        )
+        print(json.dumps({
+            "target_all_gpu_status": target_control["status"],
+            "target_all_gpu_success": target_control["success"],
+            "target_all_gpu_output": str(args.target_control_output),
+        }, ensure_ascii=False, indent=2), flush=True)
+        if target_control["success"]:
+            print(
+                "Contesto target gia promosso senza tensori CPU: "
+                "nessun offloading necessario per questo n_ctx.",
+                flush=True,
+            )
             return 0
         promoted = run_single_to_512(
             census_path=args.census, output=args.promotion_output,
