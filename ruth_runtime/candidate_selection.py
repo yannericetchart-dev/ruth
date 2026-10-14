@@ -233,7 +233,10 @@ def discover_quantizations(
         root = Path(project_root)
         policy = load_quantization_policy(root)
         choice, item = _get_model_and_variants(root, purpose)
-        info = (fetch or fetch_huggingface_metadata)(choice.repo_id)
+        # The repository default branch can advance. Discover quantizations
+        # against the exact immutable source revision already pinned by Ruth.
+        info = (fetch(choice.repo_id) if fetch is not None else
+                fetch_huggingface_metadata(choice.repo_id, revision=choice.revision))
         files, count = _hf_variants(info, choice, item, policy)
         return {
             **base, "status": "quantizations_discovered",
