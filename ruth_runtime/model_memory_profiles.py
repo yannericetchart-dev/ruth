@@ -110,10 +110,33 @@ def _match_evidence(evidence: dict | None, model: dict) -> tuple[dict | None, st
         native = max((v for v in cuda_weights if v is not None), default=None)
     if native is None:
         return None, "no_native_weights_buffer_measurement"
+    pre = evidence.get("gpu_preflight") or {}
+    if not isinstance(pre, dict):
+        return None, "malformed_gpu_evidence"
+    mem = pre.get("memory_mib") or {}
+    if not isinstance(mem, dict):
+        return None, "malformed_gpu_memory_evidence"
+    before = _positive_finite(mem.get("free"))
+    after = _positive_finite(evidence.get("cuda_free_mib_after_primary_ctx_init"))
+    # Snapshot delta is cross-API/time: NOT a universal CUDA context size.
+    delta = round(before - after, 2) if before is not None and after is not None else None
+    buff = buffers if isinstance(buffers, list) else []
+    def allocated(kind: str) -> float | None:
+        values = [_positive_finite(item.get("mib"))
+                  for item in buff if isinstance(item, dict)
+                  and item.get("kind") == kind
+                  and str(item.get("device", "")).startswith("CUDA")]
+        valid = [v for v in values if v is not None]
+        return round(sum(valid), 2) if valid else None
     return {"native_weights_buffer_mib": native,
+            "driver_reserved_mib": mem.get("reserved"),
+            "nvml_free_before_cuda_mib": before,
+            "observed_nvml_to_cuda_delta_mib": delta,
+            "native_kv_gpu_buffer_mib": allocated("kv"),
+            "native_compute_gpu_buffer_mib": allocated("compute"),
             "evidence_status": evidence.get("status"),
-            "gpu_uuid": (evidence.get("gpu_preflight") or {}).get("gpu_uuid"),
-            "driver_version": (evidence.get("gpu_preflight") or {}).get("driver_version"),
+            "gpu_uuid": pre.get("gpu_uuid"),
+            "driver_version": pre.get("driver_version"),
             "cuda_free_after_init_mib": _positive_finite(
                 evidence.get("cuda_free_mib_after_primary_ctx_init")),
             "weights_loaded": evidence.get("weights_loaded") is True,
