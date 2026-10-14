@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import argparse
 import json
+from pathlib import Path
 from typing import Callable
 
 from .venv_packages import EnvironmentReport, inspect_python_environment
@@ -63,6 +64,8 @@ def main(argv: list[str] | None = None) -> int:
                        help="Authorize GitHub source downloads for this invocation")
     setup.add_argument("--allow-python-dependency-downloads", action="store_true",
                        help="Authorize pip DOWNLOAD of binary Python dependencies only (not install)")
+    setup.add_argument("--verify-candidate", action="store_true",
+                       help="Audit staged wheel hashes and PyPI metadata; pip OFFLINE dry-run only")
     sub.add_parser("run", help="Start the CUDA runtime only after verification")
     args = parser.parse_args(argv)
 
@@ -91,7 +94,8 @@ def main(argv: list[str] | None = None) -> int:
         if not env.interpreter_in_project_venv or not report["setup_ready"]:
             _print({"action": "setup", "status": "blocked_preflight", "plan": report})
             return 2
-        if not args.allow_downloads and not args.allow_python_dependency_downloads:
+        if not args.allow_downloads and not args.allow_python_dependency_downloads \
+                and not args.verify_candidate:
             _print({
                 "action": "setup", "status": "download_not_authorized",
                 "plan": report,
@@ -111,6 +115,23 @@ def main(argv: list[str] | None = None) -> int:
                         "pip_started": False, "build_started": False})
                 return 2
             source_plan = create_source_build_plan()
+        if args.verify_candidate:
+            if not source_plan.source_verified:
+                _print({"action": "setup", "status": "source_checkout_unverified",
+                        "source": source_plan.to_dict(),
+                        "installation_started": False, "build_started": False})
+                return 2
+            from .dependency_audit import audit_candidate
+            audit = audit_candidate(
+                project_root=Path(env.project_root),
+                environment=env, network_authorized=True,
+            )
+            _print({
+                "action": "setup", "status": audit.status,
+                "candidate_audit": audit.to_dict(),
+                "installation_started": False, "build_started": False,
+            })
+            return 0 if audit.status == "security_review_required" else 2
         if args.allow_python_dependency_downloads:
             if not source_plan.source_verified:
                 _print({"action": "setup", "status": "source_checkout_unverified",

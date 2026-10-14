@@ -122,6 +122,53 @@ class LauncherTests(unittest.TestCase):
              patch("sys.stdout", new_callable=StringIO):
             self.assertEqual(main(["setup"]), 2)
 
+    def test_verify_candidate_runs_metadata_and_offline_resolver_only(self):
+        from types import SimpleNamespace
+        report = {"setup_ready": True}
+        source = SimpleNamespace(
+            source_verified=True, to_dict=lambda: {"source_verified": True},
+        )
+        audit = SimpleNamespace(
+            status="security_review_required",
+            to_dict=lambda: {"status": "security_review_required",
+                             "installation_started": False,
+                             "security_review_passed": False},
+        )
+        with patch("ruth_runtime.launcher.inspect_python_environment",
+                   return_value=environment()), \
+             patch("ruth_runtime.launcher.build_launch_plan",
+                   return_value=report), \
+             patch("ruth_runtime.source_build_plan.create_source_build_plan",
+                   return_value=source), \
+             patch("ruth_runtime.dependency_audit.audit_candidate",
+                   return_value=audit) as verifier, \
+             patch("ruth_runtime.source_acquisition.acquire_pinned_sources",
+                   side_effect=AssertionError("No Git network")), \
+             patch("ruth_runtime.dependency_resolution.stage_dependency_candidate",
+                   side_effect=AssertionError("No wheel downloads")), \
+             patch("sys.stdout", new_callable=StringIO) as output:
+            self.assertEqual(main(["setup", "--verify-candidate"]), 0)
+            self.assertTrue(verifier.call_args.kwargs["network_authorized"])
+            self.assertIn('"security_review_required"', output.getvalue())
+            self.assertIn('"installation_started": false', output.getvalue())
+
+    def test_candidate_verification_requires_existing_sources(self):
+        from types import SimpleNamespace
+        source = SimpleNamespace(
+            source_verified=False, to_dict=lambda: {"source_verified": False},
+        )
+        with patch("ruth_runtime.launcher.inspect_python_environment",
+                   return_value=environment()), \
+             patch("ruth_runtime.launcher.build_launch_plan",
+                   return_value={"setup_ready": True}), \
+             patch("ruth_runtime.source_build_plan.create_source_build_plan",
+                   return_value=source), \
+             patch("ruth_runtime.dependency_audit.audit_candidate",
+                   side_effect=AssertionError("No audit without source")), \
+             patch("sys.stdout", new_callable=StringIO) as output:
+            self.assertEqual(main(["setup", "--verify-candidate"]), 2)
+            self.assertIn("source_checkout_unverified", output.getvalue())
+
     def test_run_never_pretends_llm_engine_implemented(self):
         with patch("ruth_runtime.launcher.inspect_python_environment",
                    return_value=environment()), \

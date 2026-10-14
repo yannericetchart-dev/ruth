@@ -24,6 +24,7 @@ già verificato. Non installa pacchetti di sistema.
 | `./ruth setup` | Valida la `.venv` e si ferma se il download non è autorizzato. |
 | `./ruth setup --allow-downloads` | Autorizza e acquisisce automaticamente soltanto i sorgenti pinned, riutilizzando quelli già verificati. |
 | `./ruth setup --allow-python-dependency-downloads` | Se il checkout è già verificato, autorizza soltanto **pip download** di wheel binari runtime e build in staging. Genera il manifest candidato con SHA256 e si ferma prima dell'installazione. |
+| `./ruth setup --verify-candidate` | Verifica il candidato esistente: ricalcola gli hash, confronta digest e dimensioni con i metadati ufficiali PyPI e usa `pip --dry-run --no-index` per valutare chiusura e compatibilità senza installare. L'opzione autorizza la sola consultazione dei metadati PyPI. |
 | `./ruth setup --allow-downloads --allow-python-dependency-downloads` | Acquisisce i sorgenti se mancanti e poi risolve i wheel candidati automaticamente, con due autorizzazioni dichiarate nella stessa invocazione. |
 | `./ruth run` | **Rifiuta** l'inferenza finché binding/adapter e modello non saranno realmente installati e verificati. |
 
@@ -76,6 +77,42 @@ non un'installazione già utilizzabile.
 conosciuta: Ruth mantiene il divieto di `LlamaDiskCache` e dei dati di cache
 su disco non attendibili, ma deve ancora testare l'enforcement nell'adapter.
 Non promuovere automaticamente il candidato ad installabile.
+
+## Verifica del candidato e blocco sicurezza
+
+Dopo il download già effettuato è sufficiente il comando **unico**:
+
+```bash
+./ruth setup --verify-candidate
+```
+
+Richiede connessione per consultare **solo i metadati JSON di PyPI**.
+Non riscarica wheel o sorgenti; non installa, non compila e non aggiorna il driver.
+L'audit controlla gli SHA-256 dei file locali, il loro `METADATA`, il nome,
+la versione, la dimensione e l'eventuale stato yanked sul JSON PyPI;
+quindi esegue `pip --isolated install --dry-run --ignore-installed --no-index
+--only-binary=:all:` contro i soli wheel in staging, imponendo versioni
+esatte per tutte le distribuzioni. Il report deve includere esattamente
+gli otto package selezionati, senza mancanti o aggiunte.
+
+Il confronto con i checksum di PyPI **non verifica di per sé attestazioni
+crittografiche del publisher**, né assicura assenza di vulnerabilità. Se
+tutti i controlli tecnici passano, il report restituisce
+`status=security_review_required`, con `lock_approved=false`,
+`security_review_passed=false` e `installation_started=false`.
+Qualsiasi mismatch blocca e non modifica gli artefatti già scaricati.
+
+Nota `scikit-build-core 1.1.1`: upstream ha rimosso da 1.0.0 l'extra
+vuoto `[pyproject]` ancora richiesto dai sorgenti `llama-cpp-python
+v0.3.36`. I moderni installer solitamente emettono un warning senza
+invalidare per questo la build; la successiva compilazione CUDA
+sarà comunque una prova obbligatoria separata.
+
+`diskcache 5.6.3` rimane vulnerabile a CVE-2025-69872 e il blocco
+di sicurezza resta aperto: prima di installare il binding occorre
+implementare e testare l'adapter senza `LlamaDiskCache`, senza accesso
+a cache serializzate non attendibili, e definire una policy esplicita
+per il rischio residuo.
 
 ## Installazione automatica: gate da completare
 
