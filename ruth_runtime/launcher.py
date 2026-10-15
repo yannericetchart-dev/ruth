@@ -202,6 +202,8 @@ def main(argv: list[str] | None = None) -> int:
                             help="Experimentally preinitialize CUDA primary context and measure free VRAM before GGUF load")
             mp.add_argument("--allow-gpu-load", action="store_true",
                             help="Authorize isolated GPU allocations WITHOUT inference")
+            mp.add_argument("--no-git-sync", action="store_true",
+                            help="Record native measurement locally but do not publish to Git")
         if operation in ("smoke", "profile", "probe-production"):
             mp.add_argument("--allow-gpu-inference", action="store_true",
                             help="Authorize model loading/inference in isolated CUDA worker; no download")
@@ -441,6 +443,18 @@ def main(argv: list[str] | None = None) -> int:
                     cuda_preinit=args.cuda_preinit,
                     allow_gpu_load=args.allow_gpu_load,
                 )
+                if result.get("status") in ("gpu_load_only_completed", "gpu_load_only_failed"):
+                    from .probe_profile_sync import record_probe_evidence
+                    recording = record_probe_evidence(
+                        result, sync_git=not args.no_git_sync)
+                    result["profile_recording_status"] = recording["status"]
+                    result["local_profile_update"] = recording["local_profile_update"]
+                    result["git_publication"] = recording["git_publication"]
+                    if recording.get("local_evidence_file"):
+                        result["local_evidence_file"] = recording["local_evidence_file"]
+                    if recording.get("error"):
+                        result["profile_recording_error"] = recording["error"]
+                    result["runtime_profile_published"] = recording["runtime_profile_published"]
                 _print({"action": "models", **result})
                 return 0 if result["status"] == "gpu_load_only_completed" else 2
             if args.model_action == "probe-production":
