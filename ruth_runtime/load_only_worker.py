@@ -22,7 +22,13 @@ from .model_download import _local_path
 SCHEMA = "ruth-cuda-load-only-v1"
 PREFIX = "RUTH_CUDA_LOAD_ONLY_RESULT="
 N_CTX, N_BATCH, N_UBATCH = 128, 64, 64
-SUPPORTED = frozenset({"Q4_K_L", "Q4_K_M"})
+SUPPORTED = frozenset({"Q4_K_L", "Q4_K_M", "BF16"})
+APPROVED_LOADS = {
+    "gemma-2-9B-it": {"model": "gemma-2", "quantizations": ("Q4_K_L", "Q4_K_M"),
+                        "modes": ("weights", "context")},
+    "gemma-3-1b-it": {"model": "gemma-3", "quantizations": ("BF16",),
+                       "modes": ("weights",)},
+}
 KV_FORMATS = {"F16": "GGML_TYPE_F16", "Q8_0": "GGML_TYPE_Q8_0",
               "Q4_0": "GGML_TYPE_Q4_0"}
 FLASH_FORMATS = {"off": "LLAMA_FLASH_ATTN_TYPE_DISABLED",
@@ -91,17 +97,25 @@ def initialize_cuda_primary_context() -> tuple[ctypes.CDLL, int]:
     return cuda, device.value
 
 def run_load_only(root: Path, gpu_uuid: str, quantization: str, mode: str,
-                  n_ctx: int = N_CTX, cuda_preinit: bool = False) -> dict:
+                  n_ctx: int = N_CTX, cuda_preinit: bool = False,
+                  model_version: str = "gemma-2-9B-it") -> dict:
     if (mode not in ("weights", "context") or quantization not in SUPPORTED
             or type(n_ctx) is not int or not 64 <= n_ctx <= 4096
             or type(cuda_preinit) is not bool):
         raise ValueError("Unapproved pinned quantization or load-only mode")
+    approved = APPROVED_LOADS.get(model_version)
+    if (approved is None or quantization not in approved["quantizations"]
+        or mode not in approved["modes"]):
+        raise ValueError("Unsupported pinned model/format/load stage")
     root = root.resolve(strict=True)
-    choice = select_model("production", quantization=quantization, project_root=root)
+    choice = select_model(
+        "production", family="gemma", model=approved["model"],
+        version=model_version, format="gguf",quantization=quantization,
+        project_root=root)
     if (choice.family, choice.model, choice.version, choice.quantization) != (
-        "gemma", "gemma-2", "gemma-2-9B-it", quantization,
+        "gemma", approved["model"], model_version, quantization,
     ):
-        raise RuntimeError("Unexpected model for Gemma CUDA load diagnostic")
+        raise RuntimeError("Unexpected model for pinned CUDA load diagnostic")
     file = _local_path(root, choice)
     if file.is_symlink() or not file.is_file() or file.stat().st_size != choice.expected_size_bytes:
         raise RuntimeError("Local pinned GGUF not present or changed")
@@ -146,6 +160,7 @@ def run_load_only(root: Path, gpu_uuid: str, quantization: str, mode: str,
                      args=(os.getpid(), gpu_uuid, stop, samples), daemon=True)
     report = {
         "schema": SCHEMA, "mode": mode, "quantization": quantization,
+        "model_version": model_version,
         "gpu_uuid": gpu_uuid, "worker_pid": os.getpid(),
         "weights_loaded": False, "context_initialized": False,
         "inference_executed": False, "generated_tokens": 0,
@@ -241,11 +256,12 @@ def run_load_only(root: Path, gpu_uuid: str, quantization: str, mode: str,
 
 def main(args: list[str] | None = None) -> int:
     argv = sys.argv[1:] if args is None else args
-    if len(argv) != 6 or argv[5] not in ("normal", "preinit"):
-        raise SystemExit("Expected root, GPU UUID, quantization, mode, n_ctx, normal|preinit")
+    if len(argv) not in (6, 7) or argv[5] not in ("normal", "preinit"):
+        raise SystemExit("Expected root, GPU UUID, quantization, mode, n_ctx, normal|preinit, optional pinned model version")
     try:
         result = run_load_only(Path(argv[0]), argv[1], argv[2], argv[3],
-                               int(argv[4]), argv[5] == "preinit")
+                               int(argv[4]), argv[5] == "preinit",
+                               argv[6] if len(argv) == 7 else "gemma-2-9B-it")
         print(PREFIX + json.dumps(result, sort_keys=True))
         return 0 if result["weights_loaded"] and (
             argv[3] == "weights" or result["context_initialized"]
