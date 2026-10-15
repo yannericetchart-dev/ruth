@@ -18,7 +18,10 @@ from .hardware_eligibility import inspect_host_hardware
 from .model_catalog import load_catalog
 from .model_memory_profiles import _load_evidence, _positive_finite
 from .install_plan import WHEEL_VERSION, LLAMA_CPP_SUBMODULE_COMMIT
-from .context_source_evidence import calculate_context_source, context_source_derivation
+from .context_source_evidence import (
+    calculate_context_source, context_source_derivation, pinned_native_wheel_sha256,
+)
+from .gemma3_context_gate import GEMMA3_VERSION
 
 SCHEMA = "ruth-model-runtime-memory-registry-v1"
 
@@ -434,6 +437,8 @@ def record_local_profile(
                 "global_value_logical_mib_native": tensor(glob,"value_logical_mib_native"),
                 "swa_key_logical_mib_native": tensor(swa,"key_logical_mib_native"),
                 "swa_value_logical_mib_native": tensor(swa,"value_logical_mib_native"),
+                **({"native_wheel_sha256": pinned_native_wheel_sha256(root)}
+                   if entry["version"] == GEMMA3_VERSION else {}),
             } if source else None,
             "kv_source_derivation": context_source_derivation(source) if source else None,
         }
