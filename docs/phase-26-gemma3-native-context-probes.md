@@ -19,70 +19,124 @@
   pinned numeric value 30 (rejecting contradictory definitions) only
   after its native/ABI gate.
 
-## Exact staged allowlist
+## Exact 18-way allocation-only matrix
 
 Only the pinned Gemma 3 BF16 weight file, mode=context, a single CUDA
 device, `n_ctx=256`, `n_batch=n_ubatch=64`, `swa_full=on`,
-`cuda_preinit=false`, one sequence and KQV offload enabled.
-Two experimental combinations:
+`cuda_preinit=false`, `n_seq_max=1`, `kv_unified=false`,
+GPU KQV offload enabled. Independent Key and Value storage types each
+belong to `F16`, `BF16`, `F32`. Flash must be explicitly ON or OFF.
 
-1. **F16/F16, Flash OFF** — baseline context allocation, no inference.
-2. **BF16/BF16, Flash ON** — experimental BF16 context allocation, no inference.
+**3 Key × 3 Value × 2 Flash = 18 requested configurations.**
 
-No mixed precision, F32, quantized KV, Flash AUTO, other batch, longer
-contexts or automatic fallback. The shared gate runs both in
-`probe_model_load` (before environment checks) and in the isolated
-`load_only_worker` (before loading llama_cpp). Successful completion
-requires full model GPU offload; a CPU or partial GPU fallback is never
-recorded as a successful load. Each explicit `--allow-gpu-load` command
-is permission for **allocation only**, not tokenization or inference.
+The two original probes have already been observed by the user:
 
-## First verify all offline tests — use .venv/bin/python
+- #1 F16/F16, Flash OFF: context initialized, 27/27 GPU layers, 6.5 MiB
+  native KV, no inference.
+- #2 BF16/BF16, Flash ON: context initialized, 27/27 GPU layers, 6.5 MiB
+  native KV, no inference.
+
+All other configurations are **untested**, not disallowed by a measured
+incompatibility. With Flash ON, an initialized context does not prove a
+VEC BF16 kernel executed. During prefill or decode, an MMA/TILE kernel
+could use a temporary F16 conversion. F32 and mixed KV combinations
+are therefore diagnostics, not production recommendations.
+
+| Case | Flash | K | V | KV logical MiB |
+|---:|:---:|:---:|:---:|---:|
+| 1 | OFF | F16 | F16 | 6.50 |
+| 2 | ON | BF16 | BF16 | 6.50 |
+| 3 | OFF | BF16 | BF16 | 6.50 |
+| 4 | OFF | BF16 | F16 | 6.50 |
+| 5 | OFF | BF16 | F32 | 9.75 |
+| 6 | OFF | F16 | BF16 | 6.50 |
+| 7 | OFF | F16 | F32 | 9.75 |
+| 8 | OFF | F32 | BF16 | 9.75 |
+| 9 | OFF | F32 | F16 | 9.75 |
+| 10 | OFF | F32 | F32 | 13.00 |
+| 11 | ON | BF16 | F16 | 6.50 |
+| 12 | ON | BF16 | F32 | 9.75 |
+| 13 | ON | F16 | BF16 | 6.50 |
+| 14 | ON | F16 | F16 | 6.50 |
+| 15 | ON | F16 | F32 | 9.75 |
+| 16 | ON | F32 | BF16 | 9.75 |
+| 17 | ON | F32 | F16 | 9.75 |
+| 18 | ON | F32 | F32 | 13.00 |
+
+The gate runs both in `probe_model_load` (before environment checks)
+and in `load_only_worker` (before loading llama_cpp). Unknown types,
+Flash AUTO, quantized KV, other batch sizes and contexts stay blocked.
+The Gemma 2 legacy Value-type restriction remains intact.
+
+## Check offline tests first — always use .venv/bin/python
 
 ```bash
 cd ~/Dev/ruth-model-profiling
 git fetch origin
-git switch feat/gemma3-native-context-probes
-git pull --ff-only origin feat/gemma3-native-context-probes
+git switch feat/gemma3-kv-matrix-18
+git pull --ff-only origin feat/gemma3-kv-matrix-18
+
 .venv/bin/python -m unittest \
   tests.test_phase11_load_only_probe \
+  tests.test_phase14_profile_registry \
+  tests.test_phase15_profile_contribution \
   tests.test_phase22_gemma3_bf16_onboarding \
   tests.test_phase24_gemma3_kv \
-  tests.test_phase26_gemma3_context_probe -v
+  tests.test_phase26_gemma3_context_probe \
+  tests.test_phase26_gemma3_context_matrix -v
 ```
 
-All tests should complete before any GPU command. No real CUDA is invoked
-by the new unit tests.
+All new tests use mocks and temporary fixtures: no real CUDA allocations,
+GGUF loading, tokenization, or inference.
 
-## Two explicit isolated CUDA allocations
-
-Start with the F16 baseline, review its JSON/log-derived outcome, and
-only then consider the BF16 experiment.
+## Read-only matrix plan (safe default)
 
 ```bash
-.venv/bin/python -m ruth_runtime models probe-load \
-  --purpose production --family gemma --model gemma-3 \
-  --version gemma-3-1b-it --format gguf --quantization BF16 \
-  --load-mode context --n-ctx 256 --n-batch 64 --n-ubatch 64 \
-  --swa-full on --flash-attn off --type-k F16 --type-v F16 \
-  --allow-gpu-load --no-git-sync
+.venv/bin/python -m ruth_runtime.gemma3_context_matrix
 ```
 
-Only after assessing the first result:
+Prints the exact 18-case order, types, derived logical KV costs and
+identities; **does not invoke any worker**. Run this first.
+
+## Explicit one-case GPU probe (recommended initially)
 
 ```bash
-.venv/bin/python -m ruth_runtime models probe-load \
-  --purpose production --family gemma --model gemma-3 \
-  --version gemma-3-1b-it --format gguf --quantization BF16 \
-  --load-mode context --n-ctx 256 --n-batch 64 --n-ubatch 64 \
-  --swa-full on --flash-attn on --type-k BF16 --type-v BF16 \
-  --allow-gpu-load --no-git-sync
+.venv/bin/python -m ruth_runtime.gemma3_context_matrix \
+  --case 3 --execute --allow-gpu-load
 ```
 
-Both use a child process, native ABI verification and repeat GPU
-preflight, no download, no CUDA inference and no production promotion.
-`--no-git-sync` retains the raw evidence locally for inspection before
-owner-publishing any sanitized information.
+This runs **only BF16/BF16 with Flash OFF**, the first of the 16 new
+configurations, and preserves the local evidence. Examine the JSON
+for `native_context_verified`, expected key/value types in both
+global and SWA logs, real CUDA buffer allocations and any native
+failures. This requires an explicit, real GPU allocation authorization.
+
+To inspect the next case separately, substitute `--case 4`.
+
+## Explicit sequential remainder (only after reviewing case 3)
+
+```bash
+.venv/bin/python -m ruth_runtime.gemma3_context_matrix \
+  --start-at 4 --execute --allow-gpu-load
+```
+
+This requests cases 4–18 sequentially. Each case invokes Ruth's
+`probe-load` as a separate isolated Python subprocess, which rechecks
+pinned GGUF integrity, wheel/ABI identity, the exact GPU and free
+capacity. It **stops at the first error, timeout, partial CPU/GPU
+offload, mismatched native cache dtype, invalid context geometry,
+failure to archive local evidence, or other unverified result**.
+No automatic fallback, alternate precision retry, parallel CUDA work,
+model download, Git publication or inference occurs.
+
+Use `--start-at N` to resume a stopped batch. Skipped cases are not
+claimed to have passed in the new run. To repeat the entire comparable
+matrix later, explicitly use `--start-at 1`.
+
+Every worker calls `probe-load --allow-gpu-load --no-git-sync`;
+the top-level `--execute --allow-gpu-load` opts into multiple separate
+GPU allocations. Never run the executable mode unattended if you need
+to monitor native allocation errors or temperature/host contention.
 
 ## Evidence and promotion rules
 
