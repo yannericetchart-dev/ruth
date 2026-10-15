@@ -195,8 +195,8 @@ def main(argv: list[str] | None = None) -> int:
                             help="Native llama.cpp Flash Attention requested policy")
             mp.add_argument("--type-k", choices=("F16", "Q8_0", "Q4_0"), default="F16")
             mp.add_argument("--type-v", choices=("F16", "Q8_0", "Q4_0"), default="F16")
-            mp.add_argument("--n-ctx", type=int, default=128,
-                            help="Context size in context mode only (64..4096)")
+            mp.add_argument("--n-ctx", type=int, default=256,
+                            help="Canonical context profile (256..4096, multiples of 256)")
             mp.add_argument("--load-mode", choices=("weights", "context"),
                             default="weights",
                             help="weights: load GGUF only; context: add KV/compute buffers")
@@ -446,14 +446,34 @@ def main(argv: list[str] | None = None) -> int:
                 _print({"action": "models", **result})
                 return 0 if result["status"] == "provisional_shortlist_ready" else 2
             if args.model_action == "select":
-                _print({"action": "models", "status": "selected_unverified",
-                        "selection": choice.to_dict(),
-                        "download_started": False})
+                from .model_profile_v2 import resolve_model_profile, evaluate_loading_fit
+                canonical = resolve_model_profile(
+                    args.purpose, choice.family, choice.model, choice.version)
+                variant = canonical["profile"]["variants"].get(choice.quantization.upper())
+                _print({
+                    "action": "models", "status": "selected_unverified",
+                    "selection": choice.to_dict(),
+                    "canonical_profile": {
+                        "status": canonical["status"],
+                        "path": canonical["path"],
+                        "model_id": canonical["profile"]["model"],
+                        "variant_found": variant is not None,
+                        "variant_weights_format": (
+                            variant.get("precision_family") if variant else None),
+                        "known_runtime_configurations": len(
+                            variant["context_observations"]) if variant else 0,
+                        "host_fit": "host_not_inspected_use_models_profiles_host",
+                    },
+                    "download_started": False, "gpu_allocations_executed": False,
+                })
                 return 0
             if args.model_action == "probe-load":
                 from .load_only_probe import probe_model_load
                 if args.purpose != "production":
                     raise CatalogError("Load-only probe requires production purpose")
+                if args.load_mode == "context" and (
+                    args.n_ctx < 256 or args.n_ctx % 256 != 0):
+                    raise CatalogError("Context profiling requires n_ctx 256, 512, 768, ...")
                 result = probe_model_load(
                     quantization=choice.quantization, mode=args.load_mode,
                     n_ctx=args.n_ctx, n_batch=args.n_batch,
