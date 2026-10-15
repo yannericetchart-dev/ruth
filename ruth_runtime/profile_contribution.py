@@ -405,59 +405,14 @@ def _github_user(run: Callable[..., Any]) -> str:
 def _owner_direct_commit(
     proposal: dict, *, run: Callable[..., Any],
 ) -> dict:
-    """Append immutable model evidence DIRECTLY to model-profiling.
+    """Update one canonical profile per model, NOT an immutable measurement file.
 
-    Use GitHub Contents API with branch explicitly set. Never overwrite existing
-    paths, and do not write to release/main. A same-content retry is idempotent.
+    The sanitized contribution is merged with the latest GitHub content
+    and written with a compare-and-swap blob SHA. Existing observations,
+    other GGUF variants and unrelated host versions are preserved.
     """
-    digest, submission_path = _validate_proposal_for_publication(proposal)
-    path = submission_path.replace("profiles/submissions/", "profiles/measurements/", 1)
-    endpoint = f"repos/{UPSTREAM}/contents/{path}"
-    public_content = json.dumps(proposal["proposal"], sort_keys=True, indent=2) + "\n"
-    # GitHub returns HTTP 404 for a missing path. Other failures fail closed.
-    try:
-        response = run(
-            ["gh", "api", endpoint + "?ref=" + BASE_BRANCH],
-            capture_output=True, text=True, timeout=30, check=False,
-        )
-    except FileNotFoundError as exc:
-        raise GitHubCLIMissing("GitHub CLI 'gh' not found on PATH") from exc
-    if response.returncode == 0:
-        data = json.loads(response.stdout)
-        if not isinstance(data, dict) or data.get("type") != "file":
-            raise RuntimeError("Unexpected GitHub profile content response")
-        old = base64.b64decode(data.get("content", "").replace("\n", ""),
-                               validate=True).decode("utf-8")
-        if json.loads(old) != proposal["proposal"]:
-            raise ValueError("Immutable profile path already has different content")
-        return {
-            "status": "git_profile_already_current", "git_updated": False,
-            "branch": BASE_BRANCH, "repository": UPSTREAM,
-            "repository_path": path, "review_required": False,
-        }
-    stderr = response.stderr or ""
-    if not re.search(r"HTTP 404\b", stderr):
-        raise RuntimeError("GitHub profile lookup failed (not an absent path)")
-    content = base64.b64encode(public_content.encode("utf-8")).decode("ascii")
-    result = _gh([
-        "api", "--method", "PUT", endpoint,
-        "-f", f"message=profiles: record measured CUDA profile {digest[:16]}",
-        "-f", f"content={content}",
-        "-f", f"branch={BASE_BRANCH}",
-    ], run)
-    confirmed = json.loads(result)
-    if (not isinstance(confirmed, dict)
-        or (confirmed.get("content") or {}).get("path") != path
-        or not re.fullmatch("[0-9a-f]{40}",
-                            (confirmed.get("commit") or {}).get("sha", ""))):
-        raise RuntimeError("GitHub did not verify branch file commit")
-    return {
-        "status": "git_profile_updated_model_profiling",
-        "git_updated": True, "review_required": False,
-        "branch": BASE_BRANCH, "repository": UPSTREAM,
-        "repository_path": path,
-        "commit_sha": confirmed["commit"]["sha"],
-    }
+    from .canonical_profile_git import canonical_profile_commit
+    return canonical_profile_commit(proposal, run=run)
 
 
 def sync_owner_profile_if_authenticated(
