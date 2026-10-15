@@ -14,6 +14,7 @@ from .dependencies import PROJECT_ROOT
 from .hardware_eligibility import load_architecture_policy
 from .install_plan import WHEEL_VERSION
 from .model_catalog import select_model
+from .model_profile_v2 import load_profile, profile_path
 from .profile_contribution import validate_submitted_proposal
 from .model_memory_profiles import _positive_finite
 
@@ -43,7 +44,8 @@ def explain_offline_weights_fit(
 ) -> dict:
     """Explain a specific pinned GGUF and nominal VRAM class from Git data."""
     root = Path(project_root)
-    choice = select_model(purpose="production", quantization=quantization)
+    choice = select_model(purpose="production", quantization=quantization,
+                          project_root=root)
     sha = choice.expected_sha256
     policy = load_architecture_policy(root)
     locally_known = _runtime_local_identity(root, sha)
@@ -87,24 +89,38 @@ def explain_offline_weights_fit(
     if not all(isinstance(x, str) and x for x in (drv, backend, binding)):
         return _unverified("exact_runtime_identity_missing", sha, source_identity)
 
-    folder = root / "profiles" / "measurements" / sha
-    if not folder.is_dir() or folder.is_symlink():
-        return _unverified("git_profile_not_present_locally", sha, source_identity)
     reports = []
-    for file in sorted(folder.glob("*.json")):
-        if file.is_symlink() or not file.is_file() or file.stat().st_size > 200_000:
-            raise ValueError("Unsafe committed profile")
-        validate_submitted_proposal(file, project_root=root)
-        import json
-        payload = json.loads(file.read_text(encoding="utf-8"))
-        if payload["model"]["gguf_sha256"] != sha:
-            raise ValueError("Wrong model SHA in committed memory record")
-        for row in payload["runtime_measurements"]:
-            if (row["architecture"] == arch_id
-                and row["driver_version"] == drv
-                and row["cuda_backend"] == backend
-                and row["llama_cpp_binding"] == binding):
-                reports.append((file.relative_to(root).as_posix(), row))
+    canonical = profile_path(choice.family, choice.model, choice.version, root)
+    if canonical.is_file():
+        profile = load_profile(choice.family, choice.model, choice.version,
+                               project_root=root)
+        variant = profile["variants"].get(quantization.upper()) or {}
+        for group in variant.get("runtime_observations", {}).values():
+            for observation in group.get("observations", []):
+                row = observation.get("data") or {}
+                if (row.get("architecture") == arch_id
+                    and row.get("driver_version") == drv
+                    and row.get("cuda_backend") == backend
+                    and row.get("llama_cpp_binding") == binding):
+                    reports.append((canonical.relative_to(root).as_posix(), row))
+    if not reports:
+        # Historical immutable submissions are READ-ONLY migration fallback.
+        folder = root / "profiles" / "measurements" / sha
+        if folder.is_dir() and not folder.is_symlink():
+            for file in sorted(folder.glob("*.json")):
+                if file.is_symlink() or not file.is_file() or file.stat().st_size > 200_000:
+                    raise ValueError("Unsafe committed profile")
+                validate_submitted_proposal(file, project_root=root)
+                import json
+                payload = json.loads(file.read_text(encoding="utf-8"))
+                if payload["model"]["gguf_sha256"] != sha:
+                    raise ValueError("Wrong model SHA in committed memory record")
+                for row in payload["runtime_measurements"]:
+                    if (row["architecture"] == arch_id
+                        and row["driver_version"] == drv
+                        and row["cuda_backend"] == backend
+                        and row["llama_cpp_binding"] == binding):
+                        reports.append((file.relative_to(root).as_posix(), row))
     if not reports:
         return _unverified("no_exact_architecture_cuda_driver_binding_evidence",
                            sha, source_identity)
