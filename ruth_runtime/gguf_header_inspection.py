@@ -31,7 +31,7 @@ ATTENTION_ROLES = frozenset({
     "attn_q_norm", "attn_k_norm", "attn_norm", "attn_post_norm",
 })
 ATTENTION_NAME = re.compile(
-    r"^blk\\.(?P<layer>[0-9]{1,3})\\.(?P<role>attn_[a-z_]+)\\.weight$")
+    r"^blk\.(?P<layer>[0-9]{1,3})\.(?P<role>attn_[a-z_]+)\.weight$")
 ATTENTION_PROJECTORS = ("attn_q","attn_k","attn_v","attn_output")
 
 ALLOWED = {
