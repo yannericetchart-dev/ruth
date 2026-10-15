@@ -145,26 +145,47 @@ def inspect_gguf_header(file: Path) -> dict:
             if is_known:
                 meta[key] = value
         storage = Counter()
+        matrix_elements = Counter()
         for _ in range(n_tensors):
             r.string(False, max_chars=128)
             ndim = r.number("I")
             if not 1 <= ndim <= 4:
                 raise GGUFInspectError("Unsupported GGUF tensor dimensions")
+            elements = 1
             for _ in range(ndim):
-                if r.number("Q") < 1:
-                    raise GGUFInspectError("Zero GGUF tensor dimension")
+                dim = r.number("Q")
+                if not 1 <= dim <= 1_000_000 or elements > 10**12 // dim:
+                    raise GGUFInspectError("Invalid or excessive GGUF tensor dimensions")
+                elements *= dim
             dtype = r.number("I")
             r.number("Q")  # Weight offset: never dereferenced
-            storage[GGML_TYPES.get(dtype, "GGML_TYPE_"+str(dtype))] += 1
+            label = GGML_TYPES.get(dtype, "GGML_TYPE_"+str(dtype))
+            storage[label] += 1
+            if ndim >= 2:
+                matrix_elements[label] += elements
         if meta.get("general.architecture") != "gemma3":
             raise GGUFInspectError("This inspection requires Gemma 3 architecture")
-        if meta.get("general.file_type") != 24:
-            raise GGUFInspectError("Expected GGML_FTYPE_MOSTLY_BF16 (24)")
         n_layers = meta.get("gemma3.block_count")
         if type(n_layers) is not int or not 1 <= n_layers <= 256:
             raise GGUFInspectError("Gemma 3 layer count not established")
         if storage["BF16"] == 0:
             raise GGUFInspectError("No BF16 tensor descriptor found")
+        if matrix_elements["BF16"] == 0 or matrix_elements["BF16"] <= (
+            sum(matrix_elements.values()) - matrix_elements["BF16"]):
+            raise GGUFInspectError(
+                "BF16 is not the dominant storage of matrix tensor elements")
+        # general.file_type is optional advisory GGUF metadata. It may be
+        # missing or inconsistent with tensor descriptors. Keep the raw
+        # value and a warning instead of converting it into false proof.
+        declared = meta.get("general.file_type")
+        if declared is not None and type(declared) is not int:
+            raise GGUFInspectError("Invalid GGUF general.file_type encoding")
+        warnings = []
+        if declared != 24:
+            warnings.append("general.file_type_missing" if declared is None
+                            else "general.file_type_differs_from_BF16_tensors")
+        if len(matrix_elements) > 1:
+            warnings.append("matrix_tensor_storage_is_mixed")
         # No false claim about model-wide geometry: global/SWA split is
         # interpreted by the native backend after this first inspection.
         return {
@@ -172,6 +193,9 @@ def inspect_gguf_header(file: Path) -> dict:
             "gguf_version": version, "tensor_count": n_tensors,
             "metadata_fields": meta,
             "tensor_storage_counts": dict(sorted(storage.items())),
+            "matrix_tensor_elements_by_storage": dict(sorted(matrix_elements.items())),
+            "declared_file_type": declared,
+            "metadata_warnings": warnings,
             "architecture": "gemma3", "blocks": n_layers,
             "weight_format": "BF16",
             "tensor_values_read": False,
