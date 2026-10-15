@@ -126,18 +126,47 @@ F16/F16 Flash OFF is a **reference configuration**, not exact numerical
 ground truth; F32/F32 is a useful additional reference but is not proof
 of a mathematically exact attention pipeline either.
 
-## Kernel dispatch evidence — remains unverified
+## Kernel dispatch evidence — opt-in external trace
 
-The benchmark **does not claim which CUDA attention kernel ran**.
-The pinned binary contains vector Flash BF16/BF16 specializations, but
-that does not prove use at prefill/decode.
+The benchmark can mark **prefill** and **decode** native call ranges with
+NVTX when `libnvToolsExt` is discoverable. The worker records
+`nvtx_ranges_available` explicitly. Availability of a marker alone is
+**not** dispatch evidence.
 
-To establish dispatch, a separate Nsight Systems/CUPTI capture of an
-explicitly authorized Phase27 GPU worker is needed. Profile the two
-phases separately, correlate device kernels by phase, and classify
-actual VEC, MMA_F16 and TILE invocations. The current benchmark's
-`native_kernel_dispatch_verified` remains `false`; prefill/decode
-wall time by itself cannot prove a kernel choice or conversion.
+After a first ordinary successful benchmark, check the Nsight Systems
+installation and its supported CLI flags:
+
+```bash
+nsys --version
+nsys profile --help
+```
+
+If Nsight Systems is available, explicitly authorize a **separate**
+trace run (the profiler can add overhead, so never mix these latencies
+with unprofiled benchmark comparisons):
+
+```bash
+cd ~/Dev/ruth-model-profiling
+nsys profile --trace=cuda,nvtx --sample=none --cpuctxsw=none \
+  -o .ruth-build/phase27/gemma3-flash-on-bf16-trace \
+  .venv/bin/python -m ruth_runtime.gemma3_benchmark \
+  --case 2 --execute --allow-gpu-inference
+```
+
+The NVIDIA CLI normally traces the launched application's child
+processes, which is important because Ruth isolates the native worker.
+If NVTX is not available, the trace may still include kernel names but
+the prefill/decode interval correspondence will be less conclusive.
+
+Inspect the produced `.nsys-rep` (or export it to SQLite) and
+associate GPU kernel launches with the marked **prefill** and
+**decode** ranges. Specifically identify VEC, MMA_F16, TILE and any
+conversion kernels. Do not infer conversion from KV dtype or kernel
+presence alone. The first trace result must be inspected before any
+kernel dispatch claim is recorded.
+
+The current Python JSON deliberately reports
+`native_kernel_dispatch_verified=false`, regardless of NVTX presence.
 
 No benchmark result automatically qualifies a runtime for production,
 and the canonical Git profile remains unchanged until separately
