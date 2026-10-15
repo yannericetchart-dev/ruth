@@ -1,6 +1,1599 @@
 {
   "architecture": {
     "gguf_header_observation": {
+      "attention_dtypes_are_kv_cache_dtypes": false,
+      "attention_projection_coverage": {
+        "attn_k": {
+          "complete": true,
+          "dtype_counts": {
+            "BF16": 26
+          },
+          "layers_present": 26
+        },
+        "attn_output": {
+          "complete": true,
+          "dtype_counts": {
+            "BF16": 26
+          },
+          "layers_present": 26
+        },
+        "attn_q": {
+          "complete": true,
+          "dtype_counts": {
+            "BF16": 26
+          },
+          "layers_present": 26
+        },
+        "attn_v": {
+          "complete": true,
+          "dtype_counts": {
+            "BF16": 26
+          },
+          "layers_present": 26
+        }
+      },
+      "attention_weight_tensors": [
+        {
+          "dtype": "BF16",
+          "layer": 0,
+          "role": "attn_k",
+          "shape": [
+            1152,
+            256
+          ]
+        },
+        {
+          "dtype": "F32",
+          "layer": 0,
+          "role": "attn_k_norm",
+          "shape": [
+            256
+          ]
+        },
+        {
+          "dtype": "F32",
+          "layer": 0,
+          "role": "attn_norm",
+          "shape": [
+            1152
+          ]
+        },
+        {
+          "dtype": "BF16",
+          "layer": 0,
+          "role": "attn_output",
+          "shape": [
+            1024,
+            1152
+          ]
+        },
+        {
+          "dtype": "BF16",
+          "layer": 0,
+          "role": "attn_q",
+          "shape": [
+            1152,
+            1024
+          ]
+        },
+        {
+          "dtype": "F32",
+          "layer": 0,
+          "role": "attn_q_norm",
+          "shape": [
+            256
+          ]
+        },
+        {
+          "dtype": "BF16",
+          "layer": 0,
+          "role": "attn_v",
+          "shape": [
+            1152,
+            256
+          ]
+        },
+        {
+          "dtype": "BF16",
+          "layer": 1,
+          "role": "attn_k",
+          "shape": [
+            1152,
+            256
+          ]
+        },
+        {
+          "dtype": "F32",
+          "layer": 1,
+          "role": "attn_k_norm",
+          "shape": [
+            256
+          ]
+        },
+        {
+          "dtype": "F32",
+          "layer": 1,
+          "role": "attn_norm",
+          "shape": [
+            1152
+          ]
+        },
+        {
+          "dtype": "BF16",
+          "layer": 1,
+          "role": "attn_output",
+          "shape": [
+            1024,
+            1152
+          ]
+        },
+        {
+          "dtype": "BF16",
+          "layer": 1,
+          "role": "attn_q",
+          "shape": [
+            1152,
+            1024
+          ]
+        },
+        {
+          "dtype": "F32",
+          "layer": 1,
+          "role": "attn_q_norm",
+          "shape": [
+            256
+          ]
+        },
+        {
+          "dtype": "BF16",
+          "layer": 1,
+          "role": "attn_v",
+          "shape": [
+            1152,
+            256
+          ]
+        },
+        {
+          "dtype": "BF16",
+          "layer": 2,
+          "role": "attn_k",
+          "shape": [
+            1152,
+            256
+          ]
+        },
+        {
+          "dtype": "F32",
+          "layer": 2,
+          "role": "attn_k_norm",
+          "shape": [
+            256
+          ]
+        },
+        {
+          "dtype": "F32",
+          "layer": 2,
+          "role": "attn_norm",
+          "shape": [
+            1152
+          ]
+        },
+        {
+          "dtype": "BF16",
+          "layer": 2,
+          "role": "attn_output",
+          "shape": [
+            1024,
+            1152
+          ]
+        },
+        {
+          "dtype": "BF16",
+          "layer": 2,
+          "role": "attn_q",
+          "shape": [
+            1152,
+            1024
+          ]
+        },
+        {
+          "dtype": "F32",
+          "layer": 2,
+          "role": "attn_q_norm",
+          "shape": [
+            256
+          ]
+        },
+        {
+          "dtype": "BF16",
+          "layer": 2,
+          "role": "attn_v",
+          "shape": [
+            1152,
+            256
+          ]
+        },
+        {
+          "dtype": "BF16",
+          "layer": 3,
+          "role": "attn_k",
+          "shape": [
+            1152,
+            256
+          ]
+        },
+        {
+          "dtype": "F32",
+          "layer": 3,
+          "role": "attn_k_norm",
+          "shape": [
+            256
+          ]
+        },
+        {
+          "dtype": "F32",
+          "layer": 3,
+          "role": "attn_norm",
+          "shape": [
+            1152
+          ]
+        },
+        {
+          "dtype": "BF16",
+          "layer": 3,
+          "role": "attn_output",
+          "shape": [
+            1024,
+            1152
+          ]
+        },
+        {
+          "dtype": "BF16",
+          "layer": 3,
+          "role": "attn_q",
+          "shape": [
+            1152,
+            1024
+          ]
+        },
+        {
+          "dtype": "F32",
+          "layer": 3,
+          "role": "attn_q_norm",
+          "shape": [
+            256
+          ]
+        },
+        {
+          "dtype": "BF16",
+          "layer": 3,
+          "role": "attn_v",
+          "shape": [
+            1152,
+            256
+          ]
+        },
+        {
+          "dtype": "BF16",
+          "layer": 4,
+          "role": "attn_k",
+          "shape": [
+            1152,
+            256
+          ]
+        },
+        {
+          "dtype": "F32",
+          "layer": 4,
+          "role": "attn_k_norm",
+          "shape": [
+            256
+          ]
+        },
+        {
+          "dtype": "F32",
+          "layer": 4,
+          "role": "attn_norm",
+          "shape": [
+            1152
+          ]
+        },
+        {
+          "dtype": "BF16",
+          "layer": 4,
+          "role": "attn_output",
+          "shape": [
+            1024,
+            1152
+          ]
+        },
+        {
+          "dtype": "BF16",
+          "layer": 4,
+          "role": "attn_q",
+          "shape": [
+            1152,
+            1024
+          ]
+        },
+        {
+          "dtype": "F32",
+          "layer": 4,
+          "role": "attn_q_norm",
+          "shape": [
+            256
+          ]
+        },
+        {
+          "dtype": "BF16",
+          "layer": 4,
+          "role": "attn_v",
+          "shape": [
+            1152,
+            256
+          ]
+        },
+        {
+          "dtype": "BF16",
+          "layer": 5,
+          "role": "attn_k",
+          "shape": [
+            1152,
+            256
+          ]
+        },
+        {
+          "dtype": "F32",
+          "layer": 5,
+          "role": "attn_k_norm",
+          "shape": [
+            256
+          ]
+        },
+        {
+          "dtype": "F32",
+          "layer": 5,
+          "role": "attn_norm",
+          "shape": [
+            1152
+          ]
+        },
+        {
+          "dtype": "BF16",
+          "layer": 5,
+          "role": "attn_output",
+          "shape": [
+            1024,
+            1152
+          ]
+        },
+        {
+          "dtype": "BF16",
+          "layer": 5,
+          "role": "attn_q",
+          "shape": [
+            1152,
+            1024
+          ]
+        },
+        {
+          "dtype": "F32",
+          "layer": 5,
+          "role": "attn_q_norm",
+          "shape": [
+            256
+          ]
+        },
+        {
+          "dtype": "BF16",
+          "layer": 5,
+          "role": "attn_v",
+          "shape": [
+            1152,
+            256
+          ]
+        },
+        {
+          "dtype": "BF16",
+          "layer": 6,
+          "role": "attn_k",
+          "shape": [
+            1152,
+            256
+          ]
+        },
+        {
+          "dtype": "F32",
+          "layer": 6,
+          "role": "attn_k_norm",
+          "shape": [
+            256
+          ]
+        },
+        {
+          "dtype": "F32",
+          "layer": 6,
+          "role": "attn_norm",
+          "shape": [
+            1152
+          ]
+        },
+        {
+          "dtype": "BF16",
+          "layer": 6,
+          "role": "attn_output",
+          "shape": [
+            1024,
+            1152
+          ]
+        },
+        {
+          "dtype": "BF16",
+          "layer": 6,
+          "role": "attn_q",
+          "shape": [
+            1152,
+            1024
+          ]
+        },
+        {
+          "dtype": "F32",
+          "layer": 6,
+          "role": "attn_q_norm",
+          "shape": [
+            256
+          ]
+        },
+        {
+          "dtype": "BF16",
+          "layer": 6,
+          "role": "attn_v",
+          "shape": [
+            1152,
+            256
+          ]
+        },
+        {
+          "dtype": "BF16",
+          "layer": 7,
+          "role": "attn_k",
+          "shape": [
+            1152,
+            256
+          ]
+        },
+        {
+          "dtype": "F32",
+          "layer": 7,
+          "role": "attn_k_norm",
+          "shape": [
+            256
+          ]
+        },
+        {
+          "dtype": "F32",
+          "layer": 7,
+          "role": "attn_norm",
+          "shape": [
+            1152
+          ]
+        },
+        {
+          "dtype": "BF16",
+          "layer": 7,
+          "role": "attn_output",
+          "shape": [
+            1024,
+            1152
+          ]
+        },
+        {
+          "dtype": "BF16",
+          "layer": 7,
+          "role": "attn_q",
+          "shape": [
+            1152,
+            1024
+          ]
+        },
+        {
+          "dtype": "F32",
+          "layer": 7,
+          "role": "attn_q_norm",
+          "shape": [
+            256
+          ]
+        },
+        {
+          "dtype": "BF16",
+          "layer": 7,
+          "role": "attn_v",
+          "shape": [
+            1152,
+            256
+          ]
+        },
+        {
+          "dtype": "BF16",
+          "layer": 8,
+          "role": "attn_k",
+          "shape": [
+            1152,
+            256
+          ]
+        },
+        {
+          "dtype": "F32",
+          "layer": 8,
+          "role": "attn_k_norm",
+          "shape": [
+            256
+          ]
+        },
+        {
+          "dtype": "F32",
+          "layer": 8,
+          "role": "attn_norm",
+          "shape": [
+            1152
+          ]
+        },
+        {
+          "dtype": "BF16",
+          "layer": 8,
+          "role": "attn_output",
+          "shape": [
+            1024,
+            1152
+          ]
+        },
+        {
+          "dtype": "BF16",
+          "layer": 8,
+          "role": "attn_q",
+          "shape": [
+            1152,
+            1024
+          ]
+        },
+        {
+          "dtype": "F32",
+          "layer": 8,
+          "role": "attn_q_norm",
+          "shape": [
+            256
+          ]
+        },
+        {
+          "dtype": "BF16",
+          "layer": 8,
+          "role": "attn_v",
+          "shape": [
+            1152,
+            256
+          ]
+        },
+        {
+          "dtype": "BF16",
+          "layer": 9,
+          "role": "attn_k",
+          "shape": [
+            1152,
+            256
+          ]
+        },
+        {
+          "dtype": "F32",
+          "layer": 9,
+          "role": "attn_k_norm",
+          "shape": [
+            256
+          ]
+        },
+        {
+          "dtype": "F32",
+          "layer": 9,
+          "role": "attn_norm",
+          "shape": [
+            1152
+          ]
+        },
+        {
+          "dtype": "BF16",
+          "layer": 9,
+          "role": "attn_output",
+          "shape": [
+            1024,
+            1152
+          ]
+        },
+        {
+          "dtype": "BF16",
+          "layer": 9,
+          "role": "attn_q",
+          "shape": [
+            1152,
+            1024
+          ]
+        },
+        {
+          "dtype": "F32",
+          "layer": 9,
+          "role": "attn_q_norm",
+          "shape": [
+            256
+          ]
+        },
+        {
+          "dtype": "BF16",
+          "layer": 9,
+          "role": "attn_v",
+          "shape": [
+            1152,
+            256
+          ]
+        },
+        {
+          "dtype": "BF16",
+          "layer": 10,
+          "role": "attn_k",
+          "shape": [
+            1152,
+            256
+          ]
+        },
+        {
+          "dtype": "F32",
+          "layer": 10,
+          "role": "attn_k_norm",
+          "shape": [
+            256
+          ]
+        },
+        {
+          "dtype": "F32",
+          "layer": 10,
+          "role": "attn_norm",
+          "shape": [
+            1152
+          ]
+        },
+        {
+          "dtype": "BF16",
+          "layer": 10,
+          "role": "attn_output",
+          "shape": [
+            1024,
+            1152
+          ]
+        },
+        {
+          "dtype": "BF16",
+          "layer": 10,
+          "role": "attn_q",
+          "shape": [
+            1152,
+            1024
+          ]
+        },
+        {
+          "dtype": "F32",
+          "layer": 10,
+          "role": "attn_q_norm",
+          "shape": [
+            256
+          ]
+        },
+        {
+          "dtype": "BF16",
+          "layer": 10,
+          "role": "attn_v",
+          "shape": [
+            1152,
+            256
+          ]
+        },
+        {
+          "dtype": "BF16",
+          "layer": 11,
+          "role": "attn_k",
+          "shape": [
+            1152,
+            256
+          ]
+        },
+        {
+          "dtype": "F32",
+          "layer": 11,
+          "role": "attn_k_norm",
+          "shape": [
+            256
+          ]
+        },
+        {
+          "dtype": "F32",
+          "layer": 11,
+          "role": "attn_norm",
+          "shape": [
+            1152
+          ]
+        },
+        {
+          "dtype": "BF16",
+          "layer": 11,
+          "role": "attn_output",
+          "shape": [
+            1024,
+            1152
+          ]
+        },
+        {
+          "dtype": "BF16",
+          "layer": 11,
+          "role": "attn_q",
+          "shape": [
+            1152,
+            1024
+          ]
+        },
+        {
+          "dtype": "F32",
+          "layer": 11,
+          "role": "attn_q_norm",
+          "shape": [
+            256
+          ]
+        },
+        {
+          "dtype": "BF16",
+          "layer": 11,
+          "role": "attn_v",
+          "shape": [
+            1152,
+            256
+          ]
+        },
+        {
+          "dtype": "BF16",
+          "layer": 12,
+          "role": "attn_k",
+          "shape": [
+            1152,
+            256
+          ]
+        },
+        {
+          "dtype": "F32",
+          "layer": 12,
+          "role": "attn_k_norm",
+          "shape": [
+            256
+          ]
+        },
+        {
+          "dtype": "F32",
+          "layer": 12,
+          "role": "attn_norm",
+          "shape": [
+            1152
+          ]
+        },
+        {
+          "dtype": "BF16",
+          "layer": 12,
+          "role": "attn_output",
+          "shape": [
+            1024,
+            1152
+          ]
+        },
+        {
+          "dtype": "BF16",
+          "layer": 12,
+          "role": "attn_q",
+          "shape": [
+            1152,
+            1024
+          ]
+        },
+        {
+          "dtype": "F32",
+          "layer": 12,
+          "role": "attn_q_norm",
+          "shape": [
+            256
+          ]
+        },
+        {
+          "dtype": "BF16",
+          "layer": 12,
+          "role": "attn_v",
+          "shape": [
+            1152,
+            256
+          ]
+        },
+        {
+          "dtype": "BF16",
+          "layer": 13,
+          "role": "attn_k",
+          "shape": [
+            1152,
+            256
+          ]
+        },
+        {
+          "dtype": "F32",
+          "layer": 13,
+          "role": "attn_k_norm",
+          "shape": [
+            256
+          ]
+        },
+        {
+          "dtype": "F32",
+          "layer": 13,
+          "role": "attn_norm",
+          "shape": [
+            1152
+          ]
+        },
+        {
+          "dtype": "BF16",
+          "layer": 13,
+          "role": "attn_output",
+          "shape": [
+            1024,
+            1152
+          ]
+        },
+        {
+          "dtype": "BF16",
+          "layer": 13,
+          "role": "attn_q",
+          "shape": [
+            1152,
+            1024
+          ]
+        },
+        {
+          "dtype": "F32",
+          "layer": 13,
+          "role": "attn_q_norm",
+          "shape": [
+            256
+          ]
+        },
+        {
+          "dtype": "BF16",
+          "layer": 13,
+          "role": "attn_v",
+          "shape": [
+            1152,
+            256
+          ]
+        },
+        {
+          "dtype": "BF16",
+          "layer": 14,
+          "role": "attn_k",
+          "shape": [
+            1152,
+            256
+          ]
+        },
+        {
+          "dtype": "F32",
+          "layer": 14,
+          "role": "attn_k_norm",
+          "shape": [
+            256
+          ]
+        },
+        {
+          "dtype": "F32",
+          "layer": 14,
+          "role": "attn_norm",
+          "shape": [
+            1152
+          ]
+        },
+        {
+          "dtype": "BF16",
+          "layer": 14,
+          "role": "attn_output",
+          "shape": [
+            1024,
+            1152
+          ]
+        },
+        {
+          "dtype": "BF16",
+          "layer": 14,
+          "role": "attn_q",
+          "shape": [
+            1152,
+            1024
+          ]
+        },
+        {
+          "dtype": "F32",
+          "layer": 14,
+          "role": "attn_q_norm",
+          "shape": [
+            256
+          ]
+        },
+        {
+          "dtype": "BF16",
+          "layer": 14,
+          "role": "attn_v",
+          "shape": [
+            1152,
+            256
+          ]
+        },
+        {
+          "dtype": "BF16",
+          "layer": 15,
+          "role": "attn_k",
+          "shape": [
+            1152,
+            256
+          ]
+        },
+        {
+          "dtype": "F32",
+          "layer": 15,
+          "role": "attn_k_norm",
+          "shape": [
+            256
+          ]
+        },
+        {
+          "dtype": "F32",
+          "layer": 15,
+          "role": "attn_norm",
+          "shape": [
+            1152
+          ]
+        },
+        {
+          "dtype": "BF16",
+          "layer": 15,
+          "role": "attn_output",
+          "shape": [
+            1024,
+            1152
+          ]
+        },
+        {
+          "dtype": "BF16",
+          "layer": 15,
+          "role": "attn_q",
+          "shape": [
+            1152,
+            1024
+          ]
+        },
+        {
+          "dtype": "F32",
+          "layer": 15,
+          "role": "attn_q_norm",
+          "shape": [
+            256
+          ]
+        },
+        {
+          "dtype": "BF16",
+          "layer": 15,
+          "role": "attn_v",
+          "shape": [
+            1152,
+            256
+          ]
+        },
+        {
+          "dtype": "BF16",
+          "layer": 16,
+          "role": "attn_k",
+          "shape": [
+            1152,
+            256
+          ]
+        },
+        {
+          "dtype": "F32",
+          "layer": 16,
+          "role": "attn_k_norm",
+          "shape": [
+            256
+          ]
+        },
+        {
+          "dtype": "F32",
+          "layer": 16,
+          "role": "attn_norm",
+          "shape": [
+            1152
+          ]
+        },
+        {
+          "dtype": "BF16",
+          "layer": 16,
+          "role": "attn_output",
+          "shape": [
+            1024,
+            1152
+          ]
+        },
+        {
+          "dtype": "BF16",
+          "layer": 16,
+          "role": "attn_q",
+          "shape": [
+            1152,
+            1024
+          ]
+        },
+        {
+          "dtype": "F32",
+          "layer": 16,
+          "role": "attn_q_norm",
+          "shape": [
+            256
+          ]
+        },
+        {
+          "dtype": "BF16",
+          "layer": 16,
+          "role": "attn_v",
+          "shape": [
+            1152,
+            256
+          ]
+        },
+        {
+          "dtype": "BF16",
+          "layer": 17,
+          "role": "attn_k",
+          "shape": [
+            1152,
+            256
+          ]
+        },
+        {
+          "dtype": "F32",
+          "layer": 17,
+          "role": "attn_k_norm",
+          "shape": [
+            256
+          ]
+        },
+        {
+          "dtype": "F32",
+          "layer": 17,
+          "role": "attn_norm",
+          "shape": [
+            1152
+          ]
+        },
+        {
+          "dtype": "BF16",
+          "layer": 17,
+          "role": "attn_output",
+          "shape": [
+            1024,
+            1152
+          ]
+        },
+        {
+          "dtype": "BF16",
+          "layer": 17,
+          "role": "attn_q",
+          "shape": [
+            1152,
+            1024
+          ]
+        },
+        {
+          "dtype": "F32",
+          "layer": 17,
+          "role": "attn_q_norm",
+          "shape": [
+            256
+          ]
+        },
+        {
+          "dtype": "BF16",
+          "layer": 17,
+          "role": "attn_v",
+          "shape": [
+            1152,
+            256
+          ]
+        },
+        {
+          "dtype": "BF16",
+          "layer": 18,
+          "role": "attn_k",
+          "shape": [
+            1152,
+            256
+          ]
+        },
+        {
+          "dtype": "F32",
+          "layer": 18,
+          "role": "attn_k_norm",
+          "shape": [
+            256
+          ]
+        },
+        {
+          "dtype": "F32",
+          "layer": 18,
+          "role": "attn_norm",
+          "shape": [
+            1152
+          ]
+        },
+        {
+          "dtype": "BF16",
+          "layer": 18,
+          "role": "attn_output",
+          "shape": [
+            1024,
+            1152
+          ]
+        },
+        {
+          "dtype": "BF16",
+          "layer": 18,
+          "role": "attn_q",
+          "shape": [
+            1152,
+            1024
+          ]
+        },
+        {
+          "dtype": "F32",
+          "layer": 18,
+          "role": "attn_q_norm",
+          "shape": [
+            256
+          ]
+        },
+        {
+          "dtype": "BF16",
+          "layer": 18,
+          "role": "attn_v",
+          "shape": [
+            1152,
+            256
+          ]
+        },
+        {
+          "dtype": "BF16",
+          "layer": 19,
+          "role": "attn_k",
+          "shape": [
+            1152,
+            256
+          ]
+        },
+        {
+          "dtype": "F32",
+          "layer": 19,
+          "role": "attn_k_norm",
+          "shape": [
+            256
+          ]
+        },
+        {
+          "dtype": "F32",
+          "layer": 19,
+          "role": "attn_norm",
+          "shape": [
+            1152
+          ]
+        },
+        {
+          "dtype": "BF16",
+          "layer": 19,
+          "role": "attn_output",
+          "shape": [
+            1024,
+            1152
+          ]
+        },
+        {
+          "dtype": "BF16",
+          "layer": 19,
+          "role": "attn_q",
+          "shape": [
+            1152,
+            1024
+          ]
+        },
+        {
+          "dtype": "F32",
+          "layer": 19,
+          "role": "attn_q_norm",
+          "shape": [
+            256
+          ]
+        },
+        {
+          "dtype": "BF16",
+          "layer": 19,
+          "role": "attn_v",
+          "shape": [
+            1152,
+            256
+          ]
+        },
+        {
+          "dtype": "BF16",
+          "layer": 20,
+          "role": "attn_k",
+          "shape": [
+            1152,
+            256
+          ]
+        },
+        {
+          "dtype": "F32",
+          "layer": 20,
+          "role": "attn_k_norm",
+          "shape": [
+            256
+          ]
+        },
+        {
+          "dtype": "F32",
+          "layer": 20,
+          "role": "attn_norm",
+          "shape": [
+            1152
+          ]
+        },
+        {
+          "dtype": "BF16",
+          "layer": 20,
+          "role": "attn_output",
+          "shape": [
+            1024,
+            1152
+          ]
+        },
+        {
+          "dtype": "BF16",
+          "layer": 20,
+          "role": "attn_q",
+          "shape": [
+            1152,
+            1024
+          ]
+        },
+        {
+          "dtype": "F32",
+          "layer": 20,
+          "role": "attn_q_norm",
+          "shape": [
+            256
+          ]
+        },
+        {
+          "dtype": "BF16",
+          "layer": 20,
+          "role": "attn_v",
+          "shape": [
+            1152,
+            256
+          ]
+        },
+        {
+          "dtype": "BF16",
+          "layer": 21,
+          "role": "attn_k",
+          "shape": [
+            1152,
+            256
+          ]
+        },
+        {
+          "dtype": "F32",
+          "layer": 21,
+          "role": "attn_k_norm",
+          "shape": [
+            256
+          ]
+        },
+        {
+          "dtype": "F32",
+          "layer": 21,
+          "role": "attn_norm",
+          "shape": [
+            1152
+          ]
+        },
+        {
+          "dtype": "BF16",
+          "layer": 21,
+          "role": "attn_output",
+          "shape": [
+            1024,
+            1152
+          ]
+        },
+        {
+          "dtype": "BF16",
+          "layer": 21,
+          "role": "attn_q",
+          "shape": [
+            1152,
+            1024
+          ]
+        },
+        {
+          "dtype": "F32",
+          "layer": 21,
+          "role": "attn_q_norm",
+          "shape": [
+            256
+          ]
+        },
+        {
+          "dtype": "BF16",
+          "layer": 21,
+          "role": "attn_v",
+          "shape": [
+            1152,
+            256
+          ]
+        },
+        {
+          "dtype": "BF16",
+          "layer": 22,
+          "role": "attn_k",
+          "shape": [
+            1152,
+            256
+          ]
+        },
+        {
+          "dtype": "F32",
+          "layer": 22,
+          "role": "attn_k_norm",
+          "shape": [
+            256
+          ]
+        },
+        {
+          "dtype": "F32",
+          "layer": 22,
+          "role": "attn_norm",
+          "shape": [
+            1152
+          ]
+        },
+        {
+          "dtype": "BF16",
+          "layer": 22,
+          "role": "attn_output",
+          "shape": [
+            1024,
+            1152
+          ]
+        },
+        {
+          "dtype": "BF16",
+          "layer": 22,
+          "role": "attn_q",
+          "shape": [
+            1152,
+            1024
+          ]
+        },
+        {
+          "dtype": "F32",
+          "layer": 22,
+          "role": "attn_q_norm",
+          "shape": [
+            256
+          ]
+        },
+        {
+          "dtype": "BF16",
+          "layer": 22,
+          "role": "attn_v",
+          "shape": [
+            1152,
+            256
+          ]
+        },
+        {
+          "dtype": "BF16",
+          "layer": 23,
+          "role": "attn_k",
+          "shape": [
+            1152,
+            256
+          ]
+        },
+        {
+          "dtype": "F32",
+          "layer": 23,
+          "role": "attn_k_norm",
+          "shape": [
+            256
+          ]
+        },
+        {
+          "dtype": "F32",
+          "layer": 23,
+          "role": "attn_norm",
+          "shape": [
+            1152
+          ]
+        },
+        {
+          "dtype": "BF16",
+          "layer": 23,
+          "role": "attn_output",
+          "shape": [
+            1024,
+            1152
+          ]
+        },
+        {
+          "dtype": "BF16",
+          "layer": 23,
+          "role": "attn_q",
+          "shape": [
+            1152,
+            1024
+          ]
+        },
+        {
+          "dtype": "F32",
+          "layer": 23,
+          "role": "attn_q_norm",
+          "shape": [
+            256
+          ]
+        },
+        {
+          "dtype": "BF16",
+          "layer": 23,
+          "role": "attn_v",
+          "shape": [
+            1152,
+            256
+          ]
+        },
+        {
+          "dtype": "BF16",
+          "layer": 24,
+          "role": "attn_k",
+          "shape": [
+            1152,
+            256
+          ]
+        },
+        {
+          "dtype": "F32",
+          "layer": 24,
+          "role": "attn_k_norm",
+          "shape": [
+            256
+          ]
+        },
+        {
+          "dtype": "F32",
+          "layer": 24,
+          "role": "attn_norm",
+          "shape": [
+            1152
+          ]
+        },
+        {
+          "dtype": "BF16",
+          "layer": 24,
+          "role": "attn_output",
+          "shape": [
+            1024,
+            1152
+          ]
+        },
+        {
+          "dtype": "BF16",
+          "layer": 24,
+          "role": "attn_q",
+          "shape": [
+            1152,
+            1024
+          ]
+        },
+        {
+          "dtype": "F32",
+          "layer": 24,
+          "role": "attn_q_norm",
+          "shape": [
+            256
+          ]
+        },
+        {
+          "dtype": "BF16",
+          "layer": 24,
+          "role": "attn_v",
+          "shape": [
+            1152,
+            256
+          ]
+        },
+        {
+          "dtype": "BF16",
+          "layer": 25,
+          "role": "attn_k",
+          "shape": [
+            1152,
+            256
+          ]
+        },
+        {
+          "dtype": "F32",
+          "layer": 25,
+          "role": "attn_k_norm",
+          "shape": [
+            256
+          ]
+        },
+        {
+          "dtype": "F32",
+          "layer": 25,
+          "role": "attn_norm",
+          "shape": [
+            1152
+          ]
+        },
+        {
+          "dtype": "BF16",
+          "layer": 25,
+          "role": "attn_output",
+          "shape": [
+            1024,
+            1152
+          ]
+        },
+        {
+          "dtype": "BF16",
+          "layer": 25,
+          "role": "attn_q",
+          "shape": [
+            1152,
+            1024
+          ]
+        },
+        {
+          "dtype": "F32",
+          "layer": 25,
+          "role": "attn_q_norm",
+          "shape": [
+            256
+          ]
+        },
+        {
+          "dtype": "BF16",
+          "layer": 25,
+          "role": "attn_v",
+          "shape": [
+            1152,
+            256
+          ]
+        }
+      ],
       "declared_file_type": 32,
       "gguf_sha256": "b144bde489651d3d292d7e47a59c6f811cdd96d184be582e5ad30ab338b9b6bf",
       "gguf_version": 3,
@@ -32,27 +1625,79 @@
     "global_layers": 4,
     "key_head_dim": 256,
     "kv_heads": 1,
+    "kv_precision_assessment_256": {
+      "automatic_cache_dtype_alignment_approved": false,
+      "candidates": {
+        "BF16": {
+          "bytes_per_scalar": 2,
+          "inference_numeric_fidelity_verified": false,
+          "native_allocation_verified": false,
+          "total_logical_mib_derived": 6.5,
+          "type_k": "BF16",
+          "type_v": "BF16"
+        },
+        "F16": {
+          "bytes_per_scalar": 2,
+          "inference_numeric_fidelity_verified": false,
+          "native_allocation_verified": false,
+          "total_logical_mib_derived": 6.5,
+          "type_k": "F16",
+          "type_v": "F16"
+        },
+        "F32": {
+          "bytes_per_scalar": 4,
+          "inference_numeric_fidelity_verified": false,
+          "native_allocation_verified": false,
+          "total_logical_mib_derived": 13.0,
+          "type_k": "F32",
+          "type_v": "F32"
+        }
+      },
+      "currently_approved_loading_baseline": {
+        "type_k": "F16",
+        "type_v": "F16"
+      },
+      "evaluation_rule": "The GGUF projection tensor storage formats inform provenance only. KV activation precision is independently tested for backend, CUDA allocation, token correctness and numeric stability.",
+      "kv_activations_are_not_weight_tensors": true,
+      "model_original_weight_format": "BF16",
+      "native_context_dtype_support_verified": false,
+      "status": "kv_precision_alternatives_source_derived_native_unverified",
+      "weight_attention_dtypes": {
+        "attn_k": {
+          "BF16": 26
+        },
+        "attn_output": {
+          "BF16": 26
+        },
+        "attn_q": {
+          "BF16": 26
+        },
+        "attn_v": {
+          "BF16": 26
+        }
+      },
+      "weight_attention_dtypes_status": "per_layer_attention_weight_formats_observed"
+    },
     "layer_count": 26,
-    "status": "gguf_header_and_pinned_backend_source_derived_native_context_unverified",
-    "swa_layers": 22,
-    "swa_window": 512,
-    "value_head_dim": 256,
     "source_derived_geometry": {
-      "status": "pinned_source_derived_native_context_unverified",
+      "context_alignment": 256,
       "gguf_sha256": "b144bde489651d3d292d7e47a59c6f811cdd96d184be582e5ad30ab338b9b6bf",
-      "llama_cpp_commit": "0c1e57098bba43ac29e6e3b677cdceebdd22334f",
-      "llama_cpp_source_paths": [
-        "src/models/gemma3.cpp",
-        "src/llama-hparams.cpp",
-        "src/llama-context.cpp"
-      ],
-      "swa_pattern_source": "pinned_llama_cpp_default_6_dense_last",
       "global_layer_indices": [
         5,
         11,
         17,
         23
       ],
+      "global_layers": 4,
+      "key_head_dim": 256,
+      "kv_heads": 1,
+      "llama_cpp_commit": "0c1e57098bba43ac29e6e3b677cdceebdd22334f",
+      "llama_cpp_source_paths": [
+        "src/models/gemma3.cpp",
+        "src/llama-hparams.cpp",
+        "src/llama-context.cpp"
+      ],
+      "status": "pinned_source_derived_native_context_unverified",
       "swa_layer_indices": [
         0,
         1,
@@ -77,14 +1722,15 @@
         24,
         25
       ],
-      "global_layers": 4,
       "swa_layers": 22,
+      "swa_pattern_source": "pinned_llama_cpp_default_6_dense_last",
       "swa_window": 512,
-      "kv_heads": 1,
-      "key_head_dim": 256,
-      "value_head_dim": 256,
-      "context_alignment": 256
-    }
+      "value_head_dim": 256
+    },
+    "status": "gguf_header_and_pinned_backend_source_derived_native_context_unverified",
+    "swa_layers": 22,
+    "swa_window": 512,
+    "value_head_dim": 256
   },
   "backend_policies": {
     "llama.cpp": {
