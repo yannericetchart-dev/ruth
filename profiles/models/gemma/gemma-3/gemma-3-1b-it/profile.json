@@ -1,12 +1,42 @@
 {
   "architecture": {
+    "gguf_header_observation": {
+      "declared_file_type": 32,
+      "gguf_sha256": "b144bde489651d3d292d7e47a59c6f811cdd96d184be582e5ad30ab338b9b6bf",
+      "gguf_version": 3,
+      "matrix_tensor_elements_by_storage": {
+        "BF16": 999751680
+      },
+      "metadata_fields": {
+        "gemma3.attention.head_count": 4,
+        "gemma3.attention.head_count_kv": 1,
+        "gemma3.attention.key_length": 256,
+        "gemma3.attention.sliding_window": 512,
+        "gemma3.attention.value_length": 256,
+        "gemma3.block_count": 26,
+        "gemma3.context_length": 32768,
+        "gemma3.embedding_length": 1152,
+        "general.architecture": "gemma3",
+        "general.file_type": 32
+      },
+      "metadata_warnings": [
+        "general.file_type_differs_from_BF16_tensors"
+      ],
+      "status": "gguf_header_observed_native_crosscheck_pending",
+      "tensor_count": 340,
+      "tensor_storage_counts": {
+        "BF16": 183,
+        "F32": 157
+      }
+    },
     "global_layers": null,
-    "key_head_dim": null,
-    "kv_heads": null,
-    "status": "unknown",
+    "key_head_dim": 256,
+    "kv_heads": 1,
+    "layer_count": 26,
+    "status": "gguf_header_observed_native_crosscheck_pending",
     "swa_layers": null,
-    "swa_window": null,
-    "value_head_dim": null
+    "swa_window": 512,
+    "value_head_dim": 256
   },
   "backend_policies": {
     "llama.cpp": {
