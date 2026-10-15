@@ -18,6 +18,24 @@ from ruth_runtime.launcher import main
 
 
 class ProfileContributionTests(unittest.TestCase):
+    def prepare_pinned(self, root):
+        local = self.prepare(root)
+        from ruth_runtime.model_catalog import select_model
+        choice = select_model("production", quantization="Q4_K_L")
+        payload = json.loads(local.read_text())
+        payload["model"].update({
+            "family": choice.family, "model": choice.model,
+            "version": choice.version, "format": choice.format,
+            "quantization": choice.quantization,
+            "gguf_sha256": choice.expected_sha256,
+            "source_repository": choice.repo_id,
+            "source_revision": choice.revision,
+            "gguf_serialized_bytes": choice.expected_size_bytes,
+        })
+        local.write_text(json.dumps(payload))
+        return local
+
+
     def prepare(self, root):
         path = root / ".ruth-build/profiles/models"
         path.mkdir(parents=True, exist_ok=True)
@@ -378,7 +396,7 @@ class ProfileContributionTests(unittest.TestCase):
     def test_authenticated_owner_commits_directly_on_model_profiling(self):
         with TemporaryDirectory() as tmp:
             root = Path(tmp)
-            proposal = build_proposal(self.prepare(root), project_root=root)
+            proposal = build_proposal(self.prepare_pinned(root), project_root=root)
         calls = []
         def run(args, **kwargs):
             calls.append(args)
@@ -390,7 +408,7 @@ class ProfileContributionTests(unittest.TestCase):
                 return SimpleNamespace(returncode=1, stdout="",
                                        stderr="gh: Not Found (HTTP 404)")
             if ("--method PUT" in line and
-                "repos/yannericetchart-dev/ruth/contents/profiles/measurements" in line):
+                "repos/yannericetchart-dev/ruth/contents/profiles/models" in line):
                 endpoint = next(arg for arg in args if arg.startswith(
                     "repos/yannericetchart-dev/ruth/contents/"))
                 path = endpoint.split("/contents/", 1)[1]
@@ -404,7 +422,7 @@ class ProfileContributionTests(unittest.TestCase):
         self.assertTrue(result["git_updated"])
         self.assertEqual(result["branch"], "model-profiling")
         self.assertFalse(result["review_required"])
-        self.assertTrue(result["repository_path"].startswith("profiles/measurements/"))
+        self.assertTrue(result["repository_path"].startswith("profiles/models/"))
         self.assertFalse(any("pulls" in " ".join(x) for x in calls))
         self.assertFalse(any("fork" in " ".join(x) for x in calls))
         self.assertFalse(any("repos/contributor" in " ".join(x) for x in calls))
@@ -412,8 +430,14 @@ class ProfileContributionTests(unittest.TestCase):
     def test_owner_idempotent_existing_measurement(self):
         with TemporaryDirectory() as tmp:
             root = Path(tmp)
-            proposal = build_proposal(self.prepare(root), project_root=root)
-        content = json.dumps(proposal["proposal"]).encode("utf-8")
+            proposal = build_proposal(self.prepare_pinned(root), project_root=root)
+        from ruth_runtime.model_profile_v2 import create_profile, merge_published_measurement
+        from ruth_runtime.model_catalog import load_catalog
+        entry = next(e for e in load_catalog()["models"] if e["version"] == "gemma-2-9B-it")
+        canonical, changed = merge_published_measurement(
+            create_profile(entry), proposal["proposal"])
+        self.assertTrue(changed)
+        content = json.dumps(canonical).encode("utf-8")
         import base64
         calls = []
         def run(args, **kwargs):
@@ -423,7 +447,7 @@ class ProfileContributionTests(unittest.TestCase):
                                        stderr="")
             if "?ref=model-profiling" in args[-1]:
                 return SimpleNamespace(returncode=0, stdout=json.dumps({
-                    "type": "file",
+                    "type": "file", "sha": "f"*40,
                     "content": base64.b64encode(content).decode("ascii"),
                 }), stderr="")
             self.fail("Owner must not overwrite unchanged measurements")
@@ -449,7 +473,7 @@ class ProfileContributionTests(unittest.TestCase):
     def test_owner_direct_write_does_not_hide_api_errors(self):
         with TemporaryDirectory() as tmp:
             root = Path(tmp)
-            proposal = build_proposal(self.prepare(root), project_root=root)
+            proposal = build_proposal(self.prepare_pinned(root), project_root=root)
         def run(args, **kwargs):
             if "api user --jq .login" in " ".join(args):
                 return SimpleNamespace(returncode=0, stdout="yannericetchart-dev",
