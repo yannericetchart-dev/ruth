@@ -29,10 +29,11 @@ def arrayval(key,values):
     return (text(key)+struct.pack("<I",9)+struct.pack("<IQ",4,len(values))
             +struct.pack("<"+"I"*len(values),*values))
 
-def fixture(path:Path, *, kind=24, arch="gemma3", count=26, endian="<"):
+def fixture(path:Path, *, kind=24, arch="gemma3", count=26,
+            tensor_dtype=30, include_file_type=True, endian="<"):
     attrs=[
         strval("general.architecture",arch),
-        num("general.file_type",kind),
+        *([num("general.file_type",kind)] if include_file_type else []),
         num("gemma3.block_count",count),
         num("gemma3.embedding_length",1152),
         num("gemma3.attention.head_count_kv",1),
@@ -42,7 +43,7 @@ def fixture(path:Path, *, kind=24, arch="gemma3", count=26, endian="<"):
         text("tokenizer.ggml.tokens")+struct.pack("<I",9)
         +struct.pack("<IQ",8,1200)+b"".join(text("test") for _ in range(1200)),
     ]
-    tensor=text("blk.0.attn_q.weight")+struct.pack("<IQQIQ",2,1152,1152,30,0)
+    tensor=text("blk.0.attn_q.weight")+struct.pack("<IQQIQ",2,1152,1152,tensor_dtype,0)
     data=b"GGUF"+struct.pack("<IQQ",3,1,len(attrs))+b"".join(attrs)+tensor
     path.write_bytes(data+b"\x00"*32)
 
@@ -57,6 +58,10 @@ class Gemma3HeaderTests(unittest.TestCase):
                          "gguf_header_geometry_observed_native_crosscheck_pending")
         self.assertEqual(report["gguf_version"],3)
         self.assertEqual(report["tensor_storage_counts"],{"BF16":1})
+        self.assertEqual(report["matrix_tensor_elements_by_storage"],
+                         {"BF16":1152*1152})
+        self.assertEqual(report["declared_file_type"],24)
+        self.assertEqual(report["metadata_warnings"],[])
         self.assertEqual(report["metadata_fields"]["gemma3.block_count"],26)
         self.assertEqual(report["metadata_fields"]["gemma3.attention.sliding_window_pattern"],
                          [1,1,1,1,1,0])
@@ -67,13 +72,28 @@ class Gemma3HeaderTests(unittest.TestCase):
     def test_reject_wrong_arch_type_version_and_tensor_dtype(self):
         with TemporaryDirectory() as td:
             p=Path(td)/"x.gguf"
-            for kw in ({"arch":"gemma2"},{"kind":1},{"count":0}):
+            for kw in ({"arch":"gemma2"},{"count":0},
+                       {"tensor_dtype":1}):
                 fixture(p,**kw)
                 with self.assertRaises(GGUFInspectError):
                     inspect_gguf_header(p)
             p.write_bytes(b"GGUF"+struct.pack("<IQQ",1,1,1))
             with self.assertRaises(GGUFInspectError):
                 inspect_gguf_header(p)
+
+    def test_advisory_file_type_mismatch_and_missing_file_type_are_observed(self):
+        with TemporaryDirectory() as td:
+            p=Path(td)/"x.gguf"
+            fixture(p,kind=1)
+            v=inspect_gguf_header(p)
+            self.assertEqual(v["declared_file_type"],1)
+            self.assertEqual(v["weight_format"],"BF16")
+            self.assertIn("general.file_type_differs_from_BF16_tensors",
+                          v["metadata_warnings"])
+            fixture(p,include_file_type=False)
+            v=inspect_gguf_header(p)
+            self.assertIsNone(v["declared_file_type"])
+            self.assertIn("general.file_type_missing",v["metadata_warnings"])
 
     def test_pinned_inspection_demands_verified_manifest_sha_and_file(self):
         with TemporaryDirectory() as td:
@@ -99,6 +119,8 @@ class Gemma3HeaderTests(unittest.TestCase):
             "status":"gguf_header_geometry_observed_native_crosscheck_pending",
             "gguf_version":3, "architecture":"gemma3", "weight_format":"BF16",
             "tensor_count":1, "tensor_storage_counts":{"BF16":1},
+            "matrix_tensor_elements_by_storage":{"BF16":1152*1152},
+            "declared_file_type":24, "metadata_warnings":[],
             "tensor_values_read":False,"cuda_initialized":False,
             "model_weights_loaded":False,"context_initialized":False,
             "inference_executed":False, "source_integrity_verified":True,
@@ -151,6 +173,37 @@ class Gemma3HeaderTests(unittest.TestCase):
         self.assertEqual(second["status"],"git_profile_already_current")
         writes=[x for x in calls if x[:3]==["gh","api","--method"]]
         self.assertEqual(len(writes),1)
+
+    def test_advisory_mismatch_can_be_published_with_provenance_warning(self):
+        report=self.make_report()
+        report["metadata_fields"]["general.file_type"]=1
+        report["declared_file_type"]=1
+        report["metadata_warnings"]=[
+            "general.file_type_differs_from_BF16_tensors"]
+        profile=load_profile("gemma","gemma-3","gemma-3-1b-it")
+        seen={"current":profile}
+        def fake(args,**kwargs):
+            if args[:4]==["gh","api","user","--jq"]:
+                return SimpleNamespace(returncode=0,stdout="yannericetchart-dev",
+                                       stderr="")
+            if "?ref=model-profiling" in args[-1]:
+                blob=base64.b64encode(json.dumps(seen["current"]).encode()).decode()
+                return SimpleNamespace(returncode=0,
+                   stdout=json.dumps({"type":"file","sha":"f"*40,"content":blob}),
+                   stderr="")
+            if args[:3]==["gh","api","--method"]:
+                encoded=next(v[8:] for v in args if v.startswith("content="))
+                seen["current"]=json.loads(base64.b64decode(encoded))
+                return SimpleNamespace(returncode=0,
+                    stdout=json.dumps({"content":{"path":"profiles/models/gemma/gemma-3/gemma-3-1b-it/profile.json"},
+                                       "commit":{"sha":"f"*40}}),stderr="")
+            self.fail("Unexpected GitHub arguments")
+        result=sync_gguf_architecture(report,run=fake)
+        self.assertTrue(result["git_updated"])
+        fact=seen["current"]["architecture"]["gguf_header_observation"]
+        self.assertEqual(fact["declared_file_type"],1)
+        self.assertIn("general.file_type_differs_from_BF16_tensors",
+                      fact["metadata_warnings"])
 
     def test_reject_unpinned_geometry_before_git_login(self):
         r=self.make_report()
