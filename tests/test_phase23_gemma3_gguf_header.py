@@ -31,7 +31,8 @@ def arrayval(key,values):
             +struct.pack("<"+"I"*len(values),*values))
 
 def fixture(path:Path, *, kind=24, arch="gemma3", count=26,
-            tensor_dtype=30, include_file_type=True, endian="<"):
+            tensor_dtype=30, include_file_type=True,
+            complete_first_layer=False, endian="<"):
     attrs=[
         strval("general.architecture",arch),
         *([num("general.file_type",kind)] if include_file_type else []),
@@ -44,8 +45,22 @@ def fixture(path:Path, *, kind=24, arch="gemma3", count=26,
         text("tokenizer.ggml.tokens")+struct.pack("<I",9)
         +struct.pack("<IQ",8,1200)+b"".join(text("test") for _ in range(1200)),
     ]
-    tensor=text("blk.0.attn_q.weight")+struct.pack("<IQQIQ",2,1152,1152,tensor_dtype,0)
-    data=b"GGUF"+struct.pack("<IQQ",3,1,len(attrs))+b"".join(attrs)+tensor
+    if complete_first_layer:
+        tensors = [
+            (f"blk.0.{role}.weight",2,1152,1152,30)
+            for role in ("attn_q","attn_k","attn_v","attn_output")
+        ]
+        tensors.append(("blk.0.attn_q_norm.weight",1,256,0,0))
+    else:
+        tensors = [("blk.0.attn_q.weight",2,1152,1152,tensor_dtype)]
+    tensor = b""
+    for name,ndim,x,y,dtype in tensors:
+        tensor += text(name) + struct.pack("<I",ndim)
+        tensor += struct.pack("<Q",x)
+        if ndim == 2:
+            tensor += struct.pack("<Q",y)
+        tensor += struct.pack("<IQ",dtype,0)
+    data=b"GGUF"+struct.pack("<IQQ",3,len(tensors),len(attrs))+b"".join(attrs)+tensor
     path.write_bytes(data+b"\x00"*32)
 
 
@@ -69,6 +84,22 @@ class Gemma3HeaderTests(unittest.TestCase):
         self.assertNotIn("tokenizer.ggml.tokens",report["metadata_fields"])
         self.assertFalse(report["tensor_values_read"])
         self.assertFalse(report["cuda_initialized"])
+
+    def test_attention_role_inventory_reads_weight_formats_not_kv_activations(self):
+        with TemporaryDirectory() as td:
+            p=Path(td)/"weight_roles.gguf"
+            fixture(p,complete_first_layer=True)
+            data=inspect_gguf_header(p)
+        self.assertEqual(data["tensor_storage_counts"],{"BF16":4,"F32":1})
+        self.assertFalse(data["attention_dtypes_are_kv_cache_dtypes"])
+        indexed={r["role"]:r for r in data["attention_weight_tensors"]}
+        self.assertEqual(set(indexed),{
+            "attn_q","attn_k","attn_v","attn_output","attn_q_norm"})
+        for r in ("attn_q","attn_k","attn_v","attn_output"):
+            self.assertEqual(indexed[r]["dtype"],"BF16")
+            self.assertEqual(indexed[r]["shape"],[1152,1152])
+            self.assertFalse(data["attention_projection_coverage"][r]["complete"])
+        self.assertEqual(indexed["attn_q_norm"]["dtype"],"F32")
 
     def test_reject_wrong_arch_type_version_and_tensor_dtype(self):
         with TemporaryDirectory() as td:
@@ -218,6 +249,64 @@ class Gemma3HeaderTests(unittest.TestCase):
         self.assertEqual(fact["declared_file_type"],1)
         self.assertIn("general.file_type_differs_from_BF16_tensors",
                       fact["metadata_warnings"])
+
+    def test_prior_verified_header_may_be_enriched_without_erasing_native_weights(self):
+        # A real owner has already published the base GGUF header. Adding
+        # later per-layer tensor roles must preserve all original fields.
+        from collections import Counter
+        initial=self.make_report()
+        old={
+            "status":"gguf_header_observed_native_crosscheck_pending",
+            "gguf_sha256":initial["gguf_sha256"],
+            "gguf_version":initial["gguf_version"],
+            "tensor_count":initial["tensor_count"],
+            "tensor_storage_counts":initial["tensor_storage_counts"],
+            "matrix_tensor_elements_by_storage":initial["matrix_tensor_elements_by_storage"],
+            "declared_file_type":initial["declared_file_type"],
+            "metadata_warnings":initial["metadata_warnings"],
+            "metadata_fields":initial["metadata_fields"],
+        }
+        original=copy.deepcopy(load_profile("gemma","gemma-3","gemma-3-1b-it"))
+        original["architecture"]["gguf_header_observation"]=old
+        original["architecture"]["source_derived_geometry"]=None
+        record=copy.deepcopy(initial)
+        record["attention_dtypes_are_kv_cache_dtypes"]=False
+        record["attention_weight_tensors"]=[
+            {"layer":0,"role":"attn_q","dtype":"BF16","shape":[1152,1152]}
+        ]
+        record["attention_projection_coverage"]={
+            role:{
+                "layers_present":1 if role=="attn_q" else 0,
+                "dtype_counts":{"BF16":1} if role=="attn_q" else {},
+                "complete":False,
+            } for role in ("attn_q","attn_k","attn_v","attn_output")
+        }
+        state={"value":original}
+        def fake(args,**kw):
+            if args[:4]==["gh","api","user","--jq"]:
+                return SimpleNamespace(returncode=0,stdout="yannericetchart-dev",stderr="")
+            if "?ref=model-profiling" in args[-1]:
+                blob=base64.b64encode(json.dumps(state["value"]).encode()).decode()
+                return SimpleNamespace(returncode=0,
+                   stdout=json.dumps({"type":"file","sha":"f"*40,"content":blob}),stderr="")
+            if args[:3]==["gh","api","--method"]:
+                payload=next(v[8:] for v in args if v.startswith("content="))
+                state["value"]=json.loads(base64.b64decode(payload))
+                return SimpleNamespace(returncode=0,
+                    stdout=json.dumps({"content":{"path":"profiles/models/gemma/gemma-3/gemma-3-1b-it/profile.json"},
+                                       "commit":{"sha":"f"*40}}),stderr="")
+            self.fail("Unexpected GitHub request")
+        result=sync_gguf_architecture(record,run=fake)
+        self.assertTrue(result["git_updated"])
+        actual=state["value"]
+        self.assertEqual(actual["architecture"]["gguf_header_observation"]["metadata_fields"],old["metadata_fields"])
+        self.assertFalse(actual["architecture"]["gguf_header_observation"]["attention_dtypes_are_kv_cache_dtypes"])
+        self.assertEqual(actual["architecture"]["gguf_header_observation"]["attention_weight_tensors"],
+                         record["attention_weight_tensors"])
+        self.assertEqual(actual["variants"]["BF16"]["runtime_observations"],
+                         original["variants"]["BF16"]["runtime_observations"])
+        second=sync_gguf_architecture(record,run=fake)
+        self.assertEqual(second["status"],"git_profile_already_current")
 
     def test_reject_unpinned_geometry_before_git_login(self):
         r=self.make_report()
