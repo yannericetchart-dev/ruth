@@ -228,14 +228,29 @@ def sync_gguf_architecture(
             or current["variants"]["BF16"]["gguf_sha256"] != chosen.expected_sha256):
             raise ValueError("Canonical model source mismatch")
         old_obs = (current.get("architecture") or {}).get("gguf_header_observation")
-        if old_obs == observed:
-            return {"status":"git_profile_already_current","git_updated":False,
-                    "repository":UPSTREAM,"branch":branch,"repository_path":path}
         if old_obs is not None and old_obs != observed:
             raise ValueError("Conflicting native GGUF header evidence for pinned source")
+        # Recover deterministic attention partition from the pinned model
+        # GGUF header AND the pinned llama.cpp Gemma3 SWA fallback rule.
+        from .gemma3_kv_profile import derived_gemma3_geometry
+        source_input = {
+            "model": current["model"], "variants": current["variants"],
+            "backend_policies": current["backend_policies"],
+            "architecture": {"gguf_header_observation": observed},
+        }
+        source_geom = derived_gemma3_geometry(source_input)
+        old_source = (current.get("architecture") or {}).get("source_derived_geometry")
+        if old_source is not None and old_source != source_geom:
+            raise ValueError("Conflicting pinned source-derived Gemma 3 geometry")
+        if old_obs == observed and old_source == source_geom:
+            return {"status":"git_profile_already_current","git_updated":False,
+                    "repository":UPSTREAM,"branch":branch,"repository_path":path}
         architecture = current.setdefault("architecture",{})
         architecture["gguf_header_observation"] = observed
-        architecture["status"] = "gguf_header_observed_native_crosscheck_pending"
+        architecture["source_derived_geometry"] = source_geom
+        architecture["global_layers"] = source_geom["global_layers"]
+        architecture["swa_layers"] = source_geom["swa_layers"]
+        architecture["status"] = "gguf_header_and_pinned_backend_source_derived_native_context_unverified"
         # Only directly represented GGUF scalar facts are promoted.
         architecture["layer_count"] = report["blocks"]
         for field,meta_key in (
