@@ -59,7 +59,7 @@ def calculate_context_source(
     )
     geom = planned["source_derived_geometry"]
     cells = planned["logical_kv"]["cells_per_layer"]
-    scalar_bytes = {"F16": 2, "BF16": 2}
+    scalar_bytes = {"F16": 2, "BF16": 2, "F32": 4}
     key_layer_bytes = cells * geom["kv_heads"] * geom["key_head_dim"] * scalar_bytes[type_k]
     value_layer_bytes = cells * geom["kv_heads"] * geom["value_head_dim"] * scalar_bytes[type_v]
     return {

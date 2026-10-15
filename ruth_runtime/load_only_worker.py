@@ -31,7 +31,9 @@ APPROVED_LOADS = {
                        "modes": ("weights", "context")},
 }
 KV_FORMATS = {"F16": "GGML_TYPE_F16", "BF16": "GGML_TYPE_BF16",
-              "Q8_0": "GGML_TYPE_Q8_0", "Q4_0": "GGML_TYPE_Q4_0"}
+              "F32": "GGML_TYPE_F32", "Q8_0": "GGML_TYPE_Q8_0",
+              "Q4_0": "GGML_TYPE_Q4_0"}
+GEMMA2_KV_FORMATS = frozenset(("F16", "Q8_0", "Q4_0"))
 
 
 def native_kv_dtype(api, dtype: str) -> int:
@@ -47,6 +49,11 @@ def native_kv_dtype(api, dtype: str) -> int:
         if present is not None and present != 30:
             raise RuntimeError("Pinned GGML_TYPE_BF16 enum mismatch")
         return 30
+    if dtype == "F32":
+        present = getattr(api, name, None)
+        if present != 0:
+            raise RuntimeError("Pinned GGML_TYPE_F32 enum mismatch")
+        return 0
     return getattr(api, name)
 
 FLASH_FORMATS = {"off": "LLAMA_FLASH_ATTN_TYPE_DISABLED",
@@ -161,8 +168,11 @@ def run_load_only(root: Path, gpu_uuid: str, quantization: str, mode: str,
         or settings["flash_attention"] not in FLASH_FORMATS
         or settings["type_k"] not in KV_FORMATS
         or settings["type_v"] not in KV_FORMATS
-        or (settings["flash_attention"] == "off"
-            and settings["type_v"] != "F16")):
+        or (model_version != GEMMA3_VERSION and
+            (settings["type_k"] not in GEMMA2_KV_FORMATS
+             or settings["type_v"] not in GEMMA2_KV_FORMATS
+             or (settings["flash_attention"] == "off"
+                 and settings["type_v"] != "F16")))):
         raise ValueError("Unapproved native KV cache parameters")
     if model_version == GEMMA3_VERSION and mode == "context":
         validate_gemma3_context_request(
