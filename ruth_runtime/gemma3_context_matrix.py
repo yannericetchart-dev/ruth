@@ -102,11 +102,18 @@ def execute_matrix(
                 and data.get("mode") == "context"
                 and data.get("context_initialized") is True
                 and data.get("full_gpu_offload_observed") is True
+                and data.get("gpu_process_observed") is True
                 and data.get("cpu_fallback_selected") is False
                 and data.get("inference_executed") is False
                 and data.get("generated_tokens") == 0
                 and passed_types
+                and native.get("flash_attention_native_parameter")
+                    == {"off": "disabled", "on": "enabled"}[row["flash_attention"]]
                 and native.get("n_ctx_effective_native") == 256
+                and native.get("n_ctx_seq_effective_native") == 256
+                and native.get("n_batch_effective_native") == 64
+                and native.get("n_ubatch_effective_native") == 64
+                and native.get("n_seq_max_native") == 1
                 and native.get("global_kv", {}).get("cells") == 256
                 and native.get("swa_kv", {}).get("cells") == 256
                 and (native.get("global_kv", {}).get("native_logical_kv") or {}).get("layers") == 4
@@ -138,6 +145,8 @@ def execute_matrix(
                 "context_initialized": data.get("context_initialized") is True,
                 "gpu_offload_verified": data.get("full_gpu_offload_observed") is True,
                 "native_kv_types_verified": passed_types,
+                "flash_native_parameter_observed": native.get("flash_attention_native_parameter"),
+                "reported_inference_executed": data.get("inference_executed"),
                 "native_kv_buffer_mib_observed": round(measured_kv_mib, 4),
                 "compute_buffers_mib_observed": [
                     buf.get("mib") for buf in buffers if isinstance(buf, dict)
