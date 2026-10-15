@@ -30,8 +30,8 @@ class TestPhase28Gate(unittest.TestCase):
         self.assertEqual(len({(x.candidate,x.n_ctx) for x in rows}),16)
         self.assertEqual({x.n_ctx for x in rows}, {256,512,1024,2048})
         for row in rows:
-            self.assertIs(verify_plan(row.candidate,row.n_ctx),row if False else
-                          verify_plan(row.candidate,row.n_ctx))
+            self.assertEqual(
+                verify_plan(row.candidate,row.n_ctx).as_dict(),row.as_dict())
             self.assertLess(row.prompt_tokens+row.decode_tokens,row.n_ctx)
             self.assertEqual(row.n_batch,64)
             self.assertEqual(row.n_ubatch,64)
