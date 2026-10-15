@@ -39,7 +39,7 @@ def identify_target(name: str) -> str | None:
 
 def audit_cast_gemm(
     file: Path, *, candidate: str, n_ctx: int,
-    root: Path = PROJECT_ROOT,
+    root: Path = PROJECT_ROOT, explain_order: bool = False,
 ) -> dict:
     plan = verify_plan(candidate, n_ctx)
     if candidate != "bf16-on" or n_ctx != 2048:
@@ -61,6 +61,10 @@ def audit_cast_gemm(
         "target_kernel_records_correlated":0,
         "prefill_per_range_count_balance_verified":False,
         "gpu_timeline_candidate_pairing_verified":False,
+        "gpu_order_pairing_method":"ordinal_sorted_by_gpu_start_not_buffer_dependency",
+        "gpu_order_diagnostics_enabled":explain_order,
+        "gpu_order_incompatible_prefill_range_count":0,
+        "gpu_order_incompatible_prefill_ranges":[],
         "graph_node_kernel_order_stable":False,
         "graph_node_order_assessed":False,
         "per_range_attribution_verified":False,
@@ -157,12 +161,14 @@ def audit_cast_gemm(
                 nodes["runtime_graph_launches_by_phase"]):
             return out
 
+        stream_col=("k.streamId" if "streamId" in kc else "NULL")
         events=defaultdict(lambda:defaultdict(list))
         unassigned=0
         alltarget=Counter()
-        for name,start,end,cid,gid,node_id in db.execute(
+        for name,start,end,cid,gid,node_id,stream_id in db.execute(
             "SELECT s.value,k.start,k.end,k.correlationId,"
-            "k.graphId,k.graphNodeId FROM CUPTI_ACTIVITY_KIND_KERNEL k "
+            "k.graphId,k.graphNodeId,"+stream_col+
+            " FROM CUPTI_ACTIVITY_KIND_KERNEL k "
             "JOIN StringIds s ON s.id=k."+namecol):
             target=identify_target(name)
             if target is None:
@@ -200,7 +206,8 @@ def audit_cast_gemm(
                 unassigned+=1
                 continue
             events[range_index][target].append(
-                (start,end,node_id if path_type=="graph_node" else None))
+                (start,end,node_id if path_type=="graph_node" else None,
+                 stream_id,gid,cid))
         out["unattributed_or_ambiguous_target_kernels"]=unassigned
         out["overall_target_kernel_counts"]=dict(alltarget)
         out["target_kernel_records_correlated"]=sum(
@@ -216,6 +223,8 @@ def audit_cast_gemm(
         order_valid=True
         expected_bf16_to_f16=52  # 2 per 26 pinned attention layers
         per_prefill=[]
+        failed_prefill_ranges=0
+        order_diagnostics=[]
         for i,(start,end,tid,phase) in enumerate(nvtx):
             mode="graph_node" if i in range_graph else "direct"
             st=stats[(phase,mode)]
@@ -237,8 +246,42 @@ def audit_cast_gemm(
                 per_prefill.append(ct["F32_TO_BF16"])
                 conv=sorted(group.get("F32_TO_BF16",()),key=lambda e:(e[0],e[1]))
                 gemm=sorted(group.get("BF16_GEMM",()),key=lambda e:(e[0],e[1]))
-                compatible=ok and all(
-                    c[1]<=g[0] for c,g in zip(conv,gemm))
+                failing=[
+                    pos for pos,(c,g) in enumerate(zip(conv,gemm))
+                    if c[1]>g[0]
+                ]
+                compatible=ok and not failing
+                if not compatible:
+                    failed_prefill_ranges+=1
+                    if explain_order and len(order_diagnostics)<4:
+                        # CPU NVTX timestamps are not interchangeable with
+                        # GPU activity timestamps. Emit only GPU timestamps
+                        # for the candidate ordinal pairs.
+                        first_gpu_start=min(
+                            (e[0] for e in conv+gemm),default=0)
+                        order_diagnostics.append({
+                            "nvtx_range_index_zero_based":i,
+                            "phase":phase,"path":mode,
+                            "graph_launch_correlation_ids":
+                                list(range_graph.get(i,())),
+                            "total_casts":len(conv),
+                            "total_gemms":len(gemm),
+                            "num_failed_ordinal_pairs":len(failing),
+                            "first_failed_ordinal_pairs":[{
+                                "ordinal_index_zero_based":pos,
+                                "gpu_cast_end_offset_ns":
+                                    conv[pos][1]-first_gpu_start,
+                                "gpu_gemm_start_offset_ns":
+                                    gemm[pos][0]-first_gpu_start,
+                                "gpu_gap_ns":gemm[pos][0]-conv[pos][1],
+                                "cast_graph_node_id":conv[pos][2],
+                                "gemm_graph_node_id":gemm[pos][2],
+                                "cast_stream_id":conv[pos][3],
+                                "gemm_stream_id":gemm[pos][3],
+                                "cast_graph_id":conv[pos][4],
+                                "gemm_graph_id":gemm[pos][4],
+                            } for pos in failing[:8]],
+                        })
                 st["gpu_order_compatible_ranges"]+=int(compatible)
                 st["gpu_order_incompatible_ranges"]+=int(not compatible)
                 order_valid=order_valid and compatible
@@ -266,6 +309,9 @@ def audit_cast_gemm(
                     st["gpu_order_incompatible_ranges"],
             }
         out["per_phase_path"]=report_stats
+        out["gpu_order_incompatible_prefill_range_count"]=failed_prefill_ranges
+        if explain_order:
+            out["gpu_order_incompatible_prefill_ranges"]=order_diagnostics
         out["prefill_f32_bf16_casts_per_range_uniform"]=bool(
             per_prefill and len(set(per_prefill))==1)
         out["prefill_casts_per_range_empirical"]=(
@@ -319,10 +365,14 @@ def main(argv: list[str] | None=None) -> int:
     parser.add_argument("--sqlite",required=True)
     parser.add_argument("--candidate",choices=("bf16-on",),required=True)
     parser.add_argument("--n-ctx",type=int,required=True)
+    parser.add_argument(
+        "--explain-order",action="store_true",
+        help="Show at most four failing GPU ordinal pairs with IDs/streams")
     a=parser.parse_args(argv)
     try:
         r=audit_cast_gemm(
-            Path(a.sqlite),candidate=a.candidate,n_ctx=a.n_ctx)
+            Path(a.sqlite),candidate=a.candidate,n_ctx=a.n_ctx,
+            explain_order=a.explain_order)
     except (OSError,ValueError,sqlite3.Error) as e:
         r={"status":"cast_gemm_range_evidence_unverified",
            "error":type(e).__name__+": "+str(e)[:200],
