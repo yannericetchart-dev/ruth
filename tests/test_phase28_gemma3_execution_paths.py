@@ -26,6 +26,7 @@ def build_trace(file: Path) -> None:
                 start INTEGER,end INTEGER,correlationId INTEGER,
                 graphId INTEGER,graphExecId INTEGER);
             INSERT INTO StringIds VALUES
+                (0,'cudaLaunchKernel_v7000'),
                 (1,'cudaGraphLaunch_v10000'),
                 (2,'flash_attn_ext_f16<256>'),
                 (3,'flash_attn_stream_k_fixup_uniform<256>'),
