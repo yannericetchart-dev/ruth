@@ -211,6 +211,11 @@ class Gemma3HeaderTests(unittest.TestCase):
         self.assertEqual(saved["current"]["architecture"]["swa_layers"],22)
         self.assertEqual(saved["current"]["architecture"]["source_derived_geometry"]
                          ["global_layer_indices"],[5,11,17,23])
+        assessment=saved["current"]["architecture"]["kv_precision_assessment_256"]
+        self.assertFalse(assessment["automatic_cache_dtype_alignment_approved"])
+        self.assertEqual(assessment["candidates"]["F16"]["total_logical_mib_derived"],6.5)
+        self.assertEqual(assessment["candidates"]["BF16"]["total_logical_mib_derived"],6.5)
+        self.assertEqual(assessment["candidates"]["F32"]["total_logical_mib_derived"],13.0)
         self.assertNotIn("GPU-",json.dumps(saved["current"]))
         second=sync_gguf_architecture(report,run=fake)
         self.assertEqual(second["status"],"git_profile_already_current")
@@ -303,6 +308,11 @@ class Gemma3HeaderTests(unittest.TestCase):
         self.assertFalse(actual["architecture"]["gguf_header_observation"]["attention_dtypes_are_kv_cache_dtypes"])
         self.assertEqual(actual["architecture"]["gguf_header_observation"]["attention_weight_tensors"],
                          record["attention_weight_tensors"])
+        self.assertFalse(actual["architecture"]["kv_precision_assessment_256"]
+                         ["automatic_cache_dtype_alignment_approved"])
+        self.assertEqual(actual["architecture"]["kv_precision_assessment_256"]
+                         ["weight_attention_dtypes_status"],
+                         "per_layer_attention_weight_formats_unknown")
         self.assertEqual(actual["variants"]["BF16"]["runtime_observations"],
                          original["variants"]["BF16"]["runtime_observations"])
         second=sync_gguf_architecture(record,run=fake)
