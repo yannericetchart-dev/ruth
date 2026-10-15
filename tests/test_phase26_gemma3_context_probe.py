@@ -107,8 +107,12 @@ class Gemma3ContextEvidenceTests(unittest.TestCase):
             with self.subTest(flash=flash, dtype=dtype), TemporaryDirectory() as temp:
                 root = Path(temp)
                 (root / "catalog").mkdir(parents=True)
+                (root / "locks").mkdir(parents=True)
                 (root / "profiles/models/gemma/gemma-3/gemma-3-1b-it").mkdir(
                     parents=True)
+                shutil.copyfile(
+                    PROJECT_ROOT / "locks/native-cuda-0.3.36-sm89-wheel.json",
+                    root / "locks/native-cuda-0.3.36-sm89-wheel.json")
                 shutil.copyfile(
                     PROJECT_ROOT / "catalog/model_catalog.json",
                     root / "catalog/model_catalog.json")
@@ -177,6 +181,8 @@ class Gemma3ContextEvidenceTests(unittest.TestCase):
                                  ["key_logical_bytes_derived"], 3407872)
                 self.assertEqual(ctx["kv_type_k"], dtype)
                 self.assertEqual(ctx["flash_attention"], flash)
+                self.assertEqual(ctx["native_config"]["native_wheel_sha256"],
+                                 "ad5057352154d90f95a473d01d039c975f1987cd9b25f8ad7a83cf6c7e80ee74")
                 self.assertTrue(ctx["verified_native_allocations_only"])
                 public = build_proposal(
                     Path(saved["profile_file"]), project_root=root)
@@ -191,6 +197,12 @@ class Gemma3ContextEvidenceTests(unittest.TestCase):
                 bad = json.loads(submitted.read_text())
                 bad["context_profiles"][0]["kv_source_derivation"][
                     "key_logical_bytes_derived"] += 256
+                submitted.write_text(json.dumps(bad))
+                with self.assertRaises(ValueError):
+                    validate_submitted_proposal(
+                        submitted, project_root=PROJECT_ROOT)
+                bad = json.loads(json.dumps(public["proposal"]))
+                bad["context_profiles"][0]["native_config"]["native_wheel_sha256"] = "0" * 64
                 submitted.write_text(json.dumps(bad))
                 with self.assertRaises(ValueError):
                     validate_submitted_proposal(
