@@ -246,7 +246,10 @@ def validate_submitted_proposal(
             "kv_backend_commit", "native_config", "kv_source_derivation",
         }
         for ctx in public_contexts:
-            if (not isinstance(ctx, dict) or set(ctx) != context_fields
+            if (not isinstance(ctx, dict)
+                or not set(ctx).issubset(context_fields)
+                or not (context_fields - {"kv_backend_commit", "native_config",
+                                           "kv_source_derivation"}).issubset(ctx)
                 or ctx["backend"] != "llama.cpp"
                 or ctx["verified_native_allocations_only"] is not True
                 or ctx["inference_verified"] is not False
