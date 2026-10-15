@@ -1,5 +1,7 @@
 # Phase 28 — Gemma 3 CUDA dispatch evidence and long-context scaling
 
+**Studio successivo sulle precisioni effettive:** [BF16/F16/F32, inventario dei dtype intermedi e fattibilità MMA BF16 nativo](gemma3-bf16-f16-f32-precision-paths-and-mma-options.md). Documento di ricerca, nessuna promozione alla produzione.
+
 **Experimental only.** This branch does not amend the Phase 26 allocation
 gate, the Phase 27 short-token benchmark, the actual production runtime or
 the canonical profile. The user has successfully performed Phase 27 native
