@@ -88,7 +88,8 @@ def create_profile(entry: dict) -> dict:
         "selection": {
             "quality_policy": "quality_heuristic_within_model_only",
             "cross_model_quality_score": None,
-            "precision_preference": ["F32", "BF16", "F16"],
+            "precision_preference": "prefer_verified_original_checkpoint_dtype",
+            "original_checkpoint_dtype": None,
         },
         "provenance": {"historical_migration_completed": False},
     }
