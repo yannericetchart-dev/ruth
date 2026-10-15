@@ -81,7 +81,7 @@ def main(argv: list[str] | None = None) -> int:
     models = sub.add_parser("models", help="Read-only hierarchical model catalog and HF provenance")
     model_sub = models.add_subparsers(dest="model_action")
     model_sub.add_parser("list", help="List families, GGUF models and defaults (offline)")
-    for operation in ("select", "resolve", "download", "smoke", "profile", "quantizations", "recommend", "probe-production", "probe-load", "profiles", "hardware", "auto-production"):
+    for operation in ("select", "resolve", "download", "smoke", "profile", "quantizations", "recommend", "probe-production", "probe-load", "profiles", "hardware", "auto-production", "kv-plan"):
         mp = model_sub.add_parser(operation, help=(
             "Offline model selection" if operation == "select" else
             "Resolve HF immutable revision and GGUF checksum (metadata only)"
@@ -104,6 +104,8 @@ def main(argv: list[str] | None = None) -> int:
             if operation == "profiles" else
             "Read-only strict Tensor Core/CC/VRAM/CUDA and driver compatibility check"
             if operation == "hardware" else
+            "Read-only source-derived llama.cpp KV/SWA/K/V/batch estimates; no model load or CUDA"
+            if operation == "kv-plan" else
             "Quality-first production GGUF selection, pinned Git memory evidence and optional guarded download/probes"
         ))
         mp.add_argument("--purpose", choices=("production", "test"),
@@ -119,6 +121,14 @@ def main(argv: list[str] | None = None) -> int:
         if operation == "recommend":
             mp.add_argument("--top-k", type=int, default=None,
                             help="Maximum number of shortlisted candidates")
+        if operation == "kv-plan":
+            mp.add_argument("--n-ctx", type=int, default=128)
+            mp.add_argument("--n-batch", type=int, default=64)
+            mp.add_argument("--n-ubatch", type=int, default=64)
+            mp.add_argument("--swa-full", choices=("on", "off"), default="on")
+            mp.add_argument("--flash-attn", choices=("on", "off", "auto"), default="off")
+            mp.add_argument("--type-k", choices=("F16", "Q8_0", "Q4_0"), default="F16")
+            mp.add_argument("--type-v", choices=("F16", "Q8_0", "Q4_0"), default="F16")
         if operation == "auto-production":
             mp.add_argument("--allow-metadata-network", action="store_true",
                             help="Read pinned Hugging Face GGUF quantization inventory")
@@ -197,8 +207,30 @@ def main(argv: list[str] | None = None) -> int:
             if args.model_action == "list":
                 _print({"action": "models", **list_models()})
                 return 0
-            if args.model_action not in {"select", "resolve", "download", "smoke", "profile", "quantizations", "recommend", "probe-production", "probe-load", "profiles", "hardware", "auto-production"}:
-                raise CatalogError("Choose models list, select, resolve, download, smoke, profile, quantizations, recommend, probe-production, probe-load, profiles, hardware or auto-production")
+            if args.model_action not in {"select", "resolve", "download", "smoke", "profile", "quantizations", "recommend", "probe-production", "probe-load", "profiles", "hardware", "auto-production", "kv-plan"}:
+                raise CatalogError("Choose models list, select, resolve, download, smoke, profile, quantizations, recommend, probe-production, probe-load, profiles, hardware, auto-production or kv-plan")
+            if args.model_action == "kv-plan":
+                from .llama_kv_profile import calculate_llama_kv
+                try:
+                    if (args.purpose != "production"
+                        or args.model not in (None, "gemma-2")
+                        or args.version not in (None, "gemma-2-9B-it")
+                        or args.family not in (None, "gemma")
+                        or args.format not in (None, "gguf")):
+                        raise ValueError("Only pinned Gemma2 production geometry is audited")
+                    outcome = calculate_llama_kv(
+                        n_ctx=args.n_ctx, n_batch=args.n_batch,
+                        n_ubatch=args.n_ubatch, swa_full=args.swa_full=="on",
+                        flash_attention=args.flash_attn,
+                        type_k=args.type_k, type_v=args.type_v,
+                    )
+                    _print({"action": "models", **outcome})
+                    return 0
+                except (OSError, ValueError, TypeError, KeyError) as exc:
+                    _print({"action": "models", "status": "llama_kv_plan_unverified",
+                            "error": type(exc).__name__ + ": " + str(exc)[:230],
+                            "native_allocation_executed": False})
+                    return 2
             if args.model_action == "auto-production":
                 from .production_selection import (
                     plan_production, execute_production_candidate,
