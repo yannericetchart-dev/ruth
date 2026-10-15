@@ -270,16 +270,17 @@ def main(argv: list[str] | None = None) -> int:
               flush=True)
         if result["status"] != "native_teacher_forced_inference_observed":
             break
+    completed = len(results) == len(cases) and all(
+        x["status"] == "native_teacher_forced_inference_observed"
+        for x in results)
     print(json.dumps({"action": "gemma3_phase27",
-                      "status": "completed_requested_cases" if len(results) == len(cases)
+                      "status": "completed_requested_cases" if completed
                        else "stopped_at_unverified_case",
                       "cases_requested": len(cases), "cases_run": len(results),
                       "results": results, "production_qualified": False,
                       "runtime_profile_published": False},
                      sort_keys=True, indent=2))
-    return 0 if len(results) == len(cases) and all(
-        x["status"] == "native_teacher_forced_inference_observed"
-        for x in results) else 2
+    return 0 if completed else 2
 
 
 if __name__ == "__main__":
