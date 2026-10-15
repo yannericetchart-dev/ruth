@@ -1,0 +1,88 @@
+"""Gemma3 1B KV source-only tests, no live CUDA or downloads."""
+import copy
+import json
+from io import StringIO
+from unittest.mock import patch
+import unittest
+
+from ruth_runtime.model_profile_v2 import load_profile
+from ruth_runtime.gemma3_kv_profile import (
+    BACKEND_REVISION, GGUF_SHA256,
+    derived_gemma3_geometry, calculate_gemma3_kv)
+from ruth_runtime.launcher import main
+
+class Gemma3KVPlanTests(unittest.TestCase):
+    def profile(self):
+        return load_profile("gemma","gemma-3","gemma-3-1b-it")
+
+    def test_26_layers_6_period_default_partition(self):
+        got=derived_gemma3_geometry(self.profile())
+        self.assertEqual(got["global_layers"],4)
+        self.assertEqual(got["swa_layers"],22)
+        self.assertEqual(got["global_layer_indices"],[5,11,17,23])
+        self.assertEqual(len(got["swa_layer_indices"]),22)
+        self.assertEqual(got["kv_heads"],1)
+        self.assertEqual(got["swa_window"],512)
+        self.assertEqual(got["llama_cpp_commit"],BACKEND_REVISION)
+        self.assertEqual(got["gguf_sha256"],GGUF_SHA256)
+        self.assertEqual(got["status"],"pinned_source_derived_native_context_unverified")
+
+    def test_256_f16_f16_baseline_cache_logical_not_cuda(self):
+        x=calculate_gemma3_kv()
+        self.assertEqual(x["configuration"]["n_ctx_requested"],256)
+        self.assertEqual(x["logical_kv"]["global_logical_mib_derived"],1.0)
+        self.assertEqual(x["logical_kv"]["swa_logical_mib_derived"],5.5)
+        self.assertEqual(x["logical_kv"]["total_logical_mib_derived"],6.5)
+        self.assertEqual(x["logical_kv"]["key_logical_mib_derived"],3.25)
+        self.assertEqual(x["logical_kv"]["value_logical_mib_derived"],3.25)
+        self.assertFalse(x["native_allocation_executed"])
+        self.assertFalse(x["gpu_fit_verified"])
+        self.assertFalse(x["context_loading_approved"])
+
+    def test_aligned_extensions_conserve_per_layer_geometry(self):
+        for ctx,mib in ((256,6.5),(512,13.0),(768,19.5),(1024,26.0)):
+            x=calculate_gemma3_kv(n_ctx=ctx)
+            self.assertEqual(x["logical_kv"]["total_logical_mib_derived"],mib)
+        for ctx in (128,257,511):
+            with self.assertRaises(ValueError):
+                calculate_gemma3_kv(n_ctx=ctx)
+        for opts in ({"flash_attention":"on"},
+                     {"swa_full":False},{"type_k":"Q8_0"},
+                     {"type_v":"Q8_0"},{"n_batch":64,"n_ubatch":128}):
+            with self.assertRaises(ValueError):
+                calculate_gemma3_kv(**opts)
+
+    def test_explicit_gguf_swa_pattern_wins_over_backend_default(self):
+        profile=copy.deepcopy(self.profile())
+        profile["architecture"]["gguf_header_observation"]["metadata_fields"][
+            "gemma3.attention.sliding_window_pattern"]=[0]+[1]*25
+        x=derived_gemma3_geometry(profile)
+        self.assertEqual(x["global_layer_indices"],[0])
+        self.assertEqual(x["swa_layers"],25)
+        self.assertEqual(x["swa_pattern_source"],"explicit_gguf_layer_array")
+
+    def test_changed_backend_commit_or_missing_gguf_header_fails_closed(self):
+        profile=copy.deepcopy(self.profile())
+        profile["backend_policies"]["llama.cpp"]["pinned_revision"]="f"*40
+        with self.assertRaisesRegex(ValueError,"Unpinned"):
+            derived_gemma3_geometry(profile)
+        profile=copy.deepcopy(self.profile())
+        profile["architecture"].pop("gguf_header_observation",None)
+        with self.assertRaisesRegex(ValueError,"not yet observed"):
+            derived_gemma3_geometry(profile)
+
+    def test_cli_gemma3_kv_plan_read_only(self):
+        with patch("sys.stdout",new_callable=StringIO) as out:
+            code=main(["models","kv-plan","--purpose","production",
+                       "--family","gemma","--model","gemma-3",
+                       "--version","gemma-3-1b-it","--quantization","BF16",
+                       "--n-ctx","256","--n-batch","64","--n-ubatch","64",
+                       "--swa-full","on","--flash-attn","off",
+                       "--type-k","F16","--type-v","F16"])
+        self.assertEqual(code,0)
+        j=json.loads(out.getvalue())
+        self.assertEqual(j["logical_kv"]["total_logical_mib_derived"],6.5)
+        self.assertFalse(j["native_allocation_executed"])
+
+if __name__=="__main__":
+    unittest.main()
