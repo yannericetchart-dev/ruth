@@ -16,7 +16,7 @@ from .candidate_selection import discover_quantizations, load_quantization_polic
 from .dependencies import PROJECT_ROOT
 from .hardware_eligibility import inspect_host_hardware
 from .install_plan import WHEEL_VERSION
-from .model_catalog import select_model, CatalogError
+from .model_catalog import select_model, load_catalog, CatalogError
 from .offline_memory_fit import explain_offline_weights_fit
 
 _MIB = 1024 * 1024
@@ -28,6 +28,34 @@ def _published_minimal_inference(
 ) -> dict | None:
     """Reuse only validated exact-runtime minimal-context token evidence."""
     from .profile_contribution import validate_submitted_proposal
+    from .model_profile_v2 import load_profile, profile_path
+    # Canonical registry is authoritative for newly published observations.
+    # Historical immutable records are a fallback for older repositories.
+    catalog = load_catalog(root)
+    for model in catalog["models"]:
+        for variant in model["variants"]:
+            if variant["expected_sha256"] != sha:
+                continue
+            canonical = profile_path(model["family"], model["model"],
+                                      model["version"], root)
+            if canonical.is_file():
+                payload = load_profile(model["family"], model["model"],
+                                       model["version"], project_root=root)
+                chosen = payload["variants"].get(variant["quantization"].upper()) or {}
+                for bucket in chosen.get("minimal_inference_observations", {}).values():
+                    for observation in bucket.get("observations", []):
+                        v = observation.get("data") or {}
+                        if (v.get("verified") is True
+                            and v.get("production_context_qualified") is False
+                            and v.get("n_ctx") in (128, 256)
+                            and v.get("architecture") == hardware.get("architecture")
+                            and v.get("driver_version") == hardware.get("driver_version")
+                            and v.get("cuda_backend") == hardware.get("backend_cuda")
+                            and v.get("llama_cpp_binding") == WHEEL_VERSION):
+                            return {"status": "minimal_gpu_tokens_previously_verified",
+                                    "n_ctx": v["n_ctx"],
+                                    "source": canonical.relative_to(root).as_posix(),
+                                    "production_context_qualified": False}
     folder = root / "profiles" / "measurements" / sha
     if folder.is_symlink() or not folder.is_dir():
         return None
