@@ -145,7 +145,7 @@ def _merge_index(index: dict, signature: dict, row: dict) -> bool:
                            for k in set((v.get("identity") or {})) - set(signature))]
     # Two old immutable Git records may use the same unknown configuration.
     # Check ALL historical buckets before appending any new observation.
-    if any(_canonical(item.get("data")) == _canonical(row)
+    if any(item.get("data") == row
            for group in index.values() for item in group.get("observations", [])):
         return False
     bucket = matches[0] if matches else index.setdefault(
@@ -155,7 +155,7 @@ def _merge_index(index: dict, signature: dict, row: dict) -> bool:
         or not isinstance(bucket.get("observations"), list)):
         raise ValueError("Canonical observation identity collision")
     digest = hashlib.sha256(_canonical(row).encode("utf-8")).hexdigest()
-    if any(_canonical(v.get("data")) == _canonical(row) for v in bucket["observations"]):
+    if any(v.get("data") == row for v in bucket["observations"]):
         return False
     if len(bucket["observations"]) >= 64:
         raise ValueError("Canonical configuration observation limit exceeded")
