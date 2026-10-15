@@ -19,6 +19,7 @@ from ruth_runtime.gemma3_benchmark_worker import (
 )
 from ruth_runtime.gemma3_benchmark import main, probe_one, verify_logits_artifact
 from ruth_runtime.gemma3_logits_compare import compare_logits, read_logits
+from ruth_runtime.gemma3_nvtx import NativeRanges
 
 
 class Phase27GateTests(unittest.TestCase):
@@ -120,6 +121,21 @@ class Phase27NumericWorkerTests(unittest.TestCase):
         self.assertEqual(native.calls.count("clear"),WARMUPS+REPEATS)
         self.assertEqual(native.calls.count("free_batch"),1)
         self.assertTrue(all(t["prefill_ms"]>0 for t in report["timings"]))
+
+
+class Phase27NVTXTests(unittest.TestCase):
+    def test_missing_nvtx_is_optional_and_never_fakes_dispatch(self):
+        with patch("ruth_runtime.gemma3_nvtx.find_library",
+                   return_value=None):
+            ranges=NativeRanges()
+        self.assertFalse(ranges.available)
+        with ranges.range("prefill"):
+            pass
+        with ranges.range("decode"):
+            pass
+        with self.assertRaises(ValueError):
+            with ranges.range("not_attention"):
+                pass
 
 
 class Phase27ComparatorTests(unittest.TestCase):
