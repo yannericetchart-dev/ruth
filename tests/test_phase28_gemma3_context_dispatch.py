@@ -111,6 +111,12 @@ class TestPhase28NvtxCuptiAttribution(unittest.TestCase):
             report=inspect_phase_correlations(
                 fp,candidate="bf16-on",n_ctx=256,root=root)
             self.assertTrue(report["prefill_decode_attribution_verified"])
+            self.assertEqual(
+                report["attribution_scope"],
+                "recognized_cupti_kernel_launch_records")
+            self.assertFalse(report["cuda_graph_replay_assessed"])
+            self.assertFalse(
+                report["complete_attention_workload_coverage_verified"])
             self.assertEqual(report["attributed_attention_kernel_records"],72)
             self.assertEqual(report["nvtx_phase_ranges"],
                              {"prefill":8,"decode":64})
