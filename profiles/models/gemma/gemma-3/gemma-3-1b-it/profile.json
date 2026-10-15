@@ -1,0 +1,64 @@
+{
+  "schema": "ruth-model-profile-v2",
+  "model": {
+    "family": "gemma",
+    "model": "gemma-3",
+    "version": "gemma-3-1b-it",
+    "license": "gemma",
+    "upstream_repo": "google/gemma-3-1b-it"
+  },
+  "architecture": {
+    "status": "unknown",
+    "global_layers": null,
+    "swa_layers": null,
+    "swa_window": null,
+    "kv_heads": null,
+    "key_head_dim": null,
+    "value_head_dim": null
+  },
+  "backend_policies": {
+    "llama.cpp": {
+      "status": "source_derived",
+      "pinned_revision": "0c1e57098bba43ac29e6e3b677cdceebdd22334f",
+      "weight_types": [
+        "F32",
+        "F16",
+        "BF16"
+      ],
+      "gguf_min_n_ctx_requested": 256,
+      "context_alignment": 256,
+      "context_step": 256,
+      "scope": "single_sequence_pinned_llama_cpp",
+      "n_ctx_256_profile_batch": null,
+      "n_ctx_256_profile_ubatch": null,
+      "fixed_kv_type_k": "F16",
+      "fixed_kv_type_v": "F16",
+      "fixed_flash_attention": "off",
+      "fixed_swa_full": true
+    }
+  },
+  "variants": {
+    "BF16": {
+      "format": "BF16",
+      "precision_family": "floating",
+      "gguf_sha256": "b144bde489651d3d292d7e47a59c6f811cdd96d184be582e5ad30ab338b9b6bf",
+      "file_bytes": 2006573568,
+      "source_repository": "bartowski/google_gemma-3-1b-it-GGUF",
+      "source_revision": "6de70cb020706f01529b27fee7ab17c5969041c8",
+      "filename": "google_gemma-3-1b-it-bf16.gguf",
+      "runtime_observations": {},
+      "context_observations": {},
+      "minimal_inference_observations": {}
+    }
+  },
+  "selection": {
+    "quality_policy": "unquantized_highest_quality_class_fidelity_original_dtype",
+    "cross_model_quality_score": null,
+    "precision_preference": "prefer_verified_original_checkpoint_dtype",
+    "original_checkpoint_dtype": "BF16"
+  },
+  "provenance": {
+    "historical_migration_completed": false,
+    "archived_measurement_files_read": []
+  }
+}
