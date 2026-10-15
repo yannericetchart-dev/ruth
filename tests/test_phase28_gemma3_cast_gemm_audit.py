@@ -146,6 +146,9 @@ class TestCastGemmAudit(unittest.TestCase):
             self.assertTrue(out["per_range_attribution_verified"])
             self.assertTrue(out["prefill_per_range_count_balance_verified"])
             self.assertFalse(out["gpu_timeline_candidate_pairing_verified"])
+            self.assertEqual(
+                out["gpu_order_incompatible_prefill_range_count"],1)
+            self.assertEqual(out["gpu_order_incompatible_prefill_ranges"],[])
             self.assertFalse(out["producer_consumer_buffer_dependency_verified"])
 
     def test_incomplete_graph_replay_node_set_fails_closed(self):
@@ -190,6 +193,43 @@ class TestCastGemmAudit(unittest.TestCase):
             self.assertGreater(
                 out["unattributed_or_ambiguous_target_kernels"],0)
             self.assertFalse(out["per_range_attribution_verified"])
+
+    def test_graph_replay_order_outlier_is_diagnosed_without_faking_dependency(self):
+        with TemporaryDirectory() as tmp:
+            root=Path(tmp)
+            dest=root/".ruth-build/phase28"
+            dest.mkdir(parents=True)
+            fp=dest/"node.sqlite"
+            make_trace(fp)
+            with sqlite3.connect(fp) as db:
+                # Keep all kernel-node records and correlations unchanged,
+                # move just one graph-replayed cast past its ordinal GEMM.
+                db.execute(
+                    "UPDATE CUPTI_ACTIVITY_KIND_KERNEL "
+                    "SET start=start+100,end=end+100 WHERE rowid=("
+                    "SELECT k.rowid FROM CUPTI_ACTIVITY_KIND_KERNEL k "
+                    "JOIN StringIds s ON k.demangledName=s.id "
+                    "WHERE s.value LIKE 'void convert_unary_cont_vec4<float%' "
+                    "AND k.graphId=2 LIMIT 1)")
+            report=audit_cast_gemm(
+                fp,candidate="bf16-on",n_ctx=2048,root=root,
+                explain_order=True)
+            self.assertTrue(report["per_range_attribution_verified"])
+            self.assertTrue(report["graph_node_kernel_order_stable"])
+            self.assertFalse(report["gpu_timeline_candidate_pairing_verified"])
+            self.assertEqual(
+                report["gpu_order_incompatible_prefill_range_count"],1)
+            failures=report["gpu_order_incompatible_prefill_ranges"]
+            self.assertEqual(len(failures),1)
+            self.assertEqual(failures[0]["path"],"graph_node")
+            self.assertEqual(failures[0]["num_failed_ordinal_pairs"],1)
+            first=failures[0]["first_failed_ordinal_pairs"][0]
+            self.assertEqual(first["gpu_gap_ns"],-50)
+            self.assertIsNone(first["cast_stream_id"])
+            self.assertEqual(first["cast_graph_id"],2)
+            self.assertFalse(
+                report["producer_consumer_buffer_dependency_verified"])
+            self.assertFalse(report["production_qualified"])
 
     def test_missing_direct_cast_fails_closed(self):
         with TemporaryDirectory() as tmp:
