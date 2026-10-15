@@ -211,6 +211,54 @@ CUPTI/NVTX timing join is necessary for that stronger claim.
 Use unprofiled executions for latency comparisons; profiling changes
 runtime overhead. No kernel-name observation alone approves production.
 
+## First actual Nsight dispatch evidence — BF16/BF16 Flash ON, n_ctx=2048
+
+Nsight Systems 2025.6.3 successfully captured and exported the user's
+experiment to `.ruth-build/phase28/bf16-on-ctx2048.sqlite`. The original
+offline reader observed **24,120 CUDA kernel launch records**. Its
+`FLASH_OTHER` labels were incomplete: the pinned llama.cpp source shows
+that `flash_attn_ext_f16` is launched by the MMA_F16 branch. The
+post-capture reader update fixes the classification without modifying the
+original SQLite artifact or rerunning inference.
+
+| Observed CUDA symbol | Family | Calls | Sum of GPU kernel duration |
+|---|---|---:|---:|
+| `flash_attn_ext_f16<256,256,16,4,...>` | FLASH_MMA_F16 | 728 | 19.5141 ms |
+| `flash_attn_ext_vec<256,1,30,30,...>` | FLASH_VEC | 104 | 1.4721 ms |
+| `flash_attn_stream_k_fixup_uniform<256,16,4>` | FLASH_FIXUP | 728 | 4.7190 ms |
+| `flash_attn_combine_results<256>` | FLASH_COMBINE | 104 | 0.2247 ms |
+
+The ggml enum in the pinned `ggml/include/ggml.h` assigns
+`GGML_TYPE_BF16 = 30`: the vector kernel explicitly uses BF16 K and V.
+The pinned CUDA dispatcher selects `BEST_FATTN_KERNEL_MMA_F16` separately
+from `BEST_FATTN_KERNEL_VEC`, and the MMA_F16 path requires F16 K and V
+operands. This accounts for both a BF16-native vector attention kernel
+and a separate F16-specialized attention kernel within a BF16-cache run.
+The captured `convert_unary_cont_vec4<__nv_bfloat16,__half>`
+appeared **1,456** times, consistent with BF16-to-F16 conversion, but
+count correlations alone cannot establish which attention launch
+consumed each converted tensor.
+
+**Do not infer** prefill/decode mapping from the kernel launch
+frequencies. The report has no verified NVTX/CUPTI phase correlation.
+The times above are sums of the selected CUDA kernels across the
+profiled worker process (including warmup/repeats), **not** inference
+latency totals, nor speedups over another candidate. The production
+profile remains unchanged.
+
+After pulling the updated reader, re-analyze **offline**:
+
+```bash
+.venv/bin/python -m unittest tests.test_phase28_gemma3_context_dispatch -v
+
+.venv/bin/python -m ruth_runtime.gemma3_phase28_dispatch \\
+  --sqlite .ruth-build/phase28/bf16-on-ctx2048.sqlite
+```
+
+The updated report contains `main_attention_families_observed` and
+`attention_family_summary`, separating true attention kernels from
+auxiliary fixup/combine kernels. No new CUDA run is needed.
+
 ## Promotion gate
 
 Phase 28 produces *diagnostic* context, timing, memory and CUDA-kernel
