@@ -50,6 +50,11 @@ def inspect_phase_correlations(
         "unattributed_attention_kernel_records": 0,
         "ambiguous_cuda_correlations": 0,
         "prefill_decode_attribution_verified": False,
+        "attribution_scope": "recognized_cupti_kernel_launch_records",
+        # Correlating every observed kernel does not demonstrate coverage of
+        # operations replayed from CUDA Graphs. Require a separate audit.
+        "complete_attention_workload_coverage_verified": False,
+        "cuda_graph_replay_assessed": False,
         "production_qualified": False,
         "native_kernel_names_verified":
             summary["native_kernel_names_verified"],
