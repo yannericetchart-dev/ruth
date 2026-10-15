@@ -146,7 +146,89 @@ Il criterio è **misurare** il trade-off. Input BF16 + accumulazione F32 non gar
 
 **Primo passo operativo:** inventario GGUF + mappatura statica dei tipi nel codice e nei trace SQLite locali, in sola lettura; solo successivamente decidere quali inferenze aggiuntive siano necessarie. Nessuna modifica automatica a produzione o policy.
 
-## 7. Riferimenti interni
+## 7. Prima implementazione offline — GGUF dtype e conversioni Nsight
+
+Sono disponibili due strumenti nuovi e isolati (nessuna importazione di
+`llama_cpp`, nessuna allocazione CUDA e nessuna modifica alla policy
+di produzione):
+
+1. `ruth_runtime.gemma3_phase28_precision_inventory` analizza
+   **solo l'intestazione, i metadati e i descrittori dei tensori GGUF v3**
+   senza caricare i pesi. Il modello è selezionato esattamente dal catalogo
+   production **solo per identificare l'artefatto già esistente**;
+   dimensione e SHA256 vengono confrontati ai valori pinned prima che
+   l'inventario sia dichiarato verificato. Calcola conteggi per dtype
+   (BF16, F16, F32, altri) e categorie (attention_projection,
+   attention_norm, feed_forward, normalization, embedding, output, ...).
+   La versione del layout dei tipi GGML è fissata al commit llama.cpp
+   `0c1e5709`. Anche i dtype sconosciuti sono indicati esplicitamente
+   come `UNKNOWN_N` e **non** reinterpretati come BF16.
+2. `ruth_runtime.gemma3_phase28_precision_trace` legge gli export SQLite
+   già acquisiti, riconosce i kernel `convert_unary*` con tipi sorgente
+   e destinazione espliciti nel simbolo CUDA, ne conta i record e somma
+   le durate GPU. Quando la traccia node-level contiene gli ID corretti,
+   usa il preesistente **audit causale** `gemma3_phase28_node_audit`
+   per attribuire le conversioni dei CUDA Graph alla fase NVTX.
+   Per i lanci diretti usa, dove possibile, `correlationId` CUDA
+   Runtime + intervallo NVTX della stessa CPU thread. Riporta i kernel
+   non classificati più onerosi e gli operatori con nome F32
+   riconosciuto, **senza** affermare che il nome descriva il dtype di
+   ogni registro/operazione.
+
+Eseguire dalla root del repository, dopo `git pull --ff-only`:
+
+```bash
+.venv/bin/python -m unittest \
+  tests.test_phase28_gemma3_precision_inventory \
+  tests.test_phase28_gemma3_precision_trace -v
+
+# Legge solo GGUF locale. L'SHA256 richiede la lettura sequenziale
+# dell'intero file, ma non carica il modello né alloca VRAM.
+.venv/bin/python -m ruth_runtime.gemma3_phase28_precision_inventory
+
+# Include nomi, dimensioni, dtype e offset di TUTTI i tensori:
+.venv/bin/python -m ruth_runtime.gemma3_phase28_precision_inventory \
+  --all-tensors
+
+# Analizza la traccia CUDA Graph a granularità di nodo senza esecuzione GPU:
+.venv/bin/python -m ruth_runtime.gemma3_phase28_precision_trace \
+  --sqlite .ruth-build/phase28/bf16-on-ctx2048-nvtx3-nodes.sqlite \
+  --candidate bf16-on --n-ctx 2048
+
+# Stessa indagine nella traccia a livello di grafo:
+.venv/bin/python -m ruth_runtime.gemma3_phase28_precision_trace \
+  --sqlite .ruth-build/phase28/bf16-on-ctx2048-nvtx3.sqlite \
+  --candidate bf16-on --n-ctx 2048
+```
+
+I comandi non scaricano nulla e sono in **sola lettura**: il modello
+resta quello già presente e il database SQLite è aperto con `mode=ro`.
+Gli script non creano file di output se non richiesti tramite
+redirezione shell. I test usano GGUF e SQLite sintetici temporanei.
+
+Campi diagnostici più importanti:
+
+- GGUF: `status=pinned_gguf_precision_inventory_verified`,
+  `tensor_dtype_counts`, `tensor_categories`,
+  `non_bf16_tensor_sample`, e `tensors` con `--all-tensors`.
+- Nsight: `kernel_name_survey_verified`,
+  `conversion_kernel_records`, `conversion_summary[*].source_dtype`,
+  `target_dtype`, `kernel_gpu_ms_sum`, `by_phase`, `by_graph_id`,
+  `other_precision_name_evidence`, `top_other_kernel_names`.
+- Le conversioni riconosciute con dtype non estraibile restano
+  `conversion_kernel_template_unparsed` invece di essere ignorate.
+- La correlazione diretta o grafica mancante è esplicita in
+  `unattributed_direct_conversion_records` e
+  `unattributed_graph_conversion_records`.
+- **Sempre falso:** `source_precision_runtime_inventory_complete`
+  e `production_qualified`. Nessuna informazione sui soli nomi
+  dei kernel certifica la precisione interna di tutte le operazioni.
+
+**Stato:** implementazione pubblicata sul branch sperimentale,
+non ancora eseguita contro il GGUF e gli SQLite locali dell'utente.
+Le metriche reali sono in sospeso fino all'esecuzione sul suo host.
+
+## 8. Riferimenti interni
 
 - [Fase 27 — precisione e benchmark](phase-27-gemma3-precision-and-kernel-benchmark.md).
 - [Fase 28 — prove CUDA/NVTX e contesti](phase-28-gemma3-dispatch-and-context-scaling.md).
