@@ -295,15 +295,24 @@ no GPU load or inference is performed by `kv-plan`.
 
 ### 6 — Minimal native context allocation (EXPERIMENTAL; permission required)
 
-Phase 26 adds a *separately authorized*, allocation-only probe for the
-pinned Gemma3 BF16 model. Its exact allowlist is n_ctx=256,
-n_batch=n_ubatch=64, SWA FULL ON, no CUDA preinit, with **either**
-F16/F16 Flash OFF (baseline) **or** BF16/BF16 Flash ON (candidate).
-Both require an explicit `--allow-gpu-load` and leave inference disabled.
-Run the tests first; the step-by-step command and evidence handling are
-documented in `docs/phase-26-gemma3-native-context-probes.md`.
-No source-only result authorizes production inference, auto selection,
-longer context or arbitrary cache types.
+Phase 26 provides a *separately authorized*, allocation-only probe
+for the pinned Gemma3 BF16 model. The first two native measurements,
+F16/F16 Flash OFF and BF16/BF16 Flash ON, both initialized a GPU context,
+but they cannot establish the optimal precision policy.
+
+The follow-up Phase 26 matrix explicitly compares all **18**
+non-quantized K/V combinations (F16/BF16/F32 independently for K and V,
+with Flash ON/OFF). The strict gate still fixes n_ctx=256,
+n_batch=n_ubatch=64, SWA FULL ON, one sequence and no CUDA preinit.
+Use `.venv/bin/python -m ruth_runtime.gemma3_context_matrix` to list the
+18 cases **without executing GPU work**. Native allocation requires
+`--execute --allow-gpu-load`, starts isolated worker processes and
+stops at the first unverified result. The command never performs inference.
+
+Run offline tests first; exact cases, opt-in examples and evidence
+handling are in `docs/phase-26-gemma3-native-context-probes.md`.
+No context-only result authorizes inference, production selection,
+automatic precision switching, or longer context.
 
 ### 7 — Profile reuse and production eligibility
 
