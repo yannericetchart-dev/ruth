@@ -1,5 +1,6 @@
 """GGUF metadata/tensor descriptors only; all tests run without CUDA/model weights."""
 import base64
+import copy
 import json
 import struct
 from io import StringIO
@@ -137,7 +138,11 @@ class Gemma3HeaderTests(unittest.TestCase):
         }
 
     def test_cas_publication_updates_only_architecture_and_preserves_weights(self):
-        model=load_profile("gemma","gemma-3","gemma-3-1b-it")
+        model=copy.deepcopy(load_profile("gemma","gemma-3","gemma-3-1b-it"))
+        # Simulate a NEW model before the first GGUF-header publication:
+        # Git can already contain the verified header from a real host.
+        model["architecture"].pop("gguf_header_observation",None)
+        model["architecture"]["status"]="unknown"
         original_obs=model["variants"]["BF16"]["runtime_observations"]
         saved={"current":model}
         calls=[]
@@ -180,7 +185,9 @@ class Gemma3HeaderTests(unittest.TestCase):
         report["declared_file_type"]=1
         report["metadata_warnings"]=[
             "general.file_type_differs_from_BF16_tensors"]
-        profile=load_profile("gemma","gemma-3","gemma-3-1b-it")
+        profile=copy.deepcopy(load_profile("gemma","gemma-3","gemma-3-1b-it"))
+        profile["architecture"].pop("gguf_header_observation",None)
+        profile["architecture"]["status"]="unknown"
         seen={"current":profile}
         def fake(args,**kwargs):
             if args[:4]==["gh","api","user","--jq"]:
