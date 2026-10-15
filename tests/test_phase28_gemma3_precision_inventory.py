@@ -74,12 +74,44 @@ class TestPhase28PrecisionInventory(unittest.TestCase):
                                  "pinned_gguf_precision_inventory_verified")
                 self.assertEqual(report["tensor_dtype_counts"],
                                  {"F32":1,"UNKNOWN_99":1})
+                self.assertEqual(report["tensor_dtype_element_counts"],
+                                 {"F32":3,"UNKNOWN_99":6})
+                self.assertEqual(report["tensor_dtype_storage_bytes"],
+                                 {"F32":12})
+                self.assertFalse(report["tensor_storage_accounting_complete"])
+                self.assertFalse(
+                    report["tensor_storage_layout_contiguous_verified"])
                 self.assertFalse(report["production_qualified"])
                 self.assertFalse(report["gpu_inference_executed"])
                 choice.expected_sha256="0"*64
                 failed=inspect_pinned_gguf(root=root)
                 self.assertEqual(failed["status"],
                                  "precision_inventory_unverified")
+
+    def test_known_dtype_bytes_are_accounted_without_faking_contiguous_layout(self):
+        with TemporaryDirectory() as d:
+            root=Path(d)
+            fp=root/"tiny.gguf"
+            make_gguf(fp)
+            sha=hashlib.sha256(fp.read_bytes()).hexdigest()
+            choice=SimpleNamespace(
+                expected_sha256=sha,expected_size_bytes=fp.stat().st_size)
+            with patch(
+                "ruth_runtime.gemma3_phase28_precision_inventory.select_model",
+                return_value=choice
+            ), patch(
+                "ruth_runtime.gemma3_phase28_precision_inventory._local_path",
+                return_value=fp
+            ):
+                r=inspect_pinned_gguf(root=root)
+            self.assertEqual(r["tensor_dtype_element_counts"],
+                             {"BF16":6,"F32":3})
+            self.assertEqual(r["tensor_dtype_storage_bytes"],
+                             {"BF16":12,"F32":12})
+            self.assertEqual(r["tensor_storage_bytes_accounted"],24)
+            self.assertTrue(r["tensor_storage_accounting_complete"])
+            # Synthetic file has deliberate holes between tensors.
+            self.assertFalse(r["tensor_storage_layout_contiguous_verified"])
 
     def test_truncated_bad_version_and_out_of_bound_metadata_rejected(self):
         with TemporaryDirectory() as d:
