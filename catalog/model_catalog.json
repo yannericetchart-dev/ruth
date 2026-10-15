@@ -96,6 +96,38 @@
           "expected_size_bytes": 807694464
         }
       ]
+    },
+    {
+      "family": "gemma",
+      "model": "gemma-3",
+      "version": "gemma-3-1b-it",
+      "format": "gguf",
+      "publisher": "google",
+      "upstream_repo": "google/gemma-3-1b-it",
+      "license": "gemma",
+      "license_acknowledgement_required": true,
+      "purpose": [
+        "production",
+        "test"
+      ],
+      "variants": [
+        {
+          "quantization": "BF16",
+          "source": "huggingface",
+          "repo_id": "bartowski/google_gemma-3-1b-it-GGUF",
+          "filename": "google_gemma-3-1b-it-bf16.gguf",
+          "expected_sha256": "b144bde489651d3d292d7e47a59c6f811cdd96d184be582e5ad30ab338b9b6bf",
+          "expected_size_bytes": 2006573568,
+          "approx_size_mb": 2007,
+          "revision": "6de70cb020706f01529b27fee7ab17c5969041c8",
+          "assessment": "pinned_metadata_requires_remote_source_verification_and_load_probe",
+          "original_checkpoint_dtype": "BF16",
+          "source_file_sha256_status": "verified_on_source_webpage",
+          "source_file_size_status": "matching_lfs_pointer_from_hf_mirror"
+        }
+      ],
+      "onboarding_policy": "stepwise_metadata_then_explicit_license_then_download_then_weights_then_context",
+      "source_status": "pinned_external_metadata_pending_ruth_remote_resolve"
     }
   ],
   "scope": "Hardware-independent catalog of immutable GGUF model metadata; GPU tests and OOM diagnostics belong exclusively in local runtime reports."
