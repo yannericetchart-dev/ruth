@@ -398,6 +398,57 @@ correlation may cause a legitimate trace to remain unverified; do
 accommodate them. Inspect the actual export first. The report never
 qualifies a production profile.
 
+## First native NVTX/CUPTI phase attribution — success at n_ctx=2048
+
+The user's explicit NVTX3 bridge compilation succeeded and exported
+`nvtxRangePushA` and `nvtxRangePop`. Profiling BF16/BF16 Flash ON
+at `n_ctx=2048` reported `nvtx_ranges_available=true`, genuine
+27/27 GPU offload, and logits snapshot SHA256
+`5629cf4d0e7437e12af1ec9412309e60e76192d85c5e7a822dcd4c7695e613d0`,
+identical to the unprofiled BF16 baseline.
+
+Exported as `.ruth-build/phase28/bf16-on-ctx2048-nvtx3.sqlite`,
+the Phase28 attribution reader successfully joined CUPTI kernel
+records to CUDA runtime calls within the intended NVTX CPU ranges:
+
+| NVTX phase | Observed kernel | Calls | GPU time (sum) |
+|---|---|---:|---:|
+| Prefill | FLASH_MMA_F16 | 728 | 19.6109 ms |
+| Prefill | FLASH_FIXUP | 728 | 4.7551 ms |
+| Decode | FLASH_VEC | 104 | 1.4181 ms |
+| Decode | FLASH_COMBINE | 104 | 0.2127 ms |
+
+There were **96 prefill** and **64 decode** NVTX ranges (four
+warmup+repeat trials), `attributed_attention_kernel_records=1664`,
+`unattributed_attention_kernel_records=0`,
+`ambiguous_cuda_correlations=0`, and
+`prefill_decode_attribution_verified=true`.
+
+**Important scope limitation:** this success verifies assignment of
+all *recognized CUPTI kernel records* to the NVTX phases; it does
+**not** prove that every attention operation executed throughout all
+96 prefill chunks and 64 decode passes appears as an individually
+correlatable runtime kernel record. In fact, the main-kernel counts
+are 728 prefill = 7 × 26 layers × 4 trials and 104 decode =
+1 × 26 layers × 4 trials. The pinned llama.cpp source defaults
+`GGML_CUDA_GRAPHS` to ON and can use `cudaGraphLaunch`
+(`ggml/src/ggml-cuda/ggml-cuda.cu`). Graph replay is a plausible
+explanation, **not yet directly verified in the actual trace**.
+
+Accordingly, the reader now exposes
+`attribution_scope="recognized_cupti_kernel_launch_records"`,
+`complete_attention_workload_coverage_verified=false`, and
+`cuda_graph_replay_assessed=false` even when the narrower phase
+attribution returns true. Never interpret this report as exhaustive
+per-layer inference accounting, per-phase end-to-end latency, or
+production qualification.
+
+Next inspect CUPTI CUDA runtime graph launch APIs and any graph
+activity tables in the *existing SQLite export* before attempting
+an exact all-decode-call coverage proof. A separate explicitly
+instrumented F16/F16 Flash OFF trace would complete the direct
+phase-by-phase comparison without relying on kernel name counts.
+
 ## Promotion gate
 
 Phase 28 produces *diagnostic* context, timing, memory and CUDA-kernel
