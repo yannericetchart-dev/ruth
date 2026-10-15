@@ -1,5 +1,6 @@
 """Offline load-only regression coverage: no real GGUF, CUDA, or generation."""
 import json
+import shutil
 from pathlib import Path
 import subprocess
 import sys
@@ -15,6 +16,7 @@ from ruth_runtime.load_only_probe import (
 from ruth_runtime.launcher import main
 from ruth_runtime.load_only_worker import run_load_only
 from ruth_runtime.install_plan import WHEEL_VERSION
+from ruth_runtime.dependencies import PROJECT_ROOT
 
 
 UUID = "GPU-5a841828-882b-85d9-c98e-3a0d29e66e00"
@@ -150,10 +152,17 @@ class LoadOnlyWorkerNoInferenceTests(unittest.TestCase):
             def llama_model_free(self, model):
                 self.calls.append("model_free")
             def llama_context_default_params(self):
-                return SimpleNamespace(n_ctx=0, n_batch=0, n_ubatch=0, offload_kqv=False)
+                return SimpleNamespace(n_ctx=0, n_batch=0, n_ubatch=0,
+                                       offload_kqv=False, swa_full=False,
+                                       n_seq_max=0, kv_unified=True,
+                                       flash_attn_type=0, type_k=0, type_v=0)
             def llama_init_from_model(self, model, params):
                 self.calls.append(("context_init", params.n_ctx))
                 return object()
+            GGML_TYPE_F16 = 1
+            LLAMA_FLASH_ATTN_TYPE_DISABLED = 0
+            LLAMA_FLASH_ATTN_TYPE_AUTO = -1
+            LLAMA_FLASH_ATTN_TYPE_ENABLED = 1
             def llama_free(self, context):
                 self.calls.append("context_free")
 
@@ -195,6 +204,10 @@ class LoadOnlyTests(unittest.TestCase):
                 cuda_preinit=False):
         with TemporaryDirectory() as tmp:
             root = Path(tmp)
+            (root / "catalog").mkdir()
+            shutil.copyfile(
+                PROJECT_ROOT / "catalog/llama_kv_backend_policy.json",
+                root / "catalog/llama_kv_backend_policy.json")
             env = SimpleNamespace(
                 interpreter_in_project_venv=True,
                 python_version="3.12.3", project_root=str(root),
