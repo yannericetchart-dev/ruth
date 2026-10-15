@@ -646,6 +646,63 @@ CUDA runtime launch correlations and phase markers in read-only mode.
 Do not assert complete graph-node coverage from non-null IDs alone.
 Production qualification remains false.
 
+## CUDA Graph node-level capture: 81,008 kernel records
+
+The user's new **node-level** Nsight Systems capture
+`.ruth-build/phase28/bf16-on-ctx2048-nvtx3-nodes.sqlite`
+reports **105,128 CUDA kernel activity records**, including:
+
+| graphId | kernel records | replay-count consistency candidate |
+|---|---:|---|
+| 2 | 54,128 | 68 × 796 |
+| 10 | 26,880 | 60 × 448 |
+| NULL | 24,120 | direct launches; same as prior graph-level capture |
+
+Both graphId and graphNodeId are populated for **81,008** kernel
+records, with **1,244 distinct non-null graphNodeId** values overall.
+The exact factors 796+448=1,244 agree with the previous run's
+68 prefill and 60 decode graph replays. **A different Nsight capture
+is a different process; graph IDs must not be assumed stable across
+capture sessions.** Likewise, these aggregate equalities are
+hypotheses until *per-node* frequencies are checked.
+
+A new read-only offline module checks every observed pair
+`(graphId, graphNodeId)` and its actual launch frequency.
+It reports minimum, maximum and a frequency histogram per graph;
+counts runtime `cudaGraphLaunch` calls inside NVTX CPU ranges from
+the **same new node-level capture**; and inspects each graph's
+FlashAttention kernel-name families. The potential graph→phase
+correspondence is labelled `graph_phase_candidates_by_count`
+and is **not treated as a direct causal join**.
+
+```bash
+cd ~/Dev/ruth-model-profiling
+git pull --ff-only origin feat/gemma3-phase28-context-dispatch
+
+.venv/bin/python -m unittest \
+  tests.test_phase28_gemma3_node_audit -v
+
+.venv/bin/python -m ruth_runtime.gemma3_phase28_node_audit \
+  --sqlite .ruth-build/phase28/bf16-on-ctx2048-nvtx3-nodes.sqlite \
+  --candidate bf16-on --n-ctx 2048
+```
+
+The status `observed_graph_kernel_node_repetition_counts_verified`
+means only that the **observed CUDA kernel nodes** have complete,
+uniform repetition counts consistent with the runtime graph launch
+counts inside the capture. It is **not** a guarantee that graph
+events, copies, memory sets, host functions or untraced node types
+were fully captured. Hence:
+
+- `graph_to_nvtx_phase_verified=false` until a genuine join exists;
+- `all_cuda_graph_node_types_traced_verified=false`;
+- `complete_attention_workload_coverage_verified=false`;
+- `production_qualified=false`.
+
+The pinned source/NVIDIA CUPTI docs support node-level kernel
+`graphId` and `graphNodeId` fields. The node-level audit does not
+execute CUDA or change any production runtime profiles.
+
 ## Promotion gate
 
 Phase 28 produces *diagnostic* context, timing, memory and CUDA-kernel
