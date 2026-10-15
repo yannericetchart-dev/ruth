@@ -128,7 +128,11 @@ class Gemma3HeaderTests(unittest.TestCase):
             "blocks":26,
             "metadata_fields":{
                 "general.architecture":"gemma3", "general.file_type":24,
-                "gemma3.block_count":26, "gemma3.attention.head_count_kv":1},
+                "gemma3.block_count":26, "gemma3.attention.head_count":4,
+                "gemma3.attention.head_count_kv":1,
+                "gemma3.attention.key_length":256,
+                "gemma3.attention.value_length":256,
+                "gemma3.attention.sliding_window":512},
             "model_id":{"family":"gemma","model":"gemma-3",
                         "version":"gemma-3-1b-it"},
             "gguf_sha256":"b144bde489651d3d292d7e47a59c6f811cdd96d184be582e5ad30ab338b9b6bf",
@@ -172,7 +176,10 @@ class Gemma3HeaderTests(unittest.TestCase):
         self.assertTrue(first["git_updated"])
         self.assertEqual(saved["current"]["architecture"]["layer_count"],26)
         self.assertEqual(saved["current"]["architecture"]["kv_heads"],1)
-        self.assertIsNone(saved["current"]["architecture"]["global_layers"])
+        self.assertEqual(saved["current"]["architecture"]["global_layers"],4)
+        self.assertEqual(saved["current"]["architecture"]["swa_layers"],22)
+        self.assertEqual(saved["current"]["architecture"]["source_derived_geometry"]
+                         ["global_layer_indices"],[5,11,17,23])
         self.assertNotIn("GPU-",json.dumps(saved["current"]))
         second=sync_gguf_architecture(report,run=fake)
         self.assertEqual(second["status"],"git_profile_already_current")
