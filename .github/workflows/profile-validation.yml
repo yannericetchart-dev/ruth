@@ -19,6 +19,8 @@ on:
       - "ruth_runtime/llama_kv_log.py"
       - "ruth_runtime/load_only_worker.py"
       - "ruth_runtime/load_only_probe.py"
+      - "ruth_runtime/probe_profile_sync.py"
+      - "tests/test_phase19_probe_auto_record.py"
       - "ruth_runtime/cuda_adapter.py"
       - "tests/test_phase02_cuda_adapter.py"
       - "catalog/llama_kv_backend_policy.json"
@@ -49,7 +51,8 @@ jobs:
             tests.test_phase15_profile_contribution \
             tests.test_phase16_offline_memory_fit \
             tests.test_phase17_auto_production \
-            tests.test_phase18_llama_kv_profile -v
+            tests.test_phase18_llama_kv_profile \
+            tests.test_phase19_probe_auto_record -v
       - name: Validate submitted and owner-measured JSON files (offline)
         shell: bash
         run: |
