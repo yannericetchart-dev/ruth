@@ -18,6 +18,7 @@ from time import monotonic
 from .inference_worker import measure_worker_gpu
 from .model_catalog import select_model
 from .model_download import _local_path
+from .gemma3_context_gate import GEMMA3_VERSION, validate_gemma3_context_request
 
 SCHEMA = "ruth-cuda-load-only-v1"
 PREFIX = "RUTH_CUDA_LOAD_ONLY_RESULT="
@@ -27,10 +28,27 @@ APPROVED_LOADS = {
     "gemma-2-9B-it": {"model": "gemma-2", "quantizations": ("Q4_K_L", "Q4_K_M"),
                         "modes": ("weights", "context")},
     "gemma-3-1b-it": {"model": "gemma-3", "quantizations": ("BF16",),
-                       "modes": ("weights",)},
+                       "modes": ("weights", "context")},
 }
-KV_FORMATS = {"F16": "GGML_TYPE_F16", "Q8_0": "GGML_TYPE_Q8_0",
-              "Q4_0": "GGML_TYPE_Q4_0"}
+KV_FORMATS = {"F16": "GGML_TYPE_F16", "BF16": "GGML_TYPE_BF16",
+              "Q8_0": "GGML_TYPE_Q8_0", "Q4_0": "GGML_TYPE_Q4_0"}
+
+
+def native_kv_dtype(api, dtype: str) -> int:
+    """Resolve pinned ggml dtype; BF16=30 is absent in pinned Python constants.
+
+    The pinned llama.cpp ggml/include/ggml.h enum explicitly defines 30.
+    Reject conflicting Python bindings rather than silently using a wrong ABI.
+    The native library and binding still undergo the parent dual-ABI audit.
+    """
+    name = KV_FORMATS[dtype]
+    if dtype == "BF16":
+        present = getattr(api, name, None)
+        if present is not None and present != 30:
+            raise RuntimeError("Pinned GGML_TYPE_BF16 enum mismatch")
+        return 30
+    return getattr(api, name)
+
 FLASH_FORMATS = {"off": "LLAMA_FLASH_ATTN_TYPE_DISABLED",
                  "auto": "LLAMA_FLASH_ATTN_TYPE_AUTO",
                  "on": "LLAMA_FLASH_ATTN_TYPE_ENABLED"}
@@ -146,6 +164,13 @@ def run_load_only(root: Path, gpu_uuid: str, quantization: str, mode: str,
         or (settings["flash_attention"] == "off"
             and settings["type_v"] != "F16")):
         raise ValueError("Unapproved native KV cache parameters")
+    if model_version == GEMMA3_VERSION and mode == "context":
+        validate_gemma3_context_request(
+            n_ctx=n_ctx, n_batch=settings["n_batch"],
+            n_ubatch=settings["n_ubatch"], swa_full=settings["swa_full"],
+            flash_attention=settings["flash_attention"],
+            type_k=settings["type_k"], type_v=settings["type_v"],
+            cuda_preinit=cuda_preinit)
     from llama_cpp import llama_cpp as api
     from llama_cpp import __version__ as runtime_version
     from .install_plan import WHEEL_VERSION
@@ -220,8 +245,8 @@ def run_load_only(root: Path, gpu_uuid: str, quantization: str, mode: str,
             options.kv_unified = False
             options.flash_attn_type = getattr(
                 api, FLASH_FORMATS[settings["flash_attention"]])
-            options.type_k = getattr(api, KV_FORMATS[settings["type_k"]])
-            options.type_v = getattr(api, KV_FORMATS[settings["type_v"]])
+            options.type_k = native_kv_dtype(api, settings["type_k"])
+            options.type_v = native_kv_dtype(api, settings["type_v"])
             context = api.llama_init_from_model(model, options)
             if not context:
                 raise RuntimeError("llama_init_from_model returned null")
