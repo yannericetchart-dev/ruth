@@ -18,6 +18,8 @@ from .dependencies import PROJECT_ROOT
 from .profile_registry import SCHEMA
 from .model_catalog import load_catalog
 from .hardware_eligibility import load_architecture_policy
+from .install_plan import LLAMA_CPP_SUBMODULE_COMMIT
+from .llama_kv_profile import calculate_llama_kv
 
 UPSTREAM = "yannericetchart-dev/ruth"
 BASE_BRANCH = "model-profiling"
@@ -87,6 +89,7 @@ def build_proposal(profile_file: Path, *, project_root: Path = PROJECT_ROOT) -> 
         "flash_attention", "kv_type_k", "kv_type_v",
         "gpu_kv_buffer_mib", "gpu_compute_buffer_mib",
         "backend", "verified_native_allocations_only", "inference_verified",
+        "kv_backend_commit", "native_config", "kv_source_derivation",
     )
     public_contexts = []
     for context_key, ctx in context_data.items():
@@ -240,6 +243,7 @@ def validate_submitted_proposal(
             "verified_native_allocations_only", "inference_verified",
             "architecture", "cuda_backend", "driver_version",
             "llama_cpp_binding",
+            "kv_backend_commit", "native_config", "kv_source_derivation",
         }
         for ctx in public_contexts:
             if (not isinstance(ctx, dict) or set(ctx) != context_fields
@@ -254,6 +258,68 @@ def validate_submitted_proposal(
                            and row.get("llama_cpp_binding") == ctx["llama_cpp_binding"]
                            for row in rows)):
                 raise ValueError("Context claims not linked to exact native runtime")
+            # Old published measurements are valid legacy observations.
+            # New option-aware context profiles MUST carry an immutable
+            # source revision and a re-computable calculation.
+            backend_commit = ctx.get("kv_backend_commit")
+            native_cfg = ctx.get("native_config")
+            derived = ctx.get("kv_source_derivation")
+            if backend_commit is not None or native_cfg is not None or derived is not None:
+                if (backend_commit != LLAMA_CPP_SUBMODULE_COMMIT
+                    or not isinstance(native_cfg, dict)
+                    or not isinstance(derived, dict)):
+                    raise ValueError("Option-aware KV profile has no exact backend provenance")
+                needed = {"n_batch_requested", "n_ubatch_requested", "swa_full",
+                          "flash_attention_requested", "flash_attention_effective",
+                          "n_ctx_effective_native", "n_ctx_seq_effective_native",
+                          "n_batch_effective_native", "n_ubatch_effective_native",
+                          "global_cache_cells_native", "swa_cache_cells_native",
+                          "global_key_logical_mib_native", "global_value_logical_mib_native",
+                          "swa_key_logical_mib_native", "swa_value_logical_mib_native"}
+                if set(native_cfg) != needed or native_cfg["flash_attention_effective"] is not None:
+                    raise ValueError("Unknown native KV diagnostics or unsupported effective FA claim")
+                if (native_cfg["flash_attention_requested"] != ctx["flash_attention"]
+                    or not isinstance(native_cfg["swa_full"], bool)
+                    or any(type(native_cfg[k]) is not int for k in
+                           ("n_batch_requested", "n_ubatch_requested"))):
+                    raise ValueError("Inconsistent KV options")
+                computed = calculate_llama_kv(
+                    project_root=project_root, n_ctx=ctx["n_ctx_requested"],
+                    n_batch=native_cfg["n_batch_requested"],
+                    n_ubatch=native_cfg["n_ubatch_requested"],
+                    swa_full=native_cfg["swa_full"],
+                    flash_attention=native_cfg["flash_attention_requested"],
+                    type_k=ctx["kv_type_k"], type_v=ctx["kv_type_v"],
+                )
+                expected = {
+                    "n_ctx_effective_derived": computed["configuration"]["n_ctx_effective_derived"],
+                    "n_ubatch_effective_derived": computed["configuration"]["n_ubatch_effective_derived"],
+                    "global_cells_derived": computed["global_cache"]["cells"],
+                    "swa_cells_derived": computed["swa_cache"]["cells"],
+                    "key_logical_bytes_derived": computed["key_logical_bytes_derived"],
+                    "value_logical_bytes_derived": computed["value_logical_bytes_derived"],
+                    "swa_full_off_saves_bytes_derived": computed["swa_full_off_saves_bytes_derived"],
+                    "swa_off_first_saving_at_effective_ctx":
+                        computed["swa_off_first_saving_at_effective_ctx"],
+                    "model_geometry_verification_pending": True,
+                }
+                if derived != expected:
+                    raise ValueError("Published source-derived KV sizes differ from pinned backend")
+                for actual, planned in (
+                    ("n_ctx_effective_native", expected["n_ctx_effective_derived"]),
+                    ("global_cache_cells_native", expected["global_cells_derived"]),
+                    ("swa_cache_cells_native", expected["swa_cells_derived"]),
+                ):
+                    observed = native_cfg[actual]
+                    if observed is not None and (type(observed) is not int or observed != planned):
+                        raise ValueError("Native KV evidence inconsistent with backend source")
+                for observed in ("global_key_logical_mib_native",
+                                 "global_value_logical_mib_native",
+                                 "swa_key_logical_mib_native",
+                                 "swa_value_logical_mib_native"):
+                    v = native_cfg[observed]
+                    if v is not None and (type(v) not in (float, int) or not 0 <= v < 1_000_000):
+                        raise ValueError("Invalid native logical KV quantity")
             for value in (ctx["gpu_kv_buffer_mib"], ctx["gpu_compute_buffer_mib"]):
                 if value is not None and (
                     type(value) not in (float, int)
