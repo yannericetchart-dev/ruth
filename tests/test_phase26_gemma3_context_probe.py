@@ -81,8 +81,7 @@ class Gemma3ContextGateTests(unittest.TestCase):
                 self.assertEqual(
                     (derived["key_logical_bytes_derived"] +
                      derived["value_logical_bytes_derived"]) / 1048576,
-                    {("F16","F16"): 6.5}.get((k,v),
-                       3.25 * (scalar_bytes[k]/2 + scalar_bytes[v]/2)))
+                    3.25 * (scalar_bytes[k]/2 + scalar_bytes[v]/2))
                 self.assertIsNone(derived["swa_full_off_saves_bytes_derived"])
                 self.assertIsNone(derived["swa_off_first_saving_at_effective_ctx"])
                 self.assertTrue(derived["model_geometry_verification_pending"])
