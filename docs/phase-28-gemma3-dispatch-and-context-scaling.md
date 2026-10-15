@@ -505,6 +505,54 @@ confirms graph execution launches are attributable to NVTX ranges;
 `complete_attention_workload_coverage_verified=false` remain.
 No profile is promoted to production.
 
+## Hypothesis: mixed CUDA Graph replay and directly launched attention
+
+The **first actual Phase28 Graph audit** of
+`.ruth-build/phase28/bf16-on-ctx2048-nvtx3.sqlite` succeeded with
+`cuda_graph_phase_attribution_verified=true`:
+**128** CUDA Graph launches, 128 GRAPH_TRACE rows and 128 unique runtime
+correlation matches. No ambiguous/unattributed graph replay was found.
+
+| Phase | NVTX inference-call ranges | CUDA Graph launches | Difference |
+|---|---:|---:|---:|
+| Prefill | 96 | 68 | 28 |
+| Decode | 64 | 60 | 4 |
+
+Remarkably, the previous directly correlated Flash kernels are
+`728 = 28 × 26` main prefill MMA_F16 launches and
+`104 = 4 × 26` main decode VEC launches. Their helper kernel counts
+also match exactly. This strongly supports the hypothesis that the
+28 prefill ranges and four decode ranges without a Graph launch each
+execute a direct kernel path for the 26 attention layers. The counts
+by themselves do **not** prove a one-to-one assignment to ranges.
+
+To test the hypothesis from the existing trace without CUDA execution,
+a dedicated offline module now joins **each** individual NVTX CPU range
+to `cudaGraphLaunch` runtime APIs and, independently, each observed
+Flash kernel to its own CUDA runtime launch. It requires each range
+to contain exactly one Graph launch and no directly correlated
+Flash kernels, or zero Graph launches and exactly 26 main plus 26
+auxiliary directly correlated Flash kernels. Unexpected/missing/mixed
+patterns remain unverified. This 26-layer constraint is specific to the
+pinned Gemma3-1B-IT workload.
+
+```bash
+.venv/bin/python -m unittest \
+  tests.test_phase28_gemma3_execution_paths -v
+
+.venv/bin/python -m ruth_runtime.gemma3_phase28_execution_paths \
+  --sqlite .ruth-build/phase28/bf16-on-ctx2048-nvtx3.sqlite \
+  --candidate bf16-on --n-ctx 2048
+```
+
+The result is deliberately limited to
+`execution_path_classification_verified`. It cannot prove that
+Nsight exposed **all internal CUDA Graph node executions**:
+`cuda_graph_node_coverage_verified=false` and
+`complete_attention_workload_coverage_verified=false` are always
+retained. Neither Phase28 profiling nor this reader changes
+production runtime settings.
+
 ## Promotion gate
 
 Phase 28 produces *diagnostic* context, timing, memory and CUDA-kernel
