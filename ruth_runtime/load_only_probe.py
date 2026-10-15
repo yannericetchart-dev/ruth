@@ -16,7 +16,8 @@ from .dependencies import PROJECT_ROOT
 from .gpu_preflight import inspect_gpu_preflight
 from .inference_probe import _valid_local_gguf, _select_unique_gpu, _parse_offload
 from .load_only_worker import SCHEMA, PREFIX, SUPPORTED
-from .llama_kv_profile import calculate_llama_kv
+from .context_source_evidence import calculate_context_source
+from .gemma3_context_gate import GEMMA3_VERSION, validate_gemma3_context_request
 from .llama_kv_log import parse_llama_context_log
 from .install_plan import WHEEL_VERSION
 from .model_catalog import select_model
@@ -93,19 +94,25 @@ def probe_model_load(
         "gemma-2-9B-it": {"model": "gemma-2", "quantizations": ("Q4_K_L","Q4_K_M"),
                            "modes": ("weights", "context")},
         "gemma-3-1b-it": {"model": "gemma-3", "quantizations": ("BF16",),
-                          "modes": ("weights",)},
+                          "modes": ("weights", "context")},
     }.get(model_version)
     if (approved is None or quantization not in approved["quantizations"]
         or mode not in approved["modes"]):
         return finish("unsupported_model_loading_stage",
-                      error="Only Gemma 3 BF16 weights-only is approved; KV context geometry remains unknown")
+                      error="Unsupported pinned model/quantization/load stage")
     root = Path(project_root)
     if mode == "context":
         try:
-            calculated = calculate_llama_kv(
-                project_root=root, n_ctx=n_ctx, n_batch=n_batch,
-                n_ubatch=n_ubatch, swa_full=swa_full,
-                flash_attention=flash_attention, type_k=type_k, type_v=type_v)
+            if model_version == GEMMA3_VERSION:
+                validate_gemma3_context_request(
+                    n_ctx=n_ctx, n_batch=n_batch, n_ubatch=n_ubatch,
+                    swa_full=swa_full, flash_attention=flash_attention,
+                    type_k=type_k, type_v=type_v, cuda_preinit=cuda_preinit)
+            calculated = calculate_context_source(
+                model_version=model_version, project_root=root,
+                n_ctx=n_ctx, n_batch=n_batch, n_ubatch=n_ubatch,
+                swa_full=swa_full, flash_attention=flash_attention,
+                type_k=type_k, type_v=type_v)
         except (ValueError, OSError, KeyError, TypeError) as exc:
             return finish("unsupported_kv_context_configuration",
                           error=type(exc).__name__ + ": " + str(exc)[:230])
@@ -195,7 +202,8 @@ def probe_model_load(
         context = data.get("context_initialized") is True
         layers, total = _parse_offload(worker.stderr or "")
         expected_success = weights and (mode == "weights" or context)
-        success = worker.returncode == 0 and expected_success
+        success = (worker.returncode == 0 and expected_success
+                   and layers > 0 and layers == total)
         diagnosis = diagnose_cuda_failure(
             worker.stderr or "", worker_error=str(data.get("error") or ""),
             returncode=worker.returncode,
@@ -204,6 +212,9 @@ def probe_model_load(
             "gpu_load_only_completed" if success else "gpu_load_only_failed",
             gpu_uuid=uuid, gpu_pci_bus=pci, gpu_preflight=pre.to_dict(),
             model_sha256=getattr(choice, "expected_sha256", None),
+            native_load_stage_only=True,
+            native_kernel_dispatch_verified=False,
+            inference_qualified=False,
             model_verified=True,
             source_repository=getattr(choice, "repo_id", None),
             source_revision=getattr(choice, "revision", None),
