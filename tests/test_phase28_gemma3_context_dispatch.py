@@ -21,6 +21,7 @@ from ruth_runtime.gemma3_phase28_worker import (
 from ruth_runtime.gemma3_phase28 import (
     has_memory_reserve, main, probe_one, verify_artifact)
 from ruth_runtime.gemma3_phase28_dispatch import inspect_export, classify_kernel
+from ruth_runtime.gemma3_phase28_compare import load_artifact, compare_logits
 
 
 class TestPhase28Gate(unittest.TestCase):
@@ -154,6 +155,34 @@ class TestPhase28Worker(unittest.TestCase):
             bad=dict(data,sha256="0"*64)
             self.assertFalse(verify_artifact(root,bad,256))
             self.assertFalse(verify_artifact(root,dict(data,relative_path="../x"),256))
+
+
+class TestPhase28Comparator(unittest.TestCase):
+    def test_aligned_long_context_snapshots_are_compared_offline(self):
+        with TemporaryDirectory() as d:
+            root=Path(d)
+            f16=verify_plan("f16-off",256)
+            bf16=verify_plan("bf16-on",256)
+            payload={
+                "logits":np.ones((2,1024),dtype=np.float32),
+                "prompt":list(range(128)),
+                "decode_ids":list(range(16)),
+            }
+            a=store_logits(root,f16,payload)
+            b=store_logits(root,bf16,payload)
+            first=load_artifact(root,a["relative_path"])
+            second=load_artifact(root,b["relative_path"])
+            report=compare_logits(first,second)
+            self.assertEqual(report["root_mean_square_logit_difference"],0.0)
+            self.assertTrue(report["same_teacher_forced_tokens"])
+            self.assertFalse(report["production_qualified"])
+            mismatch=store_logits(root,verify_plan("f16-off",512),{
+                "logits":np.ones((2,1024),dtype=np.float32),
+                "prompt":list(range(384)),
+                "decode_ids":list(range(16)),
+            })
+            with self.assertRaisesRegex(ValueError,"Tokenization"):
+                compare_logits(first,load_artifact(root,mismatch["relative_path"]))
 
 
 class TestPhase28Dispatch(unittest.TestCase):
