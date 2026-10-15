@@ -93,7 +93,7 @@ class TestPhase28PrecisionTrace(unittest.TestCase):
             row=out["conversion_summary"][0]
             self.assertEqual(row["by_graph_id"],{"2":68})
             self.assertEqual(row["by_phase"],{"prefill":69})
-            self.assertEqual(row["kernel_gpu_ms_sum"],0.00035)
+            self.assertEqual(row["kernel_gpu_ms_sum"],round(350/1e6,4))
             self.assertEqual(
                 out["unattributed_direct_conversion_records"],0)
             self.assertEqual(
