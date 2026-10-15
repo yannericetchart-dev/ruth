@@ -122,13 +122,43 @@ independently inspected. Only actual measured CUDA weights buffers,
 driver and CUDA overhead become known. Raw local evidence is preserved
 and the owner merges results into the **same** canonical Git profile.
 
-### 5 — Native GGUF hparams / context geometry (NOT APPROVED YET)
+### 5 — GGUF metadata and tensor descriptor inspection (READY; read-only)
 
-Add exact-source/model-specific metadata and context allocation checks
-after observing the native Gemma3 GGUF tensor/layout/hparams. Explicitly
-verify n_layer, n_head_kv, key/value head sizes, SWA pattern/window and
-backend applicability. Do not pass Gemma 2 geometry into the Gemma 3
-KV planner.
+After successful model download and BF16 weights-only native probe,
+inspect the same immutable local GGUF **without CUDA, native weight
+allocation, tokenizer or any inference**:
+
+```bash
+git pull --ff-only origin model-profiling
+
+./ruth models inspect-gguf --purpose production \
+  --family gemma --model gemma-3 --version gemma-3-1b-it \
+  --quantization BF16
+```
+
+The command first checks the verified download manifest and **SHA256 of
+the entire pinned GGUF**. It then parses only the bounded GGUF metadata
+header and tensor descriptors (not the tensor bytes). It accepts only
+`general.architecture=gemma3`, `general.file_type=24` (mostly BF16),
+positive layer count and at least one BF16 tensor descriptor. It reports
+exact observed `gemma3.*` hyperparameters, BF16/F32/F16 tensor counts
+and missing values without making up global/SWA classification.
+It may encounter 1B checkpoint metadata that lacks some head fields.
+Missing means UNKNOWN.
+
+A successful read-only result is
+`gguf_header_geometry_observed_native_crosscheck_pending`; the owner
+automatically merges the exact pinned structural observation into the
+same canonical `profiles/models/gemma/gemma-3/gemma-3-1b-it/profile.json`
+using an atomic Git SHA check. Raw tokenizer values, tensors, local
+paths and GPU UUIDs are not uploaded. `--no-git-sync` suppresses
+publication without suppressing inspection.
+
+The native **Gemma3 context** remains intentionally blocked until these
+GGUF hparams are reconciled against the pinned llama.cpp Gemma3 source,
+especially sliding-window pattern, head count, K/V dimensions and the
+minimum context allocation; even a successful header parse is NOT
+enough to certify KV dimensions or GPU context fit.
 
 ### 6 — Minimal canonical context loading (NOT APPROVED YET)
 
