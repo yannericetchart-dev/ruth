@@ -156,6 +156,34 @@ class CudaAdapterTests(unittest.TestCase):
         self.assertTrue(session.cache_disabled)
         session.close()
 
+    def test_explicit_flash_swa_and_independent_kv_types_reach_python_binding(self):
+        session = self.factory().load(
+            self.model, INITIAL_STACK,
+            {"n_ctx": 256, "n_batch": 64, "n_ubatch": 32,
+             "flash_attn": True, "swa_full": False,
+             "type_k": "Q8_0", "type_v": "Q4_0"})
+        args = FakeLlama.instances[-1].kwargs
+        self.assertTrue(args["flash_attn"])
+        self.assertFalse(args["swa_full"])
+        self.assertEqual(args["type_k"], 8)
+        self.assertEqual(args["type_v"], 2)
+        self.assertEqual(args["n_batch"], 64)
+        self.assertEqual(args["n_ubatch"], 32)
+        self.assertNotIn("cache", args)
+        session.close()
+
+    def test_quantized_value_cannot_bypass_flash_attention_validation(self):
+        with self.assertRaises(UnsafeRuntimeOptions):
+            self.factory().load(self.model, INITIAL_STACK,
+                                {"type_v": "Q8_0", "flash_attn": False})
+        with self.assertRaises(UnsafeRuntimeOptions):
+            self.factory().load(self.model, INITIAL_STACK,
+                                {"type_v": "Q8_0"})
+        with self.assertRaises(UnsafeRuntimeOptions):
+            self.factory().load(self.model, INITIAL_STACK,
+                                {"flash_attn": "auto"})
+        self.assertEqual(FakeLlama.instances, [])
+
     def test_session_closed_prevents_generation(self):
         session = self.factory().load(self.model, INITIAL_STACK, {})
         session.close()
