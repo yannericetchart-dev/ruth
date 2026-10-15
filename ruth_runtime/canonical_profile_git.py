@@ -7,6 +7,8 @@ from __future__ import annotations
 
 import base64
 import json
+from pathlib import Path
+from tempfile import TemporaryDirectory
 from typing import Any, Callable
 
 from .dependencies import PROJECT_ROOT
@@ -19,9 +21,22 @@ def canonical_profile_commit(
     upstream: str = "yannericetchart-dev/ruth",
     branch: str = "model-profiling",
 ) -> dict:
-    from .profile_contribution import _gh, _validate_proposal_for_publication
-    _validate_proposal_for_publication(proposal)
+    from .profile_contribution import (
+        _validate_proposal_for_publication, validate_submitted_proposal)
+    digest, _ = _validate_proposal_for_publication(proposal)
     observation = proposal["proposal"]
+    # Run EXACTLY the same pinned-source and native-context validator as
+    # historical Git submissions before touching authenticated GitHub.
+    gguf_sha = (observation.get("model") or {}).get("gguf_sha256")
+    if not isinstance(gguf_sha, str) or len(gguf_sha) != 64:
+        raise ValueError("Missing pinned GGUF provenance")
+    with TemporaryDirectory() as tmp:
+        evidence_path = Path(tmp) / "profiles" / "submissions" / gguf_sha / (digest + ".json")
+        evidence_path.parent.mkdir(parents=True)
+        evidence_path.write_text(json.dumps(observation, sort_keys=True),
+                                 encoding="utf-8")
+        validate_submitted_proposal(evidence_path)
+
     if observation.get("schema") != "ruth-community-model-memory-proposal-v1":
         raise ValueError("Invalid sanitized model measurement schema")
     model = observation.get("model") or {}
