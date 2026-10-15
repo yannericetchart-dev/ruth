@@ -339,11 +339,11 @@ inside the worker; output deliberately stays in ignored `.ruth-build`):
 
 ```bash
 mkdir -p .ruth-build/phase28
-cc -std=c11 -O2 -fPIC -shared -I/usr/local/cuda/include \\
-  -o .ruth-build/phase28/libruth_phase28_nvtx3.so \\
+cc -std=c11 -O2 -fPIC -shared -I/usr/local/cuda/include \
+  -o .ruth-build/phase28/libruth_phase28_nvtx3.so \
   ruth_runtime/native/phase28_nvtx3_export.c -ldl
 
-nm -D .ruth-build/phase28/libruth_phase28_nvtx3.so | \\
+nm -D .ruth-build/phase28/libruth_phase28_nvtx3.so | \
   grep -E 'nvtxRange(PushA|Pop)'
 ```
 
@@ -351,15 +351,15 @@ nm -D .ruth-build/phase28/libruth_phase28_nvtx3.so | \\
 GPU-inference authorization flags:
 
 ```bash
-nsys profile --trace=cuda,nvtx --sample=none --cpuctxsw=none \\
-  -o .ruth-build/phase28/bf16-on-ctx2048-nvtx3 \\
-  env RUTH_PHASE28_NVTX3_BRIDGE=1 \\
-  .venv/bin/python -m ruth_runtime.gemma3_phase28 \\
-    --candidate bf16-on --n-ctx 2048 \\
+nsys profile --trace=cuda,nvtx --sample=none --cpuctxsw=none \
+  -o .ruth-build/phase28/bf16-on-ctx2048-nvtx3 \
+  env RUTH_PHASE28_NVTX3_BRIDGE=1 \
+  .venv/bin/python -m ruth_runtime.gemma3_phase28 \
+    --candidate bf16-on --n-ctx 2048 \
     --execute --allow-gpu-inference
 
-nsys export --type sqlite \\
-  --output .ruth-build/phase28/bf16-on-ctx2048-nvtx3.sqlite \\
+nsys export --type sqlite \
+  --output .ruth-build/phase28/bf16-on-ctx2048-nvtx3.sqlite \
   .ruth-build/phase28/bf16-on-ctx2048-nvtx3.nsys-rep
 ```
 
@@ -374,8 +374,8 @@ loaded the NVTX C API; **it is not proof the profiler captured ranges**.
 Finally correlate the new **local SQLite** export, without CUDA:
 
 ```bash
-.venv/bin/python -m ruth_runtime.gemma3_phase28_attribution \\
-  --sqlite .ruth-build/phase28/bf16-on-ctx2048-nvtx3.sqlite \\
+.venv/bin/python -m ruth_runtime.gemma3_phase28_attribution \
+  --sqlite .ruth-build/phase28/bf16-on-ctx2048-nvtx3.sqlite \
   --candidate bf16-on --n-ctx 2048
 ```
 
