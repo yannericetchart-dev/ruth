@@ -57,6 +57,10 @@ class ProfileRegistryTests(unittest.TestCase):
             PROJECT_ROOT / "catalog/model_catalog.json",
             self.root / "catalog/model_catalog.json",
         )
+        shutil.copyfile(
+            PROJECT_ROOT / "catalog/llama_kv_backend_policy.json",
+            self.root / "catalog/llama_kv_backend_policy.json",
+        )
         self.evidence = self.root / "report.json"
 
     def store(self, report=None):
@@ -182,6 +186,57 @@ class ProfileRegistryTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             record_minimal_context_inference(
                 Path(first["profile_file"]), inference, choice=choice, hardware=hw())
+
+    def test_option_specific_native_kv_profile_remains_separate_from_derived(self):
+        observed = evidence()
+        observed.update({
+            "status": "gpu_load_only_completed",
+            "mode": "context", "weights_loaded": True,
+            "context_initialized": True, "n_ctx": 128,
+            "n_batch": 64, "n_ubatch": 64,
+            "native_buffers": [
+                {"kind": "model", "device": "CUDA0", "mib": 5488.4},
+                {"kind": "kv", "device": "CUDA0", "mib": 84.0},
+                {"kind": "compute", "device": "CUDA0", "mib": 63.38},
+            ],
+            "context_options_requested": {
+                "n_ctx": 128, "n_batch": 64, "n_ubatch": 64,
+                "swa_full": True, "flash_attention": "off",
+                "type_k": "F16", "type_v": "F16",
+                "n_seq_max": 1, "kv_unified": False, "offload_kqv": True,
+            },
+            "native_kv_log": {
+                "n_ctx_effective_native": 256,
+                "n_ctx_seq_effective_native": 256,
+                "n_batch_effective_native": 64,
+                "n_ubatch_effective_native": 64,
+                "flash_attention_effective": None,
+                "global_kv": {
+                    "cells": 256, "native_logical_kv": {
+                        "key_logical_mib_native": 21.0,
+                        "value_logical_mib_native": 21.0},
+                },
+                "swa_kv": {
+                    "cells": 256, "native_logical_kv": {
+                        "key_logical_mib_native": 21.0,
+                        "value_logical_mib_native": 21.0},
+                },
+            },
+        })
+        saved = self.store(observed)
+        profile = json.loads(Path(saved["profile_file"]).read_text())
+        self.assertEqual(len(profile["context_profiles"]), 1)
+        key, ctx = next(iter(profile["context_profiles"].items()))
+        self.assertIn("/flash=off/k=F16/v=F16/swa=on/batch=64/ubatch=64", key)
+        self.assertEqual(ctx["gpu_kv_buffer_mib"], 84.0)
+        self.assertEqual(ctx["gpu_compute_buffer_mib"], 63.38)
+        self.assertEqual(ctx["native_config"]["global_key_logical_mib_native"], 21)
+        self.assertEqual(ctx["kv_source_derivation"]["key_logical_bytes_derived"],
+                         42 * 1048576)
+        self.assertTrue(ctx["kv_source_derivation"]["model_geometry_verification_pending"])
+        observed["native_kv_log"]["global_kv"]["cells"] = 512
+        with self.assertRaisesRegex(ValueError, "capacity disagrees"):
+            self.store(observed)
 
     def test_context_remains_unknown_until_explicitly_observed(self):
         self.store()
