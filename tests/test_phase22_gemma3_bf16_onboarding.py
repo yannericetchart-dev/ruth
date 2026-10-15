@@ -10,6 +10,8 @@ from ruth_runtime.model_catalog import (
 from ruth_runtime.model_profile_v2 import load_profile, profile_path
 from ruth_runtime.candidate_selection import load_quantization_policy
 from ruth_runtime.launcher import main
+from ruth_runtime.load_only_probe import probe_model_load
+from ruth_runtime.load_only_worker import APPROVED_LOADS
 
 REV="6de70cb020706f01529b27fee7ab17c5969041c8"
 DIGEST="b144bde489651d3d292d7e47a59c6f811cdd96d184be582e5ad30ab338b9b6bf"
@@ -82,6 +84,25 @@ class Gemma3Bf16OnboardingTests(unittest.TestCase):
         self.assertIn("overflow",floating["F16"]["numeric_fidelity_warning"])
         self.assertIn("Tensor Core",floating["F32"]["numeric_fidelity_warning"])
         self.assertNotIn("BF32",[x["quantization"] for x in p["quality_policy"]])
+
+    def test_gemma3_bf16_native_weights_stage_only(self):
+        self.assertEqual(APPROVED_LOADS["gemma-3-1b-it"]["quantizations"],("BF16",))
+        self.assertEqual(APPROVED_LOADS["gemma-3-1b-it"]["modes"],("weights",))
+        with patch("ruth_runtime.load_only_probe.inspect_python_environment",
+                   side_effect=AssertionError("Do not inspect CUDA environment")):
+            x=probe_model_load(model_version="gemma-3-1b-it",
+                               quantization="BF16",mode="context",
+                               allow_gpu_load=True,n_ctx=256)
+        self.assertEqual(x["status"],"unsupported_model_loading_stage")
+        self.assertFalse(x["weights_loaded"])
+        with patch("sys.stdout",new_callable=StringIO) as out:
+            rc=main(["models","probe-load","--purpose","production",
+                     "--family","gemma","--model","gemma-3",
+                     "--version","gemma-3-1b-it","--quantization","BF16",
+                     "--load-mode","weights"])
+        self.assertEqual(rc,2)
+        self.assertEqual(json.loads(out.getvalue())["status"],
+                         "gpu_load_not_authorized")
 
     def test_cli_select_gemma3_offline_does_not_download_or_infer(self):
         with (patch("sys.stdout",new_callable=StringIO) as out,
