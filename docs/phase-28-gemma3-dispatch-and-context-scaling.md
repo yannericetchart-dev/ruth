@@ -259,6 +259,66 @@ The updated report contains `main_attention_families_observed` and
 `attention_family_summary`, separating true attention kernels from
 auxiliary fixup/combine kernels. No new CUDA run is needed.
 
+## Second actual Nsight dispatch evidence — F16/F16 Flash OFF, n_ctx=2048
+
+The same user successfully profiled and exported the F16/F16 Flash OFF
+workload to `.ruth-build/phase28/f16-off-ctx2048.sqlite`.
+The worker again verified 27/27 CUDA offload, 1536 prefill tokens, 16
+logits-enabled decode tokens, and 52 MiB logical F16 KV. The saved logits
+SHA256 `e0f1c3f29fca765992c0d4f93d345cbabaf1b97d6e97cb5c0bd3268f2b46e3c4`
+matches the unprofiled F16 run.
+
+Nsight Systems 2025.6.3 generated a profile with 141,195 trace events
+(the Flash ON trace had 123,039 events; **these are all trace events,
+not counts of CUDA kernel launches**, so they must not be used to
+quantify per-token GPU overhead). The native `cuda_gpu_kern_sum`
+report records these source-consistent *non-Flash operator* symbols:
+
+| Observed kernel symbol | Calls | Sum of GPU kernel duration |
+|---|---:|---:|
+| `cutlass::Kernel2<cutlass_80_tensorop_s1688gemm...>` | 728 | 14.9653 ms |
+| `soft_max_f32<true,0,0,float>` | 520 | 13.3291 ms |
+| `soft_max_f32<true,1024,1024,float>` | 104 | 2.8050 ms |
+| `soft_max_f32<true,512,512,float>` | 104 | 1.0559 ms |
+| `soft_max_f32<true,256,256,float>` | 104 | 0.6658 ms |
+
+The pinned source `src/llama-graph.cpp` (approximately lines 2688–2732)
+explicitly builds a K@Q matmul, `ggml_soft_max_ext` and a V@attention
+matmul when Flash is disabled. The pinned CUDA softmax implementation
+contains the observed `soft_max_f32` kernel. However, the CUTLASS GEMM
+symbols are **generic** and may represent other matrix multiplications,
+not just attention. The CUDA trace still lacks a graph-to-kernel join
+and prefill-vs-decode phase attribution.
+
+The post-trace offline reader accepts a newly explicit
+`--expected-flash off` mode only when it sees recognizable softmax
+and CUTLASS operators **and** no FlashAttention family. It also accepts
+`--expected-flash on` only if it sees a main FlashAttention kernel;
+an incorrect mode label causes a nonzero exit. This is a limited
+source-informed consistency check, **not** native proof of each
+attention-graph operation.
+
+To re-read both existing traces, without any GPU work:
+
+```bash
+.venv/bin/python -m unittest tests.test_phase28_gemma3_context_dispatch -v
+
+.venv/bin/python -m ruth_runtime.gemma3_phase28_dispatch \\
+  --sqlite .ruth-build/phase28/f16-off-ctx2048.sqlite \\
+  --expected-flash off
+
+.venv/bin/python -m ruth_runtime.gemma3_phase28_dispatch \\
+  --sqlite .ruth-build/phase28/bf16-on-ctx2048.sqlite \\
+  --expected-flash on
+```
+
+`native_kernel_names_verified` in this version remains backward-compatible
+and specifically denotes **main FlashAttention kernel names**, so it is
+false for a healthy Flash OFF run. For Flash OFF, inspect
+`expected_flash_consistent_with_kernel_names`, `operator_kernel_summary`,
+and the explicitly false `nonflash_graph_kernel_attribution_verified`.
+Do not promote the runtime based on this evidence.
+
 ## Promotion gate
 
 Phase 28 produces *diagnostic* context, timing, memory and CUDA-kernel
