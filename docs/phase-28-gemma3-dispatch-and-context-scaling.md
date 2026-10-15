@@ -599,6 +599,53 @@ The analysis continues to report
 before designing further graph-node coverage validation. The fact
 that those fields exist is **not** proof of their completeness.
 
+## Nsight 2025.6.3 default graph-level capture limits
+
+User inspection of the verified Phase28 NVTX3 CUDA Graph trace
+`.ruth-build/phase28/bf16-on-ctx2048-nvtx3.sqlite` found:
+
+- `CUPTI_ACTIVITY_KIND_KERNEL`: 24,120 records, **all** with
+  `graphId=NULL` and `graphNodeId=NULL`.
+- `CUPTI_ACTIVITY_KIND_GRAPH_TRACE`: 128 records.
+- `CUDA_GRAPH_EVENTS`: 34 records.
+
+This does **not** contradict the independently verified 128
+`cudaGraphLaunch` calls or their 68 prefill / 60 decode phase
+correlations. The NVIDIA Nsight Systems guide documents that
+`--cuda-graph-trace=graph` captures graph executions as a whole
+and does not collect individual graph-node activities.
+With a supported CUDA driver this is the default mode.
+
+To collect **node-level** evidence, run a separate, explicitly
+authorized Phase28 profiling experiment using
+`--cuda-graph-trace=node`; keep the earlier graph-level SQLite
+unchanged. Example on the user's Nsight 2025.6.3 installation:
+
+```bash
+nsys profile --trace=cuda,nvtx --cuda-graph-trace=node \
+  --sample=none --cpuctxsw=none \
+  -o .ruth-build/phase28/bf16-on-ctx2048-nvtx3-nodes \
+  env RUTH_PHASE28_NVTX3_BRIDGE=1 \
+  .venv/bin/python -m ruth_runtime.gemma3_phase28 \
+    --candidate bf16-on --n-ctx 2048 \
+    --execute --allow-gpu-inference
+
+nsys export --type sqlite \
+  --output .ruth-build/phase28/bf16-on-ctx2048-nvtx3-nodes.sqlite \
+  .ruth-build/phase28/bf16-on-ctx2048-nvtx3-nodes.nsys-rep
+```
+
+Node tracing can introduce **substantial overhead**. Do not compare
+the resulting prefill/decode wall times to graph-level runs as though
+they were equivalent benchmark conditions. The previous graph-level
+`gemma3_phase28_graph_audit` and `gemma3_phase28_execution_paths`
+require `GRAPH_TRACE` and are **not** expected to validate a node-level
+capture without schema-specific changes. Before modifying any audit,
+inspect the new SQLite kernel rows, `graphId`, `graphNodeId`,
+CUDA runtime launch correlations and phase markers in read-only mode.
+Do not assert complete graph-node coverage from non-null IDs alone.
+Production qualification remains false.
+
 ## Promotion gate
 
 Phase 28 produces *diagnostic* context, timing, memory and CUDA-kernel
