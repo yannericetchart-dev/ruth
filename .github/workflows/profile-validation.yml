@@ -13,6 +13,7 @@ on:
       - "ruth_runtime/canonical_profile_git.py"
       - "catalog/quantization_policy.json"
       - "tests/test_phase20_canonical_profiles.py"
+      - "tests/test_phase22_gemma3_bf16_onboarding.py"
       - "ruth_runtime/hardware_eligibility.py"
       - "ruth_runtime/model_memory_profiles.py"
       - "ruth_runtime/profile_registry.py"
@@ -58,7 +59,8 @@ jobs:
             tests.test_phase17_auto_production \
             tests.test_phase18_llama_kv_profile \
             tests.test_phase19_probe_auto_record \
-            tests.test_phase20_canonical_profiles -v
+            tests.test_phase20_canonical_profiles \
+            tests.test_phase22_gemma3_bf16_onboarding -v
       - name: Validate submitted and owner-measured JSON files (offline)
         shell: bash
         run: |
