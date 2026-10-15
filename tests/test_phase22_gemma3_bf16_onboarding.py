@@ -42,7 +42,10 @@ class Gemma3Bf16OnboardingTests(unittest.TestCase):
         self.assertEqual(c["variants"]["BF16"]["precision_family"],"floating")
         self.assertEqual(c["variants"]["BF16"]["file_bytes"],SIZE)
         self.assertEqual(c["selection"]["original_checkpoint_dtype"],"BF16")
-        self.assertEqual(c["architecture"]["status"],"unknown")
+        self.assertEqual(c["architecture"]["status"],
+                         "gguf_header_observed_native_crosscheck_pending")
+        self.assertEqual(c["architecture"]["layer_count"],26)
+        self.assertEqual(c["architecture"]["kv_heads"],1)
         self.assertIsNone(c["architecture"]["global_layers"])
         self.assertEqual(c["variants"]["BF16"]["context_observations"],{})
         self.assertEqual(profile_path("gemma","gemma-3","gemma-3-1b-it").name,
