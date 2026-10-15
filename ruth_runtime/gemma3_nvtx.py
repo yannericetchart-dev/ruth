@@ -11,7 +11,10 @@ from ctypes.util import find_library
 
 
 class NativeRanges:
-    def __init__(self):
+    def __init__(self, experiment: str = "PHASE27"):
+        if experiment not in ("PHASE27", "PHASE28"):
+            raise ValueError("Unapproved NVTX experiment")
+        self.experiment = experiment
         self._lib = None
         try:
             name = find_library("nvToolsExt")
@@ -34,7 +37,7 @@ class NativeRanges:
         if phase not in ("prefill", "decode"):
             raise ValueError("Unexpected NVTX benchmark phase")
         if self._lib is not None:
-            self._lib.nvtxRangePushA(("RUTH_GEMMA3_PHASE27_" + phase.upper()).encode("ascii"))
+            self._lib.nvtxRangePushA(("RUTH_GEMMA3_" + self.experiment + "_" + phase.upper()).encode("ascii"))
         try:
             yield
         finally:
