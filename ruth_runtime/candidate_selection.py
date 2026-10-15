@@ -113,8 +113,14 @@ def inspect_single_nvidia_gpu(
     return GpuMemory(parts[0], parts[1], total, free)
 
 
-def _get_model_and_variants(root: Path, purpose: str):
-    choice = select_model(purpose, project_root=root)
+def _get_model_and_variants(root: Path, purpose: str, selected_choice=None):
+    choice = selected_choice or select_model(purpose, project_root=root)
+    if selected_choice is not None:
+        expected = select_model(purpose, family=choice.family, model=choice.model,
+                                version=choice.version, format=choice.format,
+                                quantization=choice.quantization,project_root=root)
+        if expected != selected_choice:
+            raise CandidateError("Unpinned discovery target")
     catalog = load_catalog(root)
     matching = [e for e in catalog["models"]
                 if (e["family"], e["model"], e["version"], e["format"]) ==
@@ -146,7 +152,9 @@ def _hf_variants(info: dict, choice: Any, item: dict, policy: dict) -> tuple[lis
     if not isinstance(siblings, list) or not 1 <= len(siblings) <= 3000:
         raise CandidateError("Hugging Face file inventory missing or too large")
     suffix = "-" + choice.quantization + ".gguf"
-    if not choice.filename.endswith(suffix):
+    floating = choice.quantization.upper() in ("BF16", "F16", "F32")
+    if not (choice.filename.endswith(suffix)
+            or (floating and choice.filename.lower().endswith(suffix.lower()))):
         raise CandidateError("Cannot derive fixed GGUF family filename prefix")
     prefix = choice.filename[:-len(suffix)]
     re_file = re.compile("^" + re.escape(prefix) + r"-([A-Za-z][A-Za-z0-9_]{1,24})\.gguf$")
@@ -176,6 +184,8 @@ def _hf_variants(info: dict, choice: Any, item: dict, policy: dict) -> tuple[lis
             counters["missing_lfs_or_size"] += 1
             continue  # Never substitute estimated filesize or SHA256.
         pinned = existing.get(quant)
+        if pinned is None and quant.upper() in ("BF16","F16","F32"):
+            pinned = existing.get(quant.upper())
         if pinned is not None and (
             pinned["expected_sha256"] != digest or
             (pinned.get("expected_size_bytes") is not None and
@@ -219,6 +229,7 @@ def discover_quantizations(
     *, project_root: Path = PROJECT_ROOT, purpose: str = "production",
     authorize_metadata_network: bool = False,
     fetch: Callable[[str], dict] | None = None,
+    selected_choice=None,
 ) -> dict:
     """No hardware calls, files downloaded, new pins or license acceptance."""
     base = {
@@ -232,7 +243,7 @@ def discover_quantizations(
     try:
         root = Path(project_root)
         policy = load_quantization_policy(root)
-        choice, item = _get_model_and_variants(root, purpose)
+        choice, item = _get_model_and_variants(root, purpose, selected_choice)
         # The repository default branch can advance. Discover quantizations
         # against the exact immutable source revision already pinned by Ruth.
         info = (fetch(choice.repo_id) if fetch is not None else
