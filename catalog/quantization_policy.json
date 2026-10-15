@@ -1,13 +1,43 @@
 {
   "schema": "ruth-quantization-policy-v2",
   "source": "https://huggingface.co/",
-  "description": "Order is a subjective, qualitative HEURISTIC guided by uploader's variant descriptions; it is NOT a measured quality benchmark, precision score, or guarantee of compatibility. Rank only applies within the same model/version.",
+  "description": "Heuristic within one model/version only. FP32/F16/BF16 GGUF weights are not low-bit quantized, but conversion and source weight dtype still affect numerical fidelity. Across different models use independent, empirical quality scores.",
   "max_recommended_candidates": 5,
   "quality_policy": [
     {
+      "quantization": "F32",
+      "priority": 230,
+      "tier": "unquantized_float32",
+      "cuda_status": "unverified"
+    },
+    {
+      "quantization": "F16",
+      "priority": 220,
+      "tier": "unquantized_float16",
+      "cuda_status": "unverified"
+    },
+    {
+      "quantization": "BF16",
+      "priority": 220,
+      "tier": "unquantized_bfloat16",
+      "cuda_status": "unverified"
+    },
+    {
+      "quantization": "f32",
+      "priority": 230,
+      "tier": "unquantized_float32",
+      "cuda_status": "unverified"
+    },
+    {
       "quantization": "f16",
       "priority": 220,
-      "tier": "near_original",
+      "tier": "unquantized_float16",
+      "cuda_status": "unverified"
+    },
+    {
+      "quantization": "bf16",
+      "priority": 220,
+      "tier": "unquantized_bfloat16",
       "cuda_status": "unverified"
     },
     {
@@ -133,12 +163,14 @@
   "notes": [
     "f16 is a valid lowercase GGUF filename quantization when published; e.g. Llama 3.2 1B f16 ~2.48GB. F16 is not present in bartowski/gemma-2-9b-it-GGUF and Gemma 2 9B full F16 is ~18.5GB in other repositories.",
     "Phase 05 selects highest heuristic quality with complete GGUF file bytes no greater than free VRAM reported by NVIDIA; zero VRAM reserve.",
-    "Initial probe uses n_ctx=128 as the explicitly chosen small starting context, not a measurement or architectural minimum; find operational context during Phase 09 calibration.",
     "Runtime allocations, KV cache, buffer overhead, failures/OOM and actual model residency belong to isolated post-selection calibration.",
     "Full GGUF disk bytes are only a proxy for weight residency and cannot certify actual GPU loadability.",
     "Discovery does not register, pin, download, or accept the model's license; quality priority remains unmeasured.",
-    "The policy is shared across registered models, but discovery is per exact selected model AND selected Hugging Face repo, not an all-model global inventory."
+    "The policy is shared across registered models, but discovery is per exact selected model AND selected Hugging Face repo, not an all-model global inventory.",
+    "Supported GGUF floating-format labels (case sensitive source filenames) are F32, F16, BF16, f32, f16 and bf16; actual GGUF tensor types and conversion provenance must be verified before claiming no quality loss.",
+    "F16 and BF16 are two different 16-bit floating representations; neither is universally superior to the other. Prefer original trained/checkpoint dtype. F32 converted from BF16 cannot restore truncated precision.",
+    "Minimum profiling context requested on pinned llama.cpp is 256, and extensions are multiples of 256. Existing 128-request load evidence remains historical and must not be relabeled."
   ],
-  "initial_probe_n_ctx": 128,
+  "initial_probe_n_ctx": 256,
   "selection_rule": "GGUF file size in exact bytes <= current reported free GPU memory in MiB * 1048576; no VRAM reserve and no runtime/KV/compute overhead at this step. Not a guarantee of loadability."
 }
