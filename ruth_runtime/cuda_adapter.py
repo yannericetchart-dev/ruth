@@ -16,7 +16,9 @@ from .contracts import StackSelection
 from .install_plan import WHEEL_VERSION
 
 INITIAL_STACK = StackSelection("gpu", "nvidia", "cuda", "llama.cpp", "llama_cpp_python")
-_ALLOWED_OPTIONS = frozenset({"n_ctx", "n_batch", "n_ubatch"})
+_ALLOWED_OPTIONS = frozenset({"n_ctx", "n_batch", "n_ubatch",
+                               "flash_attn", "swa_full", "type_k", "type_v"})
+_KV_FORMATS = {"F16": 1, "Q4_0": 2, "Q8_0": 8}
 
 
 class UnsafeRuntimeOptions(ValueError):
@@ -27,7 +29,7 @@ class UnverifiedCudaEngine(RuntimeError):
     """Fail closed: binding absent, wrong version, or CUDA offload unavailable."""
 
 
-def _options(raw: Mapping[str, object]) -> dict[str, int]:
+def _options(raw: Mapping[str, object]) -> dict[str, object]:
     if not isinstance(raw, Mapping):
         raise UnsafeRuntimeOptions("Options must be an explicit mapping")
     keys = set(raw)
@@ -37,7 +39,7 @@ def _options(raw: Mapping[str, object]) -> dict[str, int]:
             "Unsupported or potentially unsafe option(s): " +
             ", ".join(sorted(str(x) for x in extras)))
     valid: dict[str, int] = {}
-    for name in _ALLOWED_OPTIONS:
+    for name in ("n_ctx", "n_batch", "n_ubatch"):
         if name in raw:
             value = raw[name]
             if isinstance(value, bool) or not isinstance(value, int) or value < 1:
@@ -48,7 +50,20 @@ def _options(raw: Mapping[str, object]) -> dict[str, int]:
     n_ubatch = valid.get("n_ubatch", 128)
     if n_batch > n_ctx or n_ubatch > n_batch:
         raise UnsafeRuntimeOptions("Require n_ubatch <= n_batch <= n_ctx")
-    return {"n_ctx": n_ctx, "n_batch": n_batch, "n_ubatch": n_ubatch}
+    optional = {}
+    for name in ("flash_attn", "swa_full"):
+        if name in raw:
+            if type(raw[name]) is not bool:
+                raise UnsafeRuntimeOptions(name + " must be an explicit boolean")
+            optional[name] = raw[name]
+    for name in ("type_k", "type_v"):
+        if name in raw:
+            if raw[name] not in _KV_FORMATS:
+                raise UnsafeRuntimeOptions("Unsupported pinned ggml KV type")
+            optional[name] = _KV_FORMATS[raw[name]]
+    if raw.get("type_v", "F16") != "F16" and raw.get("flash_attn") is not True:
+        raise UnsafeRuntimeOptions("Quantized Value requires Flash Attention ON")
+    return {"n_ctx": n_ctx, "n_batch": n_batch, "n_ubatch": n_ubatch, **optional}
 
 
 class _NoDiskCacheSession:
@@ -188,6 +203,8 @@ class CudaLlamaAdapter:
             n_ctx=selected["n_ctx"],
             n_batch=selected["n_batch"],
             n_ubatch=selected["n_ubatch"],
+            **{k: v for k, v in selected.items()
+               if k in ("flash_attn", "swa_full", "type_k", "type_v")},
             vocab_only=False,
             verbose=self.native_diagnostics,
         )
