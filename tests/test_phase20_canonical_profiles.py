@@ -14,7 +14,8 @@ from ruth_runtime.dependencies import PROJECT_ROOT
 from ruth_runtime.model_catalog import load_catalog
 from ruth_runtime.model_profile_v2 import (
     create_profile, evaluate_loading_fit, load_probe_config, load_profile,
-    merge_published_measurement, resolve_model_profile, profile_path)
+    merge_published_measurement, resolve_model_profile, profile_path,
+    precision_fidelity_role)
 from ruth_runtime.candidate_selection import load_quantization_policy
 from ruth_runtime.launcher import main
 from ruth_runtime.production_selection import _published_minimal_inference
@@ -22,6 +23,20 @@ from ruth_runtime.offline_memory_fit import explain_offline_weights_fit
 
 
 class CanonicalProfilesTests(unittest.TestCase):
+    def test_floating_weights_prioritize_original_dtype_not_upcast_size(self):
+        self.assertEqual(
+            precision_fidelity_role("BF16","BF16"),
+            "original_checkpoint_precision_preserved")
+        self.assertEqual(
+            precision_fidelity_role("F32","BF16"),
+            "upcast_no_precision_recovery")
+        self.assertEqual(
+            precision_fidelity_role("F16","BF16"),
+            "downcast_or_changed_float_representation_quality_unverified")
+        self.assertEqual(
+            precision_fidelity_role("F32",None),
+            "original_dtype_unknown")
+
     def test_gemma_has_exactly_one_canonical_profile_in_git(self):
         p = profile_path("gemma", "gemma-2", "gemma-2-9B-it")
         self.assertTrue(p.is_file())
