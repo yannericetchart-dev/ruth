@@ -146,7 +146,7 @@ def _merge_index(index: dict, signature: dict, row: dict) -> bool:
     # Two old immutable Git records may use the same unknown configuration.
     # Check ALL historical buckets before appending any new observation.
     if any(_canonical(item.get("data")) == _canonical(row)
-           for group in matches for item in group.get("observations", [])):
+           for group in index.values() for item in group.get("observations", [])):
         return False
     bucket = matches[0] if matches else index.setdefault(
         key, {"identity": signature, "observations": []})
