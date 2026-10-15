@@ -149,7 +149,7 @@ def _merge_index(index: dict, signature: dict, row: dict) -> bool:
     if len(bucket["observations"]) >= 64:
         raise ValueError("Canonical configuration observation limit exceeded")
     bucket["observations"].append({"sha256": digest, "data": row})
-    bucket["observations"].sort(key=lambda a: a["sha256"])
+    bucket["observations"].sort(key=lambda a: a.get("sha256") or "")
     return True
 
 
