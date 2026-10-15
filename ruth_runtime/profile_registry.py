@@ -17,7 +17,8 @@ from .dependencies import PROJECT_ROOT
 from .hardware_eligibility import inspect_host_hardware
 from .model_catalog import load_catalog
 from .model_memory_profiles import _load_evidence, _positive_finite
-from .install_plan import WHEEL_VERSION
+from .install_plan import WHEEL_VERSION, LLAMA_CPP_SUBMODULE_COMMIT
+from .llama_kv_profile import calculate_llama_kv
 
 SCHEMA = "ruth-model-runtime-memory-registry-v1"
 
@@ -355,20 +356,96 @@ def record_local_profile(
         n_ctx = report.get("n_ctx")
         if type(n_ctx) is not int or n_ctx <= 0:
             raise ValueError("Context size missing from native allocation success")
-        # Do not assume Flash Attention or KV precision from C API defaults.
-        # Both remain null until recorded explicitly by native diagnostics.
-        config_key = f"{key}/n_ctx={n_ctx}/flash=unknown/k=unknown/v=unknown"
+        options = report.get("context_options_requested")
+        native = report.get("native_kv_log")
+        source = None
+        if options is not None:
+            if (not isinstance(options, dict)
+                or set(options) != {"n_ctx", "n_batch", "n_ubatch",
+                                   "swa_full", "flash_attention", "type_k",
+                                   "type_v", "n_seq_max", "kv_unified", "offload_kqv"}
+                or options["n_ctx"] != n_ctx
+                or options["offload_kqv"] is not True):
+                raise ValueError("Invalid verified C context parameters")
+            source = calculate_llama_kv(
+                project_root=root, n_ctx=options["n_ctx"],
+                n_batch=options["n_batch"], n_ubatch=options["n_ubatch"],
+                swa_full=options["swa_full"],
+                flash_attention=options["flash_attention"],
+                type_k=options["type_k"], type_v=options["type_v"],
+                n_seq_max=options["n_seq_max"], kv_unified=options["kv_unified"])
+        if native is not None and not isinstance(native, dict):
+            raise ValueError("Malformed native KV diagnostics")
+        native = native or {}
+        if source is not None:
+            actual_ctx = native.get("n_ctx_effective_native")
+            if (actual_ctx is not None and
+                actual_ctx != source["configuration"]["n_ctx_effective_derived"]):
+                raise ValueError("Native context disagrees with pinned backend policy")
+            for native_group, expected_group in (
+                ("global_kv", "global_cache"), ("swa_kv", "swa_cache")
+            ):
+                actual = (native.get(native_group) or {}).get("cells")
+                if actual is not None and actual != source[expected_group]["cells"]:
+                    raise ValueError("Native KV capacity disagrees with pinned backend")
+        if source is None:
+            config_key = f"{key}/n_ctx={n_ctx}/flash=unknown/k=unknown/v=unknown"
+        else:
+            opts = source["configuration"]
+            config_key = (
+                f"{key}/n_ctx={n_ctx}/flash={opts['flash_attention_requested']}"
+                f"/k={opts['type_k']}/v={opts['type_v']}"
+                f"/swa={'on' if opts['swa_full'] else 'off'}"
+                f"/batch={opts['n_batch_requested']}/ubatch={opts['n_ubatch_requested']}"
+            )
+        glob = native.get("global_kv") or {}
+        swa = native.get("swa_kv") or {}
+        group_sizes = [v for v in (glob.get("cells"), swa.get("cells"))
+                       if type(v) is int]
+        def tensor(group, part):
+            return (group.get("native_logical_kv") or {}).get(part)
         data["context_profiles"][config_key] = {
             "n_ctx_requested": n_ctx,
-            "kv_size_native": report.get("native_kv_sizes") or None,
+            "kv_size_native": group_sizes or report.get("native_kv_sizes") or None,
             "kv_padding": None,
-            "flash_attention": None,
-            "kv_type_k": None, "kv_type_v": None,
+            "flash_attention": (options or {}).get("flash_attention"),
+            "kv_type_k": (options or {}).get("type_k"),
+            "kv_type_v": (options or {}).get("type_v"),
             "gpu_kv_buffer_mib": _native_buffer(report, "kv"),
             "gpu_compute_buffer_mib": _native_buffer(report, "compute"),
             "backend": "llama.cpp",
             "verified_native_allocations_only": True,
             "inference_verified": False,
+            "kv_backend_commit": LLAMA_CPP_SUBMODULE_COMMIT if source else None,
+            "native_config": {
+                "n_batch_requested": options["n_batch"],
+                "n_ubatch_requested": options["n_ubatch"],
+                "swa_full": options["swa_full"],
+                "flash_attention_requested": options["flash_attention"],
+                "flash_attention_effective": native.get("flash_attention_effective"),
+                "n_ctx_effective_native": native.get("n_ctx_effective_native"),
+                "n_ctx_seq_effective_native": native.get("n_ctx_seq_effective_native"),
+                "n_batch_effective_native": native.get("n_batch_effective_native"),
+                "n_ubatch_effective_native": native.get("n_ubatch_effective_native"),
+                "global_cache_cells_native": glob.get("cells"),
+                "swa_cache_cells_native": swa.get("cells"),
+                "global_key_logical_mib_native": tensor(glob,"key_logical_mib_native"),
+                "global_value_logical_mib_native": tensor(glob,"value_logical_mib_native"),
+                "swa_key_logical_mib_native": tensor(swa,"key_logical_mib_native"),
+                "swa_value_logical_mib_native": tensor(swa,"value_logical_mib_native"),
+            } if source else None,
+            "kv_source_derivation": {
+                "n_ctx_effective_derived": source["configuration"]["n_ctx_effective_derived"],
+                "n_ubatch_effective_derived": source["configuration"]["n_ubatch_effective_derived"],
+                "global_cells_derived": source["global_cache"]["cells"],
+                "swa_cells_derived": source["swa_cache"]["cells"],
+                "key_logical_bytes_derived": source["key_logical_bytes_derived"],
+                "value_logical_bytes_derived": source["value_logical_bytes_derived"],
+                "swa_full_off_saves_bytes_derived": source["swa_full_off_saves_bytes_derived"],
+                "swa_off_first_saving_at_effective_ctx":
+                    source["swa_off_first_saving_at_effective_ctx"],
+                "model_geometry_verification_pending": True,
+            } if source else None,
         }
 
     data["observed_evidence_sha256s"] = [*seen, evidence_digest]
