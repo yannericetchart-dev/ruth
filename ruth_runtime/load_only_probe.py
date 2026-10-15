@@ -55,6 +55,7 @@ def extract_native_buffers(log: str) -> list[dict]:
 def probe_model_load(
     *, project_root: Path = PROJECT_ROOT,
     quantization: str = "Q4_K_L",
+    model_version: str = "gemma-2-9B-it",
     mode: str = "weights",
     n_ctx: int = 128,
     n_batch: int = 64, n_ubatch: int = 64,
@@ -70,7 +71,7 @@ def probe_model_load(
 ) -> dict:
     report = {
         "status": "gpu_load_not_authorized",
-        "candidate": f"gemma-2-9B-it/gguf/{quantization}",
+        "candidate": f"{model_version}/gguf/{quantization}",
         "mode": mode, "cuda_preinit_requested": cuda_preinit,
         "weights_loaded": False,
         "context_initialized": False, "inference_executed": False,
@@ -88,6 +89,16 @@ def probe_model_load(
             or type(cuda_preinit) is not bool):
         return finish("unsupported_load_diagnostic",
                       error="Only pinned Gemma Q4_K_L or Q4_K_M: weights/context; 64<=n_ctx<=4096")
+    approved = {
+        "gemma-2-9B-it": {"model": "gemma-2", "quantizations": ("Q4_K_L","Q4_K_M"),
+                           "modes": ("weights", "context")},
+        "gemma-3-1b-it": {"model": "gemma-3", "quantizations": ("BF16",),
+                          "modes": ("weights",)},
+    }.get(model_version)
+    if (approved is None or quantization not in approved["quantizations"]
+        or mode not in approved["modes"]):
+        return finish("unsupported_model_loading_stage",
+                      error="Only Gemma 3 BF16 weights-only is approved; KV context geometry remains unknown")
     root = Path(project_root)
     if mode == "context":
         try:
@@ -107,7 +118,9 @@ def probe_model_load(
             and Path(env.interpreter).resolve() == (root / ".venv/bin/python").resolve()):
         return finish("invalid_project_venv")
     try:
-        choice = select_model("production", quantization=quantization, project_root=root)
+        choice = select_model("production", family="gemma", model=approved["model"],
+                              version=model_version, format="gguf",
+                              quantization=quantization,project_root=root)
         valid, _, reason = _valid_local_gguf(root, choice)
         if not valid:
             return finish("model_integrity_or_license_unverified", error=reason)
@@ -134,6 +147,8 @@ def probe_model_load(
         argv = [str(root / ".venv/bin/python"), "-I", "-c", WORKER_SCRIPT,
                 str(root), str(root), uuid, quantization, mode, str(n_ctx),
                 "preinit" if cuda_preinit else "normal"]
+        if model_version != "gemma-2-9B-it":
+            argv.append(model_version)
         pre = gpu_preflight(uuid, run=run)
         if pre.status != "gpu_ready":
             return finish(pre.status, gpu_uuid=uuid, gpu_pci_bus=pci,
@@ -161,6 +176,8 @@ def probe_model_load(
             raise ValueError("Unrecognized worker result schema")
         if (data.get("mode") != mode
             or data.get("quantization") != quantization
+            or (model_version != "gemma-2-9B-it"
+                and data.get("model_version") != model_version)
             or data.get("gpu_uuid") != uuid
             or data.get("inference_executed") is not False
             or data.get("generated_tokens") != 0
