@@ -276,7 +276,9 @@ def audit_cast_gemm(
         # Graph signatures use kernel launch order, not DAG edges.
         # graph signature is required only for prefill graph replay.
         replay_signatures=defaultdict(set)
-        for i in range_graph.values():
+        for i in range_graph:
+            # range_graph keys are NVTX range indexes; values are lists
+            # of cudaGraphLaunch correlation IDs.
             if nvtx[i][3]!="prefill":
                 continue
             group=events.get(i,{})
