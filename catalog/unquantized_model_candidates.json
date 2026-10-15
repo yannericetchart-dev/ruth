@@ -1,0 +1,84 @@
+{
+  "schema": "ruth-floating-model-proposals-v1",
+  "scope": "research_candidates_not_model_catalog_pins",
+  "policy": "NO automatic download, load or production qualification before immutable revision, exact GGUF bytes, SHA256, license and native compatibility are verified",
+  "floating_formats": [
+    "F32",
+    "F16",
+    "BF16"
+  ],
+  "candidates": [
+    {
+      "model_id": "qwen/qwen3/Qwen3-1.7B",
+      "purpose": "production_unquantized_candidate",
+      "source_checkpoint": "Qwen/Qwen3-1.7B",
+      "source_dtype": "BF16",
+      "license": "apache-2.0",
+      "variants": [
+        {
+          "format": "BF16",
+          "source": "Qwen/Qwen3-1.7B",
+          "distribution": "convert source safetensors with pinned llama.cpp, audited conversion required",
+          "gguf_file_bytes": null,
+          "expected_sha256": null,
+          "release_status": "source_checkpoint_reported_bf16"
+        },
+        {
+          "format": "F16",
+          "source": "ggml-org/Qwen3-1.7B-GGUF",
+          "filename": "Qwen3-1.7B-f16.gguf",
+          "approx_file_gb_decimal": 4.07,
+          "expected_sha256": null,
+          "release_status": "public_gguf_unpinned"
+        }
+      ],
+      "caveats": [
+        "BF16 and F16 are different encodings; use same checkpoint and validated conversion provenance",
+        "6GiB GPU fit not yet proven"
+      ]
+    },
+    {
+      "model_id": "qwen/qwen3/Qwen3-0.6B",
+      "purpose": "controlled_floating_precision_and_f32_backend_tests",
+      "source_checkpoint": "Qwen/Qwen3-0.6B",
+      "source_dtype": "BF16",
+      "license": "apache-2.0",
+      "variants": [
+        {
+          "format": "BF16",
+          "source": "ggml-org/Qwen3-0.6B-GGUF",
+          "filename": "Qwen3-0.6B-BF16.gguf",
+          "approx_file_gb_decimal": 1.51,
+          "expected_sha256": null,
+          "release_status": "public_gguf_unpinned"
+        },
+        {
+          "format": "F16",
+          "source": "ggml-org/Qwen3-0.6B-GGUF",
+          "filename": "Qwen3-0.6B-f16.gguf",
+          "approx_file_gb_decimal": 1.51,
+          "expected_sha256": null,
+          "release_status": "public_gguf_unpinned"
+        },
+        {
+          "format": "F32",
+          "source": "prithivMLmods/Qwen3-0.6B-GGUF",
+          "filename": "Qwen3_0.6B.F32.gguf",
+          "approx_file_gb_decimal": 2.39,
+          "expected_sha256": null,
+          "release_status": "third_party_gguf_unpinned_converted_from_bf16_no_quality_gain"
+        }
+      ],
+      "caveats": [
+        "F32 from BF16 does not restore lost mantissa precision",
+        "third-party GGUF must be checked against source weights and hash pins"
+      ]
+    }
+  ],
+  "verified_sources": [
+    "https://huggingface.co/Qwen/Qwen3-1.7B",
+    "https://huggingface.co/ggml-org/Qwen3-1.7B-GGUF/tree/main",
+    "https://huggingface.co/ggml-org/Qwen3-0.6B-GGUF/tree/main",
+    "https://huggingface.co/prithivMLmods/Qwen3-0.6B-GGUF"
+  ]
+}
