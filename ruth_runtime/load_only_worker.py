@@ -23,6 +23,11 @@ SCHEMA = "ruth-cuda-load-only-v1"
 PREFIX = "RUTH_CUDA_LOAD_ONLY_RESULT="
 N_CTX, N_BATCH, N_UBATCH = 128, 64, 64
 SUPPORTED = frozenset({"Q4_K_L", "Q4_K_M"})
+KV_FORMATS = {"F16": "GGML_TYPE_F16", "Q8_0": "GGML_TYPE_Q8_0",
+              "Q4_0": "GGML_TYPE_Q4_0"}
+FLASH_FORMATS = {"off": "LLAMA_FLASH_ATTN_TYPE_DISABLED",
+                 "auto": "LLAMA_FLASH_ATTN_TYPE_AUTO",
+                 "on": "LLAMA_FLASH_ATTN_TYPE_ENABLED"}
 
 
 def current_cuda_free_mib() -> float | None:
@@ -106,6 +111,27 @@ def run_load_only(root: Path, gpu_uuid: str, quantization: str, mode: str,
     if os.environ.get("CUDA_VISIBLE_DEVICES") != gpu_uuid:
         raise RuntimeError("Worker GPU UUID binding mismatch")
 
+    # Parent-only, strict serialized configuration. The worker never treats
+    # arbitrary environment entries as native option names.
+    raw_options = os.environ.get("RUTH_LLAMA_KV_OPTIONS")
+    settings = (json.loads(raw_options) if raw_options else {
+        "n_batch": N_BATCH, "n_ubatch": N_UBATCH,
+        "swa_full": True, "flash_attention": "auto",
+        "type_k": "F16", "type_v": "F16",
+    })
+    if (not isinstance(settings, dict) or
+        set(settings) != {"n_batch", "n_ubatch", "swa_full",
+                          "flash_attention", "type_k", "type_v"}
+        or type(settings["n_batch"]) is not int
+        or type(settings["n_ubatch"]) is not int
+        or not 1 <= settings["n_ubatch"] <= settings["n_batch"] <= n_ctx
+        or type(settings["swa_full"]) is not bool
+        or settings["flash_attention"] not in FLASH_FORMATS
+        or settings["type_k"] not in KV_FORMATS
+        or settings["type_v"] not in KV_FORMATS
+        or (settings["flash_attention"] == "off"
+            and settings["type_v"] != "F16")):
+        raise ValueError("Unapproved native KV cache parameters")
     from llama_cpp import llama_cpp as api
     from llama_cpp import __version__ as runtime_version
     from .install_plan import WHEEL_VERSION
@@ -124,8 +150,13 @@ def run_load_only(root: Path, gpu_uuid: str, quantization: str, mode: str,
         "weights_loaded": False, "context_initialized": False,
         "inference_executed": False, "generated_tokens": 0,
         "n_ctx": n_ctx if mode == "context" else None,
-        "n_batch": N_BATCH if mode == "context" else None,
-        "n_ubatch": N_UBATCH if mode == "context" else None,
+        "n_batch": settings["n_batch"] if mode == "context" else None,
+        "n_ubatch": settings["n_ubatch"] if mode == "context" else None,
+        "context_options_requested": ({
+            "n_ctx": n_ctx, **settings,
+            "n_seq_max": 1, "kv_unified": False,
+            "offload_kqv": True,
+        } if mode == "context" else None),
         "cuda_preinit_requested": cuda_preinit,
         "cuda_primary_context_preinitialized": False,
         "cuda_free_mib_after_backend_init": None,
@@ -166,9 +197,16 @@ def run_load_only(root: Path, gpu_uuid: str, quantization: str, mode: str,
         if mode == "context":
             options = api.llama_context_default_params()
             options.n_ctx = n_ctx
-            options.n_batch = N_BATCH
-            options.n_ubatch = N_UBATCH
+            options.n_batch = settings["n_batch"]
+            options.n_ubatch = settings["n_ubatch"]
             options.offload_kqv = True
+            options.swa_full = settings["swa_full"]
+            options.n_seq_max = 1
+            options.kv_unified = False
+            options.flash_attn_type = getattr(
+                api, FLASH_FORMATS[settings["flash_attention"]])
+            options.type_k = getattr(api, KV_FORMATS[settings["type_k"]])
+            options.type_v = getattr(api, KV_FORMATS[settings["type_v"]])
             context = api.llama_init_from_model(model, options)
             if not context:
                 raise RuntimeError("llama_init_from_model returned null")
