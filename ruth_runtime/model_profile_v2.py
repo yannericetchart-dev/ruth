@@ -136,11 +136,15 @@ def _merge_index(index: dict, signature: dict, row: dict) -> bool:
     # An observation is keyed by a stable runtime/config signature, but
     # different measurements for that configuration retain separate evidence.
     key = hashlib.sha256(_canonical(signature).encode("utf-8")).hexdigest()[:24]
-    bucket = index.setdefault(key, {"identity": signature, "observations": []})
+    matches = [v for v in index.values() if v.get("identity") == signature]
+    if len(matches) > 1:
+        raise ValueError("Duplicated canonical observation identity")
+    bucket = matches[0] if matches else index.setdefault(
+        key, {"identity": signature, "observations": []})
     if bucket.get("identity") != signature or not isinstance(bucket.get("observations"), list):
         raise ValueError("Canonical observation identity collision")
     digest = hashlib.sha256(_canonical(row).encode("utf-8")).hexdigest()
-    if any(v.get("sha256") == digest for v in bucket["observations"]):
+    if any(_canonical(v.get("data")) == _canonical(row) for v in bucket["observations"]):
         return False
     if len(bucket["observations"]) >= 64:
         raise ValueError("Canonical configuration observation limit exceeded")
