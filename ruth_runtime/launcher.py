@@ -226,8 +226,8 @@ def main(argv: list[str] | None = None) -> int:
             if args.model_action == "list":
                 _print({"action": "models", **list_models()})
                 return 0
-            if args.model_action not in {"select", "resolve", "download", "smoke", "profile", "quantizations", "recommend", "probe-production", "probe-load", "profiles", "hardware", "auto-production", "kv-plan"}:
-                raise CatalogError("Choose models list, select, resolve, download, smoke, profile, quantizations, recommend, probe-production, probe-load, profiles, hardware, auto-production or kv-plan")
+            if args.model_action not in {"select", "resolve", "download", "smoke", "profile", "quantizations", "recommend", "probe-production", "probe-load", "profiles", "hardware", "auto-production", "kv-plan", "inspect-gguf"}:
+                raise CatalogError("Choose models list, select, resolve, download, smoke, profile, quantizations, recommend, probe-production, probe-load, profiles, hardware, auto-production or kv-plan or inspect-gguf")
             if args.model_action == "kv-plan":
                 from .llama_kv_profile import calculate_llama_kv
                 try:
