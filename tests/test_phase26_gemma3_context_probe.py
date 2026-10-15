@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import json
+from itertools import product
 import shutil
 from pathlib import Path
 import sys
@@ -13,7 +14,10 @@ from unittest.mock import patch
 from ruth_runtime.context_source_evidence import (
     calculate_context_source, context_source_derivation,
 )
-from ruth_runtime.gemma3_context_gate import validate_gemma3_context_request
+from ruth_runtime.gemma3_context_gate import (
+    GEMMA3_CONTEXT_PAIRS, GEMMA3_FLASH_MODES, GEMMA3_KV_TYPES,
+    validate_gemma3_context_request,
+)
 from ruth_runtime.load_only_probe import probe_model_load
 from ruth_runtime.load_only_worker import run_load_only, native_kv_dtype
 from ruth_runtime.install_plan import WHEEL_VERSION
@@ -32,40 +36,53 @@ BASE = {
 
 
 class Gemma3ContextGateTests(unittest.TestCase):
-    def test_only_two_native_allocations_are_allowlisted(self):
-        for flash, dtype in (("off", "F16"), ("on", "BF16")):
-            result = validate_gemma3_context_request(
-                **{**BASE, "flash_attention": flash,
-                   "type_k": dtype, "type_v": dtype})
-            self.assertTrue(result["experimental_allocation_only"])
-            self.assertFalse(result["production_approved"])
-            self.assertFalse(result["inference_approved"])
+    def test_exactly_eighteen_allocation_combinations_are_allowlisted(self):
+        matrix = set(product(GEMMA3_FLASH_MODES, GEMMA3_KV_TYPES,
+                             GEMMA3_KV_TYPES))
+        self.assertEqual(len(matrix), 18)
+        self.assertEqual(GEMMA3_CONTEXT_PAIRS, matrix)
+        for flash, k, v in sorted(matrix):
+            with self.subTest(flash=flash, type_k=k, type_v=v):
+                permitted = validate_gemma3_context_request(
+                    **{**BASE, "flash_attention": flash,
+                       "type_k": k, "type_v": v})
+                self.assertTrue(permitted["experimental_allocation_only"])
+                self.assertFalse(permitted["production_approved"])
+                self.assertFalse(permitted["inference_approved"])
+
         for bad in (
             {"n_ctx": 512}, {"n_ctx": 257}, {"n_batch": 32},
-            {"n_ubatch": 32}, {"swa_full": False},
-            {"cuda_preinit": True},
-            {"flash_attention": "auto"},
-            {"flash_attention": "on", "type_k": "F16", "type_v": "F16"},
-            {"flash_attention": "off", "type_k": "BF16", "type_v": "BF16"},
-            {"flash_attention": "on", "type_k": "BF16", "type_v": "F16"},
-            {"flash_attention": "on", "type_k": "F32", "type_v": "F32"},
+            {"n_ubatch": 32}, {"swa_full": False}, {"cuda_preinit": True},
+            {"flash_attention": "auto"}, {"flash_attention": "unknown"},
+            {"type_k": "Q8_0"}, {"type_v": "Q4_0"},
+            {"type_k": "F64"}, {"type_v": "F64"},
+            {"flash_attention": "off", "type_v": "Q8_0"},
+            {"flash_attention": "on", "type_k": "BF16", "type_v": "Q8_0"},
         ):
             with self.subTest(bad=bad), self.assertRaises(ValueError):
                 validate_gemma3_context_request(**{**BASE, **bad})
 
-    def test_source_cache_geometry_and_evidence_remain_logical(self):
-        for flash, dtype in (("off", "F16"), ("on", "BF16")):
-            with self.subTest(dtype=dtype):
+    def test_source_cache_geometry_matches_all_dtype_pairs(self):
+        scalar_bytes = {"F16": 2, "BF16": 2, "F32": 4}
+        for flash, k, v in sorted(GEMMA3_CONTEXT_PAIRS):
+            with self.subTest(flash=flash, type_k=k, type_v=v):
                 kwargs = {**BASE, "flash_attention": flash,
-                          "type_k": dtype, "type_v": dtype}
+                          "type_k": k, "type_v": v}
                 kwargs.pop("cuda_preinit")
                 source = calculate_context_source(
                     model_version="gemma-3-1b-it", **kwargs)
                 derived = context_source_derivation(source)
                 self.assertEqual(derived["global_cells_derived"], 256)
                 self.assertEqual(derived["swa_cells_derived"], 256)
-                self.assertEqual(derived["key_logical_bytes_derived"], 3407872)
-                self.assertEqual(derived["value_logical_bytes_derived"], 3407872)
+                self.assertEqual(derived["key_logical_bytes_derived"],
+                                 26*256*256*scalar_bytes[k])
+                self.assertEqual(derived["value_logical_bytes_derived"],
+                                 26*256*256*scalar_bytes[v])
+                self.assertEqual(
+                    (derived["key_logical_bytes_derived"] +
+                     derived["value_logical_bytes_derived"]) / 1048576,
+                    {("F16","F16"): 6.5}.get((k,v),
+                       3.25 * (scalar_bytes[k]/2 + scalar_bytes[v]/2)))
                 self.assertIsNone(derived["swa_full_off_saves_bytes_derived"])
                 self.assertIsNone(derived["swa_off_first_saving_at_effective_ctx"])
                 self.assertTrue(derived["model_geometry_verification_pending"])
@@ -84,8 +101,8 @@ class Gemma3ContextGateTests(unittest.TestCase):
         ):
             for bad in ({"n_ctx": 512}, {"flash_attention": "auto"},
                         {"n_batch": 32}, {"cuda_preinit": True},
-                        {"flash_attention": "off", "type_k": "BF16", "type_v": "BF16"},
-                        {"flash_attention": "on", "type_k": "F16", "type_v": "F16"}):
+                        {"swa_full": False}, {"type_k": "Q8_0"},
+                        {"type_v": "Q4_0"}, {"type_k": "F64"}):
                 with self.subTest(bad=bad):
                     probe = probe_model_load(
                         model_version="gemma-3-1b-it", quantization="BF16",
@@ -99,12 +116,16 @@ class Gemma3ContextGateTests(unittest.TestCase):
             SimpleNamespace(GGML_TYPE_BF16=30), "BF16"), 30)
         with self.assertRaisesRegex(RuntimeError, "enum mismatch"):
             native_kv_dtype(SimpleNamespace(GGML_TYPE_BF16=29), "BF16")
+        self.assertEqual(native_kv_dtype(
+            SimpleNamespace(GGML_TYPE_F32=0), "F32"), 0)
+        with self.assertRaisesRegex(RuntimeError, "enum mismatch"):
+            native_kv_dtype(SimpleNamespace(GGML_TYPE_F32=1), "F32")
 
 
 class Gemma3ContextEvidenceTests(unittest.TestCase):
-    def test_local_record_and_sanitized_git_roundtrip_both_modes(self):
-        for flash, dtype in (("off", "F16"), ("on", "BF16")):
-            with self.subTest(flash=flash, dtype=dtype), TemporaryDirectory() as temp:
+    def test_local_record_and_sanitized_git_roundtrip_all_18(self):
+        for flash, k, v in sorted(GEMMA3_CONTEXT_PAIRS):
+            with self.subTest(flash=flash, type_k=k, type_v=v), TemporaryDirectory() as temp:
                 root = Path(temp)
                 (root / "catalog").mkdir(parents=True)
                 (root / "locks").mkdir(parents=True)
@@ -126,9 +147,12 @@ class Gemma3ContextEvidenceTests(unittest.TestCase):
                 context_options = {
                     "n_ctx": 256, "n_batch": 64, "n_ubatch": 64,
                     "swa_full": True, "flash_attention": flash,
-                    "type_k": dtype, "type_v": dtype,
+                    "type_k": k, "type_v": v,
                     "n_seq_max": 1, "kv_unified": False, "offload_kqv": True,
                 }
+                expected_key_bytes = 26 * 256 * 256 * (4 if k == "F32" else 2)
+                expected_value_bytes = 26 * 256 * 256 * (4 if v == "F32" else 2)
+                expected_kv_mib = (expected_key_bytes + expected_value_bytes) / 1048576
                 report = {
                     "action": "models", "candidate": "gemma-3-1b-it/gguf/BF16",
                     "status": "gpu_load_only_completed", "mode": "context",
@@ -151,7 +175,7 @@ class Gemma3ContextEvidenceTests(unittest.TestCase):
                     },
                     "native_buffers": [
                         {"kind": "model", "device": "CUDA0", "mib": 1900.0},
-                        {"kind": "kv", "device": "CUDA0", "mib": 6.5},
+                        {"kind": "kv", "device": "CUDA0", "mib": expected_kv_mib},
                         {"kind": "compute", "device": "CUDA0", "mib": 48.0},
                     ],
                     "native_kv_log": {
@@ -178,8 +202,11 @@ class Gemma3ContextEvidenceTests(unittest.TestCase):
                 self.assertFalse(local["production_qualified"])
                 ctx = next(iter(local["context_profiles"].values()))
                 self.assertEqual(ctx["kv_source_derivation"]
-                                 ["key_logical_bytes_derived"], 3407872)
-                self.assertEqual(ctx["kv_type_k"], dtype)
+                                 ["key_logical_bytes_derived"], expected_key_bytes)
+                self.assertEqual(ctx["kv_source_derivation"]
+                                 ["value_logical_bytes_derived"], expected_value_bytes)
+                self.assertEqual(ctx["kv_type_k"], k)
+                self.assertEqual(ctx["kv_type_v"], v)
                 self.assertEqual(ctx["flash_attention"], flash)
                 self.assertEqual(ctx["native_config"]["native_wheel_sha256"],
                                  "ad5057352154d90f95a473d01d039c975f1987cd9b25f8ad7a83cf6c7e80ee74")
@@ -210,9 +237,10 @@ class Gemma3ContextEvidenceTests(unittest.TestCase):
 
 
 class Gemma3WorkerTests(unittest.TestCase):
-    def worker(self, flash: str, dtype: str):
+    def worker(self, flash: str, type_k: str, type_v: str):
         class Api:
             GGML_TYPE_F16 = 1
+            GGML_TYPE_F32 = 0
             LLAMA_FLASH_ATTN_TYPE_DISABLED = 0
             LLAMA_FLASH_ATTN_TYPE_ENABLED = 1
             def __init__(self):
@@ -255,7 +283,7 @@ class Gemma3WorkerTests(unittest.TestCase):
             package.llama_cpp = api
             options = {
                 "n_batch": 64, "n_ubatch": 64, "swa_full": True,
-                "flash_attention": flash, "type_k": dtype, "type_v": dtype,
+                "flash_attention": flash, "type_k": type_k, "type_v": type_v,
             }
             with patch.dict(sys.modules, {"llama_cpp": package}), \
                  patch("ruth_runtime.load_only_worker.select_model",
@@ -278,8 +306,9 @@ class Gemma3WorkerTests(unittest.TestCase):
             self.assertEqual(result["generated_tokens"], 0)
             self.assertEqual(api.calls.count("context_init"), 1)
             self.assertIn(("model_load", 2**31 - 1), api.calls)
-            self.assertEqual(api.context_options.type_k, 30 if dtype == "BF16" else 1)
-            self.assertEqual(api.context_options.type_v, 30 if dtype == "BF16" else 1)
+            enum = {"F16": 1, "BF16": 30, "F32": 0}
+            self.assertEqual(api.context_options.type_k, enum[type_k])
+            self.assertEqual(api.context_options.type_v, enum[type_v])
             self.assertEqual(api.context_options.flash_attn_type,
                              1 if flash == "on" else 0)
             self.assertFalse(api.context_options.kv_unified)
@@ -313,11 +342,10 @@ class Gemma3WorkerTests(unittest.TestCase):
                         root, GPU_UUID, "BF16", "context",
                         n_ctx=256, model_version="gemma-3-1b-it")
 
-    def test_native_worker_f16_flash_off_never_generates(self):
-        self.worker("off", "F16")
-
-    def test_native_worker_bf16_flash_on_never_generates(self):
-        self.worker("on", "BF16")
+    def test_native_worker_all_18_never_generate_tokens(self):
+        for flash, k, v in sorted(GEMMA3_CONTEXT_PAIRS):
+            with self.subTest(flash=flash, type_k=k, type_v=v):
+                self.worker(flash, k, v)
 
 
 if __name__ == "__main__":
