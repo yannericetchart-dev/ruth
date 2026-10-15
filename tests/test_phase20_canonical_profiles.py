@@ -17,6 +17,8 @@ from ruth_runtime.model_profile_v2 import (
     merge_published_measurement, resolve_model_profile, profile_path)
 from ruth_runtime.candidate_selection import load_quantization_policy
 from ruth_runtime.launcher import main
+from ruth_runtime.production_selection import _published_minimal_inference
+from ruth_runtime.offline_memory_fit import explain_offline_weights_fit
 
 
 class CanonicalProfilesTests(unittest.TestCase):
@@ -82,6 +84,44 @@ class CanonicalProfilesTests(unittest.TestCase):
                               ["n_ctx_256_profile_batch"])
             self.assertEqual(a["profile"]["variants"]["Q4_K_M"]
                              ["context_observations"],{})
+
+    def test_canonical_only_git_profile_reuses_native_token_and_weight_evidence(self):
+        with TemporaryDirectory() as tmp:
+            root=Path(tmp)
+            (root/"catalog").mkdir()
+            for name in ("model_catalog.json","nvidia_architecture_policy.json"):
+                shutil.copyfile(PROJECT_ROOT/"catalog"/name,root/"catalog"/name)
+            entry=profile_path("gemma","gemma-2","gemma-2-9B-it")
+            copy=root/"profiles/models/gemma/gemma-2/gemma-2-9B-it/profile.json"
+            copy.parent.mkdir(parents=True)
+            shutil.copyfile(entry,copy)
+            # No profiles/measurements archive exists in this test root.
+            hw={"architecture":"ada","driver_version":"595.99.02",
+                "backend_cuda":"13.2"}
+            verified=_published_minimal_inference(
+                root=root,sha="13b2a7b4115bbd0900162edcebe476da1ba1fc24e718e8b40d32f6e300f56dfe",
+                hardware=hw)
+            self.assertEqual(verified["n_ctx"],128)
+            self.assertIn("profiles/models/gemma/",verified["source"])
+            fit=explain_offline_weights_fit(
+                project_root=root,quantization="Q4_K_M",
+                architecture="ada",vram_gib=6,driver_version="595.99.02",
+                backend_cuda="13.2",binding_version="0.3.36")
+            self.assertEqual(fit["status"],"weights_possible_context_unverified")
+            self.assertEqual(fit["memory"]["weights_cuda_buffer_mib"],5488.4)
+            self.assertEqual(len(fit["evidence_files"]),1)
+            self.assertIn("profiles/models/gemma/",fit["evidence_files"][0])
+
+    def test_positive_host_reuse_does_not_promote_legacy_128_to_256(self):
+        profile=load_profile("gemma","gemma-2","gemma-2-9B-it")
+        host={"total_mib":6141,"architecture":"ada","backend_cuda":"13.2",
+              "driver_version":"595.99.02","llama_cpp_binding":"0.3.36"}
+        old=evaluate_loading_fit(profile,quantization="Q4_K_M",
+                                 host=host,n_ctx=128)
+        self.assertEqual(old["status"],"exact_loading_context_previously_observed")
+        self.assertEqual(old["matched_context"]["gpu_kv_buffer_mib"],84.0)
+        new=evaluate_loading_fit(profile,quantization="Q4_K_M",host=host,n_ctx=256)
+        self.assertEqual(new["status"],"exact_loading_context_unverified")
 
     def test_requested_context_must_start_256_and_step_256(self):
         v=load_profile("gemma","gemma-2","gemma-2-9B-it")
