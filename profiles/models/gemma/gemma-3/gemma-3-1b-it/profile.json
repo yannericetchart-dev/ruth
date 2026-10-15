@@ -29,14 +29,62 @@
         "F32": 157
       }
     },
-    "global_layers": null,
+    "global_layers": 4,
     "key_head_dim": 256,
     "kv_heads": 1,
     "layer_count": 26,
-    "status": "gguf_header_observed_native_crosscheck_pending",
-    "swa_layers": null,
+    "status": "gguf_header_and_pinned_backend_source_derived_native_context_unverified",
+    "swa_layers": 22,
     "swa_window": 512,
-    "value_head_dim": 256
+    "value_head_dim": 256,
+    "source_derived_geometry": {
+      "status": "pinned_source_derived_native_context_unverified",
+      "gguf_sha256": "b144bde489651d3d292d7e47a59c6f811cdd96d184be582e5ad30ab338b9b6bf",
+      "llama_cpp_commit": "0c1e57098bba43ac29e6e3b677cdceebdd22334f",
+      "llama_cpp_source_paths": [
+        "src/models/gemma3.cpp",
+        "src/llama-hparams.cpp",
+        "src/llama-context.cpp"
+      ],
+      "swa_pattern_source": "pinned_llama_cpp_default_6_dense_last",
+      "global_layer_indices": [
+        5,
+        11,
+        17,
+        23
+      ],
+      "swa_layer_indices": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        6,
+        7,
+        8,
+        9,
+        10,
+        12,
+        13,
+        14,
+        15,
+        16,
+        18,
+        19,
+        20,
+        21,
+        22,
+        24,
+        25
+      ],
+      "global_layers": 4,
+      "swa_layers": 22,
+      "swa_window": 512,
+      "kv_heads": 1,
+      "key_head_dim": 256,
+      "value_head_dim": 256,
+      "context_alignment": 256
+    }
   },
   "backend_policies": {
     "llama.cpp": {
@@ -106,7 +154,7 @@
                 "cuda_driver_max": "13.2",
                 "cuda_init_observed_nvml_delta_mib_max": null,
                 "cuda_toolkit": null,
-                "driver_reserved_mib_max": 369.0,
+                "driver_reserved_mib_max": 369,
                 "driver_version": "595.99.02",
                 "flash_attention": null,
                 "kv_buffer_mib": null,
