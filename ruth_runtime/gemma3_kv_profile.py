@@ -137,11 +137,16 @@ def calculate_gemma3_kv(*, project_root: Path = PROJECT_ROOT, n_ctx: int = 256,
                          swa_full: bool = True, flash_attention: str = "off",
                          type_k: str = "F16", type_v: str = "F16") -> dict:
     """Strict load-phase logical tensor forecast, NO native alloc/GPU operations."""
+    # Read-only STORAGE estimation, not permission for a native context.
+    bytes_per_scalar = {"F16": 2, "BF16": 2, "F32": 4}
     if (type(n_ctx) is not int or n_ctx < 256 or n_ctx > 32768 or n_ctx % 256 != 0
         or type(n_batch) is not int or type(n_ubatch) is not int
         or not 1 <= n_ubatch <= n_batch <= n_ctx
-        or (swa_full, flash_attention, type_k, type_v) != (True,"off","F16","F16")):
-        raise ValueError("Gemma 3 load-phase KV fixed to 256-step context, F16/F16, Flash OFF, SWA FULL")
+        or swa_full is not True or flash_attention != "off"
+        or type_k not in bytes_per_scalar or type_v not in bytes_per_scalar):
+        raise ValueError(
+            "Gemma 3 KV plan requires 256-step aligned context, "
+            "F16/BF16/F32, Flash OFF, SWA FULL")
     profile = load_profile("gemma","gemma-3","gemma-3-1b-it", project_root=project_root)
     geom = derived_gemma3_geometry(profile)
     choices = kv_precision_candidates(profile,n_ctx=n_ctx)
@@ -149,10 +154,15 @@ def calculate_gemma3_kv(*, project_root: Path = PROJECT_ROOT, n_ctx: int = 256,
     # smaller/larger than the SWA window, allocation has n_ctx cells
     # per SWA layer; this number is logical, NOT CUDA buffer size.
     cells = n_ctx
-    per_layer = (cells * geom["kv_heads"]
-                 * (geom["key_head_dim"] * 2 + geom["value_head_dim"] * 2))
-    global_bytes = geom["global_layers"] * per_layer
-    swa_bytes = geom["swa_layers"] * per_layer
+    key_bytes_per_layer = (cells * geom["kv_heads"] * geom["key_head_dim"]
+                           * bytes_per_scalar[type_k])
+    value_bytes_per_layer = (cells * geom["kv_heads"] * geom["value_head_dim"]
+                             * bytes_per_scalar[type_v])
+    combined_bytes_per_layer = key_bytes_per_layer + value_bytes_per_layer
+    global_bytes = geom["global_layers"] * combined_bytes_per_layer
+    swa_bytes = geom["swa_layers"] * combined_bytes_per_layer
+    key_bytes = (geom["global_layers"] + geom["swa_layers"]) * key_bytes_per_layer
+    value_bytes = (geom["global_layers"] + geom["swa_layers"]) * value_bytes_per_layer
     return {
         "status": "gemma3_kv_pinned_source_derived_native_context_unverified",
         "model": "gemma-3-1b-it", "variant": "BF16",
@@ -166,14 +176,19 @@ def calculate_gemma3_kv(*, project_root: Path = PROJECT_ROOT, n_ctx: int = 256,
             "swa_full": swa_full, "flash_attention": flash_attention,
             "n_seq_max": 1, "kv_unified": False,
         },
+        "selected_precision": {
+            "is_current_loading_baseline": type_k == "F16" and type_v == "F16",
+            "native_context_dtype_support_verified": False,
+            "native_allocation_verified": False,
+            "automatic_alignment_approved": False,
+            "planning_only": True,
+        },
         "logical_kv": {
             "global_layers": geom["global_layers"],
             "swa_layers": geom["swa_layers"],
             "cells_per_layer": cells,
-            "key_logical_mib_derived": round(
-                (global_bytes + swa_bytes)/2/1048576, 4),
-            "value_logical_mib_derived": round(
-                (global_bytes + swa_bytes)/2/1048576, 4),
+            "key_logical_mib_derived": round(key_bytes/1048576, 4),
+            "value_logical_mib_derived": round(value_bytes/1048576, 4),
             "global_logical_mib_derived": round(global_bytes/1048576, 4),
             "swa_logical_mib_derived": round(swa_bytes/1048576, 4),
             "total_logical_mib_derived": round(

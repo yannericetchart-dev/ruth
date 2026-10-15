@@ -267,6 +267,32 @@ That choice remains a runtime policy decision requiring explicit load
 and, later, inference validation. Neither native load nor data
 generation happens during header inspection or planning.
 
+### 5d — KV storage precision planning, read-only (no GPU)
+
+The published GGUF already records the attention tensor dtypes per layer.
+`models kv-plan` now accepts F16, BF16 and F32 for Key and Value
+independently, but **never approves a native context**:
+
+```bash
+./ruth models kv-plan --purpose production --family gemma \
+  --model gemma-3 --version gemma-3-1b-it --quantization BF16 \
+  --n-ctx 256 --n-batch 64 --n-ubatch 64 \
+  --swa-full on --flash-attn off --type-k BF16 --type-v BF16
+
+./ruth models kv-plan --purpose production --family gemma \
+  --model gemma-3 --version gemma-3-1b-it --quantization BF16 \
+  --n-ctx 256 --type-k F32 --type-v BF16
+```
+
+At 256 cells, logical totals are 6.5 MiB for BF16/BF16,
+13.0 MiB for F32/F32, or 9.75 MiB for F32/BF16.
+The cache dtype does **not** follow automatically from the GGUF attention
+weight dtype. This is only a byte-size estimate: not an assertion
+of native kernel support, allocation, GPU fit, numeric fidelity or
+production eligibility. F16/F16 remains the designated baseline.
+The separate `models probe-load` Gemma3 context gate stays closed;
+no GPU load or inference is performed by `kv-plan`.
+
 ### 6 — Minimal canonical context loading (NOT APPROVED YET)
 
 Use `n_ctx=256` and profile `n_batch=64,n_ubatch=64` first, KV F16/F16,

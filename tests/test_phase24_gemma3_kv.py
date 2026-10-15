@@ -50,9 +50,11 @@ class Gemma3KVPlanTests(unittest.TestCase):
         costs={k:v["total_logical_mib_derived"]
                for k,v in precision["candidates"].items()}
         self.assertEqual(costs,{"F16":6.5,"BF16":6.5,"F32":13.0})
-        self.assertIsNone(precision["weight_attention_dtypes"])
+        # Git already contains the complete GGUF attention tensor inventory.
+        self.assertEqual(precision["weight_attention_dtypes"]["attn_k"], {"BF16":26})
+        self.assertEqual(precision["weight_attention_dtypes"]["attn_v"], {"BF16":26})
         self.assertEqual(precision["weight_attention_dtypes_status"],
-                         "per_layer_attention_weight_formats_unknown")
+                         "per_layer_attention_weight_formats_observed")
 
     def test_complete_bf16_attention_weights_are_only_a_kv_hint(self):
         p=copy.deepcopy(self.profile())
@@ -81,6 +83,33 @@ class Gemma3KVPlanTests(unittest.TestCase):
                      {"type_v":"Q8_0"},{"n_batch":64,"n_ubatch":128}):
             with self.assertRaises(ValueError):
                 calculate_gemma3_kv(**opts)
+
+    def test_read_only_kv_dtype_pairs_include_mixed_precision(self):
+        for k,v,key,value,total,glob,swa,is_baseline in (
+            ("F16","F16",3.25,3.25,6.5,1.0,5.5,True),
+            ("BF16","BF16",3.25,3.25,6.5,1.0,5.5,False),
+            ("F32","F32",6.5,6.5,13.0,2.0,11.0,False),
+            ("F32","BF16",6.5,3.25,9.75,1.5,8.25,False),
+            ("BF16","F32",3.25,6.5,9.75,1.5,8.25,False),
+        ):
+            with self.subTest(type_k=k,type_v=v):
+                result=calculate_gemma3_kv(type_k=k,type_v=v)
+                logical=result["logical_kv"]
+                self.assertEqual(logical["key_logical_mib_derived"],key)
+                self.assertEqual(logical["value_logical_mib_derived"],value)
+                self.assertEqual(logical["total_logical_mib_derived"],total)
+                self.assertEqual(logical["global_logical_mib_derived"],glob)
+                self.assertEqual(logical["swa_logical_mib_derived"],swa)
+                self.assertEqual(result["selected_precision"]["is_current_loading_baseline"],
+                                 is_baseline)
+                self.assertTrue(result["selected_precision"]["planning_only"])
+                self.assertFalse(result["selected_precision"]
+                                 ["native_context_dtype_support_verified"])
+                self.assertFalse(result["context_loading_approved"])
+                self.assertFalse(result["gpu_fit_verified"])
+                self.assertFalse(result["native_allocation_executed"])
+        self.assertEqual(calculate_gemma3_kv(n_ctx=512,type_k="F32",type_v="BF16")
+                         ["logical_kv"]["total_logical_mib_derived"],19.5)
 
     def test_explicit_gguf_swa_pattern_wins_over_backend_default(self):
         profile=copy.deepcopy(self.profile())
@@ -113,6 +142,18 @@ class Gemma3KVPlanTests(unittest.TestCase):
         j=json.loads(out.getvalue())
         self.assertEqual(j["logical_kv"]["total_logical_mib_derived"],6.5)
         self.assertFalse(j["native_allocation_executed"])
+        for k,v,mib in (("BF16","BF16",6.5),("F32","F32",13.0),
+                         ("BF16","F32",9.75)):
+            with self.subTest(type_k=k,type_v=v):
+                with patch("sys.stdout",new_callable=StringIO) as out:
+                    code=main(["models","kv-plan","--purpose","production",
+                               "--family","gemma","--model","gemma-3",
+                               "--version","gemma-3-1b-it","--quantization","BF16",
+                               "--n-ctx","256","--type-k",k,"--type-v",v])
+                self.assertEqual(code,0)
+                reply=json.loads(out.getvalue())
+                self.assertEqual(reply["logical_kv"]["total_logical_mib_derived"],mib)
+                self.assertFalse(reply["context_loading_approved"])
 
 if __name__=="__main__":
     unittest.main()

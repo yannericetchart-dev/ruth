@@ -129,8 +129,10 @@ def main(argv: list[str] | None = None) -> int:
             mp.add_argument("--n-ubatch", type=int, default=64)
             mp.add_argument("--swa-full", choices=("on", "off"), default="on")
             mp.add_argument("--flash-attn", choices=("on", "off", "auto"), default="off")
-            mp.add_argument("--type-k", choices=("F16", "Q8_0", "Q4_0"), default="F16")
-            mp.add_argument("--type-v", choices=("F16", "Q8_0", "Q4_0"), default="F16")
+            mp.add_argument("--type-k", choices=("F16", "BF16", "F32", "Q8_0", "Q4_0"),
+                            default="F16", help="KV Key dtype; BF16/F32 Gemma3 planning-only")
+            mp.add_argument("--type-v", choices=("F16", "BF16", "F32", "Q8_0", "Q4_0"),
+                            default="F16", help="KV Value dtype; BF16/F32 Gemma3 planning-only")
         if operation == "auto-production":
             mp.add_argument("--allow-metadata-network", action="store_true",
                             help="Read pinned Hugging Face GGUF quantization inventory")
