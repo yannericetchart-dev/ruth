@@ -39,6 +39,36 @@ class Gemma3KVPlanTests(unittest.TestCase):
         self.assertFalse(x["gpu_fit_verified"])
         self.assertFalse(x["context_loading_approved"])
 
+    def test_kv_storage_alternatives_are_independent_from_weight_dtypes(self):
+        x=calculate_gemma3_kv()
+        precision=x["kv_precision_candidates"]
+        self.assertTrue(precision["kv_activations_are_not_weight_tensors"])
+        self.assertFalse(precision["automatic_cache_dtype_alignment_approved"])
+        self.assertFalse(precision["native_context_dtype_support_verified"])
+        self.assertEqual(precision["currently_approved_loading_baseline"],
+                         {"type_k":"F16","type_v":"F16"})
+        costs={k:v["total_logical_mib_derived"]
+               for k,v in precision["candidates"].items()}
+        self.assertEqual(costs,{"F16":6.5,"BF16":6.5,"F32":13.0})
+        self.assertIsNone(precision["weight_attention_dtypes"])
+        self.assertEqual(precision["weight_attention_dtypes_status"],
+                         "per_layer_attention_weight_formats_unknown")
+
+    def test_complete_bf16_attention_weights_are_only_a_kv_hint(self):
+        p=copy.deepcopy(self.profile())
+        obs=p["architecture"]["gguf_header_observation"]
+        obs["attention_projection_coverage"]={
+            role:{"layers_present":26,"dtype_counts":{"BF16":26},"complete":True}
+            for role in ("attn_q","attn_k","attn_v","attn_output")
+        }
+        from ruth_runtime.gemma3_kv_profile import kv_precision_candidates
+        result=kv_precision_candidates(p,n_ctx=256)
+        self.assertEqual(result["weight_attention_dtypes_status"],
+                         "per_layer_attention_weight_formats_observed")
+        self.assertEqual(result["weight_attention_dtypes"]["attn_k"],{"BF16":26})
+        self.assertFalse(result["automatic_cache_dtype_alignment_approved"])
+        self.assertFalse(result["candidates"]["BF16"]["native_allocation_verified"])
+
     def test_aligned_extensions_conserve_per_layer_geometry(self):
         for ctx,mib in ((256,6.5),(512,13.0),(768,19.5),(1024,26.0)):
             x=calculate_gemma3_kv(n_ctx=ctx)
