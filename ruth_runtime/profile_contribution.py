@@ -166,7 +166,7 @@ def validate_submitted_proposal(
     if (len(parts) < 4 or parts[-4] != "profiles"
         or parts[-3] not in ("submissions", "measurements")
         or not re.fullmatch("[0-9a-f]{64}", parts[-2])
-        or not re.fullmatch("[0-9a-f]{64}\.json", parts[-1])):
+        or not re.fullmatch(r"[0-9a-f]{64}\.json", parts[-1])):
         raise ValueError("Invalid submission path")
     if path.is_symlink() or not path.is_file() or path.stat().st_size > 200_000:
         raise ValueError("Unsafe or oversized submission")
