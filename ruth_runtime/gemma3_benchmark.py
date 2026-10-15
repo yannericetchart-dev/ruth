@@ -23,6 +23,8 @@ from .gemma3_benchmark_worker import (
 from .gpu_preflight import inspect_gpu_preflight
 from .inference_probe import _valid_local_gguf, _select_unique_gpu, _parse_offload
 from .install_plan import WHEEL_VERSION
+from .llama_kv_log import parse_llama_context_log
+from .load_only_probe import extract_native_buffers
 from .model_catalog import select_model
 from .native_library import verify_native_library
 from .context_source_evidence import pinned_native_wheel_sha256
@@ -129,6 +131,7 @@ def probe_one(
                  if s.startswith(PREFIX)]
         if len(lines) != 1:
             return finish("worker_missing_unique_result",
+                          inference_executed=None,
                           error=(proc.stderr or "")[-220:])
         data = json.loads(lines[0])
         if not isinstance(data, dict) or data.get("schema") != SCHEMA:
@@ -138,6 +141,16 @@ def probe_one(
                           error=data.get("error"),
                           inference_executed=data.get("inference_executed"))
         layers, total = _parse_offload(proc.stderr or "")
+        native_kv = parse_llama_context_log(proc.stderr or "")
+        expected_native_types = all(
+            isinstance(native_kv.get(group), dict)
+            and native_kv[group].get("cells") == 256
+            and isinstance(native_kv[group].get("native_logical_kv"), dict)
+            and native_kv[group]["native_logical_kv"].get("key_type") == k.lower()
+            and native_kv[group]["native_logical_kv"].get("value_type") == v.lower()
+            and native_kv[group]["native_logical_kv"].get("layers") == layers_expected
+            for group, layers_expected in (("global_kv", 4), ("swa_kv", 22))
+        )
         timing = data.get("timings")
         durations_valid = (
             isinstance(timing, list) and len(timing) == REPEATS
@@ -171,6 +184,12 @@ def probe_one(
             and data.get("decode_tokens") == DECODE_STEPS
             and data.get("gpu_process_observed") is True
             and layers > 0 and layers == total
+            and native_kv.get("n_ctx_effective_native") == 256
+            and native_kv.get("n_batch_effective_native") == 64
+            and native_kv.get("n_ubatch_effective_native") == 64
+            and native_kv.get("flash_attention_native_parameter")
+                == {"off": "disabled", "on": "enabled"}[flash]
+            and expected_native_types
             and durations_valid
             and verify_logits_artifact(root, data.get("artifact"))
         )
@@ -189,6 +208,9 @@ def probe_one(
             native_wheel_sha256=wheel_sha, offloaded_layers=layers,
             total_layers=total,
             n_vocab=data["n_vocab"],
+            native_kv_types_verified=expected_native_types,
+            native_flash_parameter=native_kv["flash_attention_native_parameter"],
+            native_buffers=extract_native_buffers(proc.stderr or ""),
             prompt_tokens=data["prefill_tokens"],
             prompt_ids_sha256=data["prompt_ids_sha256"],
             decode_ids=data["decode_ids"],
@@ -203,7 +225,7 @@ def probe_one(
         )
     except (OSError, RuntimeError, ValueError, TypeError, KeyError,
             subprocess.SubprocessError, json.JSONDecodeError) as exc:
-        return finish("phase27_probe_failed",
+        return finish("phase27_probe_failed", inference_executed=None,
                       error=type(exc).__name__ + ": " + str(exc)[:235])
 
 
