@@ -214,9 +214,9 @@ def resolve_model_profile(purpose: str, family: str, model: str, version: str,
     """Common production/testing lookup: profiles do NOT depend on purpose."""
     if purpose not in ("production", "test"):
         raise ValueError("Unsupported model purpose")
+    exists = profile_path(family, model, version, project_root).is_file()
     profile = load_profile(family, model, version, project_root=project_root)
-    return {"status": "canonical_profile_loaded" if profile["provenance"].get(
-        "historical_migration_completed") else "canonical_profile_created_in_memory",
+    return {"status": "canonical_profile_loaded" if exists else "canonical_profile_created_in_memory",
         "path": str(profile_path(family, model, version, project_root)),
         "profile": profile, "purpose": purpose,
         "gpu_allocations_executed": False}
