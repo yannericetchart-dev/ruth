@@ -19,6 +19,8 @@ on:
       - "ruth_runtime/llama_kv_log.py"
       - "ruth_runtime/load_only_worker.py"
       - "ruth_runtime/load_only_probe.py"
+      - "ruth_runtime/cuda_adapter.py"
+      - "tests/test_phase02_cuda_adapter.py"
       - "catalog/llama_kv_backend_policy.json"
       - "ruth_runtime/offline_memory_fit.py"
       - "ruth_runtime/production_selection.py"
@@ -39,6 +41,7 @@ jobs:
       - name: Validate hardware and publication regression tests
         run: |
           python -m unittest \
+            tests.test_phase02_cuda_adapter \
             tests.test_phase11_load_only_probe \
             tests.test_phase12_model_memory_profiles \
             tests.test_phase13_hardware_architecture \
