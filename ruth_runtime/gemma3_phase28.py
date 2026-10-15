@@ -131,6 +131,9 @@ def probe_one(
                      "PYTHONNOUSERSITE": "1", "PYTHONDONTWRITEBYTECODE": "1"}
         child_env.pop("LLAMA_CPP_LIB_PATH", None)
         child_env.pop("RUTH_LLAMA_KV_OPTIONS", None)
+        requested_nvtx_bridge = child_env.get("RUTH_PHASE28_NVTX3_BRIDGE") == "1"
+        if child_env.get("RUTH_PHASE28_NVTX3_BRIDGE") not in (None, "1"):
+            return finish("invalid_explicit_nvtx3_bridge_request")
         cmd = [str(root / ".venv/bin/python"), "-I", "-c", WORKER_SCRIPT,
                str(root), str(root), uuid, candidate, str(n_ctx)]
         second = gpu_preflight(uuid, run=run)
@@ -207,6 +210,8 @@ def probe_one(
             and data.get("production_qualified") is False
             and data.get("native_kernel_dispatch_verified") is False
             and data.get("gpu_process_observed") is True
+            and (not requested_nvtx_bridge
+                 or data.get("nvtx_ranges_available") is True)
             and layer == total and layer == 27
             and native.get("n_ctx_effective_native") == plan.n_ctx
             and native.get("n_ctx_seq_effective_native") == plan.n_ctx
