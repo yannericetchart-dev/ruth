@@ -369,6 +369,73 @@ class TestPhase28Dispatch(unittest.TestCase):
             self.assertEqual(families["FLASH_FIXUP"]["count"], 1)
             self.assertFalse(report["prefill_decode_attribution_verified"])
 
+    def test_nonflash_expected_mode_accepts_softmax_and_generic_gemm(self):
+        # Explicit source-backed operators observed in the user's F16 OFF trace.
+        from ruth_runtime.gemma3_phase28_dispatch import classify_observed_operator
+        self.assertEqual(classify_observed_operator(
+            "void soft_max_f32<(bool)1, (int)1024, (int)1024, float>"),
+            "SOFTMAX_F32")
+        self.assertEqual(classify_observed_operator(
+            "void cutlass::Kernel2<cutlass_80_tensorop_s1688gemm_64x64_16x6_tn_align4>"),
+            "CUTLASS_GEMM_UNATTRIBUTED")
+        self.assertIsNone(classify_observed_operator(
+            "ampere_s16816gemm_bf16_128x64_ldg8_stages_32x6_tn"))
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            folder = root / ".ruth-build/phase28"
+            folder.mkdir(parents=True)
+            fp = folder / "flash-off.sqlite"
+            with sqlite3.connect(fp) as db:
+                db.executescript("""
+                    CREATE TABLE StringIds (id INTEGER PRIMARY KEY,value TEXT);
+                    CREATE TABLE CUPTI_ACTIVITY_KIND_KERNEL
+                        (start INTEGER,end INTEGER,demangledName INTEGER);
+                    INSERT INTO StringIds VALUES
+                      (1,'void soft_max_f32<true,0,0,float>'),
+                      (2,'void cutlass::Kernel2<cutlass_80_tensorop_s1688gemm>'),
+                      (3,'ampere_s16816gemm_bf16');
+                    INSERT INTO CUPTI_ACTIVITY_KIND_KERNEL VALUES (1,1000001,1);
+                    INSERT INTO CUPTI_ACTIVITY_KIND_KERNEL VALUES (1,2000001,2);
+                    INSERT INTO CUPTI_ACTIVITY_KIND_KERNEL VALUES (1,3000001,3);
+                """)
+            off = inspect_export(fp,root,expected_flash="off")
+            self.assertEqual(off["status"],"cuda_kernel_names_observed")
+            self.assertTrue(off["expected_flash_consistent_with_kernel_names"])
+            self.assertFalse(off["native_kernel_names_verified"])
+            self.assertFalse(off["nonflash_graph_kernel_attribution_verified"])
+            self.assertEqual(off["main_attention_families_observed"],[])
+            self.assertTrue(off["cutlass_gemm_kernels_observed_not_attributed"])
+            self.assertTrue(off["nonflash_softmax_kernel_observed"])
+            self.assertFalse(inspect_export(
+                fp,root,expected_flash="on")[
+                    "expected_flash_consistent_with_kernel_names"])
+            with self.assertRaises(ValueError):
+                inspect_export(fp,root,expected_flash="maybe")
+
+    def test_flash_on_evidence_rejected_when_labelled_off(self):
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            folder = root / ".ruth-build/phase28"
+            folder.mkdir(parents=True)
+            fp = folder / "flash-on.sqlite"
+            with sqlite3.connect(fp) as db:
+                db.executescript("""
+                    CREATE TABLE StringIds (id INTEGER PRIMARY KEY,value TEXT);
+                    CREATE TABLE CUPTI_ACTIVITY_KIND_KERNEL
+                        (start INTEGER,end INTEGER,demangledName INTEGER);
+                    INSERT INTO StringIds VALUES
+                      (1,'flash_attn_ext_f16<256>'),
+                      (2,'soft_max_f32<true>');
+                    INSERT INTO CUPTI_ACTIVITY_KIND_KERNEL VALUES (1,1000001,1);
+                    INSERT INTO CUPTI_ACTIVITY_KIND_KERNEL VALUES (1,2000001,2);
+                """)
+            self.assertTrue(inspect_export(
+                fp,root,expected_flash="on")[
+                    "expected_flash_consistent_with_kernel_names"])
+            self.assertFalse(inspect_export(
+                fp,root,expected_flash="off")[
+                    "expected_flash_consistent_with_kernel_names"])
+
     def test_trace_is_read_only_and_never_claims_phase_correlation(self):
         with TemporaryDirectory() as tmp:
             root=Path(tmp)
