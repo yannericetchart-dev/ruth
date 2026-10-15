@@ -449,6 +449,62 @@ an exact all-decode-call coverage proof. A separate explicitly
 instrumented F16/F16 Flash OFF trace would complete the direct
 phase-by-phase comparison without relying on kernel name counts.
 
+## CUDA Graph executions confirmed in NVTX3 capture; replay audit
+
+The user inspected the already-exported
+`.ruth-build/phase28/bf16-on-ctx2048-nvtx3.sqlite`
+and found:
+
+| Runtime graph-related API | Calls |
+|---|---:|
+| `cudaGraphLaunch_v10000` | 128 |
+| `cudaGraphExecUpdate_v10020` | 28 |
+| `cudaGraphDestroy_v10000` | 28 |
+| `cudaGraphInstantiate_v12000` | 2 |
+| `cudaGraphExecDestroy_v10000` | 2 |
+
+Both `CUPTI_ACTIVITY_KIND_GRAPH_TRACE` and `CUDA_GRAPH_EVENTS`
+exist in the export. **CUDA Graph replay is now directly observed**,
+not merely hypothesized from the pinned source. However, NVIDIA's CUPTI
+`GRAPH_TRACE` records a graph execution *without necessarily listing
+the individual node executions*. The previously verified NVTX->CUPTI
+kernel attribution covers the 1,664 recognized kernel records, not
+necessarily all replayed graph nodes.
+
+A new standalone read-only `gemma3_phase28_graph_audit` module
+examines the existing SQLite export without GPU execution. It links
+each runtime `cudaGraphLaunch` API interval to exactly one NVTX
+phase; separately it requires each CUPTI GRAPH_TRACE correlationId to
+resolve to a unique driver (preferred) or runtime graph-launch API
+and the *same* phase. In the current single-GPU experiment it expects
+one graph trace per runtime launch, and matching phase counts. If the
+capture schema, correlation metadata or count relationship differs,
+it reports **unverified** and requires manual schema inspection.
+It never manufactures per-node graph replay coverage evidence.
+
+```bash
+cd ~/Dev/ruth-model-profiling
+git pull --ff-only origin feat/gemma3-phase28-context-dispatch
+
+.venv/bin/python -m unittest \
+  tests.test_phase28_gemma3_context_dispatch \
+  tests.test_phase28_gemma3_graph_audit -v
+
+.venv/bin/python -m ruth_runtime.gemma3_phase28_graph_audit \
+  --sqlite .ruth-build/phase28/bf16-on-ctx2048-nvtx3.sqlite \
+  --candidate bf16-on --n-ctx 2048
+```
+
+The audit reports `runtime_graph_launches_by_phase`,
+`graph_trace_launches_by_phase`, driver/runtime correlation coverage,
+the actual graph trace table columns, and counts of distinct graph
+and executable IDs where the export supports them.
+`cuda_graph_phase_attribution_verified=true` is **narrow**: it
+confirms graph execution launches are attributable to NVTX ranges;
+`graph_nodes_replayed_and_correlated_verified=false` and
+`complete_attention_workload_coverage_verified=false` remain.
+No profile is promoted to production.
+
 ## Promotion gate
 
 Phase 28 produces *diagnostic* context, timing, memory and CUDA-kernel
