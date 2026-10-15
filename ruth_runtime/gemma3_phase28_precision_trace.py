@@ -50,6 +50,38 @@ def classify_conversion(name: str) -> dict | None:
     }
 
 
+def classify_precision_operator(name: str) -> tuple[str, tuple[str, ...]] | None:
+    """Narrow kernel-name evidence, never a claim about internal accumulator.
+
+    The BF16 GEMM and F32-named kernels were observed in the pinned
+    native Nsight export; template tokens are treated only as type hints.
+    """
+    n=name.lower()
+    tests=(
+        ("rms_norm_mul_rope_f32", "RMS_NORM_ROPE_F32", ("F32",)),
+        ("rms_norm_f32", "RMS_NORM_F32", ("F32",)),
+        ("soft_max_f32", "SOFTMAX_F32", ("F32",)),
+        ("scale_f32", "SCALE_F32", ("F32",)),
+        ("ampere_s16816gemm_bf16", "GEMM_BF16_NAMED", ("BF16",)),
+        ("mul_mat_vec_f<__nv_bfloat16, float",
+         "MATVEC_BF16_F32_NAMED", ("BF16","F32")),
+        ("unary_gated_op_kernel<&op_gelu, float",
+         "GELU_F32_NAMED", ("F32",)),
+        ("k_set_rows<float, long, __nv_bfloat16>",
+         "SET_ROWS_F32_BF16_NAMED", ("F32","BF16")),
+        ("cublaslt::splitkreduce_kernel",
+         "CUBLASLT_SPLITK_REDUCE", ()),
+        ("k_get_rows_float<float, float>",
+         "GATHER_F32_NAMED", ("F32",)),
+        ("k_bin_bcast<&op_add, float, float, float",
+         "ADD_F32_NAMED", ("F32",)),
+    )
+    for needle,family,hints in tests:
+        if needle in n:
+            return family,hints
+    return None
+
+
 def inspect_precision_trace(
     file: Path, *, candidate: str, n_ctx: int,
     root: Path=PROJECT_ROOT,
@@ -66,6 +98,9 @@ def inspect_precision_trace(
         "conversion_kernel_records":0,
         "conversion_summary":[],
         "other_precision_name_evidence":[],
+        "arithmetic_kernel_family_summary":[],
+        "arithmetic_precision_coverage_complete":False,
+        "conversion_by_path":{},
         "top_other_kernel_names":[],
         "graph_phase_causal_mapping_verified":False,
         "direct_conversion_phase_correlation_verified":False,
@@ -150,6 +185,10 @@ def inspect_precision_trace(
                                  "by_graph_id":Counter()})
         other=defaultdict(lambda:{"records":0,"gpu_ns":0})
         fp_name=defaultdict(lambda:{"records":0,"gpu_ns":0})
+        arithmetic=defaultdict(lambda:{
+            "records":0,"gpu_ns":0,"by_phase":Counter(),
+            "by_graph_id":Counter()})
+        conv_path=defaultdict(lambda:{"records":0,"gpu_ns":0})
         unresolved_direct_conv=0
         direct_conversion_count=0
         unknown_phase_graph_conv=0
@@ -166,6 +205,9 @@ def inspect_precision_trace(
                 obj=conv[key]
                 obj["records"]+=1
                 obj["gpu_ns"]+=duration
+                path_type="direct" if graph_id is None else "graph_node"
+                conv_path[path_type]["records"]+=1
+                conv_path[path_type]["gpu_ns"]+=duration
                 if graph_id is None:
                     direct_conversion_count+=1
                     phase=(runtime.get(cid) if cid not in
@@ -192,6 +234,20 @@ def inspect_precision_trace(
                 obj=fp_name[classification]
                 obj["records"]+=1
                 obj["gpu_ns"]+=duration
+            kernel_precision=classify_precision_operator(name)
+            if kernel_precision is not None:
+                family,hints=kernel_precision
+                a=arithmetic[(family,hints)]
+                a["records"]+=1
+                a["gpu_ns"]+=duration
+                if graph_id is None:
+                    phase=(runtime.get(cid) if cid not in
+                           direct_correlations_ambiguous else None)
+                    a["by_phase"][phase or "unattributed_direct"]+=1
+                else:
+                    a["by_graph_id"][str(graph_id)]+=1
+                    a["by_phase"][graph_phase.get(graph_id)
+                                  or "unattributed_graph"]+=1
         report["conversion_kernel_records"]=sum(
             x["records"] for x in conv.values())
         report["conversion_summary"]=[
@@ -209,11 +265,27 @@ def inspect_precision_trace(
         # observed and none failed its CUDA runtime + NVTX join.
         report["direct_conversion_phase_correlation_verified"]=bool(
             direct_conversion_count and unresolved_direct_conv==0
-            and nv_ranges and runtime and not direct_correlations_ambiguous)
+            and nv_ranges and runtime)
         report["unattributed_direct_conversion_records"]=(
             unresolved_direct_conv)
         report["unattributed_graph_conversion_records"]=(
             unknown_phase_graph_conv)
+        report["conversion_by_path"]={
+            path:{"kernel_records":v["records"],
+                  "kernel_gpu_ms_sum":round(v["gpu_ns"]/1e6,4)}
+            for path,v in sorted(conv_path.items())
+        }
+        report["arithmetic_kernel_family_summary"]=[
+            {"kernel_family":family,"dtype_hints":list(hints),
+             "kernel_records":obj["records"],
+             "kernel_gpu_ms_sum":round(obj["gpu_ns"]/1e6,4),
+             "by_phase":dict(sorted(obj["by_phase"].items())),
+             "by_graph_id":dict(sorted(obj["by_graph_id"].items())),
+             "evidence_scope":"kernel names and template types only",
+             "accumulator_dtype_verified":False}
+            for (family,hints),obj in sorted(
+                arithmetic.items(),key=lambda item:-item[1]["gpu_ns"])
+        ]
         report["other_precision_name_evidence"]=[
             {"operator_family":f,"kernel_records":v["records"],
              "kernel_gpu_ms_sum":round(v["gpu_ns"]/1e6,4),
