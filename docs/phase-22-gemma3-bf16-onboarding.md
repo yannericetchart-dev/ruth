@@ -138,9 +138,14 @@ git pull --ff-only origin model-profiling
 
 The command first checks the verified download manifest and **SHA256 of
 the entire pinned GGUF**. It then parses only the bounded GGUF metadata
-header and tensor descriptors (not the tensor bytes). It accepts only
-`general.architecture=gemma3`, `general.file_type=24` (mostly BF16),
-positive layer count and at least one BF16 tensor descriptor. It reports
+header and tensor descriptors (not the tensor bytes). It requires
+`general.architecture=gemma3`, a positive layer count, and BF16 as
+the dominant storage type by **multidimensional tensor elements**.
+`general.file_type` is optional advisory metadata, and value 24 is
+`GGML_FTYPE_MOSTLY_BF16` in the pinned ggml revision. Missing or
+different values are preserved as `declared_file_type` with explicit
+`metadata_warnings`; they are NOT silently overwritten. Tensor
+descriptors are checked separately. It reports
 exact observed `gemma3.*` hyperparameters, BF16/F32/F16 tensor counts
 and missing values without making up global/SWA classification.
 It may encounter 1B checkpoint metadata that lacks some head fields.
@@ -153,6 +158,13 @@ same canonical `profiles/models/gemma/gemma-3/gemma-3-1b-it/profile.json`
 using an atomic Git SHA check. Raw tokenizer values, tensors, local
 paths and GPU UUIDs are not uploaded. `--no-git-sync` suppresses
 publication without suppressing inspection.
+
+The first on-host header attempt stopped at the earlier overstrict
+`general.file_type == 24` assertion. That failed **before publication**,
+so no model integrity failure should be inferred. Commit
+`1a29ee2` changes the parser to compare the declared value with actual
+matrix tensor types. Only the local reread can tell us what that pinned
+GGUF actually declares; do not guess its value from the failure.
 
 The native **Gemma3 context** remains intentionally blocked until these
 GGUF hparams are reconciled against the pinned llama.cpp Gemma3 source,
