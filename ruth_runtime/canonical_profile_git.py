@@ -294,15 +294,30 @@ def sync_gguf_architecture(
             "architecture": {"gguf_header_observation": observed},
         }
         source_geom = derived_gemma3_geometry(source_input)
+        from .gemma3_kv_profile import kv_precision_candidates
+        precision = kv_precision_candidates(source_input, n_ctx=256)
         old_source = (current.get("architecture") or {}).get("source_derived_geometry")
         if old_source is not None and old_source != source_geom:
             raise ValueError("Conflicting pinned source-derived Gemma 3 geometry")
-        if old_obs == observed and old_source == source_geom:
+        old_precision = (current.get("architecture") or {}).get("kv_precision_assessment_256")
+        # The profile may gain per-layer weight facts over time.
+        # Those facts can enrich the assessment, but no automatic KV
+        # precision change is approved by this metadata-only operation.
+        if old_precision is not None:
+            for key in ("currently_approved_loading_baseline",
+                        "kv_activations_are_not_weight_tensors",
+                        "native_context_dtype_support_verified",
+                        "automatic_cache_dtype_alignment_approved",
+                        "candidates"):
+                if old_precision.get(key) != precision.get(key):
+                    raise ValueError("Contradictory KV precision source assumptions")
+        if old_obs == observed and old_source == source_geom and old_precision == precision:
             return {"status":"git_profile_already_current","git_updated":False,
                     "repository":UPSTREAM,"branch":branch,"repository_path":path}
         architecture = current.setdefault("architecture",{})
         architecture["gguf_header_observation"] = observed
         architecture["source_derived_geometry"] = source_geom
+        architecture["kv_precision_assessment_256"] = precision
         architecture["global_layers"] = source_geom["global_layers"]
         architecture["swa_layers"] = source_geom["swa_layers"]
         architecture["status"] = "gguf_header_and_pinned_backend_source_derived_native_context_unverified"
