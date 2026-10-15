@@ -24,6 +24,52 @@ from ruth_runtime.gemma3_phase28_dispatch import inspect_export, classify_kernel
 from ruth_runtime.gemma3_phase28_compare import load_artifact, compare_logits
 
 
+class TestPhase28Nvtx3Bridge(unittest.TestCase):
+    def test_bridge_is_opt_in_and_push_pop_are_balanced(self):
+        from ruth_runtime.gemma3_nvtx import NativeRanges
+        from unittest.mock import MagicMock
+        import os
+        with TemporaryDirectory() as d:
+            root=Path(d)
+            base=root/".ruth-build/phase28"
+            base.mkdir(parents=True)
+            (base/"libruth_phase28_nvtx3.so").write_bytes(b"fake-native-for-mock")
+            lib=MagicMock()
+            with patch.dict(os.environ, {"RUTH_PHASE28_NVTX3_BRIDGE":"1"}), \\
+                 patch("ruth_runtime.gemma3_nvtx.PROJECT_ROOT",root), \\
+                 patch("ruth_runtime.gemma3_nvtx.ctypes.CDLL",return_value=lib) as dl:
+                ranges=NativeRanges("PHASE28")
+                self.assertTrue(ranges.available)
+                self.assertEqual(dl.call_args.args[0],
+                                 str(base/"libruth_phase28_nvtx3.so"))
+                with ranges.range("prefill"):
+                    pass
+                with self.assertRaisesRegex(RuntimeError,"deliberate"):
+                    with ranges.range("decode"):
+                        raise RuntimeError("deliberate")
+            self.assertEqual(lib.nvtxRangePushA.call_count,2)
+            self.assertEqual(lib.nvtxRangePop.call_count,2)
+            self.assertEqual(lib.nvtxRangePushA.call_args.args[0],
+                             b"RUTH_GEMMA3_PHASE28_DECODE")
+            with patch.dict(os.environ, {"RUTH_PHASE28_NVTX3_BRIDGE":"bad"}):
+                with self.assertRaisesRegex(RuntimeError,"must be 1"):
+                    NativeRanges("PHASE28")
+            with patch.dict(os.environ, {"RUTH_PHASE28_NVTX3_BRIDGE":"1"}), \\
+                 patch("ruth_runtime.gemma3_nvtx.PROJECT_ROOT",root):
+                (base/"libruth_phase28_nvtx3.so").unlink()
+                with self.assertRaisesRegex(RuntimeError,"unavailable"):
+                    NativeRanges("PHASE28")
+
+    def test_bridge_is_not_loaded_without_opt_in(self):
+        from ruth_runtime.gemma3_nvtx import NativeRanges
+        import os
+        with patch.dict(os.environ, {}, clear=True), \\
+             patch("ruth_runtime.gemma3_nvtx.find_library",return_value=None), \\
+             patch("ruth_runtime.gemma3_nvtx.ctypes.CDLL",
+                   side_effect=AssertionError("No unrequested native loads")):
+            self.assertFalse(NativeRanges("PHASE28").available)
+
+
 class TestPhase28Gate(unittest.TestCase):
     def test_exactly_four_candidate_types_and_four_context_lengths(self):
         rows = plans()
