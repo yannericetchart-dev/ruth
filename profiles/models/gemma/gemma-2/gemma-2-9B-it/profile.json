@@ -1,0 +1,409 @@
+{
+  "schema": "ruth-model-profile-v2",
+  "model": {
+    "family": "gemma",
+    "model": "gemma-2",
+    "version": "gemma-2-9B-it",
+    "license": "gemma",
+    "upstream_repo": "google/gemma-2-9b-it"
+  },
+  "architecture": {
+    "status": "source_derived_requires_native_gguf_crosscheck",
+    "global_layers": 21,
+    "swa_layers": 21,
+    "swa_window": 4096,
+    "kv_heads": 8,
+    "key_head_dim": 256,
+    "value_head_dim": 256
+  },
+  "backend_policies": {
+    "llama.cpp": {
+      "status": "source_derived",
+      "pinned_revision": "0c1e57098bba43ac29e6e3b677cdceebdd22334f",
+      "weight_types": [
+        "F32",
+        "F16",
+        "BF16"
+      ],
+      "gguf_min_n_ctx_requested": 256,
+      "context_alignment": 256,
+      "context_step": 256,
+      "scope": "single_sequence_pinned_llama_cpp",
+      "n_ctx_256_profile_batch": null,
+      "n_ctx_256_profile_ubatch": null,
+      "fixed_kv_type_k": "F16",
+      "fixed_kv_type_v": "F16",
+      "fixed_flash_attention": "off",
+      "fixed_swa_full": true
+    }
+  },
+  "variants": {
+    "Q4_K_L": {
+      "format": "Q4_K_L",
+      "precision_family": "quantized",
+      "gguf_sha256": "ed8573f0d1e3ca58e471498fd162a65d4f4253dffdec28a7ba394fdcae92f1f3",
+      "file_bytes": 5983265728,
+      "source_repository": "bartowski/gemma-2-9b-it-GGUF",
+      "source_revision": "d731033f3dc4018261fd39896e50984d398b4ac5",
+      "filename": "gemma-2-9b-it-Q4_K_L.gguf",
+      "runtime_observations": {
+        "legacy_0": {
+          "identity": {
+            "architecture": "ada",
+            "compute_capability": "8.9",
+            "cuda_backend": "13.2",
+            "cuda_driver_max": "13.2",
+            "driver_version": "595.99.02",
+            "llama_cpp_binding": "0.3.36"
+          },
+          "observations": [
+            {
+              "sha256": null,
+              "data": {
+                "architecture": "ada",
+                "compute_buffer_mib": null,
+                "compute_capability": "8.9",
+                "cuda_backend": "13.2",
+                "cuda_driver_max": "13.2",
+                "cuda_init_observed_nvml_delta_mib_max": 90.19,
+                "cuda_toolkit": null,
+                "driver_reserved_mib_max": 369,
+                "driver_version": "595.99.02",
+                "flash_attention": null,
+                "kv_buffer_mib": null,
+                "kv_type_k": null,
+                "kv_type_v": null,
+                "llama_cpp_binding": "0.3.36",
+                "n_ctx": null,
+                "tensor_core_generation": 4,
+                "weights_buffer_mib_max": 5700.31
+              }
+            }
+          ]
+        }
+      },
+      "context_observations": {},
+      "minimal_inference_observations": {}
+    },
+    "Q4_K_M": {
+      "format": "Q4_K_M",
+      "precision_family": "quantized",
+      "gguf_sha256": "13b2a7b4115bbd0900162edcebe476da1ba1fc24e718e8b40d32f6e300f56dfe",
+      "file_bytes": 5761057728,
+      "source_repository": "bartowski/gemma-2-9b-it-GGUF",
+      "source_revision": "d731033f3dc4018261fd39896e50984d398b4ac5",
+      "filename": "gemma-2-9b-it-Q4_K_M.gguf",
+      "runtime_observations": {
+        "legacy_0": {
+          "identity": {
+            "architecture": "ada",
+            "compute_capability": "8.9",
+            "cuda_backend": "13.2",
+            "cuda_driver_max": "13.2",
+            "driver_version": "595.99.02",
+            "llama_cpp_binding": "0.3.36"
+          },
+          "observations": [
+            {
+              "sha256": null,
+              "data": {
+                "architecture": "ada",
+                "compute_buffer_mib": null,
+                "compute_capability": "8.9",
+                "cuda_backend": "13.2",
+                "cuda_driver_max": "13.2",
+                "cuda_init_observed_nvml_delta_mib_max": 90.19,
+                "cuda_toolkit": null,
+                "driver_reserved_mib_max": 369,
+                "driver_version": "595.99.02",
+                "flash_attention": null,
+                "kv_buffer_mib": null,
+                "kv_type_k": null,
+                "kv_type_v": null,
+                "llama_cpp_binding": "0.3.36",
+                "n_ctx": null,
+                "tensor_core_generation": 4,
+                "weights_buffer_mib_max": 5488.4
+              }
+            }
+          ]
+        }
+      },
+      "context_observations": {
+        "legacy_0": {
+          "identity": {
+            "architecture": "ada",
+            "cuda_backend": "13.2",
+            "driver_version": "595.99.02",
+            "llama_cpp_binding": "0.3.36",
+            "backend_revision": "0c1e57098bba43ac29e6e3b677cdceebdd22334f",
+            "n_ctx_requested": 128,
+            "flash_attention": "off",
+            "type_k": "F16",
+            "type_v": "F16",
+            "swa_full": true,
+            "n_batch": 64,
+            "n_ubatch": 64
+          },
+          "observations": [
+            {
+              "sha256": null,
+              "data": {
+                "architecture": "ada",
+                "backend": "llama.cpp",
+                "cuda_backend": "13.2",
+                "driver_version": "595.99.02",
+                "flash_attention": "off",
+                "gpu_compute_buffer_mib": 63.38,
+                "gpu_kv_buffer_mib": 84,
+                "inference_verified": false,
+                "kv_backend_commit": "0c1e57098bba43ac29e6e3b677cdceebdd22334f",
+                "kv_padding": null,
+                "kv_size_native": [
+                  256,
+                  256
+                ],
+                "kv_source_derivation": {
+                  "global_cells_derived": 256,
+                  "key_logical_bytes_derived": 44040192,
+                  "model_geometry_verification_pending": true,
+                  "n_ctx_effective_derived": 256,
+                  "n_ubatch_effective_derived": 64,
+                  "swa_cells_derived": 256,
+                  "swa_full_off_saves_bytes_derived": 0,
+                  "swa_off_first_saving_at_effective_ctx": 4608,
+                  "value_logical_bytes_derived": 44040192
+                },
+                "kv_type_k": "F16",
+                "kv_type_v": "F16",
+                "llama_cpp_binding": "0.3.36",
+                "n_ctx_requested": 128,
+                "native_config": {
+                  "flash_attention_effective": null,
+                  "flash_attention_requested": "off",
+                  "global_cache_cells_native": 256,
+                  "global_key_logical_mib_native": 21,
+                  "global_value_logical_mib_native": 21,
+                  "n_batch_effective_native": 64,
+                  "n_batch_requested": 64,
+                  "n_ctx_effective_native": 256,
+                  "n_ctx_seq_effective_native": 256,
+                  "n_ubatch_effective_native": 64,
+                  "n_ubatch_requested": 64,
+                  "swa_cache_cells_native": 256,
+                  "swa_full": true,
+                  "swa_key_logical_mib_native": 21,
+                  "swa_value_logical_mib_native": 21
+                },
+                "verified_native_allocations_only": true
+              }
+            }
+          ]
+        },
+        "legacy_1": {
+          "identity": {
+            "architecture": "ada",
+            "cuda_backend": "13.2",
+            "driver_version": "595.99.02",
+            "llama_cpp_binding": "0.3.36",
+            "backend_revision": null,
+            "n_ctx_requested": 128,
+            "flash_attention": null,
+            "type_k": null,
+            "type_v": null,
+            "swa_full": null,
+            "n_batch": null,
+            "n_ubatch": null
+          },
+          "observations": [
+            {
+              "sha256": null,
+              "data": {
+                "architecture": "ada",
+                "backend": "llama.cpp",
+                "cuda_backend": "13.2",
+                "driver_version": "595.99.02",
+                "flash_attention": null,
+                "gpu_compute_buffer_mib": 63.38,
+                "gpu_kv_buffer_mib": 84,
+                "inference_verified": false,
+                "kv_backend_commit": null,
+                "kv_padding": null,
+                "kv_size_native": null,
+                "kv_source_derivation": null,
+                "kv_type_k": null,
+                "kv_type_v": null,
+                "llama_cpp_binding": "0.3.36",
+                "n_ctx_requested": 128,
+                "native_config": null,
+                "verified_native_allocations_only": true
+              }
+            }
+          ]
+        },
+        "legacy_2": {
+          "identity": {
+            "architecture": "ada",
+            "cuda_backend": "13.2",
+            "driver_version": "595.99.02",
+            "llama_cpp_binding": "0.3.36",
+            "backend_revision": "0c1e57098bba43ac29e6e3b677cdceebdd22334f",
+            "n_ctx_requested": 128,
+            "flash_attention": "on",
+            "type_k": "F16",
+            "type_v": "F16",
+            "swa_full": true,
+            "n_batch": 64,
+            "n_ubatch": 64
+          },
+          "observations": [
+            {
+              "sha256": null,
+              "data": {
+                "architecture": "ada",
+                "backend": "llama.cpp",
+                "cuda_backend": "13.2",
+                "driver_version": "595.99.02",
+                "flash_attention": "on",
+                "gpu_compute_buffer_mib": 63.38,
+                "gpu_kv_buffer_mib": 84,
+                "inference_verified": false,
+                "kv_backend_commit": "0c1e57098bba43ac29e6e3b677cdceebdd22334f",
+                "kv_padding": null,
+                "kv_size_native": [
+                  256,
+                  256
+                ],
+                "kv_source_derivation": {
+                  "global_cells_derived": 256,
+                  "key_logical_bytes_derived": 44040192,
+                  "model_geometry_verification_pending": true,
+                  "n_ctx_effective_derived": 256,
+                  "n_ubatch_effective_derived": 64,
+                  "swa_cells_derived": 256,
+                  "swa_full_off_saves_bytes_derived": 0,
+                  "swa_off_first_saving_at_effective_ctx": 4608,
+                  "value_logical_bytes_derived": 44040192
+                },
+                "kv_type_k": "F16",
+                "kv_type_v": "F16",
+                "llama_cpp_binding": "0.3.36",
+                "n_ctx_requested": 128,
+                "native_config": {
+                  "flash_attention_effective": null,
+                  "flash_attention_requested": "on",
+                  "global_cache_cells_native": 256,
+                  "global_key_logical_mib_native": 21,
+                  "global_value_logical_mib_native": 21,
+                  "n_batch_effective_native": 64,
+                  "n_batch_requested": 64,
+                  "n_ctx_effective_native": 256,
+                  "n_ctx_seq_effective_native": 256,
+                  "n_ubatch_effective_native": 64,
+                  "n_ubatch_requested": 64,
+                  "swa_cache_cells_native": 256,
+                  "swa_full": true,
+                  "swa_key_logical_mib_native": 21,
+                  "swa_value_logical_mib_native": 21
+                },
+                "verified_native_allocations_only": true
+              }
+            }
+          ]
+        },
+        "legacy_3": {
+          "identity": {
+            "architecture": "ada",
+            "cuda_backend": "13.2",
+            "driver_version": "595.99.02",
+            "llama_cpp_binding": "0.3.36",
+            "n_ctx_requested": 128,
+            "flash_attention": null,
+            "type_k": null,
+            "type_v": null,
+            "swa_full": null,
+            "n_batch": null,
+            "n_ubatch": null
+          },
+          "observations": [
+            {
+              "sha256": null,
+              "data": {
+                "architecture": "ada",
+                "backend": "llama.cpp",
+                "cuda_backend": "13.2",
+                "driver_version": "595.99.02",
+                "flash_attention": null,
+                "gpu_compute_buffer_mib": 63.38,
+                "gpu_kv_buffer_mib": 84,
+                "inference_verified": false,
+                "kv_padding": null,
+                "kv_size_native": null,
+                "kv_type_k": null,
+                "kv_type_v": null,
+                "llama_cpp_binding": "0.3.36",
+                "n_ctx_requested": 128,
+                "verified_native_allocations_only": true
+              }
+            }
+          ]
+        }
+      },
+      "minimal_inference_observations": {
+        "legacy_0": {
+          "identity": {
+            "architecture": "ada",
+            "cuda_backend": "13.2",
+            "driver_version": "595.99.02",
+            "llama_cpp_binding": "0.3.36",
+            "n_ctx": 128,
+            "n_batch": 64,
+            "n_ubatch": 64,
+            "flash_attention": null,
+            "kv_type_k": null,
+            "kv_type_v": null
+          },
+          "observations": [
+            {
+              "sha256": null,
+              "data": {
+                "architecture": "ada",
+                "cuda_backend": "13.2",
+                "driver_version": "595.99.02",
+                "flash_attention": null,
+                "full_gpu_offload_layers": 43,
+                "generated_tokens": 1,
+                "kv_type_k": null,
+                "kv_type_v": null,
+                "llama_cpp_binding": "0.3.36",
+                "n_batch": 64,
+                "n_ctx": 128,
+                "n_ubatch": 64,
+                "production_context_qualified": false,
+                "verified": true
+              }
+            }
+          ]
+        }
+      }
+    }
+  },
+  "selection": {
+    "quality_policy": "quality_heuristic_within_model_only",
+    "cross_model_quality_score": null,
+    "precision_preference": [
+      "F32",
+      "BF16",
+      "F16"
+    ]
+  },
+  "provenance": {
+    "historical_migration_completed": true,
+    "archived_measurement_files_read": [
+      "profiles/measurements/ed8573f0d1e3ca58e471498fd162a65d4f4253dffdec28a7ba394fdcae92f1f3/a23b210a1be60bda031d2e294ca3aeba12c0c58ef05ce4f377c16c07b43e000c.json",
+      "profiles/measurements/13b2a7b4115bbd0900162edcebe476da1ba1fc24e718e8b40d32f6e300f56dfe/6a9d2f6537f5f515cfd9576cf59856e54ed4191752113eb5fdef39b04aee8332.json",
+      "profiles/measurements/13b2a7b4115bbd0900162edcebe476da1ba1fc24e718e8b40d32f6e300f56dfe/9c3654857ded1eafe9a8fa41198d3063e49a339ac6dd57e10359a07adea9ac97.json",
+      "profiles/measurements/13b2a7b4115bbd0900162edcebe476da1ba1fc24e718e8b40d32f6e300f56dfe/b72cd007aacae0d07610bdcad7c18df74985f110e37904c9ec67e9a4ff35262a.json"
+    ]
+  }
+}
