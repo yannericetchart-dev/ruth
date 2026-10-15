@@ -8,7 +8,7 @@ from ruth_runtime.model_catalog import (
     load_catalog, select_model, resolve_model_metadata,
 )
 from ruth_runtime.model_profile_v2 import load_profile, profile_path
-from ruth_runtime.candidate_selection import load_quantization_policy
+from ruth_runtime.candidate_selection import load_quantization_policy, discover_quantizations
 from ruth_runtime.launcher import main
 from ruth_runtime.load_only_probe import probe_model_load
 from ruth_runtime.load_only_worker import APPROVED_LOADS
@@ -84,6 +84,23 @@ class Gemma3Bf16OnboardingTests(unittest.TestCase):
         self.assertIn("overflow",floating["F16"]["numeric_fidelity_warning"])
         self.assertIn("Tensor Core",floating["F32"]["numeric_fidelity_warning"])
         self.assertNotIn("BF32",[x["quantization"] for x in p["quality_policy"]])
+
+    def test_selected_gemma3_inventory_handles_lowercase_bf16_gguf_name(self):
+        choice=self.choice()
+        raw={"sha":REV,"private":False,"gated":False,
+             "cardData":{"license":"gemma"},
+             "siblings":[{"rfilename":choice.filename,"size":SIZE,
+                          "lfs":{"sha256":DIGEST,"size":SIZE}}]}
+        inv=discover_quantizations(purpose="production",
+                 authorize_metadata_network=True,selected_choice=choice,
+                 fetch=lambda repo:raw)
+        self.assertEqual(inv["status"],"quantizations_discovered")
+        self.assertEqual(inv["model_path"],"gemma/gemma-3/gemma-3-1b-it/gguf")
+        self.assertEqual(len(inv["quantizations"]),1)
+        self.assertEqual(inv["quantizations"][0]["quantization"],"bf16")
+        self.assertTrue(inv["quantizations"][0]["catalog_pin_exists"])
+        self.assertTrue(inv["quantizations"][0]["download_pin_ready"])
+        self.assertFalse(inv["download_started"])
 
     def test_gemma3_bf16_native_weights_stage_only(self):
         self.assertEqual(APPROVED_LOADS["gemma-3-1b-it"]["quantizations"],("BF16",))
