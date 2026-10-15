@@ -115,9 +115,55 @@ measurements or verified production inference.
   --swa-full on --flash-attn off \
   --type-k F16 --type-v F16 --allow-gpu-load
 
-# Update the saved model profile from its native evidence JSON;
-# authenticated owner updates model-profiling, others may submit review PR.
+# The probe now AUTOMATICALLY archives its JSON evidence under
+# .ruth-build/profiles/evidence/, updates the model profile, and attempts
+# owner-only Git synchronization after measurements. No second CUDA run
+# or manual JSON copy is necessary for NEW probes.
+
+# To keep evidence local and explicitly avoid Git synchronization:
+./ruth models probe-load --quantization Q4_K_M --load-mode context \
+  --n-ctx 128 --n-batch 64 --n-ubatch 64 \
+  --swa-full on --flash-attn off --type-k F16 --type-v F16 \
+  --allow-gpu-load --no-git-sync
+
+# For an ALREADY completed probe from before auto-record was added, one
+# manual evidence import may still be required; importing does NOT load CUDA:
+./ruth models profiles --host --record-local \
+  --evidence-file /path/to/previously-saved-probe-output.json
+
 ```
+
+## Probe recording lifecycle
+
+The `probe-load` command previously returned
+`runtime_profile_published=false` and left recording to
+`models profiles --record-local --evidence-file ...`. This was an
+orchestration gap. **New successful native weights/context probes (and native
+failures with actual measured CUDA buffers) now record automatically.**
+
+1. The raw JSON report is archived locally under
+   `.ruth-build/profiles/evidence/<gguf-sha>-<digest>.json`, with an
+   immutable canonical digest. The local copy retains hardware identity
+   solely for strict evidence validation.
+2. The local GGUF profile is atomically updated; exact repeated evidence
+   is idempotent.
+3. A strictly sanitized proposal removes UUID, PCI bus, local paths and
+   raw stderr, and an authenticated repo owner synchronizes directly with
+   `model-profiling`. Non-owners retain their observations locally,
+   without a hidden fork or PR.
+4. The output reports `profile_recording_status`,
+   `local_profile_update`, `local_evidence_file`,
+   `git_publication` and `runtime_profile_published`. Only verified
+   publication makes the final field `true`; local recording does not.
+5. A Git failure never discards the native report or the archived local
+   evidence. Retry publication using `models profiles --sync-git
+   --profile-file <local-model-profile-path>` once authentication is fixed.
+6. `--no-git-sync` prevents publication while retaining local evidence.
+
+The older probe run is **not retroactively captured**. If its original
+JSON was not saved, Ruth cannot reconstruct it from the local CUDA worker.
+Its user-supplied structured output can be imported once without running
+CUDA, with the usual host/provenance checks.
 
 The default **direct C** context probe still selects Flash Attention
 `AUTO`, while the historical **Python inference** path used `OFF`.
