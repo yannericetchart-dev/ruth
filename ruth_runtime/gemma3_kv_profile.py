@@ -82,6 +82,56 @@ def derived_gemma3_geometry(profile: dict) -> dict[str, Any]:
     }
 
 
+def kv_precision_candidates(profile: dict, *, n_ctx: int) -> dict:
+    """Storage alternatives, not a performance or quality recommendation.
+
+    BF16/F16 stored KV have exactly 2 bytes per scalar, F32 has 4.
+    Attention projection WEIGHT dtype is a separate property from the
+    precision of Key/Value ACTIVATIONS cached by llama.cpp.
+    """
+    geom = derived_gemma3_geometry(profile)
+    obs = (profile["architecture"].get("gguf_header_observation") or {})
+    coverage = obs.get("attention_projection_coverage")
+    roles = ("attn_q", "attn_k", "attn_v", "attn_output")
+    if (isinstance(coverage, dict) and
+        all(isinstance(coverage.get(role), dict) and
+            coverage[role].get("complete") is True for role in roles)):
+        attn_formats = {
+            role: coverage[role]["dtype_counts"] for role in roles
+        }
+        attn_status = "per_layer_attention_weight_formats_observed"
+    else:
+        attn_formats = None
+        attn_status = "per_layer_attention_weight_formats_unknown"
+    per_byte = n_ctx * (geom["global_layers"] + geom["swa_layers"]) * (
+        geom["kv_heads"] * geom["key_head_dim"]
+        + geom["kv_heads"] * geom["value_head_dim"])
+    return {
+        "status": "kv_precision_alternatives_source_derived_native_unverified",
+        "weight_attention_dtypes_status": attn_status,
+        "weight_attention_dtypes": attn_formats,
+        "model_original_weight_format": "BF16",
+        "kv_activations_are_not_weight_tensors": True,
+        "native_context_dtype_support_verified": False,
+        "automatic_cache_dtype_alignment_approved": False,
+        "currently_approved_loading_baseline": {"type_k": "F16", "type_v": "F16"},
+        "candidates": {
+            dtype: {
+                "type_k": dtype, "type_v": dtype,
+                "bytes_per_scalar": n,
+                "total_logical_mib_derived": round(per_byte*n/1048576, 4),
+                "native_allocation_verified": False,
+                "inference_numeric_fidelity_verified": False,
+            } for dtype,n in (("F16",2),("BF16",2),("F32",4))
+        },
+        "evaluation_rule": (
+            "The GGUF projection tensor storage formats inform provenance only. "
+            "KV activation precision is independently tested for backend, "
+            "CUDA allocation, token correctness and numeric stability."
+        ),
+    }
+
+
 def calculate_gemma3_kv(*, project_root: Path = PROJECT_ROOT, n_ctx: int = 256,
                          n_batch: int = 64, n_ubatch: int = 64,
                          swa_full: bool = True, flash_attention: str = "off",
@@ -94,6 +144,7 @@ def calculate_gemma3_kv(*, project_root: Path = PROJECT_ROOT, n_ctx: int = 256,
         raise ValueError("Gemma 3 load-phase KV fixed to 256-step context, F16/F16, Flash OFF, SWA FULL")
     profile = load_profile("gemma","gemma-3","gemma-3-1b-it", project_root=project_root)
     geom = derived_gemma3_geometry(profile)
+    choices = kv_precision_candidates(profile,n_ctx=n_ctx)
     # n_seq_max 1, n_ctx padded to 256. For swa_full=true and context
     # smaller/larger than the SWA window, allocation has n_ctx cells
     # per SWA layer; this number is logical, NOT CUDA buffer size.
@@ -107,6 +158,7 @@ def calculate_gemma3_kv(*, project_root: Path = PROJECT_ROOT, n_ctx: int = 256,
         "model": "gemma-3-1b-it", "variant": "BF16",
         "llama_cpp_commit": BACKEND_REVISION,
         "source_derived_geometry": geom,
+        "kv_precision_candidates": choices,
         "configuration": {
             "n_ctx_requested": n_ctx, "n_ctx_effective_derived": cells,
             "n_batch": n_batch, "n_ubatch": n_ubatch,
