@@ -110,15 +110,16 @@ class Gemma3Bf16OnboardingTests(unittest.TestCase):
         self.assertTrue(inv["quantizations"][0]["download_pin_ready"])
         self.assertFalse(inv["download_started"])
 
-    def test_gemma3_bf16_native_weights_stage_only(self):
+    def test_gemma3_bf16_context_requires_exact_pinned_experiment(self):
         self.assertEqual(APPROVED_LOADS["gemma-3-1b-it"]["quantizations"],("BF16",))
-        self.assertEqual(APPROVED_LOADS["gemma-3-1b-it"]["modes"],("weights",))
+        self.assertEqual(APPROVED_LOADS["gemma-3-1b-it"]["modes"],("weights","context"))
         with patch("ruth_runtime.load_only_probe.inspect_python_environment",
                    side_effect=AssertionError("Do not inspect CUDA environment")):
             x=probe_model_load(model_version="gemma-3-1b-it",
                                quantization="BF16",mode="context",
-                               allow_gpu_load=True,n_ctx=256)
-        self.assertEqual(x["status"],"unsupported_model_loading_stage")
+                               allow_gpu_load=True,n_ctx=256,
+                               flash_attention="auto")
+        self.assertEqual(x["status"],"unsupported_kv_context_configuration")
         self.assertFalse(x["weights_loaded"])
         with patch("sys.stdout",new_callable=StringIO) as out:
             rc=main(["models","probe-load","--purpose","production",
