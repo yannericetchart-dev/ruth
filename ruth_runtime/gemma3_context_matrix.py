@@ -106,6 +106,15 @@ def execute_matrix(
                 and data.get("inference_executed") is False
                 and data.get("generated_tokens") == 0
                 and passed_types
+                and native.get("n_ctx_effective_native") == 256
+                and native.get("global_kv", {}).get("cells") == 256
+                and native.get("swa_kv", {}).get("cells") == 256
+                and (native.get("global_kv", {}).get("native_logical_kv") or {}).get("layers") == 4
+                and (native.get("swa_kv", {}).get("native_logical_kv") or {}).get("layers") == 22
+                and data.get("profile_recording_status") in (
+                    "local_profile_updated", "local_profile_already_recorded")
+                and isinstance(data.get("local_evidence_file"), str)
+                and (data.get("git_publication") or {}).get("status") == "git_sync_disabled"
                 and (data.get("context_options_requested") or {}).get("flash_attention")
                     == row["flash_attention"]
                 and (data.get("context_options_requested") or {}).get("type_k")
@@ -163,7 +172,9 @@ def execute_matrix(
         "cases_run": len(completed),
         "stopped_at": stopped_at,
         "results": completed,
-        "cuda_allocation_executed": bool(completed),
+        "gpu_probe_invocations": len(completed),
+        "context_allocations_observed": sum(
+            result.get("context_initialized") is True for result in completed),
         "inference_executed": False,
         "production_approved": False,
         "git_sync_disabled": True,
