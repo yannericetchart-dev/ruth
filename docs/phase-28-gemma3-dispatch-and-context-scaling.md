@@ -6,6 +6,22 @@ the canonical profile. The user has successfully performed Phase 27 native
 inference on all 18 Flash/K/V combinations. CUDA kernel dispatch has not
 yet been measured.
 
+## Important measurement correction
+
+The initial Phase 28 F16/F16 Flash OFF, `n_ctx=256` run completed native
+inference, with 128 prefill tokens, 16 decode calls, full offload and
+verified KV geometry. However, the original worker requested logits only
+on the final decode call, and its reported **8.6146 ms/token / 116.08
+tokens/s** was consequently biased low relative to actual autoregressive
+decode. This is not evidence for a 116 tok/s production setting.
+
+Starting with the corrected worker, the output projection is requested
+on every decode step, and the parent **rejects** results lacking this
+explicit invariant. All Phase 28 performance measurements used for
+comparisons must come from the corrected commit or later and use the
+same full-logits-on-every-step methodology. The old result remains valid
+as a limited native inference/VRAM smoke test.
+
 ## Exact experiment boundaries
 
 Model: pinned Gemma 3 1B IT BF16 GGUF, previously verified SHA256,
@@ -41,13 +57,22 @@ One warm-up followed by three timed repetitions, each with memory cleared.
 The public, deterministic prompt uses the same immutable tokenizer and a
 repeated fixed token sequence (not user content). A prefill is split into
 ordered 64-token chunks and every `llama_decode` is synchronized before
-timing; then 16 identical, teacher-forced decode inputs follow.
+timing; then 16 identical, teacher-forced decode inputs follow. **Every
+decode call explicitly requests full-vocabulary logits output**, even
+though only the final row is saved. This includes the output projection
+cost that an autoregressive model ordinarily needs at every token.
+The worker reports `decode_logits_requested_per_token=true` and
+`decode_logits_requested_count=16`, verified again by the parent.
 
 Latency includes host-side native-call/synchronization overhead. The
 reported `prefill_ms` is the **sum of all chunks** (different workload
-from the Phase 27 seven-token prefill); `decode_ms_per_token` is the
-medians over repeated decode calls. Samples of GPU process memory are not
-a guaranteed instantaneous peak.
+from the Phase 27 seven-token prefill); `decode_ms_per_token_median`
+summarizes the per-call distribution. `decode_total_ms_median` is the
+median of the three complete 16-token rounds, and
+`decode_tokens_per_second` is computed as 16 divided by that round
+duration, not the inverse per-call median. These metrics are not a
+natural sampling benchmark because the decode tokens are teacher-forced.
+Samples of GPU process memory are not a guaranteed instantaneous peak.
 
 Only the last-prefill and final-decode *full-vocabulary* F32 logits rows
 are saved to local compressed `.npz` files. The worker retains the token
