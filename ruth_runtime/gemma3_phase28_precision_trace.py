@@ -151,6 +151,7 @@ def inspect_precision_trace(
         other=defaultdict(lambda:{"records":0,"gpu_ns":0})
         fp_name=defaultdict(lambda:{"records":0,"gpu_ns":0})
         unresolved_direct_conv=0
+        direct_conversion_count=0
         unknown_phase_graph_conv=0
         for name,start,end,cid,graph_id in rows:
             if (type(start) is not int or type(end) is not int
@@ -166,6 +167,7 @@ def inspect_precision_trace(
                 obj["records"]+=1
                 obj["gpu_ns"]+=duration
                 if graph_id is None:
+                    direct_conversion_count+=1
                     phase=(runtime.get(cid) if cid not in
                            direct_correlations_ambiguous else None)
                     if phase is None:
@@ -202,12 +204,7 @@ def inspect_precision_trace(
             for (name,src,dst,recognition),obj in sorted(
                 conv.items(),key=lambda p:-p[1]["gpu_ns"])
         ]
-        direct_conversion_count=sum(
-            x["by_phase"].get("prefill",0)+x["by_phase"].get("decode",0)+
-            x["by_phase"].get("unattributed_direct",0)
-            for x in conv.values()) - sum(
-                sum(x["by_graph_id"].values()) for x in conv.values())
-        # Simpler independent host audit: only claim direct conversion
+        # Independent host audit: only claim direct conversion
         # phase attribution when at least one direct conversion was
         # observed and none failed its CUDA runtime + NVTX join.
         report["direct_conversion_phase_correlation_verified"]=bool(
