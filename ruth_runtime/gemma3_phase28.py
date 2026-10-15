@@ -226,6 +226,8 @@ def probe_one(
         decode = [ms for t in timing for ms in t["decode_ms_per_token"]]
         median_prefill = statistics.median(prefill)
         median_decode = statistics.median(decode)
+        median_decode_round_ms = statistics.median(
+            sum(t["decode_ms_per_token"]) for t in timing)
         return finish(
             "native_long_context_inference_observed",
             inference_executed=True, full_gpu_offload_observed=True,
@@ -242,7 +244,9 @@ def probe_one(
             prefill_ms_median=round(median_prefill,4),
             prefill_tokens_per_second=round(plan.prompt_tokens*1000/median_prefill,2),
             decode_ms_per_token_median=round(median_decode,4),
-            decode_tokens_per_second=round(1000/median_decode,2),
+            decode_total_ms_median=round(median_decode_round_ms,4),
+            decode_tokens_per_second=round(
+                1000 * plan.decode_tokens / median_decode_round_ms, 2),
             sampled_gpu_peak_mib=data.get("gpu_memory_peak_mib_sampled"),
             nvtx_ranges_available=data.get("nvtx_ranges_available") is True,
             native_buffers=extract_native_buffers(result.stderr or ""),
