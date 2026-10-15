@@ -1,0 +1,45 @@
+{
+  "schema": "ruth-llama-kv-backend-policy-v1",
+  "backend": "llama.cpp",
+  "upstream_commit": "0c1e57098bba43ac29e6e3b677cdceebdd22334f",
+  "python_binding": "llama-cpp-python",
+  "binding_version": "0.3.36",
+  "source_paths": {
+    "context_padding": "src/llama-context.cpp:L289-L305",
+    "swa_capacity": "src/llama-kv-cache-iswa.cpp:L69-L105",
+    "graph_n_kv_padding": "src/llama-kv-cache.cpp:L1260-L1273",
+    "kv_buffers": "src/llama-kv-cache.cpp:L208-L304",
+    "batch_limits": "src/llama-context.cpp:L245-L248",
+    "quantized_value_requires_flash": "src/llama-context.cpp:L3835-L3870"
+  },
+  "context_alignment_cells": 256,
+  "swa_alignment_cells": 256,
+  "graph_min_alignment_cells": 256,
+  "quantized_value_requires_flash_attention": true,
+  "types": {
+    "F16": {"ggml_type": 1, "block_elements": 1, "bytes_per_block": 2},
+    "Q8_0": {"ggml_type": 8, "block_elements": 32, "bytes_per_block": 34},
+    "Q4_0": {"ggml_type": 2, "block_elements": 32, "bytes_per_block": 18}
+  },
+  "model_defaults": {
+    "gemma-2-9B-it": {
+      "architecture": "gemma2",
+      "total_attention_layers": 42,
+      "global_layers": 21,
+      "swa_layers": 21,
+      "swa_window_cells": 4096,
+      "swa_pattern": "alternating_start_swa",
+      "kv_heads_per_layer": 8,
+      "key_head_elements": 256,
+      "value_head_elements": 256,
+      "source": "src/models/gemma2.cpp and Gemma2 default architecture",
+      "metadata_status": "source_defaults_require_gguf_native_crosscheck"
+    }
+  },
+  "safety": {
+    "padding_patch_applied": false,
+    "inference_success_not_inferred_from_size": true,
+    "compute_buffer_is_never_inferred_from_kv_tensors": true,
+    "backend_allocated_bytes_and_logical_kv_bytes_are_distinct": true
+  }
+}
