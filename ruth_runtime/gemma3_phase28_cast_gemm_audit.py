@@ -207,13 +207,13 @@ def audit_cast_gemm(
             len(v) for group in events.values() for v in group.values())
         stats=defaultdict(lambda:{
             "ranges":0,"target_totals":Counter(),
+            "target_gpu_ns":Counter(),
             "per_range_distributions":defaultdict(Counter),
             "gpu_order_compatible_ranges":0,
             "gpu_order_incompatible_ranges":0,
         })
         balance=True
         order_valid=True
-        graph_signatures=defaultdict(set)
         expected_bf16_to_f16=52  # 2 per 26 pinned attention layers
         per_prefill=[]
         for i,(start,end,tid,phase) in enumerate(nvtx):
@@ -224,6 +224,8 @@ def audit_cast_gemm(
             ct={t:len(group.get(t,())) for t in TARGETS}
             for t,num in ct.items():
                 st["target_totals"][t]+=num
+                st["target_gpu_ns"][t]+=sum(
+                    event[1]-event[0] for event in group.get(t,()))
                 st["per_range_distributions"][t][num]+=1
             if phase=="prefill":
                 # No equal-count guess is sufficient: check each
@@ -240,12 +242,7 @@ def audit_cast_gemm(
                 st["gpu_order_compatible_ranges"]+=int(compatible)
                 st["gpu_order_incompatible_ranges"]+=int(not compatible)
                 order_valid=order_valid and compatible
-                if mode=="graph_node":
-                    signature=(
-                        tuple(ev[2] for ev in conv),
-                        tuple(ev[2] for ev in gemm))
-                    graph_signatures[tuple(range_graph[i])].add(signature)
-            else:
+             else:
                 # BF16 GEMM and both casts were observed in prefill
                 # only. Any decode instance changes the conclusion.
                 if any(ct.values()):
@@ -256,6 +253,9 @@ def audit_cast_gemm(
             report_stats[phase+"_"+mode]={
                 "ranges":st["ranges"],
                 "target_kernel_totals":dict(st["target_totals"]),
+                "target_kernel_gpu_ms_sum":{
+                    t:round(ns/1e6,4)
+                    for t,ns in sorted(st["target_gpu_ns"].items())},
                 "per_range_distributions":{
                     t:{str(n):v for n,v in sorted(hist.items())}
                     for t,hist in sorted(st["per_range_distributions"].items())
