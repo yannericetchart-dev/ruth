@@ -211,6 +211,8 @@ def merge_published_measurement(profile: dict, measurement: dict) -> tuple[dict,
             "n_batch": native.get("n_batch_requested"),
             "n_ubatch": native.get("n_ubatch_requested"),
         }
+        if native.get("native_wheel_sha256") is not None:
+            signature["native_wheel_sha256"] = native["native_wheel_sha256"]
         changed |= _merge_index(node["context_observations"], signature, ctx)
     for inf in measurement.get("minimal_context_inference") or []:
         signature = {k: inf.get(k) for k in
