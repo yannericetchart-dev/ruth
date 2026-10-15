@@ -24,6 +24,7 @@ def make_trace(path: Path) -> None:
                 start INTEGER,end INTEGER,correlationId INTEGER,
                 globalTid INTEGER,nameId INTEGER);
             CREATE TABLE CUPTI_ACTIVITY_KIND_DRIVER (
+                start INTEGER,end INTEGER,globalTid INTEGER,
                 correlationId INTEGER,nameId INTEGER);
             CREATE TABLE CUPTI_ACTIVITY_KIND_GRAPH_TRACE (
                 start INTEGER,end INTEGER,correlationId INTEGER,
@@ -47,8 +48,8 @@ def make_trace(path: Path) -> None:
                     "INSERT INTO CUPTI_ACTIVITY_KIND_RUNTIME VALUES "
                     "(?,?,?,?,2)",(t+100,t+200,cid,123))
                 db.execute(
-                    "INSERT INTO CUPTI_ACTIVITY_KIND_DRIVER VALUES (?,3)",
-                    (cid,))
+                    "INSERT INTO CUPTI_ACTIVITY_KIND_DRIVER VALUES "
+                    "(?,?,?,?,3)",(t+110,t+190,123,cid))
                 db.execute(
                     "INSERT INTO CUPTI_ACTIVITY_KIND_GRAPH_TRACE "
                     "VALUES (?,?,?,?,?)",
@@ -73,7 +74,10 @@ class TestPhase28GraphAudit(unittest.TestCase):
             self.assertEqual(report["graph_trace_distinct_graph_ids"],1)
             self.assertEqual(report["graph_trace_distinct_graph_exec_ids"],1)
             self.assertEqual(report["graph_trace_matches_driver_correlation"],72)
-            self.assertEqual(report["graph_trace_matches_runtime_correlation"],72)
+            self.assertEqual(report["graph_trace_matches_runtime_correlation"],0)
+            self.assertEqual(report["graph_trace_launches_by_phase"],
+                             {"prefill":8,"decode":64})
+            self.assertTrue(report["graph_trace_to_phase_correlation_verified"])
             self.assertEqual(report["kernel_table_graph_columns"],["graphNodeId"])
             self.assertTrue(report["cuda_graph_phase_attribution_verified"])
             self.assertFalse(report["complete_attention_workload_coverage_verified"])
