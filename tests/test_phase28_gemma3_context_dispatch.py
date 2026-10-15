@@ -70,6 +70,90 @@ class TestPhase28Nvtx3Bridge(unittest.TestCase):
             self.assertFalse(NativeRanges("PHASE28").available)
 
 
+class TestPhase28NvtxCuptiAttribution(unittest.TestCase):
+    def test_cuda_launch_correlations_use_nvtx_cpu_ranges_not_gpu_time(self):
+        from ruth_runtime.gemma3_phase28_attribution import inspect_phase_correlations
+        with TemporaryDirectory() as d:
+            root=Path(d)
+            folder=root/".ruth-build/phase28"
+            folder.mkdir(parents=True)
+            fp=folder/"trace.sqlite"
+            with sqlite3.connect(fp) as db:
+                db.executescript("""
+                    CREATE TABLE StringIds (id INTEGER PRIMARY KEY,value TEXT);
+                    CREATE TABLE NVTX_EVENTS (
+                        start INTEGER,end INTEGER,eventType INTEGER,
+                        globalTid INTEGER,text TEXT);
+                    CREATE TABLE CUPTI_ACTIVITY_KIND_RUNTIME (
+                        start INTEGER,end INTEGER,correlationId INTEGER,
+                        globalTid INTEGER);
+                    CREATE TABLE CUPTI_ACTIVITY_KIND_KERNEL (
+                        start INTEGER,end INTEGER,correlationId INTEGER,
+                        demangledName INTEGER);
+                    INSERT INTO StringIds VALUES (1,'flash_attn_ext_f16<256>');
+                """)
+                cid=0
+                for phase,num in (("PREFILL",8),("DECODE",64)):
+                    for j in range(num):
+                        cid+=1
+                        start=cid*100000
+                        db.execute(
+                            "INSERT INTO NVTX_EVENTS VALUES (?,?,59,?,?)",
+                            (start,start+50000,123,
+                             "RUTH_GEMMA3_PHASE28_"+phase))
+                        db.execute(
+                            "INSERT INTO CUPTI_ACTIVITY_KIND_RUNTIME VALUES (?,?,?,?)",
+                            (start+100,start+200,cid,123))
+                        # Device time intentionally does NOT overlap NVTX CPU time.
+                        db.execute(
+                            "INSERT INTO CUPTI_ACTIVITY_KIND_KERNEL VALUES (?,?,?,1)",
+                            (start+70000,start+71000,cid))
+            report=inspect_phase_correlations(
+                fp,candidate="bf16-on",n_ctx=256,root=root)
+            self.assertTrue(report["prefill_decode_attribution_verified"])
+            self.assertEqual(report["attributed_attention_kernel_records"],72)
+            self.assertEqual(report["nvtx_phase_ranges"],
+                             {"prefill":8,"decode":64})
+            self.assertFalse(report["production_qualified"])
+            with sqlite3.connect(fp) as db:
+                db.execute("DELETE FROM CUPTI_ACTIVITY_KIND_RUNTIME "
+                           "WHERE correlationId=1")
+            failed=inspect_phase_correlations(
+                fp,candidate="bf16-on",n_ctx=256,root=root)
+            self.assertFalse(failed["prefill_decode_attribution_verified"])
+            self.assertEqual(failed["unattributed_attention_kernel_records"],1)
+            with sqlite3.connect(fp) as db:
+                db.execute("INSERT INTO CUPTI_ACTIVITY_KIND_RUNTIME "
+                           "VALUES (100100,100200,1,123)")
+                db.execute("INSERT INTO CUPTI_ACTIVITY_KIND_RUNTIME "
+                           "VALUES (200100,200200,2,123)")
+            ambiguous=inspect_phase_correlations(
+                fp,candidate="bf16-on",n_ctx=256,root=root)
+            self.assertFalse(ambiguous["prefill_decode_attribution_verified"])
+            self.assertEqual(ambiguous["ambiguous_cuda_correlations"],1)
+
+    def test_missing_nvtx_data_never_promotes_kernel_name_match(self):
+        from ruth_runtime.gemma3_phase28_attribution import inspect_phase_correlations
+        with TemporaryDirectory() as d:
+            root=Path(d)
+            folder=root/".ruth-build/phase28"
+            folder.mkdir(parents=True)
+            fp=folder/"no-nvtx.sqlite"
+            with sqlite3.connect(fp) as db:
+                db.executescript("""
+                    CREATE TABLE StringIds (id INTEGER PRIMARY KEY,value TEXT);
+                    CREATE TABLE CUPTI_ACTIVITY_KIND_KERNEL (
+                        start INTEGER,end INTEGER,correlationId INTEGER,
+                        demangledName INTEGER);
+                    INSERT INTO StringIds VALUES (1,'flash_attn_ext_vec<256>');
+                    INSERT INTO CUPTI_ACTIVITY_KIND_KERNEL VALUES (1,2,1,1);
+                """)
+            report=inspect_phase_correlations(
+                fp,candidate="bf16-on",n_ctx=256,root=root)
+            self.assertTrue(report["native_kernel_names_verified"])
+            self.assertFalse(report["prefill_decode_attribution_verified"])
+
+
 class TestPhase28Gate(unittest.TestCase):
     def test_exactly_four_candidate_types_and_four_context_lengths(self):
         rows = plans()
