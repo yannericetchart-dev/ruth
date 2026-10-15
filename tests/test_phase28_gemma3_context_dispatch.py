@@ -139,6 +139,16 @@ class TestPhase28Worker(unittest.TestCase):
         self.assertEqual(sum(dec[5][3]),1)
         self.assertEqual(dec[6][2],[384])
         self.assertEqual(dec[21][2],[399])
+        # A real autoregressive decode computes logits at every step.
+        self.assertTrue(result["decode_logits_requested_per_token"])
+        self.assertEqual(result["decode_logits_requested_count"],16)
+        for decode_call in dec:
+            if decode_call[1] == 1:
+                self.assertEqual(decode_call[3], [1])
+        for trial in range(WARMUPS + REPEATS):
+            base = trial * (6 + 16)
+            self.assertEqual([call[3] for call in dec[base+6:base+22]],
+                             [[1]] * 16)
         self.assertEqual(api.history.count(("clear",)),4)
         self.assertEqual(api.history.count(("free",)),1)
 
@@ -189,6 +199,8 @@ class TestPhase28ParentEvidence(unittest.TestCase):
                 "swa_full":True,"flash_attention":"off","type_k":"F16",
                 "type_v":"F16","prefill_tokens":128,"decode_tokens":16,
                 "warmups":1,"repeats":3,"generated_tokens":0,
+                "decode_logits_requested_per_token":True,
+                "decode_logits_requested_count":16,
                 "inference_executed":True,"production_qualified":False,
                 "native_kernel_dispatch_verified":False,"gpu_process_observed":True,
                 "timings":[{"prefill_ms":100.0,"prefill_chunks":2,
@@ -234,6 +246,17 @@ class TestPhase28ParentEvidence(unittest.TestCase):
                 self.assertEqual(passed["prefill_tokens_per_second"],1280.0)
                 self.assertEqual(passed["decode_tokens_per_second"],100.0)
                 self.assertFalse(passed["production_qualified"])
+                self.assertTrue(passed["decode_logits_requested_per_token"])
+                worker["decode_logits_requested_per_token"] = False
+                legacy = run()
+                self.assertEqual(legacy["status"],
+                                 "extended_context_native_evidence_unverified")
+                worker["decode_logits_requested_per_token"] = True
+                worker["decode_logits_requested_count"] = 15
+                incomplete = run()
+                self.assertEqual(incomplete["status"],
+                                 "extended_context_native_evidence_unverified")
+                worker["decode_logits_requested_count"] = 16
                 native["swa_kv"]["native_logical_kv"]["value_type"]="bf16"
                 failed=run()
                 self.assertEqual(failed["status"],
