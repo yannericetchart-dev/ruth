@@ -68,7 +68,7 @@ def inspect_precision_trace(
         "other_precision_name_evidence":[],
         "top_other_kernel_names":[],
         "graph_phase_causal_mapping_verified":False,
-        "direct_kernel_phase_correlation_verified":False,
+        "direct_conversion_phase_correlation_verified":False,
         "graph_node_kernel_coverage_verified":False,
         "source_precision_runtime_inventory_complete":False,
         "production_qualified":False,
@@ -145,9 +145,6 @@ def inspect_precision_trace(
                         runtime[cid]=(next(iter(matches))
                                       if len(matches)==1 else None)
 
-        report["direct_kernel_phase_correlation_verified"]=bool(
-            nv_ranges and runtime and not direct_correlations_ambiguous)
-
         conv=defaultdict(lambda:{"records":0,"gpu_ns":0,
                                  "by_phase":Counter(),
                                  "by_graph_id":Counter()})
@@ -205,6 +202,17 @@ def inspect_precision_trace(
             for (name,src,dst,recognition),obj in sorted(
                 conv.items(),key=lambda p:-p[1]["gpu_ns"])
         ]
+        direct_conversion_count=sum(
+            x["by_phase"].get("prefill",0)+x["by_phase"].get("decode",0)+
+            x["by_phase"].get("unattributed_direct",0)
+            for x in conv.values()) - sum(
+                sum(x["by_graph_id"].values()) for x in conv.values())
+        # Simpler independent host audit: only claim direct conversion
+        # phase attribution when at least one direct conversion was
+        # observed and none failed its CUDA runtime + NVTX join.
+        report["direct_conversion_phase_correlation_verified"]=bool(
+            direct_conversion_count and unresolved_direct_conv==0
+            and nv_ranges and runtime and not direct_correlations_ambiguous)
         report["unattributed_direct_conversion_records"]=(
             unresolved_direct_conv)
         report["unattributed_graph_conversion_records"]=(
