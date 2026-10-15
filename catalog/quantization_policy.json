@@ -7,37 +7,37 @@
     {
       "quantization": "F32",
       "priority": 260,
-      "tier": "unquantized_float32",
+      "tier": "near_original",
       "cuda_status": "unverified"
     },
     {
       "quantization": "F16",
       "priority": 240,
-      "tier": "unquantized_float16",
+      "tier": "near_original",
       "cuda_status": "unverified"
     },
     {
       "quantization": "BF16",
       "priority": 250,
-      "tier": "unquantized_bfloat16",
+      "tier": "near_original",
       "cuda_status": "unverified"
     },
     {
       "quantization": "f32",
       "priority": 259,
-      "tier": "unquantized_float32",
+      "tier": "near_original",
       "cuda_status": "unverified"
     },
     {
       "quantization": "f16",
       "priority": 239,
-      "tier": "unquantized_float16",
+      "tier": "near_original",
       "cuda_status": "unverified"
     },
     {
       "quantization": "bf16",
       "priority": 249,
-      "tier": "unquantized_bfloat16",
+      "tier": "near_original",
       "cuda_status": "unverified"
     },
     {
