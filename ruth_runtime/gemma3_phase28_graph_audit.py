@@ -48,6 +48,10 @@ def inspect_graph_replays(
         "graph_trace_distinct_graph_exec_ids": None,
         "graph_trace_matches_runtime_correlation": 0,
         "graph_trace_matches_driver_correlation": 0,
+        "graph_trace_launches_by_phase": {},
+        "unattributed_graph_trace_rows": 0,
+        "ambiguous_graph_trace_rows": 0,
+        "graph_trace_to_phase_correlation_verified": False,
         "kernel_table_graph_columns": [],
         "cuda_graph_phase_attribution_verified": False,
         "complete_attention_workload_coverage_verified": False,
@@ -149,6 +153,29 @@ def inspect_graph_replays(
         output["unmatched_runtime_graph_launches"] = unmatched
         output["ambiguous_runtime_graph_launches"] = ambiguous
 
+        # CUPTI graph execution correlations reference DRIVER API activity
+        # (CUPTI GraphTrace/GraphTrace2). Inspect runtime as a fallback but
+        # never infer a phase from device timestamp overlap alone.
+        driver_launches = {}
+        if ({"correlationId", "nameId", "start", "end",
+             "globalTid"} <= driver_c):
+            driver_rows = conn.execute(
+                "SELECT d.start,d.end,d.globalTid,d.correlationId,s.value "
+                "FROM CUPTI_ACTIVITY_KIND_DRIVER d "
+                "JOIN StringIds s ON s.id=d.nameId "
+                "WHERE LOWER(s.value) LIKE '%graphlaunch%'"
+            ).fetchall()
+            for row in driver_rows:
+                driver_launches.setdefault(row[3], []).append(row)
+        launch_runtime_ids = defaultdict(list)
+        for row in launches:
+            launch_runtime_ids[row[3]].append(row)
+
+        trace_by_phase = Counter()
+        trace_unmatched = 0
+        trace_ambiguous = 0
+        trace_runtime_matched = 0
+        trace_driver_matched = 0
         if ("correlationId" in graph_c
             and "CUPTI_ACTIVITY_KIND_GRAPH_TRACE" in names):
             trace_ids = [
@@ -156,25 +183,57 @@ def inspect_graph_replays(
                     "SELECT correlationId "
                     "FROM CUPTI_ACTIVITY_KIND_GRAPH_TRACE")
             ]
-            output["graph_trace_matches_runtime_correlation"] = sum(
-                type(cid) is int and runtime_ids.get(cid,0) == 1
-                for cid in trace_ids)
-            if {"correlationId","nameId"} <= driver_c:
-                drv = Counter(r[0] for r in conn.execute(
-                    "SELECT d.correlationId FROM CUPTI_ACTIVITY_KIND_DRIVER d "
-                    "JOIN StringIds s ON s.id=d.nameId "
-                    "WHERE LOWER(s.value) LIKE '%graphlaunch%'"))
-                output["graph_trace_matches_driver_correlation"] = sum(
-                    type(cid) is int and drv[cid] == 1
-                    for cid in trace_ids)
+            for cid in trace_ids:
+                candidates = driver_launches.get(cid,[])
+                if candidates:
+                    if len(candidates) == 1:
+                        trace_driver_matched += 1
+                else:
+                    candidates = launch_runtime_ids.get(cid,[])
+                    if len(candidates) == 1:
+                        trace_runtime_matched += 1
+                if len(candidates) > 1:
+                    trace_ambiguous += 1
+                    continue
+                if not candidates:
+                    trace_unmatched += 1
+                    continue
+                start,end,tid,_,_ = candidates[0]
+                phases = set()
+                if (type(start) is int and type(end) is int
+                    and type(tid) is int and start <= end):
+                    phases = {
+                        p for t0,t1,p in ranges.get(tid,())
+                        if t0 <= start and end <= t1
+                    }
+                if len(phases) == 1:
+                    trace_by_phase[next(iter(phases))] += 1
+                elif len(phases) > 1:
+                    trace_ambiguous += 1
+                else:
+                    trace_unmatched += 1
+        else:
+            trace_unmatched = output["graph_trace_rows"]
 
+        output["graph_trace_matches_runtime_correlation"] = trace_runtime_matched
+        output["graph_trace_matches_driver_correlation"] = trace_driver_matched
+        output["graph_trace_launches_by_phase"] = dict(trace_by_phase)
+        output["unattributed_graph_trace_rows"] = trace_unmatched
+        output["ambiguous_graph_trace_rows"] = trace_ambiguous
+        trace_verified = (
+            output["graph_trace_rows"] > 0
+            and output["graph_trace_rows"] == len(launches)
+            and not trace_unmatched and not trace_ambiguous
+            and dict(trace_by_phase) == dict(by_phase)
+        )
+        output["graph_trace_to_phase_correlation_verified"] = trace_verified
         success = (
             base_report["expected_flash_consistent_with_kernel_names"] is True
             and dict(nv_counts) == output["expected_nvtx_phase_ranges"]
             and bool(launches) and not unmatched and not ambiguous
             and sum(by_phase.values()) == len(launches)
             and by_phase["prefill"] > 0 and by_phase["decode"] > 0
-            and output["graph_trace_rows"] > 0
+            and trace_verified
         )
         output["cuda_graph_phase_attribution_verified"] = success
         output["status"] = (
