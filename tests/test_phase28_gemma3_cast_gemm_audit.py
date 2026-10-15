@@ -148,6 +148,49 @@ class TestCastGemmAudit(unittest.TestCase):
             self.assertFalse(out["gpu_timeline_candidate_pairing_verified"])
             self.assertFalse(out["producer_consumer_buffer_dependency_verified"])
 
+    def test_incomplete_graph_replay_node_set_fails_closed(self):
+        with TemporaryDirectory() as tmp:
+            root=Path(tmp)
+            dest=root/".ruth-build/phase28"
+            dest.mkdir(parents=True)
+            fp=dest/"node.sqlite"
+            make_trace(fp)
+            with sqlite3.connect(fp) as db:
+                db.execute(
+                    "DELETE FROM CUPTI_ACTIVITY_KIND_KERNEL WHERE rowid=("
+                    "SELECT k.rowid FROM CUPTI_ACTIVITY_KIND_KERNEL k "
+                    "JOIN StringIds s ON k.demangledName=s.id "
+                    "WHERE s.value LIKE 'void convert_unary_cont_vec4<float%' "
+                    "AND k.graphId=2 LIMIT 1)")
+            out=audit_cast_gemm(
+                fp,candidate="bf16-on",n_ctx=2048,root=root)
+            self.assertFalse(out["graph_node_to_nvtx_phase_verified"])
+            self.assertFalse(out["per_range_attribution_verified"])
+            self.assertFalse(out["producer_consumer_buffer_dependency_verified"])
+
+    def test_ambiguous_direct_runtime_correlation_fails_closed(self):
+        with TemporaryDirectory() as tmp:
+            root=Path(tmp)
+            dest=root/".ruth-build/phase28"
+            dest.mkdir(parents=True)
+            fp=dest/"node.sqlite"
+            make_trace(fp)
+            with sqlite3.connect(fp) as db:
+                match=db.execute(
+                    "SELECT k.correlationId FROM CUPTI_ACTIVITY_KIND_KERNEL k "
+                    "JOIN StringIds s ON k.demangledName=s.id "
+                    "WHERE s.value LIKE 'void convert_unary_cont_vec4<float%' "
+                    "AND k.graphId IS NULL LIMIT 1").fetchone()[0]
+                db.execute(
+                    "INSERT INTO CUPTI_ACTIVITY_KIND_RUNTIME "
+                    "VALUES (?,?,?,?,?)",
+                    (99999999,100000000,7,match,2))
+            out=audit_cast_gemm(
+                fp,candidate="bf16-on",n_ctx=2048,root=root)
+            self.assertGreater(
+                out["unattributed_or_ambiguous_target_kernels"],0)
+            self.assertFalse(out["per_range_attribution_verified"])
+
     def test_missing_direct_cast_fails_closed(self):
         with TemporaryDirectory() as tmp:
             root=Path(tmp)
