@@ -132,6 +132,63 @@ def kv_precision_candidates(profile: dict, *, n_ctx: int) -> dict:
     }
 
 
+def flash_attention_kv_policy(*, flash_attention: str, type_k: str, type_v: str) -> dict:
+    """Pinned-source comparison policy, never evidence of installed CUDA kernels.
+
+    The pinned ggml/CMakeLists.txt defaults include f16-f16 and bf16-bf16
+    FlashAttention vector template instances. fattn.cu can still route to
+    MMA/TILE, where K and V are converted to f16, irrespective of cache dtype.
+    """
+    if flash_attention not in ("off", "on"):
+        raise ValueError("Gemma 3 FlashAttention policy requires explicit on or off")
+    if type_k not in ("F16", "BF16", "F32") or type_v not in (
+            "F16", "BF16", "F32"):
+        raise ValueError("Unqualified Gemma 3 KV precision")
+
+    pair = (type_k, type_v)
+    source_default_vec = pair in (("F16", "F16"), ("BF16", "BF16"))
+    if flash_attention == "off":
+        comparison = ("reference_baseline" if pair == ("F16", "F16")
+                      else "experimental_unverified" if pair == ("BF16", "BF16")
+                      else "diagnostic_only")
+        return {
+            "flash_attention": "off",
+            "attention_path": "standard_non_flash",
+            "comparison_tier": comparison,
+            "flash_vector_pair_in_pinned_cmake_defaults": None,
+            "flash_f16_conversion_possible": None,
+            "installed_cuda_kernel_variants_verified": False,
+            "runtime_kernel_dispatch_verified": False,
+            "native_context_approved": False,
+            "source_note": (
+                "The pinned llama-context.cpp requires Flash Attention "
+                "for quantized V, not for non-quantized F16/BF16/F32 V. "
+                "Native non-Flash dtype and numerical support remain unverified."
+            ),
+        }
+
+    comparison = ("reference_candidate" if pair == ("F16", "F16")
+                  else "source_default_vector_candidate"
+                  if pair == ("BF16", "BF16") else "conversion_risk_diagnostic")
+    return {
+        "flash_attention": "on",
+        "attention_path": "flash_dispatch_runtime_unverified",
+        "comparison_tier": comparison,
+        "flash_vector_pair_in_pinned_cmake_defaults": source_default_vec,
+        "flash_f16_conversion_possible": True,
+        "installed_cuda_kernel_variants_verified": False,
+        "runtime_kernel_dispatch_verified": False,
+        "native_context_approved": False,
+        "source_note": (
+            "Pinned fattn.cu may dispatch to VEC, MMA_F16 or TILE. "
+            "MMA/TILE use temporary f16 K/V; the vector path accepts "
+            "matching source-default pairs, but f32 or missing vector "
+            "instances can require temporary f16 conversion. "
+            "CMake source defaults do not establish the installed binary."
+        ),
+    }
+
+
 def calculate_gemma3_kv(*, project_root: Path = PROJECT_ROOT, n_ctx: int = 256,
                          n_batch: int = 64, n_ubatch: int = 64,
                          swa_full: bool = True, flash_attention: str = "off",
@@ -142,14 +199,16 @@ def calculate_gemma3_kv(*, project_root: Path = PROJECT_ROOT, n_ctx: int = 256,
     if (type(n_ctx) is not int or n_ctx < 256 or n_ctx > 32768 or n_ctx % 256 != 0
         or type(n_batch) is not int or type(n_ubatch) is not int
         or not 1 <= n_ubatch <= n_batch <= n_ctx
-        or swa_full is not True or flash_attention != "off"
+        or swa_full is not True or flash_attention not in ("off", "on")
         or type_k not in bytes_per_scalar or type_v not in bytes_per_scalar):
         raise ValueError(
             "Gemma 3 KV plan requires 256-step aligned context, "
-            "F16/BF16/F32, Flash OFF, SWA FULL")
+            "F16/BF16/F32, explicit Flash ON/OFF, SWA FULL")
     profile = load_profile("gemma","gemma-3","gemma-3-1b-it", project_root=project_root)
     geom = derived_gemma3_geometry(profile)
     choices = kv_precision_candidates(profile,n_ctx=n_ctx)
+    flash_policy = flash_attention_kv_policy(
+        flash_attention=flash_attention, type_k=type_k, type_v=type_v)
     # n_seq_max 1, n_ctx padded to 256. For swa_full=true and context
     # smaller/larger than the SWA window, allocation has n_ctx cells
     # per SWA layer; this number is logical, NOT CUDA buffer size.
@@ -169,6 +228,7 @@ def calculate_gemma3_kv(*, project_root: Path = PROJECT_ROOT, n_ctx: int = 256,
         "llama_cpp_commit": BACKEND_REVISION,
         "source_derived_geometry": geom,
         "kv_precision_candidates": choices,
+        "kv_attention_policy": flash_policy,
         "configuration": {
             "n_ctx_requested": n_ctx, "n_ctx_effective_derived": cells,
             "n_batch": n_batch, "n_ubatch": n_ubatch,
@@ -177,7 +237,8 @@ def calculate_gemma3_kv(*, project_root: Path = PROJECT_ROOT, n_ctx: int = 256,
             "n_seq_max": 1, "kv_unified": False,
         },
         "selected_precision": {
-            "is_current_loading_baseline": type_k == "F16" and type_v == "F16",
+            "is_current_loading_baseline": (
+                flash_attention == "off" and type_k == "F16" and type_v == "F16"),
             "native_context_dtype_support_verified": False,
             "native_allocation_verified": False,
             "automatic_alignment_approved": False,

@@ -78,7 +78,7 @@ class Gemma3KVPlanTests(unittest.TestCase):
         for ctx in (128,257,511):
             with self.assertRaises(ValueError):
                 calculate_gemma3_kv(n_ctx=ctx)
-        for opts in ({"flash_attention":"on"},
+        for opts in ({"flash_attention":"auto"},
                      {"swa_full":False},{"type_k":"Q8_0"},
                      {"type_v":"Q8_0"},{"n_batch":64,"n_ubatch":128}):
             with self.assertRaises(ValueError):
@@ -110,6 +110,42 @@ class Gemma3KVPlanTests(unittest.TestCase):
                 self.assertFalse(result["native_allocation_executed"])
         self.assertEqual(calculate_gemma3_kv(n_ctx=512,type_k="F32",type_v="BF16")
                          ["logical_kv"]["total_logical_mib_derived"],19.5)
+
+    def test_flash_policy_separates_source_defaults_and_runtime_proof(self):
+        off = calculate_gemma3_kv(type_k="BF16",type_v="BF16")
+        p = off["kv_attention_policy"]
+        self.assertEqual(p["attention_path"],"standard_non_flash")
+        self.assertEqual(p["comparison_tier"],"experimental_unverified")
+        self.assertIsNone(p["flash_vector_pair_in_pinned_cmake_defaults"])
+
+        for k,v,vector_default,tier in (
+            ("F16","F16",True,"reference_candidate"),
+            ("BF16","BF16",True,"source_default_vector_candidate"),
+            ("F32","F32",False,"conversion_risk_diagnostic"),
+            ("BF16","F16",False,"conversion_risk_diagnostic"),
+            ("F32","BF16",False,"conversion_risk_diagnostic"),
+        ):
+            with self.subTest(type_k=k,type_v=v):
+                result = calculate_gemma3_kv(
+                    flash_attention="on", type_k=k,type_v=v)
+                policy = result["kv_attention_policy"]
+                self.assertEqual(policy["attention_path"],"flash_dispatch_runtime_unverified")
+                self.assertEqual(policy["comparison_tier"],tier)
+                self.assertEqual(policy["flash_vector_pair_in_pinned_cmake_defaults"],
+                                 vector_default)
+                self.assertTrue(policy["flash_f16_conversion_possible"])
+                self.assertFalse(policy["installed_cuda_kernel_variants_verified"])
+                self.assertFalse(policy["runtime_kernel_dispatch_verified"])
+                self.assertFalse(policy["native_context_approved"])
+                self.assertFalse(result["context_loading_approved"])
+                self.assertFalse(result["native_allocation_executed"])
+                self.assertFalse(result["gpu_fit_verified"])
+                self.assertFalse(result["selected_precision"]["is_current_loading_baseline"])
+
+        baseline=calculate_gemma3_kv()
+        self.assertEqual(baseline["kv_attention_policy"]["comparison_tier"],
+                         "reference_baseline")
+        self.assertTrue(baseline["selected_precision"]["is_current_loading_baseline"])
 
     def test_explicit_gguf_swa_pattern_wins_over_backend_default(self):
         profile=copy.deepcopy(self.profile())
@@ -154,6 +190,17 @@ class Gemma3KVPlanTests(unittest.TestCase):
                 reply=json.loads(out.getvalue())
                 self.assertEqual(reply["logical_kv"]["total_logical_mib_derived"],mib)
                 self.assertFalse(reply["context_loading_approved"])
+        with patch("sys.stdout",new_callable=StringIO) as out:
+            code=main(["models","kv-plan","--purpose","production",
+                       "--family","gemma","--model","gemma-3",
+                       "--version","gemma-3-1b-it","--quantization","BF16",
+                       "--n-ctx","256","--flash-attn","on",
+                       "--type-k","BF16","--type-v","BF16"])
+        self.assertEqual(code,0)
+        on=json.loads(out.getvalue())
+        self.assertEqual(on["kv_attention_policy"]["comparison_tier"],
+                         "source_default_vector_candidate")
+        self.assertFalse(on["context_loading_approved"])
 
 if __name__=="__main__":
     unittest.main()
