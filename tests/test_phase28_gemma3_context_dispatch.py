@@ -157,6 +157,90 @@ class TestPhase28Worker(unittest.TestCase):
             self.assertFalse(verify_artifact(root,dict(data,relative_path="../x"),256))
 
 
+class TestPhase28ParentEvidence(unittest.TestCase):
+    def test_parent_accepts_only_complete_native_geometry_and_local_logits(self):
+        with TemporaryDirectory() as d:
+            root=Path(d)
+            plan=verify_plan("f16-off",256)
+            root.joinpath(".venv","bin").mkdir(parents=True)
+            root.joinpath(".venv","bin","python").touch()
+            payload={
+                "logits":np.ones((2,1024),dtype=np.float32),
+                "prompt":list(range(128)),
+                "decode_ids":list(range(16)),
+            }
+            artifact=store_logits(root,plan,payload)
+            expected_sha="pin-model-sha256"
+            native = {
+                "n_ctx_effective_native":256,"n_ctx_seq_effective_native":256,
+                "n_batch_effective_native":64,"n_ubatch_effective_native":64,
+                "n_seq_max_native":1,
+                "flash_attention_native_parameter":"disabled",
+                "global_kv":{"cells":256,"native_logical_kv":{
+                    "layers":4,"key_type":"f16","value_type":"f16"}},
+                "swa_kv":{"cells":256,"native_logical_kv":{
+                    "layers":22,"key_type":"f16","value_type":"f16"}},
+            }
+            worker={
+                "schema":SCHEMA,"status":"long_context_teacher_forced_complete",
+                "model_version":"gemma-3-1b-it","model_sha256":expected_sha,
+                "quantization":"BF16","gpu_uuid":"GPU-AAAAAAAAAAAA",
+                "candidate":"f16-off","n_ctx":256,"n_batch":64,"n_ubatch":64,
+                "swa_full":True,"flash_attention":"off","type_k":"F16",
+                "type_v":"F16","prefill_tokens":128,"decode_tokens":16,
+                "warmups":1,"repeats":3,"generated_tokens":0,
+                "inference_executed":True,"production_qualified":False,
+                "native_kernel_dispatch_verified":False,"gpu_process_observed":True,
+                "timings":[{"prefill_ms":100.0,"prefill_chunks":2,
+                            "decode_ms_per_token":[10.0]*16} for _ in range(3)],
+                "logits_artifact":artifact,
+                "prompt_ids_sha256":"pinned-prompt",
+                "decode_ids":list(range(16)),
+                "gpu_memory_peak_mib_sampled":2300,
+                "nvtx_ranges_available":False,
+            }
+            def fake_run(cmd,**kwargs):
+                self.assertNotIn("--allow-gpu-load",cmd)
+                self.assertEqual(cmd[0],str(root/".venv/bin/python"))
+                self.assertEqual(kwargs["env"]["CUDA_VISIBLE_DEVICES"],
+                                 "GPU-AAAAAAAAAAAA")
+                return subprocess.CompletedProcess(
+                    cmd,0,PREFIX+json.dumps(worker),"native stderr")
+            env=SimpleNamespace(interpreter_in_project_venv=True,
+                                python_version="3.12.10",project_root=str(root),
+                                interpreter=str(root/".venv/bin/python"))
+            def run():
+                return probe_one(
+                    "f16-off",256,authorize_gpu_inference=True,
+                    project_root=root, environment=env,run=fake_run,
+                    verify_native=lambda **kw: SimpleNamespace(
+                        status="native_library_dual_abi_verified"),
+                    discover_gpu=lambda **kw: ("GPU-AAAAAAAAAAAA","0000:01:00.0"),
+                    gpu_preflight=lambda *args,**kw: SimpleNamespace(
+                        status="gpu_ready",memory_mib={"free":5000}))
+            with patch("ruth_runtime.gemma3_phase28.select_model",
+                       return_value=SimpleNamespace(expected_sha256=expected_sha)), \
+                 patch("ruth_runtime.gemma3_phase28._valid_local_gguf",
+                       return_value=(True,root/"pinned.gguf",None)), \
+                 patch("ruth_runtime.gemma3_phase28.pinned_native_wheel_sha256",
+                       return_value="pin-wheel"), \
+                 patch("ruth_runtime.gemma3_phase28._parse_offload",
+                       return_value=(27,27)), \
+                 patch("ruth_runtime.gemma3_phase28.parse_llama_context_log",
+                       return_value=native):
+                passed=run()
+                self.assertEqual(passed["status"],
+                                 "native_long_context_inference_observed")
+                self.assertEqual(passed["prefill_tokens_per_second"],1280.0)
+                self.assertEqual(passed["decode_tokens_per_second"],100.0)
+                self.assertFalse(passed["production_qualified"])
+                native["swa_kv"]["native_logical_kv"]["value_type"]="bf16"
+                failed=run()
+                self.assertEqual(failed["status"],
+                                 "extended_context_native_evidence_unverified")
+                self.assertTrue(failed["inference_executed"])
+
+
 class TestPhase28Comparator(unittest.TestCase):
     def test_aligned_long_context_snapshots_are_compared_offline(self):
         with TemporaryDirectory() as d:
