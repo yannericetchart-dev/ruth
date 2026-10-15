@@ -1,5 +1,8 @@
 """Source-derived llama.cpp KV calculations. No live model or CUDA required."""
 import shutil
+import json
+from io import StringIO
+from unittest.mock import patch
 from pathlib import Path
 from tempfile import TemporaryDirectory
 import unittest
@@ -7,6 +10,7 @@ import unittest
 from ruth_runtime.dependencies import PROJECT_ROOT
 from ruth_runtime.llama_kv_profile import calculate_llama_kv, pad
 from ruth_runtime.llama_kv_log import parse_llama_context_log
+from ruth_runtime.launcher import main
 
 
 class LlamaKVProfileTests(unittest.TestCase):
@@ -134,6 +138,21 @@ class LlamaKVProfileTests(unittest.TestCase):
         self.assertIsNone(out["n_ctx_effective_native"])
         self.assertIsNone(out["global_kv"])
         self.assertIsNone(out["flash_attention_effective"])
+
+    def test_cli_kv_plan_has_no_native_or_cuda_allocation(self):
+        with patch("sys.stdout", new_callable=StringIO) as out, \
+             patch("subprocess.run", side_effect=AssertionError("No subprocess")):
+            exit_code = main([
+                "models", "kv-plan", "--purpose", "production",
+                "--n-ctx", "128", "--n-batch", "64", "--n-ubatch", "64",
+                "--swa-full", "on", "--flash-attn", "off",
+                "--type-k", "F16", "--type-v", "F16",
+            ])
+        self.assertEqual(exit_code, 0)
+        result = json.loads(out.getvalue())
+        self.assertEqual(result["total_logical_mib_derived"], 84.0)
+        self.assertFalse(result["native_allocation_executed"])
+        self.assertFalse(result["inference_executed"])
 
     def test_padding_input_validation(self):
         self.assertEqual(pad(257,256),512)
