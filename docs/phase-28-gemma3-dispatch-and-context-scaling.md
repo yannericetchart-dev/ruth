@@ -553,6 +553,52 @@ Nsight exposed **all internal CUDA Graph node executions**:
 retained. Neither Phase28 profiling nor this reader changes
 production runtime settings.
 
+## Per-NVTX execution paths verified — BF16 Flash ON, n_ctx=2048
+
+The user's **actual** offline analysis of
+`.ruth-build/phase28/bf16-on-ctx2048-nvtx3.sqlite` with
+`ruth_runtime.gemma3_phase28_execution_paths` returned
+`status="cuda_graph_and_direct_launch_paths_verified"` and
+`execution_path_classification_verified=true`.
+
+| Path | Prefill NVTX ranges | Decode NVTX ranges | Total |
+|---|---:|---:|---:|
+| CUDA Graph replay | 68 | 60 | 128 |
+| Direct FlashAttention kernel launches | 28 | 4 | 32 |
+| **NVTX ranges accounted for** | **96** | **64** | **160** |
+
+The tool resolved 128 Graph replay executions through the SQLite
+`GRAPH_TRACE` evidence and correlated **832 main + 832 auxiliary**
+FlashAttention kernel launch records to the 32 direct-call ranges.
+In the direct ranges, each of the 26 attention layers corresponds to
+one main and one auxiliary launch. No mixed graph/direct ranges,
+unknown ranges, unexpectedly sized direct paths or ambiguous direct
+kernel launch correlations were reported:
+
+- `graph_trace_launches_correlated=128`
+- `direct_main_kernel_records_correlated=832`
+- `direct_auxiliary_kernel_records_correlated=832`
+- `direct_kernels_unattributed_or_ambiguous=0`
+- `ranges_with_both_graph_and_direct_attention=0`
+- `ranges_without_dispatch_evidence=0`
+- `ranges_with_unexpected_direct_kernel_counts=0`
+
+This elevates the previous *count-based hypothesis* to a verified
+**per-range host launch-path classification** for the pinned
+Gemma3-1B-IT BF16/BF16 Flash ON Phase28 benchmark. The separately
+correlated direct main kernels are MMA_F16 for prefill and BF16-native
+VEC for decode. **Do not extrapolate these exact kernels to each
+replayed CUDA Graph node without further evidence.**
+
+The analysis continues to report
+`cuda_graph_node_coverage_verified=false`,
+`complete_attention_workload_coverage_verified=false` and
+`production_qualified=false`. The source SQLite export exposes
+`CUPTI_ACTIVITY_KIND_KERNEL.graphId`, `graphNodeId` and the
+`CUDA_GRAPH_EVENTS` table, which should be inspected read-only
+before designing further graph-node coverage validation. The fact
+that those fields exist is **not** proof of their completeness.
+
 ## Promotion gate
 
 Phase 28 produces *diagnostic* context, timing, memory and CUDA-kernel
