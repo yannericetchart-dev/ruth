@@ -185,6 +185,53 @@ def sync_gguf_architecture(
         or type(report.get("blocks")) is not int
         or report.get("blocks") != fields.get("gemma3.block_count")):
         raise ValueError("Unsafe or inconsistent GGUF header metadata")
+    # Validate whitelisted per-layer weight descriptors independently from
+    # the KV cache, which stores activations and may use a different dtype.
+    tensor_entries = report.get("attention_weight_tensors")
+    coverage = report.get("attention_projection_coverage")
+    if tensor_entries is not None or coverage is not None:
+        from .gguf_header_inspection import ATTENTION_ROLES, ATTENTION_PROJECTORS
+        from collections import Counter
+        layers = report.get("blocks")
+        if (not isinstance(tensor_entries, list)
+            or not isinstance(coverage, dict)
+            or set(coverage) != set(ATTENTION_PROJECTORS)
+            or type(layers) is not int or layers != 26
+            or len(tensor_entries) > layers * len(ATTENTION_ROLES)
+            or report.get("attention_dtypes_are_kv_cache_dtypes") is not False):
+            raise ValueError("Unsafe attention tensor role report")
+        unique = set()
+        for item in tensor_entries:
+            if (not isinstance(item, dict)
+                or set(item) != {"layer", "role", "dtype", "shape"}
+                or type(item["layer"]) is not int
+                or not 0 <= item["layer"] < layers
+                or item["role"] not in ATTENTION_ROLES
+                or item["dtype"] not in ("BF16","F16","F32")
+                or not isinstance(item["shape"], list)
+                or not 1 <= len(item["shape"]) <= 4
+                or any(type(dim) is not int or not 1 <= dim <= 1_000_000
+                       for dim in item["shape"])):
+                raise ValueError("Unexpected attention tensor role descriptor")
+            key = (item["layer"], item["role"])
+            if key in unique:
+                raise ValueError("Duplicate attention tensor role")
+            unique.add(key)
+        for role in ATTENTION_PROJECTORS:
+            row = coverage[role]
+            selected = [x for x in tensor_entries if x["role"] == role]
+            types = dict(sorted(Counter(x["dtype"] for x in selected).items()))
+            if (not isinstance(row,dict)
+                or set(row) != {"layers_present", "dtype_counts", "complete"}
+                or row["layers_present"] != len(selected)
+                or row["dtype_counts"] != types
+                or type(row["complete"]) is not bool
+                or row["complete"] != (len(selected) == layers
+                    and {x["layer"] for x in selected} == set(range(layers)))):
+                raise ValueError("Inconsistent GGUF per-layer projection coverage")
+    else:
+        tensor_entries = None
+        coverage = None
     observed = {
         "status": "gguf_header_observed_native_crosscheck_pending",
         "gguf_sha256": chosen.expected_sha256,
@@ -196,6 +243,10 @@ def sync_gguf_architecture(
         "metadata_warnings": warning_flags,
         "metadata_fields": fields,
     }
+    if tensor_entries is not None:
+        observed["attention_weight_tensors"] = tensor_entries
+        observed["attention_projection_coverage"] = coverage
+        observed["attention_dtypes_are_kv_cache_dtypes"] = False
     try:
         user = _github_user(run)
     except GitHubCLIMissing:
@@ -228,7 +279,11 @@ def sync_gguf_architecture(
             or current["variants"]["BF16"]["gguf_sha256"] != chosen.expected_sha256):
             raise ValueError("Canonical model source mismatch")
         old_obs = (current.get("architecture") or {}).get("gguf_header_observation")
-        if old_obs is not None and old_obs != observed:
+        if old_obs is not None and any(
+            observed.get(field) != value for field, value in old_obs.items()
+        ):
+            # Existing pinned observations must never be rewritten by a
+            # re-inspection: optional role data may only ENRICH them.
             raise ValueError("Conflicting native GGUF header evidence for pinned source")
         # Recover deterministic attention partition from the pinned model
         # GGUF header AND the pinned llama.cpp Gemma3 SWA fallback rule.
