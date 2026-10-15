@@ -462,7 +462,89 @@ autorizzazione separata, né inferire benefici percentuali
 di un ipotetico Flash MMA_BF16 dal tempo cumulativo
 dei kernel di conversione.
 
-## 10. Riferimenti interni
+## 10. Audit temporale cast F32→BF16 ↔ GEMM BF16 per intervallo NVTX
+
+**Nuovo strumento offline pubblicato:**
+`ruth_runtime.gemma3_phase28_cast_gemm_audit`.
+Valido intenzionalmente **solo** per il candidato `bf16-on`,
+contesto `2048` e un export Nsight **node-level** della fase 28.
+Nessuna nuova inferenza, download, patch al kernel o alla produzione.
+
+Motivazione: il primo inventario ha contato
+**17.184** conversioni F32→BF16 e **17.184** GEMM BF16 nello
+stesso prefill. È una corrispondenza numerica necessaria ma
+**non sufficiente** a dimostrare il consumo del buffer convertito.
+Il nuovo lettore affronta il passaggio verificabile successivo:
+
+1. Applica gli stessi limiti dei lettori precedenti per il file
+   locale `.ruth-build/phase28/*.sqlite` in sola lettura.
+2. Usa l'audit esistente del singolo nodo per ottenere l'associazione
+   **già provata** da `graphId` a replay `cudaGraphLaunch` e
+   fase NVTX dentro **la medesima acquisizione**.
+3. Assegna i kernel non-Graph alle chiamate runtime mediante
+   `correlationId`; l'intervallo **CPU** completo della API
+   deve trovarsi in un **solo** range NVTX sullo stesso thread.
+   Non scambia mai timestamp GPU per timestamp CPU.
+4. Controlla **tutti** i 96 intervalli di prefill e i 64 di decode
+   singolarmente; distingue modalità `graph_node` e `direct`,
+   e confronta per intervallo i conteggi F32→BF16 e GEMM BF16,
+   con 52 conversioni BF16→F16 attese dai 26 layer.
+   Un eventuale numero uniforme di cast per intervallo
+   è **ricavato dai dati**, non imposto a 179.
+5. Verifica separatamente se la sequenza per timestamp GPU rende
+   possibile una corrispondenza ordinata (il cast deve
+   terminare **prima** dell'inizio del GEMM candidato).
+   Sui replay confronta anche l'ordine degli
+   identificatori di nodo osservati. Nessun ordinamento
+   dimostra dipendenze di memoria o archi di DAG.
+6. Pubblica i conteggi, le distribuzioni e le somme delle durate
+   kernel GPU per fase e modalità; una GPU-time sum non è
+   un possibile speedup end-to-end.
+
+Comandi:
+
+```bash
+cd ~/Dev/ruth-model-profiling
+git pull --ff-only origin feat/gemma3-phase28-context-dispatch
+
+.venv/bin/python -m unittest \
+  tests.test_phase28_gemma3_cast_gemm_audit -v
+
+.venv/bin/python -m ruth_runtime.gemma3_phase28_cast_gemm_audit \
+  --sqlite .ruth-build/phase28/bf16-on-ctx2048-nvtx3-nodes.sqlite \
+  --candidate bf16-on --n-ctx 2048
+```
+
+**Test sintetici inclusi:** caso normale con range direct/graph,
+conteggi alterati, ordine GPU contrario, nomi riconosciuti; il
+successo sul database reale è da confermare dal risultato dell'host.
+
+Interpretazione delle bandiere:
+
+- `per_range_attribution_verified`: ogni kernel target è assegnato
+  a un intervallo e l'uguaglianza di conteggio F32→BF16/GEMM
+  è rispettata individualmente nel prefill.
+- `gpu_timeline_candidate_pairing_verified`: ordinamento
+  temporale compatibile con possibili coppie in ogni intervallo.
+  È **solo evidenza di compatibilità**, non un join di buffer.
+- `graph_node_kernel_order_stable`: lista degli ID di nodo
+  osservati nello stesso ordine nelle repliche del grafo
+  (non un arco producer→consumer del CUDA Graph).
+- `producer_consumer_buffer_dependency_verified=false`,
+  `ggml_operator_identity_verified=false` e
+  `potential_conversion_elimination_verified=false`
+  **sempre**, finché non siano disponibili metadati di memoria,
+  dipendenze DAG o tracciamento mirato GGML; non trasformare
+  un match temporale in una prova causale.
+
+L'eventuale passo successivo è una cattura strumentata dei
+**puntatori/offset degli operandi GGML** e della relazione che
+collega ciascun cast al relativo GEMM, oppure un inventario
+statico rigoroso dei dati/archi del grafo. Queste estensioni
+vanno progettate prima di ogni ulteriore profiling GPU e
+richiedono nuova autorizzazione se comportano esecuzioni.
+
+## 11. Riferimenti interni
 
 - [Fase 27 — precisione e benchmark](phase-27-gemma3-precision-and-kernel-benchmark.md).
 - [Fase 28 — prove CUDA/NVTX e contesti](phase-28-gemma3-dispatch-and-context-scaling.md).
