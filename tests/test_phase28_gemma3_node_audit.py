@@ -17,10 +17,12 @@ def make_node_trace(file: Path):
                 start INTEGER,end INTEGER,eventType INTEGER,
                 globalTid INTEGER,text TEXT);
             CREATE TABLE CUPTI_ACTIVITY_KIND_RUNTIME (
-                start INTEGER,end INTEGER,globalTid INTEGER,nameId INTEGER);
+                start INTEGER,end INTEGER,globalTid INTEGER,nameId INTEGER,
+                correlationId INTEGER);
             CREATE TABLE CUPTI_ACTIVITY_KIND_KERNEL (
                 start INTEGER,end INTEGER,graphId INTEGER,
-                graphNodeId INTEGER,demangledName INTEGER);
+                graphNodeId INTEGER,demangledName INTEGER,
+                correlationId INTEGER);
             INSERT INTO StringIds VALUES
                 (1,'cudaGraphLaunch_v10000'),
                 (2,'flash_attn_ext_f16<256>'),
@@ -40,13 +42,13 @@ def make_node_trace(file: Path):
                 if j < graph_launches:
                     db.execute(
                         "INSERT INTO CUPTI_ACTIVITY_KIND_RUNTIME "
-                        "VALUES (?,?,7,1)",(start+100,start+200))
+                        "VALUES (?,?,7,1,?)",(start+100,start+200,ix))
                     for node in range(number_nodes):
                         db.execute(
                             "INSERT INTO CUPTI_ACTIVITY_KIND_KERNEL "
-                            "VALUES (?,?,?,?,?)",
+                            "VALUES (?,?,?,?,?,?)",
                             (start+5000+node*20,start+5010+node*20,
-                             graph_id,graph_id*100+node,kname))
+                             graph_id,graph_id*100+node,kname,ix))
 
 
 class TestPhase28NodeAudit(unittest.TestCase):
@@ -76,10 +78,37 @@ class TestPhase28NodeAudit(unittest.TestCase):
                 {"graph_id":10,"candidate_nvtx_phases_by_count_only":["decode"],
                  "repeat_count":60},
             ])
-            self.assertFalse(out["graph_to_nvtx_phase_verified"])
+            self.assertTrue(out["graph_to_nvtx_phase_verified"])
+            self.assertTrue(out["graph_kernel_launch_replay_node_sets_verified"])
+            self.assertEqual(out["graph_id_to_nvtx_phase"],
+                             {"2":"prefill","10":"decode"})
+            self.assertEqual(
+                out["graph_kernel_launch_correlated_records"],324)
+            self.assertEqual(
+                out["graph_kernel_launch_unmatched_or_ambiguous_records"],0)
             self.assertFalse(out["all_cuda_graph_node_types_traced_verified"])
             self.assertFalse(out["complete_attention_workload_coverage_verified"])
             self.assertFalse(out["production_qualified"])
+
+    def test_broken_cuda_graph_kernel_runtime_join_does_not_verify_phase(self):
+        with TemporaryDirectory() as d:
+            root=Path(d)
+            folder=root/".ruth-build/phase28"
+            folder.mkdir(parents=True)
+            fp=folder/"nodes.sqlite"
+            make_node_trace(fp)
+            with sqlite3.connect(fp) as db:
+                db.execute(
+                    "UPDATE CUPTI_ACTIVITY_KIND_KERNEL SET correlationId=999999 "
+                    "WHERE rowid=1")
+            out=inspect_node_trace(
+                fp,candidate="bf16-on",n_ctx=2048,root=root)
+            self.assertTrue(
+                out["observed_graph_kernel_node_repetitions_verified"])
+            self.assertFalse(out["graph_to_nvtx_phase_verified"])
+            self.assertEqual(
+                out["graph_kernel_launch_unmatched_or_ambiguous_records"],1)
+            self.assertFalse(out["complete_attention_workload_coverage_verified"])
 
     def test_missing_kernel_node_execution_fails_closed(self):
         with TemporaryDirectory() as d:
