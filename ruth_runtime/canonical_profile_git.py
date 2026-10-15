@@ -193,7 +193,7 @@ def sync_gguf_architecture(
             or len(data["sha"]) != 40):
             raise ValueError("Unrecognized canonical profile response")
         current = json.loads(base64.b64decode(
-            data["content"].replace("\\n",""),validate=True).decode("utf-8"))
+            data["content"].replace("\n",""),validate=True).decode("utf-8"))
         expected = load_profile("gemma","gemma-3","gemma-3-1b-it",
                                 project_root=root)
         if (current.get("schema") != expected.get("schema")
@@ -221,7 +221,7 @@ def sync_gguf_architecture(
             if type(val) is int and val > 0:
                 architecture[field] = val
         raw=(json.dumps(current,ensure_ascii=False,indent=2,
-                        sort_keys=True,allow_nan=False)+"\\n").encode("utf-8")
+                        sort_keys=True,allow_nan=False)+"\n").encode("utf-8")
         put=run(["gh","api","--method","PUT",endpoint,
                  "-f","message=profiles: record pinned Gemma3 GGUF header metadata",
                  "-f","content="+base64.b64encode(raw).decode("ascii"),
