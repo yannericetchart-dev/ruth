@@ -172,6 +172,55 @@ especially sliding-window pattern, head count, K/V dimensions and the
 minimum context allocation; even a successful header parse is NOT
 enough to certify KV dimensions or GPU context fit.
 
+### 5b — Compare pinned Gemma 3 GGUF hparams with llama.cpp source (READY; no CUDA)
+
+The on-host, SHA256-verified header inspection was published into the
+canonical model profile (commit `1ebed19`). Recorded source facts:
+26 Transformer blocks, 4 attention heads, 1 KV head, K/V dimension
+256 each, SWA window 512, GGUF context limit 32768, 183 BF16 and
+157 F32 tensor descriptors. The BF16 matrix-tensor count dominates;
+the advisory `general.file_type=32` is not defined in the pinned
+ggml ftype enumeration (`MOSTLY_BF16=24`). The raw value and its
+warning are retained rather than reinterpreted.
+
+The pinned backend source `src/models/gemma3.cpp` invokes
+`load_swa_pattern(ml, 6)` when the SWA window exists.
+`src/llama-hparams.cpp` uses `il % 6 < 5` for SWA when the GGUF
+does not override `gemma3.attention.sliding_window_pattern`.
+No override appeared in this GGUF. Thus, for 26 blocks:
+
+- SWA indices: all layers except 5, 11, 17, 23 (22 layers).
+- Global indices: 5, 11, 17, 23 (4 layers).
+
+This is **source-derived**, not GPU-allocated proof.
+The canonical profile keeps the separate `gguf_header_observation`
+and `source_derived_geometry` with pinned source revision and layer
+indices; future host inspection enriches that same profile automatically.
+
+With F16/F16 KV, SWA FULL ON, Flash OFF and `n_ctx=256`, a single
+layer has 256 cells × 1 KV head × (256 K + 256 V) × 2 bytes = 262144
+logical bytes = 0.25 MiB. Total is 6.5 MiB, split as 5.5 MiB SWA
+and 1.0 MiB global. These are **logical bytes** and are not reported
+CUDA allocations. The actual native cache and compute buffers remain
+unknown pending the next guarded context measurement.
+
+Use the source-only planner (no CUDA, no download or native weight load):
+
+```bash
+git pull --ff-only origin model-profiling
+
+./ruth models kv-plan --purpose production --family gemma \
+  --model gemma-3 --version gemma-3-1b-it --quantization BF16 \
+  --n-ctx 256 --n-batch 64 --n-ubatch 64 \
+  --swa-full on --flash-attn off --type-k F16 --type-v F16
+```
+
+Expected `status` is
+`gemma3_kv_pinned_source_derived_native_context_unverified`.
+It explicitly refuses to claim GPU fit or to authorize context loading.
+Do not confuse `context_length=32768` (GGUF training/runtime metadata)
+with measured CUDA fit on this host.
+
 ### 6 — Minimal canonical context loading (NOT APPROVED YET)
 
 Use `n_ctx=256` and profile `n_batch=64,n_ubatch=64` first, KV F16/F16,
