@@ -241,3 +241,62 @@ def load_probe_config(profile: dict, *, n_ctx: int, n_batch: int, n_ubatch: int,
             "swa_full": swa_full,
             "n_ctx_effective_derived": n_ctx,
             "profile_geometry_status": "source_derived"}
+
+
+def evaluate_loading_fit(profile: dict, *, quantization: str, host: dict,
+                         n_ctx: int=256, n_batch: int=64, n_ubatch: int=64,
+                         flash_attention: str="off", type_k: str="F16",
+                         type_v: str="F16", swa_full: bool=True) -> dict:
+    """Strict read-only fit classification from recorded native measurements.
+
+    Reuses observations only when backend, driver/CUDA, context request and
+    options match. File bytes are a prefilter, not evidence of CUDA residency.
+    """
+    variant = (profile.get("variants") or {}).get(quantization.upper())
+    if not isinstance(variant, dict):
+        raise ValueError("GGUF variant absent from canonical model profile")
+    memory = host.get("total_mib")
+    if type(memory) not in (int, float) or memory <= 0:
+        return {"status": "host_memory_unknown", "matched_context": None,
+                "gpu_allocations_executed": False}
+    if variant.get("file_bytes") is not None and variant["file_bytes"] > memory * 1048576:
+        return {"status": "serialized_gguf_exceeds_total_vram_policy",
+                "matched_context": None, "gpu_allocations_executed": False}
+    compatible = []
+    for group in variant.get("context_observations", {}).values():
+        ident = group.get("identity") or {}
+        if (ident.get("architecture") != host.get("architecture")
+            or ident.get("driver_version") != host.get("driver_version")
+            or ident.get("cuda_backend") != host.get("backend_cuda")
+            or ident.get("llama_cpp_binding") != host.get("llama_cpp_binding")
+            or ident.get("n_ctx_requested") != n_ctx
+            or ident.get("flash_attention") != flash_attention
+            or ident.get("type_k") != type_k
+            or ident.get("type_v") != type_v
+            or ident.get("swa_full") is not swa_full
+            or ident.get("n_batch") != n_batch
+            or ident.get("n_ubatch") != n_ubatch):
+            continue
+        for item in group.get("observations", []):
+            observed = item.get("data") or {}
+            if observed.get("verified_native_allocations_only") is True:
+                compatible.append(observed)
+    if not compatible:
+        return {
+            "status": "exact_loading_context_unverified",
+            "matched_context": None,
+            "missing": "native_full_gpu_context_allocation_at_exact_config",
+            "gpu_allocations_executed": False,
+        }
+    return {
+        "status": "exact_loading_context_previously_observed",
+        "matched_context": {
+            "gpu_kv_buffer_mib": compatible[-1].get("gpu_kv_buffer_mib"),
+            "gpu_compute_buffer_mib": compatible[-1].get("gpu_compute_buffer_mib"),
+            "n_ctx_requested": n_ctx, "n_batch": n_batch,
+            "n_ubatch": n_ubatch,
+        },
+        "inference_verified": False,
+        "production_qualified": False,
+        "gpu_allocations_executed": False,
+    }
