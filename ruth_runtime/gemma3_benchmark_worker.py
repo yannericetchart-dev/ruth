@@ -170,9 +170,11 @@ def run_native(root: Path, uuid: str, flash: str, k: str, v: str) -> dict:
         project_root=root)
     file = _local_path(root, choice)
     if (file.is_symlink() or not file.is_file()
-        or file.stat().st_size != choice.expected_size_bytes
-        or file.open("rb").read(4) != b"GGUF"):
+        or file.stat().st_size != choice.expected_size_bytes):
         raise RuntimeError("Pinned GGUF unavailable or altered")
+    with file.open("rb") as stream:
+        if stream.read(4) != b"GGUF":
+            raise RuntimeError("Invalid pinned GGUF magic")
     from llama_cpp import llama_cpp as api
     from llama_cpp import __version__ as binding_version
     if binding_version != WHEEL_VERSION or not api.llama_supports_gpu_offload():
@@ -225,8 +227,8 @@ def run_native(root: Path, uuid: str, flash: str, k: str, v: str) -> dict:
             "decode_tokens": DECODE_STEPS,
             "n_vocab": data["n_vocab"],
             "prompt_ids_sha256": hashlib.sha256(
-                bytes(data["logits"].shape.__repr__(), "ascii") +
-                json.dumps(data["prompt_ids"]).encode()).hexdigest(),
+                json.dumps(data["prompt_ids"], separators=(",", ":"))
+                .encode("ascii")).hexdigest(),
             "decode_ids": data["decode_ids"],
             "artifact": artifact,
             "timings": data["timings"],
