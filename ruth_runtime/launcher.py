@@ -81,7 +81,7 @@ def main(argv: list[str] | None = None) -> int:
     models = sub.add_parser("models", help="Read-only hierarchical model catalog and HF provenance")
     model_sub = models.add_subparsers(dest="model_action")
     model_sub.add_parser("list", help="List families, GGUF models and defaults (offline)")
-    for operation in ("select", "resolve", "download", "smoke", "profile", "quantizations", "recommend", "probe-production", "probe-load", "profiles", "hardware", "auto-production", "kv-plan"):
+    for operation in ("select", "resolve", "download", "smoke", "profile", "quantizations", "recommend", "probe-production", "probe-load", "profiles", "hardware", "auto-production", "kv-plan", "inspect-gguf"):
         mp = model_sub.add_parser(operation, help=(
             "Offline model selection" if operation == "select" else
             "Resolve HF immutable revision and GGUF checksum (metadata only)"
@@ -106,10 +106,12 @@ def main(argv: list[str] | None = None) -> int:
             if operation == "hardware" else
             "Read-only source-derived llama.cpp KV/SWA/K/V/batch estimates; no model load or CUDA"
             if operation == "kv-plan" else
+            "Verify pinned GGUF architecture and tensor descriptors, no CUDA"
+            if operation == "inspect-gguf" else
             "Quality-first production GGUF selection, pinned Git memory evidence and optional guarded download/probes"
         ))
         mp.add_argument("--purpose", choices=("production", "test"),
-                        default="production" if operation in ("probe-production", "probe-load", "profiles", "auto-production", "kv-plan") else "test")
+                        default="production" if operation in ("probe-production", "probe-load", "profiles", "auto-production", "kv-plan", "inspect-gguf") else "test")
         mp.add_argument("--family")
         mp.add_argument("--model")
         mp.add_argument("--version")
@@ -206,6 +208,9 @@ def main(argv: list[str] | None = None) -> int:
                             help="Authorize isolated GPU allocations WITHOUT inference")
             mp.add_argument("--no-git-sync", action="store_true",
                             help="Record native measurement locally but do not publish to Git")
+        if operation == "inspect-gguf":
+            mp.add_argument("--no-git-sync", action="store_true",
+                            help="Inspect only; do not merge GGUF header into the owner Git model profile")
         if operation in ("smoke", "profile", "probe-production"):
             mp.add_argument("--allow-gpu-inference", action="store_true",
                             help="Authorize model loading/inference in isolated CUDA worker; no download")
@@ -494,6 +499,44 @@ def main(argv: list[str] | None = None) -> int:
                     "download_started": False, "gpu_allocations_executed": False,
                 })
                 return 0
+            if args.model_action == "inspect-gguf":
+                from .gguf_header_inspection import inspect_pinned_gguf
+                try:
+                    header = inspect_pinned_gguf(
+                        purpose=args.purpose, family=choice.family,
+                        model=choice.model, version=choice.version,
+                        quantization=choice.quantization)
+                    report = {"action": "models", **header,
+                              "runtime_profile_published": False}
+                    if args.no_git_sync:
+                        report["git_publication"] = {
+                            "status":"git_sync_disabled","git_updated":False}
+                    else:
+                        from .canonical_profile_git import sync_gguf_architecture
+                        try:
+                            published = sync_gguf_architecture(header)
+                            report["git_publication"] = published
+                            report["runtime_profile_published"] = (
+                                published["status"] in (
+                                    "git_profile_updated_model_profiling",
+                                    "git_profile_already_current"))
+                        except (OSError, ValueError, RuntimeError, TypeError,
+                                KeyError) as exc:
+                            report["git_publication"] = {
+                                "status":"gguf_header_publication_failed",
+                                "git_updated":False,
+                                "error":type(exc).__name__+": "+str(exc)[:220]}
+                    _print(report)
+                    return 0
+                except (OSError, ValueError, RuntimeError, TypeError,
+                        KeyError) as exc:
+                    _print({"action":"models",
+                            "status":"gguf_header_inspection_unverified",
+                            "error":type(exc).__name__+": "+str(exc)[:250],
+                            "cuda_initialized":False,
+                            "model_weights_loaded":False,
+                            "inference_executed":False})
+                    return 2
             if args.model_action == "probe-load":
                 from .load_only_probe import probe_model_load
                 if args.purpose != "production":
