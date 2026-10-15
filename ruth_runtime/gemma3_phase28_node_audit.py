@@ -239,8 +239,16 @@ def inspect_node_trace(
                     )
                 )
             )
+            expected_nvtx = {
+                "prefill": (WARMUPS+REPEATS) *
+                    ((plan.prompt_tokens + plan.n_batch - 1)//plan.n_batch),
+                "decode": (WARMUPS+REPEATS)*plan.decode_tokens,
+            }
             verified_causal = (
-                bool(graph_kernel_rows) and unmatched == 0
+                base["expected_flash_consistent_with_kernel_names"] is True
+                and dict(nvtx_counts) == expected_nvtx
+                and bool(graph_kernel_rows) and unmatched == 0
+                and bad_launches == 0
                 and not duplicate_graph_launch_correlation
                 and observed_launch_ids == all_graph_launch_ids
                 and graph_set_match and unique_graph_per_launch
