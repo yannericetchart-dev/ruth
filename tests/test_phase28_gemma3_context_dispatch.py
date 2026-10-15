@@ -35,8 +35,8 @@ class TestPhase28Nvtx3Bridge(unittest.TestCase):
             base.mkdir(parents=True)
             (base/"libruth_phase28_nvtx3.so").write_bytes(b"fake-native-for-mock")
             lib=MagicMock()
-            with patch.dict(os.environ, {"RUTH_PHASE28_NVTX3_BRIDGE":"1"}), \\
-                 patch("ruth_runtime.gemma3_nvtx.PROJECT_ROOT",root), \\
+            with patch.dict(os.environ, {"RUTH_PHASE28_NVTX3_BRIDGE":"1"}), \
+                 patch("ruth_runtime.gemma3_nvtx.PROJECT_ROOT",root), \
                  patch("ruth_runtime.gemma3_nvtx.ctypes.CDLL",return_value=lib) as dl:
                 ranges=NativeRanges("PHASE28")
                 self.assertTrue(ranges.available)
@@ -54,7 +54,7 @@ class TestPhase28Nvtx3Bridge(unittest.TestCase):
             with patch.dict(os.environ, {"RUTH_PHASE28_NVTX3_BRIDGE":"bad"}):
                 with self.assertRaisesRegex(RuntimeError,"must be 1"):
                     NativeRanges("PHASE28")
-            with patch.dict(os.environ, {"RUTH_PHASE28_NVTX3_BRIDGE":"1"}), \\
+            with patch.dict(os.environ, {"RUTH_PHASE28_NVTX3_BRIDGE":"1"}), \
                  patch("ruth_runtime.gemma3_nvtx.PROJECT_ROOT",root):
                 (base/"libruth_phase28_nvtx3.so").unlink()
                 with self.assertRaisesRegex(RuntimeError,"unavailable"):
@@ -63,8 +63,8 @@ class TestPhase28Nvtx3Bridge(unittest.TestCase):
     def test_bridge_is_not_loaded_without_opt_in(self):
         from ruth_runtime.gemma3_nvtx import NativeRanges
         import os
-        with patch.dict(os.environ, {}, clear=True), \\
-             patch("ruth_runtime.gemma3_nvtx.find_library",return_value=None), \\
+        with patch.dict(os.environ, {}, clear=True), \
+             patch("ruth_runtime.gemma3_nvtx.find_library",return_value=None), \
              patch("ruth_runtime.gemma3_nvtx.ctypes.CDLL",
                    side_effect=AssertionError("No unrequested native loads")):
             self.assertFalse(NativeRanges("PHASE28").available)
