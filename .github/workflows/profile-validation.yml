@@ -16,6 +16,8 @@ on:
       - "tests/test_phase22_gemma3_bf16_onboarding.py"
       - "ruth_runtime/gguf_header_inspection.py"
       - "tests/test_phase23_gemma3_gguf_header.py"
+      - "ruth_runtime/gemma3_kv_profile.py"
+      - "tests/test_phase24_gemma3_kv.py"
       - "ruth_runtime/hardware_eligibility.py"
       - "ruth_runtime/model_memory_profiles.py"
       - "ruth_runtime/profile_registry.py"
@@ -63,7 +65,8 @@ jobs:
             tests.test_phase19_probe_auto_record \
             tests.test_phase20_canonical_profiles \
             tests.test_phase22_gemma3_bf16_onboarding \
-            tests.test_phase23_gemma3_gguf_header -v
+            tests.test_phase23_gemma3_gguf_header \
+            tests.test_phase24_gemma3_kv -v
       - name: Validate submitted and owner-measured JSON files (offline)
         shell: bash
         run: |
