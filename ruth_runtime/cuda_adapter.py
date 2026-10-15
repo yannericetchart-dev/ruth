@@ -58,7 +58,7 @@ def _options(raw: Mapping[str, object]) -> dict[str, object]:
             optional[name] = raw[name]
     for name in ("type_k", "type_v"):
         if name in raw:
-            if raw[name] not in _KV_FORMATS:
+            if type(raw[name]) is not str or raw[name] not in _KV_FORMATS:
                 raise UnsafeRuntimeOptions("Unsupported pinned ggml KV type")
             optional[name] = _KV_FORMATS[raw[name]]
     if raw.get("type_v", "F16") != "F16" and raw.get("flash_attn") is not True:
