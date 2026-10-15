@@ -19,6 +19,7 @@ from time import monotonic_ns
 from .gemma3_context_gate import validate_gemma3_context_request
 from .inference_worker import measure_worker_gpu
 from .load_only_worker import native_kv_dtype
+from .gemma3_nvtx import NativeRanges
 from .model_catalog import select_model
 from .model_download import _local_path
 from .install_plan import WHEEL_VERSION
@@ -66,6 +67,7 @@ def evaluate_fixed_sequence(api, model, ctx) -> dict:
         raise RuntimeError("Native batch allocator failed")
     durations = []
     logits = []
+    nvtx = NativeRanges()
     try:
         for trial in range(WARMUPS + REPEATS):
             api.llama_memory_clear(memory, True)
@@ -82,13 +84,14 @@ def evaluate_fixed_sequence(api, model, ctx) -> dict:
                     batch.n_seq_id[i] = 1
                     batch.seq_id[i][0] = 0
                     batch.logits[i] = int(i == len(tokens) - 1)
-                t0 = monotonic_ns()
-                result = api.llama_decode(ctx, batch)
-                if result != 0:
-                    raise RuntimeError(
-                        f"llama_decode failed: phase={step}, code={result}")
-                api.llama_synchronize(ctx)
-                duration = monotonic_ns() - t0
+                with nvtx.range("prefill" if step == 0 else "decode"):
+                    t0 = monotonic_ns()
+                    result = api.llama_decode(ctx, batch)
+                    if result != 0:
+                        raise RuntimeError(
+                            f"llama_decode failed: phase={step}, code={result}")
+                    api.llama_synchronize(ctx)
+                    duration = monotonic_ns() - t0
                 if duration <= 0:
                     raise RuntimeError("Invalid native decode elapsed time")
                 if step == 0:
@@ -121,6 +124,7 @@ def evaluate_fixed_sequence(api, model, ctx) -> dict:
         "prompt_ids": prompt,
         "decode_ids": follow,
         "timings": durations,
+        "nvtx_ranges_available": nvtx.available,
     }
 
 
@@ -128,7 +132,7 @@ def write_local_logits(root: Path, payload: dict, flash: str, k: str, v: str) ->
     import numpy as np
     base = root / ".ruth-build" / "phase27" / "gemma-3-1b-it"
     base.mkdir(parents=True, exist_ok=True)
-    if base.is_symlink() or any(p.is_symlink() for p in (base.parent,)):
+    if any(p.is_symlink() for p in (base, base.parent, base.parent.parent)):
         raise RuntimeError("Refusing symlink benchmark output")
     # Unique, private, never overwritten; no Git publication or user prompts.
     fd, name = tempfile.mkstemp(
@@ -232,6 +236,7 @@ def run_native(root: Path, uuid: str, flash: str, k: str, v: str) -> dict:
             "decode_ids": data["decode_ids"],
             "artifact": artifact,
             "timings": data["timings"],
+            "nvtx_ranges_available": data["nvtx_ranges_available"],
             "gpu_process_observed": bool(samples),
             "gpu_memory_peak_mib_observed": max(samples) if samples else None,
             "inference_executed": True,
