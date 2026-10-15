@@ -14,7 +14,12 @@ on:
       - "ruth_runtime/profile_contribution.py"
       - "catalog/nvidia_architecture_policy.json"
       - "catalog/gpu_capacity_profiles.json"
-      - "tests/test_phase1[234567]*.py"
+      - "tests/test_phase1[12345678]*.py"
+      - "ruth_runtime/llama_kv_profile.py"
+      - "ruth_runtime/llama_kv_log.py"
+      - "ruth_runtime/load_only_worker.py"
+      - "ruth_runtime/load_only_probe.py"
+      - "catalog/llama_kv_backend_policy.json"
       - "ruth_runtime/offline_memory_fit.py"
       - "ruth_runtime/production_selection.py"
       - "ruth_runtime/candidate_selection.py"
@@ -34,12 +39,14 @@ jobs:
       - name: Validate hardware and publication regression tests
         run: |
           python -m unittest \
+            tests.test_phase11_load_only_probe \
             tests.test_phase12_model_memory_profiles \
             tests.test_phase13_hardware_architecture \
             tests.test_phase14_profile_registry \
             tests.test_phase15_profile_contribution \
             tests.test_phase16_offline_memory_fit \
-            tests.test_phase17_auto_production -v
+            tests.test_phase17_auto_production \
+            tests.test_phase18_llama_kv_profile -v
       - name: Validate submitted and owner-measured JSON files (offline)
         shell: bash
         run: |
