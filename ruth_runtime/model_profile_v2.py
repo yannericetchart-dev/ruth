@@ -143,8 +143,11 @@ def _merge_index(index: dict, signature: dict, row: dict) -> bool:
                       for k, value in signature.items())
                and not any((v.get("identity") or {}).get(k) is not None
                            for k in set((v.get("identity") or {})) - set(signature))]
-    if len(matches) > 1:
-        raise ValueError("Duplicated canonical observation identity")
+    # Two old immutable Git records may use the same unknown configuration.
+    # Check ALL historical buckets before appending any new observation.
+    if any(_canonical(item.get("data")) == _canonical(row)
+           for group in matches for item in group.get("observations", [])):
+        return False
     bucket = matches[0] if matches else index.setdefault(
         key, {"identity": signature, "observations": []})
     if (not all(bucket["identity"].get(k) == val
