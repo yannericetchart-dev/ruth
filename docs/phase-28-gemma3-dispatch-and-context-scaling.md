@@ -768,6 +768,60 @@ Whether or not that optional correlation succeeds,
 and `production_qualified=false` remain. Only the individual
 **observed CUDA kernel-node** records are covered.
 
+## Actual Graph-node-to-NVTX causal attribution verified (BF16/ON, context 2048)
+
+The user ran the revised `gemma3_phase28_node_audit` against the
+existing node-level Nsight 2025.6.3 export
+`.ruth-build/phase28/bf16-on-ctx2048-nvtx3-nodes.sqlite`:
+
+- All **4** amended offline tests passed (`Ran 4 tests ... OK`).
+- `graph_to_nvtx_phase_verified=true`.
+- `graph_kernel_launch_replay_node_sets_verified=true`.
+- `graph_kernel_launch_correlated_records=81008`.
+- `graph_kernel_launch_unmatched_or_ambiguous_records=0`.
+- `graph_kernel_launch_correlation_available=true`.
+- `observed_graph_kernel_node_repetitions_verified=true`.
+- `unmatched_or_ambiguous_graph_launches=0`.
+
+The report establishes a **same-export causal association** via the
+recorded kernel `correlationId` -> CUDA runtime
+`cudaGraphLaunch` -> enclosing same-thread NVTX phase (it does not
+infer this association from replay frequencies):
+
+| Graph ID in this capture | Verified NVTX phase | Kernel node IDs | Replays | Kernel activity records |
+|---|---|---:|---:|---:|
+| 2 | prefill | 796 | 68 | 54,128 |
+| 10 | decode | 448 | 60 | 26,880 |
+
+For **each** of the 128 Graph launches, the reader verified the exact
+set of observed kernel-node IDs appeared once per replay, and every
+pair `(graphId, graphNodeId)` appeared 68 or 60 times respectively.
+Graph 2 includes 1,768 MMA_F16 and 1,768 fixup kernel records; Graph
+10 includes 1,560 BF16-native VEC and 1,560 combine records.
+Dividing by replay counts gives 26 main + 26 helper attention kernel
+records for each graph replay, matching the pinned model's 26
+attention layers.
+
+Combining this evidence with the previously verified **direct**
+kernel-path analysis yields consistent main-attention accounting:
+
+| Phase | Direct main Flash kernels | Graph main Flash kernels | Total | Expected per 26-layer call |
+|---|---:|---:|---:|---:|
+| prefill | 728 | 1,768 | 2,496 | 96 × 26 |
+| decode | 104 | 1,560 | 1,664 | 64 × 26 |
+
+The records and per-replay node checks support complete accounting
+of the **observed main FlashAttention kernel invocations** for this
+specific experimental workload, subject to the definitions and trace
+coverage of Nsight Systems. This is **not** an assertion that every
+possible type of CUDA Graph node was captured. In particular, the
+reader still deliberately reports
+`all_cuda_graph_node_types_traced_verified=false`,
+`complete_attention_workload_coverage_verified=false`, and
+`production_qualified=false`. Do not promote a production runtime
+on this basis. The broader Phase28 candidate/context matrix and
+numerical-quality assessments remain separate gates.
+
 ## Promotion gate
 
 Phase 28 produces *diagnostic* context, timing, memory and CUDA-kernel
