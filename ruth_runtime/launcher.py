@@ -109,7 +109,7 @@ def main(argv: list[str] | None = None) -> int:
             "Quality-first production GGUF selection, pinned Git memory evidence and optional guarded download/probes"
         ))
         mp.add_argument("--purpose", choices=("production", "test"),
-                        default="production" if operation in ("probe-production", "probe-load", "profiles", "auto-production") else "test")
+                        default="production" if operation in ("probe-production", "probe-load", "profiles", "auto-production", "kv-plan") else "test")
         mp.add_argument("--family")
         mp.add_argument("--model")
         mp.add_argument("--version")
