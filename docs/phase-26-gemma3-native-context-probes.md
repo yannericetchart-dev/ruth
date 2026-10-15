@@ -91,7 +91,12 @@ actual context initialization, offload layers, GPU memory observations and
 failure categorization. The Gemma 3 recorder normalizes its *own*
 GGUF-derived layer geometry rather than reusing Gemma 2's KV parameters.
 The public proposal validator re-computes the same source geometry from
-the pinned canonical profile before allowing Git sync.
+the pinned canonical profile before allowing Git sync. Gemma3 context
+measurements also carry the SHA256 of the exact pinned native CUDA wheel;
+Git validation rejects a missing or mismatched wheel hash, and canonical
+context observation identity includes that hash so different native builds
+cannot silently share measurements. Historical Gemma2 context records retain
+their existing identity and validation schema.
 
 A successful context allocation is **not** proof of runtime Flash kernel
 selection, inference correctness, numerical precision, performance, or
