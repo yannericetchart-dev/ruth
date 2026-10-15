@@ -496,7 +496,8 @@ def main(argv: list[str] | None = None) -> int:
                     args.n_ctx < 256 or args.n_ctx % 256 != 0):
                     raise CatalogError("Context profiling requires n_ctx 256, 512, 768, ...")
                 result = probe_model_load(
-                    quantization=choice.quantization, mode=args.load_mode,
+                    quantization=choice.quantization, model_version=choice.version,
+                    mode=args.load_mode,
                     n_ctx=args.n_ctx, n_batch=args.n_batch,
                     n_ubatch=args.n_ubatch, swa_full=args.swa_full=="on",
                     flash_attention=args.flash_attn,
