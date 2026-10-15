@@ -274,6 +274,33 @@ class Gemma3WorkerTests(unittest.TestCase):
             self.assertEqual(api.context_options.n_seq_max, 1)
             return result
 
+    def test_worker_rejects_flash_auto_before_importing_native_binding(self):
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            f = root / "pinned.gguf"
+            f.write_bytes(b"GGUFdata")
+            choice = SimpleNamespace(
+                family="gemma", model="gemma-3",
+                version="gemma-3-1b-it", quantization="BF16",
+                expected_size_bytes=f.stat().st_size,
+            )
+            with patch("ruth_runtime.load_only_worker.select_model",
+                       return_value=choice), \
+                 patch("ruth_runtime.load_only_worker._local_path",
+                       return_value=f), \
+                 patch.dict(sys.modules, {"llama_cpp": None}), \
+                 patch.dict("os.environ", {"CUDA_VISIBLE_DEVICES": GPU_UUID,
+                                         "RUTH_LLAMA_KV_OPTIONS": json.dumps({
+                                             "n_batch": 64, "n_ubatch": 64,
+                                             "swa_full": True,
+                                             "flash_attention": "auto",
+                                             "type_k": "BF16", "type_v": "BF16",
+                                         })}):
+                with self.assertRaisesRegex(ValueError, "only permits"):
+                    run_load_only(
+                        root, GPU_UUID, "BF16", "context",
+                        n_ctx=256, model_version="gemma-3-1b-it")
+
     def test_native_worker_f16_flash_off_never_generates(self):
         self.worker("off", "F16")
 
