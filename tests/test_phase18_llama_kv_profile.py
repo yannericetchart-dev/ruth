@@ -143,7 +143,7 @@ class LlamaKVProfileTests(unittest.TestCase):
         with patch("sys.stdout", new_callable=StringIO) as out, \
              patch("subprocess.run", side_effect=AssertionError("No subprocess")):
             exit_code = main([
-                "models", "kv-plan", "--purpose", "production",
+                "models", "kv-plan",
                 "--n-ctx", "128", "--n-batch", "64", "--n-ubatch", "64",
                 "--swa-full", "on", "--flash-attn", "off",
                 "--type-k", "F16", "--type-v", "F16",
@@ -153,6 +153,15 @@ class LlamaKVProfileTests(unittest.TestCase):
         self.assertEqual(result["total_logical_mib_derived"], 84.0)
         self.assertFalse(result["native_allocation_executed"])
         self.assertFalse(result["inference_executed"])
+
+    def test_cli_explicit_test_purpose_is_rejected_without_cuda(self):
+        with patch("sys.stdout", new_callable=StringIO) as out, \
+             patch("subprocess.run", side_effect=AssertionError("No native probe")):
+            code = main(["models", "kv-plan", "--purpose", "test"])
+        self.assertEqual(code, 2)
+        result = json.loads(out.getvalue())
+        self.assertEqual(result["status"], "llama_kv_plan_unverified")
+        self.assertFalse(result["native_allocation_executed"])
 
     def test_padding_input_validation(self):
         self.assertEqual(pad(257,256),512)
