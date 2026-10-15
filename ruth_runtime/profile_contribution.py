@@ -19,7 +19,7 @@ from .profile_registry import SCHEMA
 from .model_catalog import load_catalog
 from .hardware_eligibility import load_architecture_policy
 from .install_plan import LLAMA_CPP_SUBMODULE_COMMIT
-from .llama_kv_profile import calculate_llama_kv
+from .context_source_evidence import calculate_context_source, context_source_derivation
 
 UPSTREAM = "yannericetchart-dev/ruth"
 BASE_BRANCH = "model-profiling"
@@ -286,26 +286,16 @@ def validate_submitted_proposal(
                     or any(type(native_cfg[k]) is not int for k in
                            ("n_batch_requested", "n_ubatch_requested"))):
                     raise ValueError("Inconsistent KV options")
-                computed = calculate_llama_kv(
-                    project_root=project_root, n_ctx=ctx["n_ctx_requested"],
+                computed = calculate_context_source(
+                    model_version=model["version"], project_root=project_root,
+                    n_ctx=ctx["n_ctx_requested"],
                     n_batch=native_cfg["n_batch_requested"],
                     n_ubatch=native_cfg["n_ubatch_requested"],
                     swa_full=native_cfg["swa_full"],
                     flash_attention=native_cfg["flash_attention_requested"],
                     type_k=ctx["kv_type_k"], type_v=ctx["kv_type_v"],
                 )
-                expected = {
-                    "n_ctx_effective_derived": computed["configuration"]["n_ctx_effective_derived"],
-                    "n_ubatch_effective_derived": computed["configuration"]["n_ubatch_effective_derived"],
-                    "global_cells_derived": computed["global_cache"]["cells"],
-                    "swa_cells_derived": computed["swa_cache"]["cells"],
-                    "key_logical_bytes_derived": computed["key_logical_bytes_derived"],
-                    "value_logical_bytes_derived": computed["value_logical_bytes_derived"],
-                    "swa_full_off_saves_bytes_derived": computed["swa_full_off_saves_bytes_derived"],
-                    "swa_off_first_saving_at_effective_ctx":
-                        computed["swa_off_first_saving_at_effective_ctx"],
-                    "model_geometry_verification_pending": True,
-                }
+                expected = context_source_derivation(computed)
                 if derived != expected:
                     raise ValueError("Published source-derived KV sizes differ from pinned backend")
                 for actual, planned in (
