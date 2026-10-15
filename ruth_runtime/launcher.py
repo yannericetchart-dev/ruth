@@ -183,6 +183,16 @@ def main(argv: list[str] | None = None) -> int:
             mp.add_argument("--force", action="store_true",
                             help="Mark explicit experimental selection, NEVER execute a GPU probe")
         if operation == "probe-load":
+            mp.add_argument("--n-batch", type=int, default=64,
+                            help="Logical batch size for native context profile")
+            mp.add_argument("--n-ubatch", type=int, default=64,
+                            help="Physical microbatch size; affects compute and SWA allocation")
+            mp.add_argument("--swa-full", choices=("on", "off"), default="on",
+                            help="Full-size or sliding-window-limited SWA cache")
+            mp.add_argument("--flash-attn", choices=("auto", "off", "on"), default="auto",
+                            help="Native llama.cpp Flash Attention requested policy")
+            mp.add_argument("--type-k", choices=("F16", "Q8_0", "Q4_0"), default="F16")
+            mp.add_argument("--type-v", choices=("F16", "Q8_0", "Q4_0"), default="F16")
             mp.add_argument("--n-ctx", type=int, default=128,
                             help="Context size in context mode only (64..4096)")
             mp.add_argument("--load-mode", choices=("weights", "context"),
@@ -424,7 +434,11 @@ def main(argv: list[str] | None = None) -> int:
                     raise CatalogError("Load-only probe requires production purpose")
                 result = probe_model_load(
                     quantization=choice.quantization, mode=args.load_mode,
-                    n_ctx=args.n_ctx, cuda_preinit=args.cuda_preinit,
+                    n_ctx=args.n_ctx, n_batch=args.n_batch,
+                    n_ubatch=args.n_ubatch, swa_full=args.swa_full=="on",
+                    flash_attention=args.flash_attn,
+                    type_k=args.type_k, type_v=args.type_v,
+                    cuda_preinit=args.cuda_preinit,
                     allow_gpu_load=args.allow_gpu_load,
                 )
                 _print({"action": "models", **result})
