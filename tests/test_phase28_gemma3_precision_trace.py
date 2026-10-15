@@ -7,7 +7,7 @@ from tempfile import TemporaryDirectory
 import unittest
 
 from ruth_runtime.gemma3_phase28_precision_trace import (
-    classify_conversion, inspect_precision_trace)
+    classify_conversion, classify_precision_operator, inspect_precision_trace)
 
 
 def write_nsight(file: Path):
@@ -75,6 +75,48 @@ class TestPhase28PrecisionTrace(unittest.TestCase):
              "recognition":"source_target_template_verified"})
         self.assertIsNone(classify_conversion("matmul_fp32"))
 
+    def test_precision_kernel_names_are_hints_not_proven_accumulators(self):
+        for name,family,hints in (
+            ("ampere_s16816gemm_bf16_64x64",
+             "GEMM_BF16_NAMED",("BF16",)),
+            ("void mul_mat_vec_f<__nv_bfloat16, float, (int)1>",
+             "MATVEC_BF16_F32_NAMED",("BF16","F32")),
+            ("void rms_norm_f32<(int)1024>",
+             "RMS_NORM_F32",("F32",)),
+            ("void rms_norm_mul_rope_f32<(int)256>",
+             "RMS_NORM_ROPE_F32",("F32",)),
+            ("void unary_gated_op_kernel<&op_gelu, float>",
+             "GELU_F32_NAMED",("F32",)),
+            ("void k_set_rows<float, long, __nv_bfloat16>(...)",
+             "SET_ROWS_F32_BF16_NAMED",("F32","BF16")),
+            ("void cublasLt::splitKreduce_kernel<(int)32>",
+             "CUBLASLT_SPLITK_REDUCE",()),
+        ):
+            self.assertEqual(
+                classify_precision_operator(name),(family,hints))
+        self.assertIsNone(classify_precision_operator("unrecognized_kernel"))
+
+    def test_unrelated_runtime_correlation_duplicates_do_not_hide_direct_conversion(self):
+        with TemporaryDirectory() as d:
+            root=Path(d)
+            folder=root/".ruth-build/phase28"
+            folder.mkdir(parents=True)
+            fp=folder/"nodes.sqlite"
+            write_nsight(fp)
+            with sqlite3.connect(fp) as db:
+                # Deliberately repeated correlationId is not referenced
+                # by the direct conversion kernel (9999).
+                db.execute("INSERT INTO CUPTI_ACTIVITY_KIND_RUNTIME "
+                           "VALUES (?,?,7,?,6)",(99900000,99900001,3333))
+                db.execute("INSERT INTO CUPTI_ACTIVITY_KIND_RUNTIME "
+                           "VALUES (?,?,7,?,6)",(99900002,99900003,3333))
+            result=inspect_precision_trace(
+                fp,candidate="bf16-on",n_ctx=2048,root=root)
+            self.assertEqual(
+                result["unattributed_direct_conversion_records"],0)
+            self.assertTrue(
+                result["direct_conversion_phase_correlation_verified"])
+
     def test_same_capture_graph_mapping_and_direct_name_evidence(self):
         with TemporaryDirectory() as d:
             root=Path(d)
@@ -100,6 +142,12 @@ class TestPhase28PrecisionTrace(unittest.TestCase):
                 out["unattributed_graph_conversion_records"],0)
             self.assertEqual(
                 out["other_precision_name_evidence"][0]["operator_family"],
+                "SOFTMAX_F32")
+            self.assertTrue(out["direct_conversion_phase_correlation_verified"])
+            self.assertEqual(out["conversion_by_path"]["direct"]["kernel_records"],1)
+            self.assertEqual(out["conversion_by_path"]["graph_node"]["kernel_records"],68)
+            self.assertEqual(
+                out["arithmetic_kernel_family_summary"][0]["kernel_family"],
                 "SOFTMAX_F32")
             self.assertFalse(out["source_precision_runtime_inventory_complete"])
             self.assertFalse(out["production_qualified"])
