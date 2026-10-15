@@ -447,6 +447,27 @@ def main(argv: list[str] | None = None) -> int:
                 return 0 if result["status"] == "provisional_shortlist_ready" else 2
             if args.model_action == "select":
                 from .model_profile_v2 import resolve_model_profile, evaluate_loading_fit
+                # Read-only host inspection: selecting a model must never
+                # trigger CUDA allocation or repeat a native probe.
+                try:
+                    from .hardware_eligibility import inspect_host_hardware
+                    hw = inspect_host_hardware()
+                    if hw.get("status") == "hardware_eligible_native_backend_unverified":
+                        assessment = evaluate_loading_fit(
+                            resolve_model_profile(args.purpose, choice.family,
+                                choice.model, choice.version)["profile"],
+                            quantization=choice.quantization,
+                            host={
+                                "total_mib": hw.get("total_mib"),
+                                "architecture": hw.get("architecture"),
+                                "driver_version": hw.get("driver_version"),
+                                "backend_cuda": hw.get("backend_cuda"),
+                                "llama_cpp_binding": "0.3.36",
+                            })
+                    else:
+                        assessment = {"status": "host_compatibility_unknown"}
+                except (OSError, RuntimeError, ValueError, TypeError, KeyError):
+                    assessment = {"status": "host_compatibility_unknown"}
                 canonical = resolve_model_profile(
                     args.purpose, choice.family, choice.model, choice.version)
                 variant = canonical["profile"]["variants"].get(choice.quantization.upper())
@@ -462,7 +483,7 @@ def main(argv: list[str] | None = None) -> int:
                             variant.get("precision_family") if variant else None),
                         "known_runtime_configurations": len(
                             variant["context_observations"]) if variant else 0,
-                        "host_fit": "host_not_inspected_use_models_profiles_host",
+                        "host_fit": assessment,
                     },
                     "download_started": False, "gpu_allocations_executed": False,
                 })
