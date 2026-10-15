@@ -231,6 +231,25 @@ def main(argv: list[str] | None = None) -> int:
             if args.model_action == "kv-plan":
                 from .llama_kv_profile import calculate_llama_kv
                 try:
+                    if (args.model == "gemma-3"
+                        or args.version == "gemma-3-1b-it"):
+                        if (args.purpose != "production"
+                            or args.model != "gemma-3"
+                            or args.version != "gemma-3-1b-it"
+                            or args.family not in (None, "gemma")
+                            or args.format not in (None, "gguf")
+                            or args.quantization != "BF16"):
+                            raise ValueError("Gemma 3 KV plan requires exact pinned BF16 production identity")
+                        from .gemma3_kv_profile import calculate_gemma3_kv
+                        outcome = calculate_gemma3_kv(
+                            n_ctx=args.n_ctx, n_batch=args.n_batch,
+                            n_ubatch=args.n_ubatch,
+                            swa_full=args.swa_full=="on",
+                            flash_attention=args.flash_attn,
+                            type_k=args.type_k, type_v=args.type_v)
+                        _print({"action": "models", **outcome})
+                        return 0
+
                     if (args.purpose != "production"
                         or args.model not in (None, "gemma-2")
                         or args.version not in (None, "gemma-2-9B-it")
