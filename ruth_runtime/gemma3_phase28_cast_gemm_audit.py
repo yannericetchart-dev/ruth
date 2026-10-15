@@ -242,7 +242,7 @@ def audit_cast_gemm(
                 st["gpu_order_compatible_ranges"]+=int(compatible)
                 st["gpu_order_incompatible_ranges"]+=int(not compatible)
                 order_valid=order_valid and compatible
-             else:
+            else:
                 # BF16 GEMM and both casts were observed in prefill
                 # only. Any decode instance changes the conclusion.
                 if any(ct.values()):
