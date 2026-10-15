@@ -141,6 +141,31 @@ def sync_gguf_architecture(
         raise ValueError("GGUF header has unpinned source identity")
     fields = report.get("metadata_fields")
     counts = report.get("tensor_storage_counts")
+    matrix = report.get("matrix_tensor_elements_by_storage")
+    warning_flags = report.get("metadata_warnings")
+    declared = report.get("declared_file_type")
+    if (not isinstance(matrix, dict)
+        or not matrix or len(matrix) > 40
+        or any(not isinstance(k,str) or len(k)>36
+               or type(v) is not int or not 0 <= v <= 10**15
+               for k,v in matrix.items())
+        or matrix.get("BF16", 0) <= (
+            sum(matrix.values()) - matrix.get("BF16", 0))
+        or not isinstance(warning_flags,list)
+        or len(warning_flags) > 3
+        or any(x not in (
+            "general.file_type_missing",
+            "general.file_type_differs_from_BF16_tensors",
+            "matrix_tensor_storage_is_mixed") for x in warning_flags)
+        or (declared is not None and (type(declared) is not int
+                                      or not 0 <= declared < 2**32))
+        or declared != fields.get("general.file_type")
+        or ((declared != 24) != any(
+            x in warning_flags for x in (
+                "general.file_type_missing",
+                "general.file_type_differs_from_BF16_tensors")))
+        or ("matrix_tensor_storage_is_mixed" in warning_flags) != (len(matrix) > 1)):
+        raise ValueError("Unsafe or inconsistent GGUF tensor BF16 evidence")
     if (not isinstance(fields, dict)
         or not set(fields).issubset({
             "general.architecture","general.file_type","general.alignment",
@@ -152,7 +177,6 @@ def sync_gguf_architecture(
             "gemma3.attention.sliding_window_pattern",
         })
         or fields.get("general.architecture") != "gemma3"
-        or fields.get("general.file_type") != 24
         or not isinstance(counts,dict)
         or len(counts) > 40
         or any(not isinstance(k,str) or len(k)>36
@@ -167,6 +191,9 @@ def sync_gguf_architecture(
         "gguf_version": report["gguf_version"],
         "tensor_count": report["tensor_count"],
         "tensor_storage_counts": counts,
+        "matrix_tensor_elements_by_storage": matrix,
+        "declared_file_type": declared,
+        "metadata_warnings": warning_flags,
         "metadata_fields": fields,
     }
     try:
