@@ -228,7 +228,116 @@ Campi diagnostici più importanti:
 non ancora eseguita contro il GGUF e gli SQLite locali dell'utente.
 Le metriche reali sono in sospeso fino all'esecuzione sul suo host.
 
-## 8. Riferimenti interni
+## 8. Evidenza reale dal primo inventario GGUF e dal trace conversioni
+
+Il 15 ottobre 2026 l'utente ha eseguito gli strumenti offline sul GGUF
+pinned e su entrambe le tracce Nsight a contesto 2048. Il test riportato
+ha concluso `Ran 5 tests ... OK`.
+
+**GGUF verificato per SHA256**:
+`b144bde489651d3d292d7e47a59c6f811cdd96d184be582e5ad30ab338b9b6bf`,
+versione 3, **340 tensori** e file da **2.006.573.568 byte**.
+
+| Tipo e categoria | Tensori BF16 | Tensori F32 | Elementi BF16 | Elementi F32 |
+|---|---:|---:|---:|---:|
+| Proiezioni Q/K/V/O | 104 | 0 | 76.677.120 | 0 |
+| Normalizzazione attenzione | 0 | 78 | 0 | 43.264 |
+| Embedding | 1 | 0 | 301.989.888 | 0 |
+| Feed forward | 78 | 26 | 621.084.672 | 29.952 |
+| Altre normalizzazioni | 0 | 53 | 0 | 61.056 |
+| **Totale** | **183** | **157** | **999.751.680** | **134.272** |
+
+In base ai **parametri**, la quota F32 è **0,0134287%**,
+non il 46,2% dei tensori. In byte: BF16 1.999.503.360,
+F32 537.088. Con l'offset del payload GGUF di 6.533.120 byte,
+la somma è **esattamente** la dimensione del file
+(2.006.573.568 byte). La contiguità effettiva dei tensori dovrà
+essere verificata esaminando anche tutti gli offset; il nuovo
+lettore espone `tensor_storage_layout_contiguous_verified`
+per farlo sul file locale.
+
+**Nsight `--cuda-graph-trace=node`**:
+105.128 record kernel totali, di cui 81.008 negli CUDA Graph
+e 24.120 registrati direttamente. Tutte le conversioni di seguito
+sono attribuite al **prefill** nella stessa traccia; la relazione
+causale per i kernel nei graph era già stata verificata.
+
+| Cast (kernel `convert_unary_cont_vec4`) | Tutti i record | Dentro i graph | Direct | Somma tempi GPU |
+|---|---:|---:|---:|---:|
+| `float → __nv_bfloat16` (F32→BF16) | 17.184 | 12.172 | 5.012 | 28,6635 ms |
+| `__nv_bfloat16 → __half` (BF16→F16) | 4.992 | 3.536 | 1.456 | 24,7789 ms |
+| **Totale** | **22.176** | **15.708** | **6.468** | **53,4424 ms** |
+
+I conteggi sono divisibili precisamente per i 96 intervalli di
+prefill: **179 cast F32→BF16 e 52 cast BF16→F16 per intervallo
+in media**. Inoltre i conteggi *all'interno dei grafi* corrispondono
+esattamente a **179 e 52 kernel per replay** dei 68 replay
+di prefill; i conteggi *direct* a **179 e 52 per ciascuno dei
+28 intervalli in media**. È consistente con due conversioni
+BF16→F16 (K e V) per ciascuno dei 26 livelli di attenzione.
+L'identificazione causale di tutti i 179 cast F32→BF16 ai
+nodi GGML originari **non è ancora verificata**.
+
+La vecchia traccia graph-level esponeva soltanto 6.468 conversioni
+dirette (5.012 F32→BF16 + 1.456 BF16→F16) e quindi
+sottocontava intenzionalmente le conversioni riprodotte nei graph.
+Le durate GPU sono somme di kernel per l'intero workload
+(1 warmup + 3 ripetizioni); non sostituiscono latenza end-to-end,
+non isolano automaticamente il costo di un ipotetico MMA BF16
+e **non vanno confrontate come tempi equivalenti fra acquisizioni
+graph-level e node-level**.
+
+### Evidenza indipendente FP32 al di fuori dei soli cast
+
+Nel medesimo trace a livello di nodo sono comparsi kernel
+`rms_norm_f32`, `rms_norm_mul_rope_f32`,
+`unary_gated_op_kernel<&op_gelu,float>`,
+`scale_f32<float>`, `mul_mat_vec_f<__nv_bfloat16,float,...>`,
+`k_set_rows<float,long,__nv_bfloat16>` e
+`ampere_s16816gemm_bf16_*`. I nomi danno evidenza
+di tipizzazione e famiglie aritmetiche diverse; **non** provano
+per ciascuna di esse il dtype degli accumulatori o tutta la
+sequenza numerica. La mappatura operazione GGML→kernel resta
+l'indagine successiva.
+
+### Nuova diagnostica per classificare queste famiglie
+
+`gemma3_phase28_precision_trace` ora fornisce:
+`arithmetic_kernel_family_summary`, `conversion_by_path`,
+`direct_conversion_phase_correlation_verified` e
+`arithmetic_precision_coverage_complete=false`. Ogni famiglia
+riporta `accumulator_dtype_verified=false`: il dtype non può
+essere dedotto da un semplice nome CUDA.
+
+Anche il GGUF inventory ora include
+`tensor_dtype_element_counts`, `tensor_dtype_storage_bytes`,
+`tensor_storage_layout_contiguous_verified` e i byte contabilizzati.
+
+Comandi di verifica sullo stesso host, **senza CUDA**:
+
+```bash
+cd ~/Dev/ruth-model-profiling
+git pull --ff-only origin feat/gemma3-phase28-context-dispatch
+
+.venv/bin/python -m unittest \
+  tests.test_phase28_gemma3_precision_inventory \
+  tests.test_phase28_gemma3_precision_trace -v
+
+.venv/bin/python -m ruth_runtime.gemma3_phase28_precision_inventory
+
+.venv/bin/python -m ruth_runtime.gemma3_phase28_precision_trace \
+  --sqlite .ruth-build/phase28/bf16-on-ctx2048-nvtx3-nodes.sqlite \
+  --candidate bf16-on --n-ctx 2048
+```
+
+**Conclusione sperimentale provvisoria:** modello quasi interamente
+BF16 per parametri, con pesi di normalizzazione F32; prefill
+comprende conversioni esplicite F32→BF16 e BF16→F16; decode VEC
+legge K/V BF16. Occorre ancora attribuire esattamente gli operatori
+GGML e verificare la precisione effettiva degli accumulatori.
+Qualificazione produzione sempre falsa.
+
+## 9. Riferimenti interni
 
 - [Fase 27 — precisione e benchmark](phase-27-gemma3-precision-and-kernel-benchmark.md).
 - [Fase 28 — prove CUDA/NVTX e contesti](phase-28-gemma3-dispatch-and-context-scaling.md).
