@@ -136,12 +136,20 @@ def _merge_index(index: dict, signature: dict, row: dict) -> bool:
     # An observation is keyed by a stable runtime/config signature, but
     # different measurements for that configuration retain separate evidence.
     key = hashlib.sha256(_canonical(signature).encode("utf-8")).hexdigest()[:24]
-    matches = [v for v in index.values() if v.get("identity") == signature]
+    # Historical v1 records sometimes omitted null keys. Missing and null
+    # mean the same UNKNOWN value; preserve identity across migration.
+    matches = [v for v in index.values()
+               if all((v.get("identity") or {}).get(k) == value
+                      for k, value in signature.items())
+               and not any((v.get("identity") or {}).get(k) is not None
+                           for k in set((v.get("identity") or {})) - set(signature))]
     if len(matches) > 1:
         raise ValueError("Duplicated canonical observation identity")
     bucket = matches[0] if matches else index.setdefault(
         key, {"identity": signature, "observations": []})
-    if bucket.get("identity") != signature or not isinstance(bucket.get("observations"), list):
+    if (not all(bucket["identity"].get(k) == val
+                for k, val in signature.items())
+        or not isinstance(bucket.get("observations"), list)):
         raise ValueError("Canonical observation identity collision")
     digest = hashlib.sha256(_canonical(row).encode("utf-8")).hexdigest()
     if any(_canonical(v.get("data")) == _canonical(row) for v in bucket["observations"]):
