@@ -312,3 +312,24 @@ def evaluate_loading_fit(profile: dict, *, quantization: str, host: dict,
         "production_qualified": False,
         "gpu_allocations_executed": False,
     }
+
+
+def precision_fidelity_role(weight_format: str,
+                            original_checkpoint_dtype: str | None) -> str:
+    """Describe storage fidelity, NOT measured semantic model quality.
+
+    Never award an unconditional quality win to F32 obtained by upcasting
+    previously BF16/F16 weights.
+    """
+    dtype = str(weight_format).upper()
+    original = (original_checkpoint_dtype.upper()
+                if isinstance(original_checkpoint_dtype, str) else None)
+    if dtype not in WEIGHT_FORMATS:
+        return "quantized_or_unknown"
+    if original not in WEIGHT_FORMATS:
+        return "original_dtype_unknown"
+    if dtype == original:
+        return "original_checkpoint_precision_preserved"
+    if dtype == "F32" and original in ("BF16", "F16"):
+        return "upcast_no_precision_recovery"
+    return "downcast_or_changed_float_representation_quality_unverified"
