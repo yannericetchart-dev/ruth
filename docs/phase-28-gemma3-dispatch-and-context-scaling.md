@@ -319,6 +319,85 @@ false for a healthy Flash OFF run. For Flash OFF, inspect
 and the explicitly false `nonflash_graph_kernel_attribution_verified`.
 Do not promote the runtime based on this evidence.
 
+## NVTX3 opt-in bridge and fail-closed phase attribution (new)
+
+The user's host has no legacy `nvToolsExt` shared library or Python
+`nvtx` package, but **does** have the CUDA NVTX3 header at
+`/usr/local/cuda/include/nvtx3/nvToolsExt.h`. NVTX3 is header-only:
+there is no need to install new Python packages, change llama.cpp,
+download code, or modify production runtime. NVIDIA documents
+exporting the C API with `#define NVTX_EXPORT_API` for ctypes consumers.
+
+After pulling the Phase28 branch, run offline unit tests:
+
+```bash
+.venv/bin/python -m unittest tests.test_phase28_gemma3_context_dispatch -v
+```
+
+**Manual, local compilation** (no inference, no automatic compilation
+inside the worker; output deliberately stays in ignored `.ruth-build`):
+
+```bash
+mkdir -p .ruth-build/phase28
+cc -std=c11 -O2 -fPIC -shared -I/usr/local/cuda/include \\
+  -o .ruth-build/phase28/libruth_phase28_nvtx3.so \\
+  ruth_runtime/native/phase28_nvtx3_export.c -ldl
+
+nm -D .ruth-build/phase28/libruth_phase28_nvtx3.so | \\
+  grep -E 'nvtxRange(PushA|Pop)'
+```
+
+**Explicitly instrumented profiling**, while retaining both Phase28
+GPU-inference authorization flags:
+
+```bash
+nsys profile --trace=cuda,nvtx --sample=none --cpuctxsw=none \\
+  -o .ruth-build/phase28/bf16-on-ctx2048-nvtx3 \\
+  env RUTH_PHASE28_NVTX3_BRIDGE=1 \\
+  .venv/bin/python -m ruth_runtime.gemma3_phase28 \\
+    --candidate bf16-on --n-ctx 2048 \\
+    --execute --allow-gpu-inference
+
+nsys export --type sqlite \\
+  --output .ruth-build/phase28/bf16-on-ctx2048-nvtx3.sqlite \\
+  .ruth-build/phase28/bf16-on-ctx2048-nvtx3.nsys-rep
+```
+
+The worker now attempts to load exactly
+`.ruth-build/phase28/libruth_phase28_nvtx3.so` **only** when
+`RUTH_PHASE28_NVTX3_BRIDGE=1` is present. A missing/invalid library
+then causes an error rather than silently treating the run as marked.
+The option does not affect normal Phase28 runs, Phase27, or production.
+Even a successful `nvtx_ranges_available=true` only means the worker
+loaded the NVTX C API; **it is not proof the profiler captured ranges**.
+
+Finally correlate the new **local SQLite** export, without CUDA:
+
+```bash
+.venv/bin/python -m ruth_runtime.gemma3_phase28_attribution \\
+  --sqlite .ruth-build/phase28/bf16-on-ctx2048-nvtx3.sqlite \\
+  --candidate bf16-on --n-ctx 2048
+```
+
+The attribution reader requires NVTX range events with eventType 59,
+the expected Phase28 labels (`RUTH_GEMMA3_PHASE28_PREFILL` and
+`..._DECODE`), and exact range counts: 96 prefill chunk ranges and 64
+decode ranges at 2048 context, including warmup. It links each
+recognized attention kernel through its CUPTI `correlationId` to a
+CUDA runtime API call whose **entire CPU interval** lies inside exactly
+one same-thread NVTX range. It does not assume CUDA device start/end
+timestamps lie inside a CPU range. Unmapped/ambiguous kernel records
+cause `prefill_decode_attribution_verified=false` and exit code 2.
+
+NVIDIA documents this approach in the Nsight Systems guide (example
+"Rename CUDA Kernels with NVTX" linking `NVTX_EVENTS.globalTid`,
+`CUPTI_ACTIVITY_KIND_RUNTIME.globalTid`, and GPU kernel
+`correlationId`). SQLite schema version changes or GPU Graph launch
+correlation may cause a legitimate trace to remain unverified; do
+**not** change verification thresholds or fabricate a success flag to
+accommodate them. Inspect the actual export first. The report never
+qualifies a production profile.
+
 ## Promotion gate
 
 Phase 28 produces *diagnostic* context, timing, memory and CUDA-kernel
