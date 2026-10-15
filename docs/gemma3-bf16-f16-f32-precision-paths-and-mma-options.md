@@ -251,10 +251,12 @@ In base ai **parametri**, la quota F32 è **0,0134287%**,
 non il 46,2% dei tensori. In byte: BF16 1.999.503.360,
 F32 537.088. Con l'offset del payload GGUF di 6.533.120 byte,
 la somma è **esattamente** la dimensione del file
-(2.006.573.568 byte). La contiguità effettiva dei tensori dovrà
-essere verificata esaminando anche tutti gli offset; il nuovo
-lettore espone `tensor_storage_layout_contiguous_verified`
-per farlo sul file locale.
+(2.006.573.568 byte). **La contiguità di tutti i tensori è stata ora verificata** sul
+GGUF locale: `tensor_storage_accounting_complete=true`,
+`tensor_storage_layout_contiguous_verified=true`,
+`tensor_storage_bytes_accounted=2000040448`, e
+`gguf_tensor_data_region_bytes=2000040448`.
+Questi controlli non analizzano i valori numerici dei pesi.
 
 **Nsight `--cuda-graph-trace=node`**:
 105.128 record kernel totali, di cui 81.008 negli CUDA Graph
@@ -337,7 +339,107 @@ legge K/V BF16. Occorre ancora attribuire esattamente gli operatori
 GGML e verificare la precisione effettiva degli accumulatori.
 Qualificazione produzione sempre falsa.
 
-## 9. Riferimenti interni
+## 9. Secondo output reale: famiglie aritmetiche FP32/BF16 e source audit
+
+Nuovo output ottenuto sul medesimo modello e sulla traccia
+`bf16-on-ctx2048-nvtx3-nodes.sqlite` (nessuna inferenza nel lettore).
+L'inventario verificato riporta ora espressamente:
+`tensor_dtype_element_counts={"BF16":999751680,"F32":134272}`,
+`tensor_dtype_storage_bytes={"BF16":1999503360,"F32":537088}`,
+`tensor_storage_layout_contiguous_verified=true`, e
+`tensor_storage_accounting_complete=true`.
+Le seguenti durate rappresentano **somme di kernel GPU registrati
+nella traccia node-level**, non latenze complete né numeri da confrontare
+con i tempi della traccia graph-level.
+
+| Famiglia nome CUDA (dtype indiziati, non accumulazione dedotta dal nome) | Kernel registrati | Tempo GPU sommato | Prefill | Decode |
+|---|---:|---:|---:|---:|
+| `GEMM_BF16_NAMED` | 17.184 | 888,4698 ms | 17.184 | 0 |
+| `MATVEC_BF16_F32_NAMED` | 10.060 | 749,2876 ms | 12 | 10.048 |
+| `RMS_NORM_F32` | 16.432 | 109,4021 ms | 9.712 | 6.720 |
+| `GELU_F32_NAMED` | 2.400 | 29,3442 ms | 2.400 | 0 |
+| `RMS_NORM_ROPE_F32` | 8.320 | 26,6055 ms | 4.992 | 3.328 |
+| `CUBLASLT_SPLITK_REDUCE` | 7.392 | 18,3250 ms | 7.392 | 0 |
+| `SET_ROWS_F32_BF16_NAMED` | 8.320 | 12,9774 ms | 4.992 | 3.328 |
+| `SCALE_F32` | 4.320 | 9,2341 ms | 2.592 | 1.728 |
+| `GATHER_F32_NAMED` | 136 | 0,2359 ms | 8 | 128 |
+| `ADD_F32_NAMED` | 68 | 0,1074 ms | 4 | 64 |
+
+L'audit riporta ora **sia** `direct_conversion_phase_correlation_verified=true`
+**sia** `graph_phase_causal_mapping_verified=true`. I 22.176
+lanci di conversione si suddividono in:
+
+- `direct`: 6.468 kernel, 16,3676 ms sommati;
+- `graph_node`: 15.708 kernel, 37,0748 ms sommati.
+
+Le conversioni restano per intero nel prefill. Questo **non**
+certifica tutte le operazioni interne in FP32:
+`arithmetic_precision_coverage_complete=false` e
+`accumulator_dtype_verified=false` per ciascuna famiglia nel report.
+
+### 9.1 Spiegazione sorgente verificata per alcuni percorsi
+
+La revisione **immutabile** di llama.cpp
+`0c1e57098bba43ac29e6e3b677cdceebdd22334f` contiene
+evidenze più forti di un semplice suffisso nel nome CUDA:
+
+- **Matmul/cuBLAS BF16, compute F32**: in
+  [ggml-cuda.cu, specializzazione `batched_mul_mat_traits<BF16>`](https://github.com/ggml-org/llama.cpp/blob/0c1e57098bba43ac29e6e3b677cdceebdd22334f/ggml/src/ggml-cuda/ggml-cuda.cu#L1376-L1392)
+  il tipo degli operandi è `CUDA_R_16BF`, mentre
+  `compute_type=CUBLAS_COMPUTE_32F`. In
+  [ggml-cuda.cu, preparazione operandi](https://github.com/ggml-org/llama.cpp/blob/0c1e57098bba43ac29e6e3b677cdceebdd22334f/ggml/src/ggml-cuda/ggml-cuda.cu#L1432-L1491)
+  gli input non-BF16 vengono convertiti nel tipo scelto.
+  La gestione dell'output su NVIDIA Ada preferisce F32
+  [ggml-cuda.cu, output `prefer_f32_output`](https://github.com/ggml-org/llama.cpp/blob/0c1e57098bba43ac29e6e3b677cdceebdd22334f/ggml/src/ggml-cuda/ggml-cuda.cu#L1491-L1528).
+  **Il numero di kernel `GEMM_BF16_NAMED` coincide esattamente
+  con quello dei cast F32→BF16 (17.184)**, e nel graph 2
+  coincidono anche i 12.172 record. Questo è *fortemente
+  coerente* con una conversione F32→BF16 dell'operando del GEMM
+  per lancio, ma non prova ancora l'identità uno-a-uno dei
+  relativi nodi GGML né l'intero percorso di ciascun matmul.
+- **RMSNorm FP32**: la funzione
+  [`rms_norm_f32` in norm.cu](https://github.com/ggml-org/llama.cpp/blob/0c1e57098bba43ac29e6e3b677cdceebdd22334f/ggml/src/ggml-cuda/norm.cu#L77-L157)
+  riceve `float*`, usa `float tmp`, riduzione e
+  `rsqrtf`: per questo kernel la **riduzione FP32 è
+  supportata dal sorgente**, non solo dal nome.
+- **RMSNorm + RoPE FP32, possibile output di altro tipo**:
+  [`rms_norm_mul_rope_f32` in rope.cu](https://github.com/ggml-org/llama.cpp/blob/0c1e57098bba43ac29e6e3b677cdceebdd22334f/ggml/src/ggml-cuda/rope.cu#L710-L788)
+  legge `const float *x`, calcola `float tmp` e
+  usa `ggml_cuda_cast<D>` per l'output. **Il dtype D
+  deve essere letto dall'istanza effettiva**, non
+  dedotto dal nome della funzione.
+- **FlashAttention**: la funzione
+  [`launch_fattn` in fattn-common.cuh](https://github.com/ggml-org/llama.cpp/blob/0c1e57098bba43ac29e6e3b677cdceebdd22334f/ggml/src/ggml-cuda/fattn-common.cuh#L983-L1007)
+  impone `Q->type == GGML_TYPE_F32` e
+  `KQV->type == GGML_TYPE_F32`, mentre K/V sono
+  separatamente BF16 nell'esperimento. Quindi **query
+  e output dell'operazione Flash sono F32**, ma ciò
+  non rende automaticamente F32 gli operandi dei kernel
+  Tensor Core MMA_F16 o tutte le somme/intermedie.
+- **BF16 MMA hardware/cuBLAS non significa Flash MMA_BF16**:
+  il kernel Flash prefill osservato è ancora
+  `FLASH_MMA_F16`; l'uso di `CUBLAS_COMPUTE_32F`
+  per le proiezioni BF16 non implementa il percorso
+  FlashAttention BF16 nativo mancante dal dispatcher.
+
+Il source audit sposta il livello di certezza per RMSNorm,
+RMSNorm/RoPE, Flash Q/output e GEMM/cuBLAS BF16 + compute F32:
+il sorgente pinned **dimostra come questi percorsi sono
+implementati**. Resta da completare la corrispondenza per ogni
+istanza tra operazione GGML, launch GPU e dtype accumulator/output;
+in particolare i matvec `mul_mat_vec_f<__nv_bfloat16,float,...>`
+e `cublasLt::splitKreduce_kernel` richiedono ancora
+un'analisi dei template e della semantica di accumulo.
+
+### 9.2 Stato del gate
+
+Questa prova **non** modifica `production_qualified=false`.
+Non eseguire nuovi workload GPU per colmare le lacune senza
+autorizzazione separata, né inferire benefici percentuali
+di un ipotetico Flash MMA_BF16 dal tempo cumulativo
+dei kernel di conversione.
+
+## 10. Riferimenti interni
 
 - [Fase 27 — precisione e benchmark](phase-27-gemma3-precision-and-kernel-benchmark.md).
 - [Fase 28 — prove CUDA/NVTX e contesti](phase-28-gemma3-dispatch-and-context-scaling.md).
