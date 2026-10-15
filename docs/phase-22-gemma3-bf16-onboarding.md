@@ -37,6 +37,11 @@ fictional `BF32` file or claim that BF16 has F32's numerical precision.
   **TF32** operations; TF32 is a compute mode and **does not halve F32
   storage**. Never claim hardware kernel acceleration without measurement.
 
+Gemma 2 9B IT's **original** checkpoint was also exported in BF16,
+not native F32 (Google's model card confirms this). Its full-precision
+unquantized weights are simply too large for the current 6 GiB GPU;
+the existing quantized Gemma 2 profile must not be deleted.
+
 Ruth policy: all BF16/F16/F32 are unquantized quality class 1. The
 user-selected operational tie-break is BF16 > F16 > F32, including
 warnings for F16/F32. This is **not** a measured cross-model semantic
@@ -66,6 +71,11 @@ git pull --ff-only origin model-profiling
   --quantization BF16
 
 ./ruth models resolve --purpose production --family gemma \
+  --model gemma-3 --version gemma-3-1b-it --format gguf \
+  --quantization BF16 --allow-metadata-network
+
+# Optional additional check: enumerate exact filenames at that same HF revision
+./ruth models quantizations --purpose production --family gemma \
   --model gemma-3 --version gemma-3-1b-it --format gguf \
   --quantization BF16 --allow-metadata-network
 ```
