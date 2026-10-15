@@ -197,8 +197,10 @@ def main(argv: list[str] | None = None) -> int:
                             help="Full-size or sliding-window-limited SWA cache")
             mp.add_argument("--flash-attn", choices=("auto", "off", "on"), default="auto",
                             help="Native llama.cpp Flash Attention requested policy")
-            mp.add_argument("--type-k", choices=("F16", "Q8_0", "Q4_0"), default="F16")
-            mp.add_argument("--type-v", choices=("F16", "Q8_0", "Q4_0"), default="F16")
+            mp.add_argument("--type-k", choices=("F16", "BF16", "Q8_0", "Q4_0"),
+                            default="F16", help="Gemma3 context: F16 Flash OFF or BF16 Flash ON, pinned pairs only")
+            mp.add_argument("--type-v", choices=("F16", "BF16", "Q8_0", "Q4_0"),
+                            default="F16", help="Gemma3 context: F16 Flash OFF or BF16 Flash ON, pinned pairs only")
             mp.add_argument("--n-ctx", type=int, default=256,
                             help="Canonical context profile (256..4096, multiples of 256)")
             mp.add_argument("--load-mode", choices=("weights", "context"),
