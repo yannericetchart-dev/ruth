@@ -293,6 +293,82 @@ class TestPhase28Comparator(unittest.TestCase):
 
 
 class TestPhase28Dispatch(unittest.TestCase):
+    def test_actual_nsight_kernel_names_resolve_to_main_or_helper_families(self):
+        # Captured Nsight 2025.6.3 names with pinned llama.cpp templates.
+        self.assertEqual(classify_kernel(
+            "void flash_attn_ext_f16<(int)256, (int)256, (int)16, (int)4>"),
+            "FLASH_MMA_F16")
+        self.assertEqual(classify_kernel(
+            "void flash_attn_ext_vec<(int)256, (int)1, "
+            "(ggml_type)30, (ggml_type)30, (bool)0>"),
+            "FLASH_VEC")
+        self.assertEqual(classify_kernel(
+            "void flash_attn_stream_k_fixup_uniform<(int)256, (int)16, (int)4>"),
+            "FLASH_FIXUP")
+        self.assertEqual(classify_kernel(
+            "void flash_attn_combine_results<(int)256>"),
+            "FLASH_COMBINE")
+        self.assertIsNone(classify_kernel(
+            "ampere_s16816gemm_bf16_128x64_ldg8_stages_32x6_tn"))
+
+    def test_helpers_only_do_not_verify_main_kernel_dispatch(self):
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            folder = root / ".ruth-build/phase28"
+            folder.mkdir(parents=True)
+            fp = folder / "helpers.sqlite"
+            with sqlite3.connect(fp) as db:
+                db.executescript("""
+                    CREATE TABLE StringIds (id INTEGER PRIMARY KEY,value TEXT);
+                    CREATE TABLE CUPTI_ACTIVITY_KIND_KERNEL
+                        (start INTEGER,end INTEGER,demangledName INTEGER);
+                    INSERT INTO StringIds VALUES
+                        (1,'flash_attn_stream_k_fixup_uniform<DV=256>');
+                    INSERT INTO CUPTI_ACTIVITY_KIND_KERNEL VALUES (0,1000000,1);
+                """)
+            report = inspect_export(fp, root)
+            self.assertEqual(report["status"], "cuda_kernel_names_observed")
+            self.assertFalse(report["native_kernel_names_verified"])
+            self.assertEqual(report["main_attention_families_observed"], [])
+            self.assertEqual(report["attention_family_summary"][0]["count"], 1)
+
+    def test_realistic_trace_counts_and_distinct_main_helper_families(self):
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            folder = root / ".ruth-build/phase28"
+            folder.mkdir(parents=True)
+            fp = folder / "realistic.sqlite"
+            with sqlite3.connect(fp) as db:
+                db.executescript("""
+                    CREATE TABLE StringIds (id INTEGER PRIMARY KEY,value TEXT);
+                    CREATE TABLE CUPTI_ACTIVITY_KIND_KERNEL
+                        (start INTEGER,end INTEGER,demangledName INTEGER);
+                    INSERT INTO StringIds VALUES
+                        (1,'flash_attn_ext_f16<256>'),
+                        (2,'flash_attn_ext_vec<256>'),
+                        (3,'flash_attn_stream_k_fixup_uniform<256>'),
+                        (4,'flash_attn_combine_results<256>');
+                    INSERT INTO CUPTI_ACTIVITY_KIND_KERNEL VALUES (1,1000001,1);
+                    INSERT INTO CUPTI_ACTIVITY_KIND_KERNEL VALUES (1,2000001,2);
+                    INSERT INTO CUPTI_ACTIVITY_KIND_KERNEL VALUES (1,3000001,3);
+                    INSERT INTO CUPTI_ACTIVITY_KIND_KERNEL VALUES (1,4000001,4);
+                """)
+            report = inspect_export(fp, root)
+            self.assertTrue(report["native_kernel_names_verified"])
+            self.assertEqual(report["kernel_records_total"], 4)
+            self.assertEqual(report["main_attention_families_observed"],
+                             ["FLASH_MMA_F16", "FLASH_VEC"])
+            families = {r["attention_family"]:r
+                        for r in report["attention_family_summary"]}
+            self.assertEqual(families["FLASH_MMA_F16"]["role"], "main")
+            self.assertEqual(families["FLASH_VEC"]["role"], "main")
+            self.assertEqual(families["FLASH_FIXUP"]["role"],
+                             "auxiliary_or_other")
+            self.assertEqual(families["FLASH_COMBINE"]["role"],
+                             "auxiliary_or_other")
+            self.assertEqual(families["FLASH_FIXUP"]["count"], 1)
+            self.assertFalse(report["prefill_decode_attribution_verified"])
+
     def test_trace_is_read_only_and_never_claims_phase_correlation(self):
         with TemporaryDirectory() as tmp:
             root=Path(tmp)
