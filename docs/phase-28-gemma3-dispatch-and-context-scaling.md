@@ -703,6 +703,71 @@ The pinned source/NVIDIA CUPTI docs support node-level kernel
 `graphId` and `graphNodeId` fields. The node-level audit does not
 execute CUDA or change any production runtime profiles.
 
+## Uniform kernel-node replay confirmed on actual Phase28 node trace
+
+The user ran the read-only node audit on
+`.ruth-build/phase28/bf16-on-ctx2048-nvtx3-nodes.sqlite`.
+It returned `observed_graph_kernel_node_repetitions_verified=true`,
+with no partial graph/node identifiers and no ambiguous host
+`cudaGraphLaunch` correlations:
+
+| Graph ID | Distinct kernel node IDs | Observed repetitions per node | Kernel records |
+|---|---:|---:|---:|
+| 2 | 796 | 68 | 54,128 |
+| 10 | 448 | 60 | 26,880 |
+| No graph ID | n/a | n/a | 24,120 |
+
+Each observed node in graph 2 appeared **exactly 68 times**, and
+each node in graph 10 **exactly 60 times**. The main/helper Flash
+families appear for exactly 26 attention layers *per replay*:
+
+- Graph 2: `FLASH_MMA_F16=1,768=26×68`,
+  `FLASH_FIXUP=1,768=26×68`;
+  other CUDA kernels 50,592 = 744×68.
+- Graph 10: `FLASH_VEC=1,560=26×60`,
+  `FLASH_COMBINE=1,560=26×60`;
+  other CUDA kernels 23,760 = 396×60.
+
+These counts are compatible with 68 prefill CUDA Graph launches
+and 60 decode CUDA Graph launches, and correspond to the 26-layer
+direct-attention baseline. **Previous node-audit outputs explicitly
+said `graph_to_nvtx_phase_verified=false`** because mapping a graph
+ID to prefill or decode solely from equal replay counts is not
+causal correlation.
+
+The node audit has now been extended to make an *optional, direct*
+`CUPTI_ACTIVITY_KIND_KERNEL.correlationId` →
+`CUPTI_ACTIVITY_KIND_RUNTIME` `cudaGraphLaunch` →
+same-thread NVTX interval join **within the same new SQLite capture**.
+When present, this verifies a bijection between each unique graph
+launch and a full set of the graph's observed kernel-node IDs,
+with no missing/duplicate node in any replay, and unambiguous
+graph-ID→NVTX-phase mapping. When kernel-node correlation IDs are
+missing or differ in meaning on this Nsight version, this
+**deliberately fails closed**; aggregate count coincidences still
+cannot promote `graph_to_nvtx_phase_verified`.
+
+To run the amended tests and re-evaluate the existing node trace
+without any CUDA execution:
+
+```bash
+cd ~/Dev/ruth-model-profiling
+git pull --ff-only origin feat/gemma3-phase28-context-dispatch
+
+.venv/bin/python -m unittest \
+  tests.test_phase28_gemma3_node_audit -v
+
+.venv/bin/python -m ruth_runtime.gemma3_phase28_node_audit \
+  --sqlite .ruth-build/phase28/bf16-on-ctx2048-nvtx3-nodes.sqlite \
+  --candidate bf16-on --n-ctx 2048
+```
+
+Whether or not that optional correlation succeeds,
+`all_cuda_graph_node_types_traced_verified=false`,
+`complete_attention_workload_coverage_verified=false`,
+and `production_qualified=false` remain. Only the individual
+**observed CUDA kernel-node** records are covered.
+
 ## Promotion gate
 
 Phase 28 produces *diagnostic* context, timing, memory and CUDA-kernel
