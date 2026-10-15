@@ -9,6 +9,7 @@ from __future__ import annotations
 from collections import Counter
 from pathlib import Path
 import struct
+import re
 
 from .dependencies import PROJECT_ROOT
 from .model_catalog import select_model
@@ -23,6 +24,16 @@ VALUES = {0:("B",1),1:("b",1),2:("H",2),3:("h",2),
           4:("I",4),5:("i",4),6:("f",4),7:("B",1),
           10:("Q",8),11:("q",8),12:("d",8)}
 GGML_TYPES = {0:"F32",1:"F16",30:"BF16"}
+# Whitelisted architecture-specific tensor roles only. Never publish arbitrary
+# tensor names, tokenizer contents, or full filesystem paths.
+ATTENTION_ROLES = frozenset({
+    "attn_q", "attn_k", "attn_v", "attn_output",
+    "attn_q_norm", "attn_k_norm", "attn_norm", "attn_post_norm",
+})
+ATTENTION_NAME = re.compile(
+    r"^blk\\.(?P<layer>[0-9]{1,3})\\.(?P<role>attn_[a-z_]+)\\.weight$")
+ATTENTION_PROJECTORS = ("attn_q","attn_k","attn_v","attn_output")
+
 ALLOWED = {
     "general.architecture", "general.file_type", "general.alignment",
     "gemma3.block_count", "gemma3.embedding_length", "gemma3.context_length",
@@ -146,23 +157,38 @@ def inspect_gguf_header(file: Path) -> dict:
                 meta[key] = value
         storage = Counter()
         matrix_elements = Counter()
+        attention_entries = []
         for _ in range(n_tensors):
-            r.string(False, max_chars=128)
+            tensor_name = r.string(True, max_chars=128)
             ndim = r.number("I")
             if not 1 <= ndim <= 4:
                 raise GGUFInspectError("Unsupported GGUF tensor dimensions")
             elements = 1
+            shape = []
             for _ in range(ndim):
                 dim = r.number("Q")
                 if not 1 <= dim <= 1_000_000 or elements > 10**12 // dim:
                     raise GGUFInspectError("Invalid or excessive GGUF tensor dimensions")
                 elements *= dim
+                shape.append(dim)
             dtype = r.number("I")
             r.number("Q")  # Weight offset: never dereferenced
             label = GGML_TYPES.get(dtype, "GGML_TYPE_"+str(dtype))
             storage[label] += 1
             if ndim >= 2:
                 matrix_elements[label] += elements
+            match = ATTENTION_NAME.fullmatch(tensor_name)
+            if match and match.group("role") in ATTENTION_ROLES:
+                layer = int(match.group("layer"))
+                # Header may be malformed; do not let an out-of-range index
+                # silently override the derived architectural layer count.
+                if layer >= 256:
+                    raise GGUFInspectError("Invalid GGUF attention layer index")
+                attention_entries.append({
+                    "layer": layer, "role": match.group("role"),
+                    "dtype": label, "shape": shape,
+                })
+
         if meta.get("general.architecture") != "gemma3":
             raise GGUFInspectError("This inspection requires Gemma 3 architecture")
         n_layers = meta.get("gemma3.block_count")
@@ -186,8 +212,25 @@ def inspect_gguf_header(file: Path) -> dict:
                             else "general.file_type_differs_from_BF16_tensors")
         if len(matrix_elements) > 1:
             warnings.append("matrix_tensor_storage_is_mixed")
-        # No false claim about model-wide geometry: global/SWA split is
-        # interpreted by the native backend after this first inspection.
+        projection_coverage = {}
+        for role in ATTENTION_PROJECTORS:
+            present = [x for x in attention_entries if x["role"] == role]
+            dtype_count = Counter(x["dtype"] for x in present)
+            layers = [x["layer"] for x in present]
+            if len(layers) != len(set(layers)):
+                raise GGUFInspectError("Duplicate Gemma 3 attention role in a layer")
+            projection_coverage[role] = {
+                "layers_present": len(layers),
+                "dtype_counts": dict(sorted(dtype_count.items())),
+                "complete": len(layers) == n_layers
+                    and set(layers) == set(range(n_layers)),
+            }
+        if any(x["layer"] >= n_layers for x in attention_entries):
+            raise GGUFInspectError("Attention tensor references an unknown layer")
+        attention_entries.sort(key=lambda x: (x["layer"], x["role"]))
+        # Counts and per-layer tensor format are weight descriptors only;
+        # KV cache contains activations, not these stored weight tensors.
+
         return {
             "status": "gguf_header_geometry_observed_native_crosscheck_pending",
             "gguf_version": version, "tensor_count": n_tensors,
@@ -196,6 +239,9 @@ def inspect_gguf_header(file: Path) -> dict:
             "matrix_tensor_elements_by_storage": dict(sorted(matrix_elements.items())),
             "declared_file_type": declared,
             "metadata_warnings": warnings,
+            "attention_weight_tensors": attention_entries,
+            "attention_projection_coverage": projection_coverage,
+            "attention_dtypes_are_kv_cache_dtypes": False,
             "architecture": "gemma3", "blocks": n_layers,
             "weight_format": "BF16",
             "tensor_values_read": False,
