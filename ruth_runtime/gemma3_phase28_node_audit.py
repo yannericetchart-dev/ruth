@@ -42,6 +42,11 @@ def inspect_node_trace(
         "graph_node_kernel_families": [],
         "observed_graph_kernel_node_repetitions_verified": False,
         "graph_to_nvtx_phase_verified": False,
+        "graph_kernel_launch_correlation_available": False,
+        "graph_kernel_launch_correlated_records": 0,
+        "graph_kernel_launch_unmatched_or_ambiguous_records": 0,
+        "graph_kernel_launch_replay_node_sets_verified": False,
+        "graph_id_to_nvtx_phase": {},
         "all_cuda_graph_node_types_traced_verified": False,
         "complete_attention_workload_coverage_verified": False,
         "production_qualified": False,
@@ -106,8 +111,13 @@ def inspect_node_trace(
         report["nvtx_phase_ranges"] = dict(nvtx_counts)
         phase_launches = Counter()
         bad_launches = 0
-        for start,end,tid,name in db.execute(
-            "SELECT r.start,r.end,r.globalTid,s.value "
+        launch_phase_by_correlation = {}
+        duplicate_graph_launch_correlation = set()
+        runtime_has_correlation = "correlationId" in rc
+        runtime_select_id = ("r.correlationId" if runtime_has_correlation
+                             else "NULL")
+        for start,end,tid,name,cid in db.execute(
+            "SELECT r.start,r.end,r.globalTid,s.value,"+runtime_select_id+" "
             "FROM CUPTI_ACTIVITY_KIND_RUNTIME r "
             "JOIN StringIds s ON s.id=r.nameId "
             "WHERE LOWER(s.value) LIKE '%cudagraphlaunch%'"
@@ -119,7 +129,13 @@ def inspect_node_trace(
             if len(matched) != 1:
                 bad_launches += 1
             else:
-                phase_launches[next(iter(matched))] += 1
+                phase = next(iter(matched))
+                phase_launches[phase] += 1
+                if type(cid) is int:
+                    if cid in launch_phase_by_correlation:
+                        duplicate_graph_launch_correlation.add(cid)
+                    else:
+                        launch_phase_by_correlation[cid] = phase
         report["runtime_graph_launches_by_phase"] = dict(phase_launches)
         report["runtime_graph_launches_total"] = (
             sum(phase_launches.values())+bad_launches)
@@ -154,6 +170,85 @@ def inspect_node_trace(
                 "every_observed_kernel_node_repeated_equally": uniform,
             })
         report["graph_node_kernel_summary"] = main_rows
+
+        # Stronger optional causal join: graph-node GPU kernel activity ->
+        # exact CUDA runtime cudaGraphLaunch correlationId -> CPU NVTX phase.
+        # Nsight schema/driver combinations may not populate the correlation
+        # ID for graph-node activity. In that case stay explicitly unverified.
+        if "correlationId" in kc and runtime_has_correlation:
+            report["graph_kernel_launch_correlation_available"] = True
+            graph_kernel_rows = db.execute("""
+                SELECT graphId,graphNodeId,correlationId
+                FROM CUPTI_ACTIVITY_KIND_KERNEL
+                WHERE graphId IS NOT NULL AND graphNodeId IS NOT NULL
+            """).fetchall()
+            per_launch_nodes = defaultdict(list)
+            unmatched = 0
+            per_graph_phases = defaultdict(set)
+            for graph_id,node_id,cid in graph_kernel_rows:
+                if (type(cid) is not int
+                    or cid not in launch_phase_by_correlation
+                    or cid in duplicate_graph_launch_correlation):
+                    unmatched += 1
+                    continue
+                per_launch_nodes[(graph_id,cid)].append(node_id)
+                per_graph_phases[graph_id].add(
+                    launch_phase_by_correlation[cid])
+            report["graph_kernel_launch_correlated_records"] = (
+                len(graph_kernel_rows)-unmatched)
+            report["graph_kernel_launch_unmatched_or_ambiguous_records"] = (
+                unmatched)
+            all_graph_launch_ids = (
+                set(launch_phase_by_correlation) -
+                duplicate_graph_launch_correlation
+            )
+            observed_launch_ids = {cid for graph_id,cid in per_launch_nodes}
+            graph_to_phase = {
+                str(gid): next(iter(phases))
+                for gid,phases in per_graph_phases.items()
+                if len(phases) == 1
+            }
+            report["graph_id_to_nvtx_phase"] = graph_to_phase
+            unique_by_graph = {
+                gid: {node for gid2,node,count in node_count
+                      if gid2 == gid}
+                for gid in nodes_by_graph
+            }
+            graph_set_match = all(
+                len(observed) == len(unique_by_graph[gid])
+                and len(observed) == len(set(observed))
+                and set(observed) == unique_by_graph[gid]
+                for (gid,cid),observed in per_launch_nodes.items()
+            )
+            # Each graph execution should resolve to exactly one
+            # graph ID and each graph ID to exactly one NVTX phase.
+            per_launch_graphs = defaultdict(set)
+            for gid,cid in per_launch_nodes:
+                per_launch_graphs[cid].add(gid)
+            unique_graph_per_launch = all(
+                len(v) == 1 for v in per_launch_graphs.values())
+            graph_phase_match = (
+                len(graph_to_phase) == len(nodes_by_graph)
+                and len(set(graph_to_phase.values())) == len(nodes_by_graph)
+                and all(
+                    sum(1 for gid,cid in per_launch_nodes
+                        if gid == graph_id) == phase_launches[phase]
+                    for graph_id,phase in (
+                        (gid,graph_to_phase[str(gid)])
+                        for gid in nodes_by_graph
+                    )
+                )
+            )
+            verified_causal = (
+                bool(graph_kernel_rows) and unmatched == 0
+                and not duplicate_graph_launch_correlation
+                and observed_launch_ids == all_graph_launch_ids
+                and graph_set_match and unique_graph_per_launch
+                and graph_phase_match and all_uniform
+            )
+            report["graph_kernel_launch_replay_node_sets_verified"] = (
+                verified_causal)
+            report["graph_to_nvtx_phase_verified"] = verified_causal
 
         # Counts give possible phase labels but not a causal
         # graphId-to-NVTX correlation. Preserve that distinction.
