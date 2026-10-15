@@ -170,6 +170,8 @@ def main(argv: list[str] | None = None) -> int:
                             help="Existing locally saved model profile for publication-only retry")
             mp.add_argument("--evidence-file",
                             help="Local JSON output from a pinned probe-load command")
+            mp.add_argument("--recover-local-evidence",
+                            help="Offline reprocess a previously archived probe report; never run CUDA")
             mp.add_argument("--sync-git", action="store_true",
                             help="Owner: commit directly to model-profiling; contributor: propose review PR")
             mp.add_argument("--publish-pr", action="store_true",
@@ -295,6 +297,24 @@ def main(argv: list[str] | None = None) -> int:
             if args.model_action == "profiles":
                 from .model_memory_profiles import build_profile_matrix
                 try:
+                    if args.recover_local_evidence:
+                        if (args.offline_fit or args.host or args.record_local
+                            or args.initialize or args.evidence_file
+                            or args.profile_file or args.sync_git or args.publish_pr
+                            or args.force or args.quantization
+                            or args.vram_gib is not None or args.architecture
+                            or args.driver_version or args.cuda_backend
+                            or args.native_binding or args.allow_metadata_network):
+                            raise ValueError(
+                                "--recover-local-evidence accepts only an archived probe path and optional --no-git-sync")
+                        from .probe_profile_sync import recover_archived_probe
+                        recovered = recover_archived_probe(
+                            Path(args.recover_local_evidence),
+                            sync_git=not args.no_git_sync)
+                        _print({"action": "models", **recovered})
+                        return 0 if recovered["status"] in (
+                            "local_profile_updated", "local_profile_already_recorded",
+                        ) else 2
                     if args.offline_fit:
                         if (args.host or args.record_local or args.initialize
                                 or args.evidence_file or args.profile_file
