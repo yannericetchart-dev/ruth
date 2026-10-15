@@ -18,7 +18,7 @@ from .hardware_eligibility import inspect_host_hardware
 from .model_catalog import load_catalog
 from .model_memory_profiles import _load_evidence, _positive_finite
 from .install_plan import WHEEL_VERSION, LLAMA_CPP_SUBMODULE_COMMIT
-from .llama_kv_profile import calculate_llama_kv
+from .context_source_evidence import calculate_context_source, context_source_derivation
 
 SCHEMA = "ruth-model-runtime-memory-registry-v1"
 
@@ -365,15 +365,16 @@ def record_local_profile(
                                    "swa_full", "flash_attention", "type_k",
                                    "type_v", "n_seq_max", "kv_unified", "offload_kqv"}
                 or options["n_ctx"] != n_ctx
+                or options["n_seq_max"] != 1
+                or options["kv_unified"] is not False
                 or options["offload_kqv"] is not True):
                 raise ValueError("Invalid verified C context parameters")
-            source = calculate_llama_kv(
-                project_root=root, n_ctx=options["n_ctx"],
-                n_batch=options["n_batch"], n_ubatch=options["n_ubatch"],
-                swa_full=options["swa_full"],
+            source = calculate_context_source(
+                model_version=entry["version"], project_root=root,
+                n_ctx=options["n_ctx"], n_batch=options["n_batch"],
+                n_ubatch=options["n_ubatch"], swa_full=options["swa_full"],
                 flash_attention=options["flash_attention"],
-                type_k=options["type_k"], type_v=options["type_v"],
-                n_seq_max=options["n_seq_max"], kv_unified=options["kv_unified"])
+                type_k=options["type_k"], type_v=options["type_v"])
         if native is not None and not isinstance(native, dict):
             raise ValueError("Malformed native KV diagnostics")
         native = native or {}
@@ -434,18 +435,7 @@ def record_local_profile(
                 "swa_key_logical_mib_native": tensor(swa,"key_logical_mib_native"),
                 "swa_value_logical_mib_native": tensor(swa,"value_logical_mib_native"),
             } if source else None,
-            "kv_source_derivation": {
-                "n_ctx_effective_derived": source["configuration"]["n_ctx_effective_derived"],
-                "n_ubatch_effective_derived": source["configuration"]["n_ubatch_effective_derived"],
-                "global_cells_derived": source["global_cache"]["cells"],
-                "swa_cells_derived": source["swa_cache"]["cells"],
-                "key_logical_bytes_derived": source["key_logical_bytes_derived"],
-                "value_logical_bytes_derived": source["value_logical_bytes_derived"],
-                "swa_full_off_saves_bytes_derived": source["swa_full_off_saves_bytes_derived"],
-                "swa_off_first_saving_at_effective_ctx":
-                    source["swa_off_first_saving_at_effective_ctx"],
-                "model_geometry_verification_pending": True,
-            } if source else None,
+            "kv_source_derivation": context_source_derivation(source) if source else None,
         }
 
     data["observed_evidence_sha256s"] = [*seen, evidence_digest]
