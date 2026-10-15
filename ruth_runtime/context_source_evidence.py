@@ -6,12 +6,31 @@ No CUDA allocation, Flash kernel execution or numeric-fidelity inference.
 """
 from __future__ import annotations
 
+import json
 from pathlib import Path
+import re
 
 from .dependencies import PROJECT_ROOT
 from .gemma3_context_gate import GEMMA3_VERSION, validate_gemma3_context_request
 from .gemma3_kv_profile import calculate_gemma3_kv
 from .llama_kv_profile import calculate_llama_kv
+from .install_plan import SOURCE_COMMIT, LLAMA_CPP_SUBMODULE_COMMIT, WHEEL_VERSION
+
+
+def pinned_native_wheel_sha256(project_root: Path = PROJECT_ROOT) -> str:
+    """Bind native context observations to the exact installed pinned wheel."""
+    lock = Path(project_root) / "locks" / "native-cuda-0.3.36-sm89-wheel.json"
+    source = json.loads(lock.read_text(encoding="utf-8"))
+    sha = source.get("wheel_sha256")
+    if (source.get("schema") != "ruth-native-wheel-lock-v1"
+        or source.get("source_commit") != SOURCE_COMMIT
+        or source.get("llama_cpp_commit") != LLAMA_CPP_SUBMODULE_COMMIT
+        or source.get("python") != "3.12"
+        or source.get("cuda_architecture") != "89"
+        or not isinstance(sha, str)
+        or re.fullmatch(r"[0-9a-f]{64}", sha) is None):
+        raise ValueError("Unpinned or invalid native CUDA wheel identity")
+    return sha
 
 
 def calculate_context_source(
