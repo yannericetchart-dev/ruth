@@ -56,7 +56,8 @@ class NativeAutoRecordingTests(unittest.TestCase):
 
     def prepare_real_profile_environment(self):
         (self.root / "catalog").mkdir(exist_ok=True)
-        for filename in ("model_catalog.json", "llama_kv_backend_policy.json"):
+        for filename in ("model_catalog.json", "llama_kv_backend_policy.json",
+                         "nvidia_architecture_policy.json"):
             shutil.copyfile(PROJECT_ROOT / "catalog" / filename,
                             self.root / "catalog" / filename)
         choice = select_model("production", quantization="Q4_K_M")
