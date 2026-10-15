@@ -6,6 +6,7 @@ import unittest
 
 from ruth_runtime.dependencies import PROJECT_ROOT
 from ruth_runtime.llama_kv_profile import calculate_llama_kv, pad
+from ruth_runtime.llama_kv_log import parse_llama_context_log
 
 
 class LlamaKVProfileTests(unittest.TestCase):
@@ -101,6 +102,38 @@ class LlamaKVProfileTests(unittest.TestCase):
         policy.write_text(json.dumps(payload))
         with self.assertRaisesRegex(ValueError, "Unverified"):
             self.calc()
+
+    def test_native_log_parses_both_swa_and_global_without_fake_effective_fa(self):
+        sample = (
+            "llama_context: n_ctx                 = 256\n"
+            "llama_context: n_ctx_seq             = 256\n"
+            "llama_context: n_batch               = 64\n"
+            "llama_context: n_ubatch              = 64\n"
+            "llama_context: flash_attn            = auto\n"
+            "llama_kv_cache_iswa: creating non-SWA KV cache, size = 256 cells\n"
+            "llama_kv_cache: CUDA0 KV buffer size = 42.00 MiB\n"
+            "llama_kv_cache: size = 42.00 MiB (256 cells, 21 layers, 1/1 seqs), "
+            "K (f16): 21.00 MiB, V (f16): 21.00 MiB\n"
+            "llama_kv_cache_iswa: creating SWA KV cache, size = 256 cells\n"
+            "llama_kv_cache: CUDA0 KV buffer size = 42.00 MiB\n"
+            "llama_kv_cache: size = 42.00 MiB (256 cells, 21 layers, 1/1 seqs), "
+            "K (f16): 21.00 MiB, V (f16): 21.00 MiB\n"
+        )
+        result = parse_llama_context_log(sample)
+        self.assertEqual(result["n_ctx_effective_native"], 256)
+        self.assertEqual(result["global_kv"]["cells"], 256)
+        self.assertEqual(result["swa_kv"]["cells"], 256)
+        self.assertEqual(result["global_kv"]["native_logical_kv"]
+                         ["key_logical_mib_native"], 21)
+        self.assertEqual(result["swa_kv"]["backend_kv_buffer_mib"], 42)
+        self.assertEqual(result["flash_attention_native_parameter"], "auto")
+        self.assertIsNone(result["flash_attention_effective"])
+
+    def test_log_missing_parameters_remains_unknown(self):
+        out = parse_llama_context_log("unrelated CUDA OOM")
+        self.assertIsNone(out["n_ctx_effective_native"])
+        self.assertIsNone(out["global_kv"])
+        self.assertIsNone(out["flash_attention_effective"])
 
     def test_padding_input_validation(self):
         self.assertEqual(pad(257,256),512)
