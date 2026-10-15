@@ -16,6 +16,8 @@ from .dependencies import PROJECT_ROOT
 from .gpu_preflight import inspect_gpu_preflight
 from .inference_probe import _valid_local_gguf, _select_unique_gpu, _parse_offload
 from .load_only_worker import SCHEMA, PREFIX, SUPPORTED
+from .llama_kv_profile import calculate_llama_kv
+from .llama_kv_log import parse_llama_context_log
 from .install_plan import WHEEL_VERSION
 from .model_catalog import select_model
 from .native_failure_diagnostics import diagnose_cuda_failure
@@ -55,6 +57,9 @@ def probe_model_load(
     quantization: str = "Q4_K_L",
     mode: str = "weights",
     n_ctx: int = 128,
+    n_batch: int = 64, n_ubatch: int = 64,
+    swa_full: bool = True, flash_attention: str = "auto",
+    type_k: str = "F16", type_v: str = "F16",
     cuda_preinit: bool = False,
     allow_gpu_load: bool = False,
     environment: Any = None,
@@ -84,6 +89,17 @@ def probe_model_load(
         return finish("unsupported_load_diagnostic",
                       error="Only pinned Gemma Q4_K_L or Q4_K_M: weights/context; 64<=n_ctx<=4096")
     root = Path(project_root)
+    if mode == "context":
+        try:
+            calculated = calculate_llama_kv(
+                project_root=root, n_ctx=n_ctx, n_batch=n_batch,
+                n_ubatch=n_ubatch, swa_full=swa_full,
+                flash_attention=flash_attention, type_k=type_k, type_v=type_v)
+        except (ValueError, OSError, KeyError, TypeError) as exc:
+            return finish("unsupported_kv_context_configuration",
+                          error=type(exc).__name__ + ": " + str(exc)[:230])
+    else:
+        calculated = None
     env = environment if environment is not None else inspect_python_environment()
     if not (env.interpreter_in_project_venv
             and env.python_version.startswith("3.12.")
@@ -107,6 +123,14 @@ def probe_model_load(
         worker_env = {**os.environ, "CUDA_VISIBLE_DEVICES": uuid,
                       "PYTHONNOUSERSITE": "1", "PYTHONDONTWRITEBYTECODE": "1"}
         worker_env.pop("LLAMA_CPP_LIB_PATH", None)
+        if mode == "context":
+            worker_env["RUTH_LLAMA_KV_OPTIONS"] = json.dumps({
+                "n_batch": n_batch, "n_ubatch": n_ubatch,
+                "swa_full": swa_full, "flash_attention": flash_attention,
+                "type_k": type_k, "type_v": type_v,
+            }, sort_keys=True)
+        else:
+            worker_env.pop("RUTH_LLAMA_KV_OPTIONS", None)
         argv = [str(root / ".venv/bin/python"), "-I", "-c", WORKER_SCRIPT,
                 str(root), str(root), uuid, quantization, mode, str(n_ctx),
                 "preinit" if cuda_preinit else "normal"]
@@ -118,6 +142,7 @@ def probe_model_load(
         worker = run(argv, cwd=str(root), capture_output=True, text=True,
                      check=False, timeout=TIMEOUT, env=worker_env)
         native_buffers = extract_native_buffers(worker.stderr or "")
+        native_kv_log = parse_llama_context_log(worker.stderr or "") if mode == "context" else None
         native_kv_sizes = [int(x) for x in KV_SIZE.findall(worker.stderr or "")]
         lines = [s[len(PREFIX):] for s in (worker.stdout or "").splitlines()
                  if s.startswith(PREFIX)]
@@ -140,7 +165,14 @@ def probe_model_load(
             or data.get("inference_executed") is not False
             or data.get("generated_tokens") != 0
             or (data.get("cuda_preinit_requested") is not cuda_preinit)
-            or (mode == "context" and data.get("n_ctx") != n_ctx)):
+            or (mode == "context" and data.get("n_ctx") != n_ctx)
+            or (mode == "context" and data.get("context_options_requested") is not None
+                and data["context_options_requested"] != {
+                    "n_ctx": n_ctx, "n_batch": n_batch, "n_ubatch": n_ubatch,
+                    "swa_full": swa_full, "flash_attention": flash_attention,
+                    "type_k": type_k, "type_v": type_v,
+                    "n_seq_max": 1, "kv_unified": False, "offload_kqv": True,
+                })):
             raise ValueError("Unexpected worker identity or inference activity")
         weights = data.get("weights_loaded") is True
         context = data.get("context_initialized") is True
@@ -161,6 +193,9 @@ def probe_model_load(
             native_binding_version=WHEEL_VERSION,
             weights_loaded=weights, context_initialized=context,
             n_ctx=data.get("n_ctx"), native_kv_sizes=native_kv_sizes,
+            native_kv_log=native_kv_log,
+            context_options_requested=data.get("context_options_requested"),
+            kv_estimate_source_derived=calculated,
             n_batch=data.get("n_batch"),
             n_ubatch=data.get("n_ubatch"),
             gpu_process_observed=data.get("gpu_process_observed") is True,
