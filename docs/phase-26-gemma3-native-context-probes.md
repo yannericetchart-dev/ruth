@@ -126,8 +126,10 @@ pinned GGUF integrity, wheel/ABI identity, the exact GPU and free
 capacity. It **stops at the first error, timeout, partial CPU/GPU
 offload, mismatched native cache dtype, invalid context geometry,
 failure to archive local evidence, or other unverified result**.
-No automatic fallback, alternate precision retry, parallel CUDA work,
-model download, Git publication or inference occurs.
+No Ruth-level cache precision retry, CPU fallback, parallel CUDA work,
+model download, Git publication or inference occurs. Internal native
+attention-kernel conversion (e.g., temporary BF16/F32-to-F16) is NOT
+excluded by a context-only test and remains for later dispatch profiling.
 
 Use `--start-at N` to resume a stopped batch. Skipped cases are not
 claimed to have passed in the new run. To repeat the entire comparable
