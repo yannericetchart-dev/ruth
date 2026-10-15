@@ -133,6 +133,39 @@ measurements or verified production inference.
 
 ```
 
+## Recover an already archived probe after the missing-action bug
+
+Before commit `1053cd6`, automatic native evidence archival omitted
+`action: "models"` because the internal `probe_model_load()` result does not
+include the CLI's display-only `action` field. The evidence validator
+correctly rejected it as unrecognized. **CUDA load and KV context allocation
+were successful; only local-profile recording and Git publication failed.**
+A failed output contains `profile_recording_status:
+"native_probe_recording_or_sync_failed"` and `git_publication: null`.
+
+This is repaired for all new probes: the archive receives canonical
+`{"action":"models", ...}` before hashing.
+
+To recover any old immutable archive, use:
+
+```bash
+./ruth models profiles --recover-local-evidence \
+  "/absolute/path/to/.ruth-build/profiles/evidence/<gguf-sha>-<sha-of-evidence>.json"
+```
+
+The recovery validates the archived filename's SHA256 against its bytes,
+requires the file to reside under Ruth's local evidence directory, and
+applies the same model pin / hardware identity / native binding checks.
+It then normalizes the schema, records the observation idempotently and
+attempts owner Git synchronization. **It never runs another GPU probe, CUDA
+context, inference or GGUF download**; it only performs read-only hardware
+identity inspection and may use GitHub for owner publication.
+
+The optional `--no-git-sync` still archives and records locally but
+does not access Git for publication. On Git failures, use `--recover-local-evidence`
+again, or `models profiles --sync-git --profile-file <model-profile-path>`.
+Do not replay the raw report as if it were an inference-qualified pass.
+
 ## Probe recording lifecycle
 
 The `probe-load` command previously returned
