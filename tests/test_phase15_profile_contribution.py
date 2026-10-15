@@ -13,6 +13,7 @@ from ruth_runtime.profile_contribution import (
 )
 from ruth_runtime.model_catalog import select_model
 from ruth_runtime.profile_registry import SCHEMA
+from ruth_runtime.llama_kv_profile import calculate_llama_kv
 from ruth_runtime.launcher import main
 
 
@@ -90,6 +91,80 @@ class ProfileContributionTests(unittest.TestCase):
             tampered = json.loads(public.read_text())
             tampered["context_profiles"][0]["inference_verified"] = True
             public.write_text(json.dumps(tampered))
+            with self.assertRaises(ValueError):
+                validate_submitted_proposal(public)
+
+    def test_option_specific_native_swa_profile_published_with_exact_provenance(self):
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            local = self.prepare(root)
+            choice = select_model("production")
+            data = json.loads(local.read_text())
+            data["model"].update({
+                "gguf_sha256": choice.expected_sha256,
+                "source_repository": choice.repo_id,
+                "source_revision": choice.revision,
+                "version": choice.version,
+                "quantization": choice.quantization,
+            })
+            opts = {
+                "n_batch_requested": 64, "n_ubatch_requested": 64,
+                "swa_full": True, "flash_attention_requested": "off",
+                "flash_attention_effective": None,
+                "n_ctx_effective_native": 256,
+                "n_ctx_seq_effective_native": 256,
+                "n_batch_effective_native": 64,
+                "n_ubatch_effective_native": 64,
+                "global_cache_cells_native": 256,
+                "swa_cache_cells_native": 256,
+                "global_key_logical_mib_native": 21.0,
+                "global_value_logical_mib_native": 21.0,
+                "swa_key_logical_mib_native": 21.0,
+                "swa_value_logical_mib_native": 21.0,
+            }
+            calc = calculate_llama_kv(
+                n_ctx=128, n_batch=64, n_ubatch=64, swa_full=True,
+                flash_attention="off", type_k="F16", type_v="F16")
+            deriv = {
+                "n_ctx_effective_derived": calc["configuration"]["n_ctx_effective_derived"],
+                "n_ubatch_effective_derived": calc["configuration"]["n_ubatch_effective_derived"],
+                "global_cells_derived": calc["global_cache"]["cells"],
+                "swa_cells_derived": calc["swa_cache"]["cells"],
+                "key_logical_bytes_derived": calc["key_logical_bytes_derived"],
+                "value_logical_bytes_derived": calc["value_logical_bytes_derived"],
+                "swa_full_off_saves_bytes_derived": calc["swa_full_off_saves_bytes_derived"],
+                "swa_off_first_saving_at_effective_ctx":
+                    calc["swa_off_first_saving_at_effective_ctx"],
+                "model_geometry_verification_pending": True,
+            }
+            runtime = next(iter(data["runtime_measurements"]))
+            data["context_profiles"] = {
+                runtime + "/n_ctx=128/flash=off/k=F16/v=F16/swa=on/batch=64/ubatch=64": {
+                    "n_ctx_requested": 128, "kv_size_native": [256, 256],
+                    "kv_padding": None, "flash_attention": "off",
+                    "kv_type_k": "F16", "kv_type_v": "F16",
+                    "gpu_kv_buffer_mib": 84.0,
+                    "gpu_compute_buffer_mib": 63.38,
+                    "backend": "llama.cpp",
+                    "verified_native_allocations_only": True,
+                    "inference_verified": False,
+                    "kv_backend_commit": calc["upstream_commit"],
+                    "native_config": opts,
+                    "kv_source_derivation": deriv,
+                },
+            }
+            local.write_text(json.dumps(data))
+            item = build_proposal(local, project_root=root)
+            public = root / item["repository_path"].replace(
+                "profiles/submissions/", "profiles/measurements/", 1)
+            public.parent.mkdir(parents=True)
+            public.write_text(json.dumps(item["proposal"]))
+            verified = validate_submitted_proposal(public)
+            self.assertEqual(verified["status"],
+                             "submitted_profile_schema_verified_review_required")
+            wrong = json.loads(public.read_text())
+            wrong["context_profiles"][0]["kv_source_derivation"]["swa_cells_derived"] = 512
+            public.write_text(json.dumps(wrong))
             with self.assertRaises(ValueError):
                 validate_submitted_proposal(public)
 
