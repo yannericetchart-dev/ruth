@@ -11,10 +11,14 @@ from .dependencies import PROJECT_ROOT
 
 def classify_kernel(name: str) -> str | None:
     n = name.lower()
+    # Names verified against pinned llama.cpp 0c1e5709, not guessed from
+    # user-facing Flash ON/OFF settings. Check helpers before broad matching.
     for marker, family in (
         ("flash_attn_ext_vec", "FLASH_VEC"),
-        ("flash_attn_ext_mma_f16", "FLASH_MMA_F16"),
+        ("flash_attn_ext_f16", "FLASH_MMA_F16"),
         ("flash_attn_ext_tile", "FLASH_TILE"),
+        ("flash_attn_stream_k_fixup", "FLASH_FIXUP"),
+        ("flash_attn_combine_results", "FLASH_COMBINE"),
     ):
         if marker in n:
             return family
@@ -55,12 +59,28 @@ def inspect_export(file: Path, root: Path = PROJECT_ROOT) -> dict:
                 "attention_family": classify_kernel(name),
             })
     matches = [r for r in result if r["attention_family"]]
+    primary = {"FLASH_VEC", "FLASH_MMA_F16", "FLASH_TILE"}
+    main = [r for r in matches if r["attention_family"] in primary]
+    summary = []
+    for family in sorted({r["attention_family"] for r in matches}):
+        entries = [r for r in matches if r["attention_family"] == family]
+        summary.append({
+            "attention_family": family,
+            "role": "main" if family in primary else "auxiliary_or_other",
+            "count": sum(r["count"] for r in entries),
+            "kernel_gpu_ms": round(sum(r["kernel_gpu_ms"] for r in entries), 4),
+        })
     return {
         "status": "cuda_kernel_names_observed" if result else "no_kernel_records",
+        "source_revision_for_name_mapping":
+            "0c1e57098bba43ac29e6e3b677cdceebdd22334f",
         "kernel_records_total": sum(r["count"] for r in result),
         "attention_kernel_records": matches,
+        "attention_family_summary": summary,
+        "main_attention_families_observed": sorted({
+            r["attention_family"] for r in main}),
         "kernel_name_sample": result[:80],
-        "native_kernel_names_verified": bool(matches),
+        "native_kernel_names_verified": bool(main),
         "prefill_decode_attribution_verified": False,
         "production_qualified": False,
     }
