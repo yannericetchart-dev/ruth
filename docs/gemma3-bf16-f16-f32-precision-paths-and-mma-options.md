@@ -544,7 +544,67 @@ statico rigoroso dei dati/archi del grafo. Queste estensioni
 vanno progettate prima di ogni ulteriore profiling GPU e
 richiedono nuova autorizzazione se comportano esecuzioni.
 
-## 11. Riferimenti interni
+## 11. Esito reale dell'audit cast→GEMM per NVTX e unico outlier GPU
+
+L'utente ha verificato il modulo `gemma3_phase28_cast_gemm_audit`
+sull'acquisizione node-level esistente:
+**sei test sintetici superati**, `per_range_attribution_verified=true`,
+`prefill_per_range_count_balance_verified=true`,
+`graph_node_kernel_order_stable=true`,
+`unattributed_or_ambiguous_target_kernels=0`,
+`target_kernel_records_correlated=39360`.
+
+Per ciascuno dei **96 range prefill**, diretti e in Graph,
+è stata confermata la stessa quantità
+(**179 cast F32→BF16, 179 GEMM BF16 e 52 cast BF16→F16**).
+Nei 64 range decode nessuna di queste famiglie è osservata.
+
+| Fase / percorso | Range | Cast F32→BF16 | GEMM BF16 | Cast BF16→F16 | Range con pairing temporale compatibile |
+|---|---:|---:|---:|---:|---:|
+| Prefill direct | 28 | 5.012 | 5.012 | 1.456 | **28/28** |
+| Prefill Graph | 68 | 12.172 | 12.172 | 3.536 | **67/68** |
+| Decode direct | 4 | 0 | 0 | 0 | n/a |
+| Decode Graph | 60 | 0 | 0 | 0 | n/a |
+
+**Attenzione:** `gpu_timeline_candidate_pairing_verified=false`.
+In uno dei 68 replay prefill, la regola euristica
+«cast ordinato per tempo di inizio GPU terminato prima del GEMM
+allo stesso indice della sequenza ordinata» non è soddisfatta.
+L'outlier **non** invalida l'attribuzione dei 39.360 record,
+non implica un problema numerico e non dimostra dipendenza o
+indipendenza dei buffer. Anche la lista dei `graphNodeId` ordinati
+risulta stabile nei replay (`graph_node_kernel_order_stable=true`),
+il che non equivale agli archi del DAG.
+
+Il lettore è stato quindi esteso con diagnostica offline opzionale
+per riportare **al massimo quattro range incompatibili** e
+**otto coppie discordanti per range**, inclusi:
+indice NVTX, correlation ID del replay, indice ordinale,
+offset dei timestamp GPU (in nanosecondi, relativi al primo evento
+GPU del gruppo), gap, streamId, graphId e graphNodeId.
+Non utilizza timestamp CPU come base per i timestamp GPU,
+non modifica il modello e non cambia il gate di produzione.
+
+```bash
+cd ~/Dev/ruth-model-profiling
+git pull --ff-only origin feat/gemma3-phase28-context-dispatch
+
+.venv/bin/python -m unittest \
+  tests.test_phase28_gemma3_cast_gemm_audit -v
+
+.venv/bin/python -m ruth_runtime.gemma3_phase28_cast_gemm_audit \
+  --sqlite .ruth-build/phase28/bf16-on-ctx2048-nvtx3-nodes.sqlite \
+  --candidate bf16-on --n-ctx 2048 --explain-order
+```
+
+L'assenza di archi di dipendenza e riferimenti ai buffer
+significa che restano `producer_consumer_buffer_dependency_verified=false`,
+`ggml_operator_identity_verified=false` e
+`potential_conversion_elimination_verified=false`.
+Non ipotizzare accelerazioni percentuali a partire dal solo
+tempo di conversione GPU cumulato.
+
+## 12. Riferimenti interni
 
 - [Fase 27 — precisione e benchmark](phase-27-gemma3-precision-and-kernel-benchmark.md).
 - [Fase 28 — prove CUDA/NVTX e contesti](phase-28-gemma3-dispatch-and-context-scaling.md).
