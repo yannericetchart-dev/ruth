@@ -422,14 +422,37 @@ evidenze più forti di un semplice suffisso nel nome CUDA:
   per le proiezioni BF16 non implementa il percorso
   FlashAttention BF16 nativo mancante dal dispatcher.
 
+- **MatVec BF16/F32 e accumulazione F32**: in
+  [mmvf.cu, `mul_mat_vec_f<T,type_acc>`](https://github.com/ggml-org/llama.cpp/blob/0c1e57098bba43ac29e6e3b677cdceebdd22334f/ggml/src/ggml-cuda/mmvf.cu#L7-L15)
+  gli argomenti sono `const T *x`, `const float *y`
+  e `float *dst`. Nella funzione lo stato
+  `float sumf[ncols_dst]` usa una riduzione F32, e
+  l'istanza eseguita nel trace è espressamente
+  `mul_mat_vec_f<__nv_bfloat16,float,...>`.
+  La selezione del percorso per T=BF16 usa
+  `type_acc=float`
+  [mmvf.cu, dispatcher](https://github.com/ggml-org/llama.cpp/blob/0c1e57098bba43ac29e6e3b677cdceebdd22334f/ggml/src/ggml-cuda/mmvf.cu#L609-L632).
+  Per questa istanza **input pesi BF16, vettore F32,
+  riduzione F32 e output F32 sono supportati congiuntamente
+  da simbolo osservato e sorgente pinned**; a differenza
+  dei nomi CUDA generici, la precisione dell'accumulo
+  è dunque verificata per questo specifico template
+  (non per tutti i matvec eseguibili).
+  `MATVEC_BF16_F32_NAMED` compare **10.060 volte**,
+  di cui 10.048 decode e 12 prefill, con
+  749,2876 ms di tempo kernel GPU sommato.
+
 Il source audit sposta il livello di certezza per RMSNorm,
 RMSNorm/RoPE, Flash Q/output e GEMM/cuBLAS BF16 + compute F32:
 il sorgente pinned **dimostra come questi percorsi sono
 implementati**. Resta da completare la corrispondenza per ogni
 istanza tra operazione GGML, launch GPU e dtype accumulator/output;
-in particolare i matvec `mul_mat_vec_f<__nv_bfloat16,float,...>`
-e `cublasLt::splitKreduce_kernel` richiedono ancora
-un'analisi dei template e della semantica di accumulo.
+in particolare `cublasLt::splitKreduce_kernel`
+e le altre operazioni non mappate ai rispettivi operatori GGML
+richiedono ancora un'analisi dei template e della semantica
+di accumulo. Il template MatVec BF16/F32 sopra citato
+costituisce una **verifica sorgente mirata** e non modifica
+il campo globale `arithmetic_precision_coverage_complete=false`.
 
 ### 9.2 Stato del gate
 
