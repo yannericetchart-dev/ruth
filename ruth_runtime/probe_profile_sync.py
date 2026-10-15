@@ -39,6 +39,7 @@ def record_probe_evidence(
     }
     if (
         not isinstance(report, dict)
+        or report.get("action") not in (None, "models")
         or report.get("status") not in _MEASURED_STATUSES
         or report.get("mode") not in ("weights", "context")
         or report.get("model_verified") is not True
@@ -65,7 +66,11 @@ def record_probe_evidence(
 
     root = Path(project_root)
     try:
-        encoded = (json.dumps(report, ensure_ascii=False, sort_keys=True,
+        # Internal probe_model_load() returns a dict without the CLI's
+        # presentation-only action. The strict local evidence validator
+        # requires action=models; normalize BEFORE hashing and archiving.
+        canonical_report = {"action": "models", **report}
+        encoded = (json.dumps(canonical_report, ensure_ascii=False, sort_keys=True,
                               separators=(",", ":"), allow_nan=False) + "\n").encode("utf-8")
         if len(encoded) > 140_000:
             raise ValueError("Native probe evidence exceeds safe local size")
@@ -119,3 +124,36 @@ def record_probe_evidence(
         result["status"] = "native_probe_recording_or_sync_failed"
         result["error"] = type(exc).__name__ + ": " + str(exc)[:230]
         return result
+
+
+def recover_archived_probe(
+    evidence_file: Path,
+    *,
+    project_root: Path = PROJECT_ROOT,
+    sync_git: bool = True,
+) -> dict:
+    """Replay the previously archived native measurement without CUDA.
+
+    Accept only this project's content-addressed .ruth-build evidence path.
+    In particular, do not accept arbitrary JSON on disk as a 'probe' or
+    allow the filename to bypass the existing strict profile validators.
+    """
+    root = Path(project_root)
+    archive = root / ".ruth-build" / "profiles" / "evidence"
+    path = Path(evidence_file)
+    if archive.is_symlink() or path.is_symlink():
+        raise ValueError("Refuse symlink native evidence")
+    if (path.resolve().parent != archive.resolve()
+        or not path.is_file()
+        or not 1 <= path.stat().st_size <= 140_000):
+        raise ValueError("Recovery requires an existing local archived probe JSON")
+    raw = path.read_bytes()
+    digest = hashlib.sha256(raw).hexdigest()
+    report = json.loads(raw)
+    if (not isinstance(report, dict)
+        or not isinstance(report.get("model_sha256"), str)
+        or _SHA.fullmatch(report["model_sha256"]) is None
+        or path.name != report["model_sha256"] + "-" + digest + ".json"
+        or report.get("action") not in (None, "models")):
+        raise ValueError("Archived probe filename/content digest or identity mismatch")
+    return record_probe_evidence(report, project_root=root, sync_git=sync_git)
