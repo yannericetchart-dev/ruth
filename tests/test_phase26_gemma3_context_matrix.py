@@ -22,6 +22,7 @@ def successful_native_report(row):
         "mode": "context",
         "context_initialized": True,
         "full_gpu_offload_observed": True,
+        "gpu_process_observed": True,
         "cpu_fallback_selected": False,
         "inference_executed": False,
         "generated_tokens": 0,
@@ -34,7 +35,13 @@ def successful_native_report(row):
         "git_publication": {"status": "git_sync_disabled",
                             "git_updated": False},
         "native_kv_log": {
+            "flash_attention_native_parameter": (
+                "enabled" if row["flash_attention"] == "on" else "disabled"),
             "n_ctx_effective_native": 256,
+            "n_ctx_seq_effective_native": 256,
+            "n_batch_effective_native": 64,
+            "n_ubatch_effective_native": 64,
+            "n_seq_max_native": 1,
             "global_kv": {
                 "cells": 256,
                 "native_logical_kv": {
