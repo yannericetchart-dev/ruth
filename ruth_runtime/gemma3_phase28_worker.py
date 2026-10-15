@@ -95,7 +95,10 @@ def run_workload(api, model, ctx, plan) -> dict:
                 batch.pos[0] = len(prompt) + i
                 batch.n_seq_id[0] = 1
                 batch.seq_id[0][0] = 0
-                batch.logits[0] = int(i == len(follow) - 1)
+                # Require the output projection at EVERY decode position.
+                # Otherwise the benchmark silently times hidden-state-only
+                # passes for 15/16 tokens and underreports decoding latency.
+                batch.logits[0] = 1
                 with nvtx.range("decode"):
                     t0 = monotonic_ns()
                     ret = api.llama_decode(ctx, batch)
@@ -130,6 +133,8 @@ def run_workload(api, model, ctx, plan) -> dict:
         "logits": snapshots, "timings": timings,
         "prompt": prompt, "decode_ids": follow, "n_vocab": n_vocab,
         "nvtx_ranges_available": nvtx.available,
+        "decode_logits_requested_per_token": True,
+        "decode_logits_requested_count": len(follow),
     }
 
 
@@ -234,6 +239,10 @@ def run_native(root: Path, uuid: str, candidate: str, n_ctx: int) -> dict:
                 data["prompt"], separators=(",",":")).encode("ascii")).hexdigest(),
             "decode_ids": data["decode_ids"],
             "n_vocab": data["n_vocab"], "timings": data["timings"],
+            "decode_logits_requested_per_token":
+                data["decode_logits_requested_per_token"],
+            "decode_logits_requested_count":
+                data["decode_logits_requested_count"],
             "logits_artifact": artifact,
             "gpu_process_observed": bool(samples),
             "gpu_memory_peak_mib_sampled": max(samples) if samples else None,
