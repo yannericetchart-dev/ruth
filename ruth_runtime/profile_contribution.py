@@ -19,7 +19,10 @@ from .profile_registry import SCHEMA
 from .model_catalog import load_catalog
 from .hardware_eligibility import load_architecture_policy
 from .install_plan import LLAMA_CPP_SUBMODULE_COMMIT
-from .context_source_evidence import calculate_context_source, context_source_derivation
+from .context_source_evidence import (
+    calculate_context_source, context_source_derivation, pinned_native_wheel_sha256,
+)
+from .gemma3_context_gate import GEMMA3_VERSION
 
 UPSTREAM = "yannericetchart-dev/ruth"
 BASE_BRANCH = "model-profiling"
@@ -279,6 +282,10 @@ def validate_submitted_proposal(
                           "global_cache_cells_native", "swa_cache_cells_native",
                           "global_key_logical_mib_native", "global_value_logical_mib_native",
                           "swa_key_logical_mib_native", "swa_value_logical_mib_native"}
+                if model["version"] == GEMMA3_VERSION:
+                    needed.add("native_wheel_sha256")
+                    if native_cfg.get("native_wheel_sha256") != pinned_native_wheel_sha256(project_root):
+                        raise ValueError("Gemma3 native wheel SHA differs from pinned CUDA artifact")
                 if set(native_cfg) != needed or native_cfg["flash_attention_effective"] is not None:
                     raise ValueError("Unknown native KV diagnostics or unsupported effective FA claim")
                 if (native_cfg["flash_attention_requested"] != ctx["flash_attention"]
