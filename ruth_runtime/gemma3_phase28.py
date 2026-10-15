@@ -197,6 +197,9 @@ def probe_one(
             and data.get("type_v") == plan.type_v
             and data.get("prefill_tokens") == plan.prompt_tokens
             and data.get("decode_tokens") == plan.decode_tokens
+            and data.get("decode_logits_requested_per_token") is True
+            and type(data.get("decode_logits_requested_count")) is int
+            and data.get("decode_logits_requested_count") == plan.decode_tokens
             and data.get("warmups") == WARMUPS
             and data.get("repeats") == REPEATS
             and data.get("generated_tokens") == 0
@@ -232,6 +235,8 @@ def probe_one(
             type_k=plan.type_k, type_v=plan.type_v,
             n_ctx_effective_native=plan.n_ctx,
             prompt_tokens=plan.prompt_tokens, decode_tokens=plan.decode_tokens,
+            decode_logits_requested_per_token=True,
+            decode_logits_requested_count=plan.decode_tokens,
             prompt_ids_sha256=data.get("prompt_ids_sha256"),
             decode_ids=data.get("decode_ids"),
             prefill_ms_median=round(median_prefill,4),
