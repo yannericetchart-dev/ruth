@@ -216,6 +216,7 @@ def probe_one(
             decode_ids=data["decode_ids"],
             prefill_ms_median=round(statistics.median(prefill), 4),
             decode_ms_per_token_median=round(statistics.median(decoded), 4),
+            nvtx_ranges_available=data.get("nvtx_ranges_available") is True,
             timings=timing,
             gpu_peak_mib_sampled=data.get("gpu_memory_peak_mib_observed"),
             logits_artifact=data["artifact"],
