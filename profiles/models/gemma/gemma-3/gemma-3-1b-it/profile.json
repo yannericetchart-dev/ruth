@@ -1,64 +1,99 @@
 {
-  "schema": "ruth-model-profile-v2",
-  "model": {
-    "family": "gemma",
-    "model": "gemma-3",
-    "version": "gemma-3-1b-it",
-    "license": "gemma",
-    "upstream_repo": "google/gemma-3-1b-it"
-  },
   "architecture": {
-    "status": "unknown",
     "global_layers": null,
+    "key_head_dim": null,
+    "kv_heads": null,
+    "status": "unknown",
     "swa_layers": null,
     "swa_window": null,
-    "kv_heads": null,
-    "key_head_dim": null,
     "value_head_dim": null
   },
   "backend_policies": {
     "llama.cpp": {
-      "status": "source_derived",
+      "context_alignment": 256,
+      "context_step": 256,
+      "fixed_flash_attention": "off",
+      "fixed_kv_type_k": "F16",
+      "fixed_kv_type_v": "F16",
+      "fixed_swa_full": true,
+      "gguf_min_n_ctx_requested": 256,
+      "n_ctx_256_profile_batch": null,
+      "n_ctx_256_profile_ubatch": null,
       "pinned_revision": "0c1e57098bba43ac29e6e3b677cdceebdd22334f",
+      "scope": "single_sequence_pinned_llama_cpp",
+      "status": "source_derived",
       "weight_types": [
         "F32",
         "F16",
         "BF16"
-      ],
-      "gguf_min_n_ctx_requested": 256,
-      "context_alignment": 256,
-      "context_step": 256,
-      "scope": "single_sequence_pinned_llama_cpp",
-      "n_ctx_256_profile_batch": null,
-      "n_ctx_256_profile_ubatch": null,
-      "fixed_kv_type_k": "F16",
-      "fixed_kv_type_v": "F16",
-      "fixed_flash_attention": "off",
-      "fixed_swa_full": true
+      ]
     }
+  },
+  "model": {
+    "family": "gemma",
+    "license": "gemma",
+    "model": "gemma-3",
+    "upstream_repo": "google/gemma-3-1b-it",
+    "version": "gemma-3-1b-it"
+  },
+  "provenance": {
+    "archived_measurement_files_read": [],
+    "historical_migration_completed": false
+  },
+  "schema": "ruth-model-profile-v2",
+  "selection": {
+    "cross_model_quality_score": null,
+    "original_checkpoint_dtype": "BF16",
+    "precision_preference": "prefer_verified_original_checkpoint_dtype",
+    "quality_policy": "unquantized_highest_quality_class_fidelity_original_dtype"
   },
   "variants": {
     "BF16": {
-      "format": "BF16",
-      "precision_family": "floating",
-      "gguf_sha256": "b144bde489651d3d292d7e47a59c6f811cdd96d184be582e5ad30ab338b9b6bf",
-      "file_bytes": 2006573568,
-      "source_repository": "bartowski/google_gemma-3-1b-it-GGUF",
-      "source_revision": "6de70cb020706f01529b27fee7ab17c5969041c8",
-      "filename": "google_gemma-3-1b-it-bf16.gguf",
-      "runtime_observations": {},
       "context_observations": {},
-      "minimal_inference_observations": {}
+      "file_bytes": 2006573568,
+      "filename": "google_gemma-3-1b-it-bf16.gguf",
+      "format": "BF16",
+      "gguf_sha256": "b144bde489651d3d292d7e47a59c6f811cdd96d184be582e5ad30ab338b9b6bf",
+      "minimal_inference_observations": {},
+      "precision_family": "floating",
+      "runtime_observations": {
+        "3038fec616cd04e099ecb621": {
+          "identity": {
+            "architecture": "ada",
+            "compute_capability": "8.9",
+            "cuda_backend": "13.2",
+            "cuda_driver_max": "13.2",
+            "driver_version": "595.99.02",
+            "llama_cpp_binding": "0.3.36"
+          },
+          "observations": [
+            {
+              "data": {
+                "architecture": "ada",
+                "compute_buffer_mib": null,
+                "compute_capability": "8.9",
+                "cuda_backend": "13.2",
+                "cuda_driver_max": "13.2",
+                "cuda_init_observed_nvml_delta_mib_max": null,
+                "cuda_toolkit": null,
+                "driver_reserved_mib_max": 369.0,
+                "driver_version": "595.99.02",
+                "flash_attention": null,
+                "kv_buffer_mib": null,
+                "kv_type_k": null,
+                "kv_type_v": null,
+                "llama_cpp_binding": "0.3.36",
+                "n_ctx": null,
+                "tensor_core_generation": 4,
+                "weights_buffer_mib_max": 1907.39
+              },
+              "sha256": "853fbde12301b0cdfbbc0e9325d7bc280e9a0d28a8970e794cd18034d648e3cf"
+            }
+          ]
+        }
+      },
+      "source_repository": "bartowski/google_gemma-3-1b-it-GGUF",
+      "source_revision": "6de70cb020706f01529b27fee7ab17c5969041c8"
     }
-  },
-  "selection": {
-    "quality_policy": "unquantized_highest_quality_class_fidelity_original_dtype",
-    "cross_model_quality_score": null,
-    "precision_preference": "prefer_verified_original_checkpoint_dtype",
-    "original_checkpoint_dtype": "BF16"
-  },
-  "provenance": {
-    "historical_migration_completed": false,
-    "archived_measurement_files_read": []
   }
 }
