@@ -293,12 +293,17 @@ production eligibility. F16/F16 remains the designated baseline.
 The separate `models probe-load` Gemma3 context gate stays closed;
 no GPU load or inference is performed by `kv-plan`.
 
-### 6 — Minimal canonical context loading (NOT APPROVED YET)
+### 6 — Minimal native context allocation (EXPERIMENTAL; permission required)
 
-Use `n_ctx=256` and profile `n_batch=64,n_ubatch=64` first, KV F16/F16,
-Flash OFF, SWA FULL ON. Only after validated hparams and staged
-authorization should this be enabled for Gemma3. Probe no inference
-tokens. Tune n_batch/n_ubatch later in discrete, memory-guarded tests.
+Phase 26 adds a *separately authorized*, allocation-only probe for the
+pinned Gemma3 BF16 model. Its exact allowlist is n_ctx=256,
+n_batch=n_ubatch=64, SWA FULL ON, no CUDA preinit, with **either**
+F16/F16 Flash OFF (baseline) **or** BF16/BF16 Flash ON (candidate).
+Both require an explicit `--allow-gpu-load` and leave inference disabled.
+Run the tests first; the step-by-step command and evidence handling are
+documented in `docs/phase-26-gemma3-native-context-probes.md`.
+No source-only result authorizes production inference, auto selection,
+longer context or arbitrary cache types.
 
 ### 7 — Profile reuse and production eligibility
 
