@@ -245,16 +245,44 @@ def inspect_pinned_gguf(
         return result
     tensors=parsed.pop("tensors")
     by_type=Counter(t["dtype"] for t in tensors)
+    by_type_elements=Counter()
+    by_type_bytes=Counter()
     by_category=defaultdict(Counter)
     by_category_elements=defaultdict(Counter)
+    all_tensor_spans=[]
+    all_known_bytes=True
     for t in tensors:
         by_category[t["category"]][t["dtype"]]+=1
         by_category_elements[t["category"]][t["dtype"]]+=t["elements"]
+        by_type_elements[t["dtype"]]+=t["elements"]
+        byte_count=t["uncompressed_data_bytes"]
+        if byte_count is None:
+            all_known_bytes=False
+        else:
+            by_type_bytes[t["dtype"]]+=byte_count
+            all_tensor_spans.append(
+                (t["relative_data_offset"],
+                 t["relative_data_offset"]+byte_count))
+    spans=sorted(all_tensor_spans)
+    cursor=0
+    contiguous=bool(all_known_bytes and spans)
+    for start,end in spans:
+        if start != cursor or end <= start:
+            contiguous=False
+        cursor=end
+    data_length=parsed["file_size_bytes"]-parsed["tensor_data_offset"]
+    storage_verified=bool(contiguous and cursor==data_length)
     result.update(parsed)
     result.update({
         "status":"pinned_gguf_precision_inventory_verified",
         "model_file":str(path.relative_to(root)),
         "tensor_dtype_counts":dict(sorted(by_type.items())),
+        "tensor_dtype_element_counts":dict(sorted(by_type_elements.items())),
+        "tensor_dtype_storage_bytes":dict(sorted(by_type_bytes.items())),
+        "gguf_tensor_data_region_bytes":data_length,
+        "tensor_storage_bytes_accounted":sum(by_type_bytes.values()),
+        "tensor_storage_layout_contiguous_verified":storage_verified,
+        "tensor_storage_accounting_complete":all_known_bytes,
         "tensor_categories":{
             k:{"dtype_tensor_counts":dict(sorted(v.items())),
                "dtype_element_counts":dict(sorted(by_category_elements[k].items()))}
