@@ -434,10 +434,16 @@ def main(argv: list[str] | None = None) -> int:
                 if args.model_action == "quantizations":
                     result = discover_quantizations(
                         purpose=args.purpose,
+                        selected_choice=choice,
                         authorize_metadata_network=args.allow_metadata_network,
                     )
                     _print({"action": "models", **result})
                     return 0 if result["status"] == "quantizations_discovered" else 2
+                if any(getattr(args, k) is not None for k in
+                       ("family", "model", "version", "format", "quantization")):
+                    raise CatalogError(
+                        "recommend currently supports the default pinned model only; "
+                        "use quantizations/resolve for explicitly selected Gemma 3")
                 result = recommend_quantization(
                     purpose=args.purpose,
                     authorize_metadata_network=args.allow_metadata_network,
