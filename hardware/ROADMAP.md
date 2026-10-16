@@ -6,21 +6,23 @@ Nodo responsabile: [HW](NODE.yaml). Ripresa: [START_HERE](../START_HERE.md).
 
 Descrivere risorse senza confonderle con compatibilita di inferenza.
 
-Sviluppo: **active**; codice: **complete**; maturita: experimental; verifica: not_run; integrazione: not_merged.
+Sviluppo: **active**; codice: **complete**; maturita: experimental; verifica: passed; integrazione: merged.
 
 Flag: in_scope. Blocchi: nessuno registrato.
 
-Ambito verifica: HW-001/CPU-001: inventario read-only solo CPU e RAM con API stdlib, valori unknown dove non disponibili, test sintetici da eseguire in CI; GPU/vendor/backend esclusi. HW-MANUAL-001 ancora da svolgere dopo merge.
+Ambito verifica: HW-001/CPU-001: GitHub CI runs 38913317440, 38913438829, 38913533057 success; 14 PY, 12 DEP, 13 DIAG, 8 CPU, 12 HW/RAM, 15 root/CLI; 249 mappe coerenti. PR #25 foglia, #26 hardware/main, #27 main. Test solo sintetici, HW-MANUAL-001 in attesa. GPU, CUDA, backend e installazioni esclusi.
 
 ## Attivita locali
 
-1. `HW-001` [active] Contratti HardwareReport/ResourceReport/DeviceInfo e inventario fisico RAM portabile, codice candidato e test sintetici/CI pendenti.
+1. `HW-001` [complete] Contratti e rilevamento read-only CPU/RAM implementati, verificati in CI e integrati in main tramite PR #27.
 2. `HW-SCOPE-001` [complete] Funzioni, ingressi, risultati, effetti, limiti e verifiche con CPU/RAM prima di GPU approvati dall'utente il 16 ottobre 2026.
-3. `HW-MANUAL-001` [planned] Dopo promozione main, utente avvia Ruth dal checkout pulito, verifica sequenza PY->DEP->DIAG->HW e SHA provato.
+3. `HW-MANUAL-001` [active] Dopo aggiornamento fast-forward della copia pulita, l'utente deve avviare main.py senza argomenti e confermare sequenza PY->DEP->DIAG->HW e SHA reale.
+4. `HW-PROMOTE-001` [complete] PR #26 promossa da hardware/cpu/main in hardware/main; merge d2ea16b14b89cefacea574f1e209fecec29f7f01.
+5. `HW-PROMOTE-002` [complete] PR #27 promossa in main; merge 35a6ac79a1b1287090c1a3d1dc9208d4129a15ec.
 
 ## Componenti (ordine locale, ID stabili)
 
-1. [CPU: CPU](cpu/ROADMAP.md) — active; complete; not_run.
+1. [CPU: CPU](cpu/ROADMAP.md) — active; complete; passed.
 2. [GPU: GPU](gpu/ROADMAP.md) — inactive; skeleton; not_run.
 
 Propagare impatti e blocchi al [padre](../ROADMAP.md) e proseguire fino alla radice.

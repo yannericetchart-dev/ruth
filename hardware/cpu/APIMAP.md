@@ -6,7 +6,7 @@ Nodo responsabile: [CPU](NODE.yaml). Ripresa: [START_HERE](../../START_HERE.md).
 
 ## Contratto dichiarato
 
-- `detect() -> tuple[DeviceInfo, ...] [CPU logiche/architettura, candidata stdlib read-only]`
+- `detect() -> tuple[DeviceInfo, ...] [CPU logiche/architettura, verificata e integrata in main]`
 
 Dipendenze: nessuna.
 
