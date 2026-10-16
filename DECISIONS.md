@@ -28,8 +28,9 @@ Ogni sostituzione deve collegare entrambe le decisioni e aggiornare le mappe.
   chiedere nuovamente conferma a ogni promozione ordinaria.
 - Motivazione: consentire la revisione funzionale prima del lavoro e
   completare poi l'intera porzione approvata senza fermate intermedie.
-- Ambito corrente: PY-001 e' gia in environment/python/main; descrizione
-  PY-SCOPE-001 sottoposta all'utente prima delle promozioni restanti.
+- Applicazione completata: PY-001 approvata, integrata fino a main e
+  collaudata positivamente dall'utente sul commit ef4654af8ab106ef194af254d9f3884e5cabb6b0.
+  Il perimetro del prossimo componente richiede una nuova approvazione.
 - Precisa: PLAN-001; la sequenza per componenti resta valida.
 - Sostituisce: l'interpretazione operativa che richiedeva un nuovo via libera
   per ogni singolo passaggio fra branch padri.

@@ -1,52 +1,59 @@
 # Ruth: checkpoint di progetto
 
-Revisione documentale: 12 (indice main). Protocollo CONT-001 rev 1.
-Fase: **3 - migrazione incrementale per componente**.
-Attivita': MIG-001 / prima porzione PY-001.
-Stato attuale: **integrazione tecnica completata; esecuzione locale positiva comunicata dall'utente, SHA locale da verificare prima della chiusura PY-MANUAL-001**.
+Revisione documentale: 13 (indice main). Protocollo CONT-001 rev 1.
+Fase corrente: **3 - migrazione incrementale per componente**.
+Attivita' completata: `MIG-001 / PY-001`.
+Stato: **prima migrazione tecnicamente integrata e accettata con collaudo personale**.
 
-## Passaggi completati
+## Completato
 
-- SETUP-001: continuita' GitHub tra Codex e ChatGPT collaudata in precedenza.
-- STRUCT-001: scaffold, metadati e mappe ricorsive pubblicati.
-- PY-SCOPE-001: descrizione delle funzioni approvata esplicitamente dall'utente il 16 ottobre 2026.
-- PY-REV-001: revisione tecnica precedente della funzione di ispezione.
-- PY-PROMOTE-001: PR #2 integrata in environment/python/main, revisione b80520ad903ff18f93398725ea95cd91f51da5d8.
-- PY-PROMOTE-002: PR #3 integrata in environment/main con merge fd61723874052053f38446ee82eca954870804e1.
-- PY-PROMOTE-003: PR #8 integrata in main con merge ce1b0bb47b4ae4ad0da40f3f83c964b66015680f.
-- Implementato l'ingresso ufficiale `python3 main.py`: avvio ispezione dell'ambiente, esito e motivi a terminale.
+- SETUP-001: continuita' GitHub fra ChatGPT e Codex collaudata nella fase iniziale.
+- STRUCT-001: scaffold e mappe ricorsive pubblicati.
+- PY-SCOPE-001: perimetro funzionale approvato dall'utente il 16 ottobre 2026.
+- PY-REV-001: revisione tecnica dell'ispezione Python.
+- PY-PROMOTE-001: PR #2 nel branch environment/python/main, revisione b80520ad903ff18f93398725ea95cd91f51da5d8.
+- PY-PROMOTE-002: PR #3 in environment/main, merge fd61723874052053f38446ee82eca954870804e1.
+- PY-PROMOTE-003: PR #8 in main, merge ce1b0bb47b4ae4ad0da40f3f83c964b66015680f.
+- Ingresso Ruth `python3 main.py` integrato: verifica in sola lettura dell'interprete e della .venv con esito e motivi a terminale.
+- PY-MANUAL-001: **complete**. L'utente ha comunicato esito conforme dell'avvio
+  personale di Ruth e ha confermato mediante `git rev-parse HEAD` la revisione
+  effettivamente provata: `ef4654af8ab106ef194af254d9f3884e5cabb6b0` (16 ottobre 2026).
 
-## Verifica tecnica
+## Verifiche e limiti
 
-GitHub Actions, revisione candidata della porzione:
-- run 38885972247 (5fc816407f5c8873fd2ed39baa9d5293a9810c73): success.
-- run 38886317198 (565e0f960cf59157d0cbd28d27739a33cfcd2ebc): success.
-Ambito: test sintetici della .venv Python, catena reale delle API, test dell'ingresso,
-coerenza delle mappe e assenza di modifiche generate ai file tracciati.
-Non sono certificati pacchetti, GPU, backend nativi o benchmark. Le evidenze
-reali restano escluse da Git secondo DATA-001.
+- GitHub Actions run 38885972247 e run 38886317198: success,
+  test sintetici Python, API comuni, ingresso Ruth e coerenza delle mappe.
+- Controllo del checkpoint su GitHub completato dopo l'integrazione.
+- Collaudo manuale positivo riferito *esclusivamente* all'ispezione Python
+  sull'ingresso Ruth alla revisione `ef4654af8ab106ef194af254d9f3884e5cabb6b0`.
+- Il controllo non certifica versioni dei pacchetti, GPU, backend nativi,
+  benchmark o funzionalita' ancora pianificate.
+- Nessun log, inventario reale o percorso di host e' pubblicato (DATA-001).
 
-## Prossima azione — verificare revisione del collaudo PY-MANUAL-001
+## Sincronizzazione locale (REMOTE-001)
 
-- `local_sync: blocked_divergence`: l'ultimo checkout personale osservato
-  era sul branch environment/python/work/entrypoint, con modifiche tracciate
-  e file non tracciati. Non pulire, resettare, nascondere o sovrascrivere tali file.
-- L'utente ha seguito la procedura di collaudo e ha trasmesso il 16 ottobre 2026
-  un esito conforme di `python3 main.py`, con un virtualenv isolato, sulla
-  copia locale di lavoro. L'output non contiene lo SHA Git del checkout
-  provato. Il vecchio checkout con modifiche resta preservato; non dedurre
-  da questo test che il suo branch sia stato sincronizzato.
-- Il collaudo personale della funzione ha avuto esito positivo secondo
-  il riscontro dell'utente. Resta da associare tale esito allo SHA del
-  checkout testato mediante `git rev-parse HEAD` (commit integrato precedente
-  alla revisione documentale corrente: `ef4654af8ab106ef194af254d9f3884e5cabb6b0`).
-- Finche' la revisione provata non e' confermata, PY-MANUAL-001 resta
-  `active` e la migrazione successiva rimane bloccata secondo MIG-FLOW-002.
-- Il prossimo componente non e' stato iniziato; Kaggle resta inattivo.
+- Copia utilizzata per il collaudo: HEAD verificato `ef4654af8ab106ef194af254d9f3884e5cabb6b0`.
+  I commit di documentazione successivi non alterano il comportamento
+  dell'ispezione; una nuova sincronizzazione con il main corrente resta
+  da verificare separatamente.
+- `local_sync: pending_no_access` per la copia di collaudo rispetto al
+  nuovo commit documentale finale: fornire l'istruzione di aggiornamento
+  fast-forward e ottenere riscontro, senza reinterpretare il test gia'
+  accettato come non valido.
+- Il checkout preesistente `environment/python/work/entrypoint`, osservato
+  con modifiche locali, resta preservato e non sincronizzato automaticamente
+  (`legacy_checkout: blocked_divergence`). Non scartare dati o modificarlo.
 
-## Decisioni attive
+## Prossima azione
 
-CONT-001, DATA-001, PLAN-001, SCOPE-001, MIG-FLOW-001,
-MIG-FLOW-002 e REMOTE-001. SYNC-001 e' storica e sostituita.
-Lo sviluppo versionato avviene su GitHub; la sincronizzazione locale
-si effettua dopo il merge senza perdere modifiche preesistenti.
+La migrazione PY-001 e' **chiusa**. Prima di migrare un nuovo componente,
+presentare all'utente scopo, funzioni, ingressi, risultati, effetti,
+limiti e verifiche del nuovo perimetro; attendere un nuovo semaforo
+verde (MIG-FLOW-001). Pianificazione storica: dipendenze generiche
+e diagnostica dell'ambiente; nessuna porzione successiva iniziata.
+Kaggle resta inattivo.
+
+## Decisioni vigenti
+
+CONT-001, MIG-FLOW-001, MIG-FLOW-002, REMOTE-001, DATA-001,
+PLAN-001 e SCOPE-001. SYNC-001 resta storica e superseded.

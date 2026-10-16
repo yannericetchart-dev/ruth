@@ -8,15 +8,15 @@ Coordinare i sottosistemi tramite API comuni.
 
 Sviluppo: **active**; codice: **partial**; maturita: experimental; verifica: passed; integrazione: merged.
 
-Flag: in_scope. Blocchi: PY-MANUAL-001.
+Flag: in_scope. Blocchi: nessuno registrato.
 
-Ambito verifica: PY-001: GitHub Actions run 38885972247 e run 38886317198 conclusi con successo (test Python su fixture sintetiche, API pubbliche, test ingresso Ruth, test mappe e tools/maps.py --check). Non verifica GPU, pacchetti nativi o hardware; collaudo personale PY-MANUAL-001 pendente.
+Ambito verifica: PY-001: GitHub Actions run 38885972247 e run 38886317198 conclusi con successo (test Python su fixture sintetiche, API pubbliche, test ingresso Ruth, test mappe e tools/maps.py --check). Collaudo personale PY-MANUAL-001 positivo sul commit ef4654af8ab106ef194af254d9f3884e5cabb6b0 il 16 ottobre 2026; nessuna verifica GPU o backend nativi.
 
 ## Attivita locali
 
 1. `SETUP-001` [complete] Configurazione e collaudo indipendente dei client.
 2. `STRUCT-001` [complete] Scaffold ricorsivo senza migrazione applicativa.
-3. `MIG-001` [blocked] PY-001 integrata in main tramite PR #8; prossimo componente bloccato fino a PY-MANUAL-001 e sincronizzazione locale sicura.
+3. `MIG-001` [complete] Prima porzione PY-001 integrata in main (PR #8) e accettata nel collaudo PY-MANUAL-001 sul commit ef4654af8ab106ef194af254d9f3884e5cabb6b0; prossima porzione soggetta a nuova approvazione funzionale.
 
 ## Componenti (ordine locale, ID stabili)
 

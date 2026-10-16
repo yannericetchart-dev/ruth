@@ -66,22 +66,17 @@ correzioni necessarie entro il perimetro e gli aggiornamenti dei checkpoint,
 senza ulteriori conferme intermedie. Nuovi dubbi su decisioni o un ampliamento
 sostanziale del perimetro richiedono un chiarimento.
 
-## Ingresso Ruth e collaudo personale richiesto (MIG-FLOW-002)
+## Ingresso Ruth e accettazione personale (MIG-FLOW-002)
 
-Nella versione integrata in main il punto d'ingresso ufficiale di Ruth deve
-eseguire questa ispezione e mostrare messaggi a terminale relativi all'avvio
-del controllo, al suo esito e ai motivi rilevanti. Il collegamento al punto
-d'ingresso e i messaggi non sono ancora implementati: sono un requisito
-del completamento di questa porzione.
+L'ingresso ufficiale `python3 main.py` esegue il controllo in sola lettura
+e mostra avvio, stato e motivi. Codice integrato in main tramite PR #8.
 
-Dopo l'integrazione fornire all'utente il comando concreto per avviare Ruth
-e gli esiti attesi. L'utente lo esegue localmente di persona e conferma
-esplicitamente l'esito positivo prima di iniziare la migrazione successiva.
-Registrare revisione provata e stato del collaudo nel checkpoint; mantenere
-log e risultati reali esclusivamente locali. PY-MANUAL-001 e' pianificata;
-non e' stato eseguito o confermato un collaudo personale.
+GitHub Actions run 38885972247 e 38886317198: success per test sintetici,
+catena API e ingresso Ruth e mappe; non equivalgono a verifica nativa.
 
-Stato implementazione dell'ingresso: integrato in main tramite PR #8.
-Test GitHub superati (run 38885972247 e 38886317198); collaudo personale ancora necessario.
+**PY-MANUAL-001 completata il 16 ottobre 2026**. L'utente ha eseguito
+personalmente Ruth sul checkout alla revisione
+`ef4654af8ab106ef194af254d9f3884e5cabb6b0` e ha confermato il messaggio di ambiente conforme.
+Non sono pubblicati dati host, log o credenziali secondo DATA-001.
 
-Verifica: GitHub Actions run 38885972247 superato; primo merge in environment/main `fd61723874052053f38446ee82eca954870804e1`. Promozione in main e collaudo personale ancora pendenti.
+Il prossimo componente richiede nuova approvazione funzionale MIG-FLOW-001.
