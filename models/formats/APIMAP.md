@@ -6,7 +6,7 @@ Nodo responsabile: [FORMAT](NODE.yaml). Ripresa: [START_HERE](../../START_HERE.m
 
 ## Contratto dichiarato
 
-- `inspect_headers(*, project_root: Path | None = None) -> GGUFReport [GGUF-001 candidata, non integrata]`
+- `inspect_headers(*, project_root: Path | None = None) -> GGUFReport [GGUF-001 verificata e integrata]`
 
 Dipendenze: nessuna.
 

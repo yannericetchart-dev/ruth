@@ -6,8 +6,8 @@ Nodo responsabile: [GGUF](NODE.yaml). Ripresa: [START_HERE](../../../START_HERE.
 
 ## Contratto dichiarato
 
-- `inspect_header(model_id: str, *, project_root: Path | None = None) -> GGUFHeader [solo id dal catalogo; candidata]`
-- `inspect_headers(*, project_root: Path | None = None) -> GGUFReport [soli GGUF dichiarati; candidata]`
+- `inspect_header(model_id: str, *, project_root: Path | None = None) -> GGUFHeader [solo id da catalogo, integrata in main]`
+- `inspect_headers(*, project_root: Path | None = None) -> GGUFReport [soli GGUF dichiarati, integrata in main]`
 - `verify(path) -> VerificationReport [proposta non implementata]`
 
 Dipendenze: nessuna.

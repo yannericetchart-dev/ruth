@@ -6,13 +6,15 @@ Nodo responsabile: [GGUF](NODE.yaml). Ripresa: [START_HERE](../../../START_HERE.
 
 Lettura strutturale del formato, separata dagli strumenti CLI.
 
-Sviluppo: **active**; codice: **complete**; maturita: experimental; verifica: not_run; integrazione: not_merged.
+Sviluppo: **active**; codice: **complete**; maturita: experimental; verifica: passed; integrazione: merged.
 
 Flag: in_scope. Blocchi: nessuno registrato.
 
+Ambito verifica: GGUF-001: CI success runs 38935705385, 38935861881, 38935943414, 38936032188; PR #41 gguf/main, #42 formats/main, #43 models/main, #44 main (15b106082c4dee37622c61a8afefd248a57464a0). Bounded 24-byte GGUF v2/v3 header, catalog-bound; synthetic tests and recursive maps passed. GGUF-MANUAL-001 pending; no model payload or inference.
+
 ## Attivita locali
 
-1. `GGUF-001` [active] Lettore bounded dei 24 byte iniziali per v2/v3, controllo magic, versioni, contatori, endian, errori/percorsi sicuri; candidato sul work branch, verifica e merge pendenti.
-2. `GGUF-MANUAL-001` [planned] Dopo merge in main serve esecuzione personale di main.py senza argomenti e conferma settima fase (skip valido quando catalogo assente).
+1. `GGUF-001` [complete] Lettore bounded 24-byte GGUF v2/v3: magic, versione, contatori e endian; validato con fixture sintetiche e integrato in main via PR #44.
+2. `GGUF-MANUAL-001` [active] Attesa prova personale su main.py senza argomenti dopo sincronizzazione main 15b106082c4dee37622c61a8afefd248a57464a0; skip valido se catalogo non configurato.
 
 Propagare impatti e blocchi al [padre](../ROADMAP.md) e proseguire fino alla radice.
