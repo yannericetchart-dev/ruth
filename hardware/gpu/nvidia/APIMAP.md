@@ -6,7 +6,7 @@ Nodo responsabile: [NVIDIA](NODE.yaml). Ripresa: [START_HERE](../../../START_HER
 
 ## Contratto dichiarato
 
-- `detect() -> Sequence[DeviceInfo] [proposta]`
+- `detect() -> GPUReport [provider nvidia-smi read-only, candidata]`
 
 Dipendenze: nessuna.
 
