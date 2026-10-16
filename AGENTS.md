@@ -152,3 +152,22 @@ poi rigenerare con `python3 tools/maps.py --write` e verificare con
 La rigenerazione propaga i riepiloghi; aggiornare anche semanticamente le
 attivita bloccate, le decisioni e i checkpoint degli antenati interessati.
 Nessun risultato locale deve essere copiato nelle mappe.
+
+## Avvio sequenziale Ruth (MAIN-FLOW-001)
+
+Decisione accettata dall'utente il 16 ottobre 2026. `main.py` **senza
+argomenti** e' l'orchestratore ordinario: deve eseguire automaticamente,
+una dopo l'altra e nell'ordine delle dipendenze, **tutte le funzionalita'
+integrate e autorizzate**, con output chiaro per ogni passaggio e riepilogo.
+Non limitare l'avvio normale all'ultima funzione migrata e non richiedere
+all'utente sottocomandi manuali per eseguire il flusso completo. I comandi
+espliciti sono soltanto strumenti di verifica mirata.
+
+Ogni nuova porzione approvata e integrata in main deve aggiungere il proprio
+passaggio all'orchestrazione automatica (MIG-FLOW-002), aggiornando i test
+di ordine, blocchi, esito e il checkpoint. Se un prerequisito fallisce,
+non eseguire operazioni dipendenti: indicare che sono state saltate e perche'.
+Non inventare requisiti di pacchetti, configurazioni, dati o effetti non
+approvati. Stato attuale: PY-001 seguita da DEP-001 con la sola verifica
+minima di `pip`, **non** elenco completo delle dipendenze di Ruth;
+nessuna installazione o modifica dell'host (DATA-001).

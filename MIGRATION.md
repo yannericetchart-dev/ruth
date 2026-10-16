@@ -105,3 +105,15 @@ Non importare lock CUDA o dati host, non installare pacchetti (DATA-001).
   storiche e non descrivono lo stato corrente.
 - Non avviare diagnostica avanzata, hardware o altro componente finche'
   DEP-MANUAL-001 non sia confermata; dati host esclusi (DATA-001).
+
+## DEP-MANUAL-001 accettata e MAIN-FLOW-001 approvata (16 ottobre 2026)
+
+- Collaudo DEP-001 positivo sul commit `e197cc86829acf52e326a712331cc7ff6cfef6b5` con
+  `.venv/bin/python main.py dependencies pip` (stato present_unverified).
+- Nuova decisione MAIN-FLOW-001: `main.py` senza argomenti deve eseguire in
+  ordine tutte le porzioni gia' integrate, con blocco dei passaggi dipendenti
+  quando il prerequisito fallisce. Sottocomandi dedicati restano per diagnosi.
+- Primo flusso candidato: Python isolato poi controllo minimo pip;
+  l'elenco completo delle dipendenze non e' ancora definito.
+- Nuovo codice in verifica; collaudo manuale dell'avvio default dopo merge,
+  prima di una nuova migrazione. Nessun dato host pubblicato.

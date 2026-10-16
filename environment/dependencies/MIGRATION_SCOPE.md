@@ -49,3 +49,12 @@ Il collaudo personale dopo merge e sincronizzazione locale (DEP-MANUAL-001) segu
 - **DEP-MANUAL-001 in attesa**: sincronizzazione locale e avvio personale
   da parte dell'utente sulla revisione finale, come MIG-FLOW-002 richiede.
   Non e' avviata alcuna migrazione successiva.
+
+## DEP-MANUAL-001 concluso (16 ottobre 2026)
+
+Utente: sincronizzazione locale pulita tramite fast-forward e controllo
+personale `dependencies pip` positivo sul commit `e197cc86829acf52e326a712331cc7ff6cfef6b5`.
+Esito limitato alla presenza di metadati (non compatibilita' runtime).
+La nuova richiesta MAIN-FLOW-001 prevede l'esecuzione automatica PY-001
+poi DEP-001 nel comando default `main.py`; la relativa implementazione e
+il nuovo collaudo sono separati dal test mirato gia' accettato.

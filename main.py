@@ -1,33 +1,33 @@
-"""Official Ruth entrypoint: read-only Python and dependency inspection."""
-from pathlib import Path
+"""Official Ruth entrypoint: sequential read-only checks or targeted inspections."""
 from collections.abc import Sequence
+from pathlib import Path
 import sys
 
-from runtime import inspect_environment
 from environment import plan as plan_dependencies
+from runtime import inspect_environment
+
+# Initial smoke check only. Ruth's full dependency set has not been approved.
+DEFAULT_CHECK_PACKAGES = ("pip",)
 
 
-def main(argv: Sequence[str] = ()) -> int:
-    """Show a clear terminal result without changing Python or installing packages."""
-    args = list(argv)
-    root = Path(__file__).resolve().parent
-    if not args:
-        print("Ruth: avvio controllo ambiente Python.")
-        report = inspect_environment(root)
-        if report.interpreter_in_project_venv:
-            print("Ruth: ambiente Python conforme (virtualenv isolato).")
-            return 0
-        print("Ruth: ambiente Python non conforme o non attivo.")
-        for reason in report.reasons:
-            print(f"Ruth: motivo: {reason}")
-        return 1
+def _check_python(root: Path) -> bool:
+    """Run the first integrated step and report its outcome."""
+    print("Ruth: avvio controllo ambiente Python.")
+    report = inspect_environment(root)
+    if report.interpreter_in_project_venv:
+        print("Ruth: ambiente Python conforme (virtualenv isolato).")
+        return True
+    print("Ruth: ambiente Python non conforme o non attivo.")
+    for reason in report.reasons:
+        print(f"Ruth: motivo: {reason}")
+    return False
 
-    if args[0] != "dependencies" or len(args) < 2:
-        print("Ruth: uso: python main.py [dependencies PACCHETTO [PACCHETTO==VERSIONE ...]]")
-        return 2
+
+def _check_dependencies(requirements: Sequence[str], root: Path) -> int:
+    """Run the second integrated step, never installing or importing packages."""
     print("Ruth: avvio controllo dipendenze Python.")
     try:
-        report = plan_dependencies(args[1:], project_root=root)
+        report = plan_dependencies(requirements, project_root=root)
     except ValueError as error:
         print(f"Ruth: requisito non valido: {error}")
         return 2
@@ -43,6 +43,29 @@ def main(argv: Sequence[str] = ()) -> int:
         return 0
     print("Ruth: uno o piu' pacchetti non sono confermati.")
     return 1
+
+
+def main(argv: Sequence[str] = ()) -> int:
+    """Run all integrated checks in order; explicit subcommands stay targeted."""
+    args = list(argv)
+    root = Path(__file__).resolve().parent
+    if not args:
+        print("Ruth: sequenza automatica dei controlli integrati.")
+        if not _check_python(root):
+            print("Ruth: controllo dipendenze saltato: ambiente Python non conforme.")
+            return 1
+        print("Ruth: dipendenze minime da controllare: pip (non elenco completo di Ruth).")
+        result = _check_dependencies(DEFAULT_CHECK_PACKAGES, root)
+        if result == 0:
+            print("Ruth: sequenza controlli completata; compatibilita' runtime non verificata.")
+        else:
+            print("Ruth: sequenza controlli terminata con problemi.")
+        return result
+
+    if args[0] != "dependencies" or len(args) < 2:
+        print("Ruth: uso: python main.py [dependencies PACCHETTO [PACCHETTO==VERSIONE ...]]")
+        return 2
+    return _check_dependencies(args[1:], root)
 
 
 if __name__ == "__main__":

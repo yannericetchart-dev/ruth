@@ -36,8 +36,8 @@
     },
     {
       "id": "DEP-MANUAL-001",
-      "state": "active",
-      "description": "In attesa di collaudo personale dell'utente dopo sincronizzazione sicura: .venv/bin/python main.py dependencies pip e conferma commit main."
+      "state": "complete",
+      "description": "Esecuzione personale .venv/bin/python main.py dependencies pip, esito present_unverified, commit e197cc86829acf52e326a712331cc7ff6cfef6b5 verificato, confermata dall'utente il 16 ottobre 2026."
     },
     {
       "id": "DEP-PROMOTE-001",
@@ -55,5 +55,5 @@
       "description": "PR #15 integrata in main al merge a542f9ee9f6d09a0496bf756615d2295a7f59ce0."
     }
   ],
-  "verification_scope": "DEP-001: GitHub Actions 38895348468, 38895479549, 38895836703 e 38895924627, success: 14 test Python, 12 dipendenze, 13 CLI/root e 237 mappe. Test sintetici e metadati soltanto; non verifica installabilita', lock, GPU o backend. DEP-MANUAL-001 in attesa."
+  "verification_scope": "DEP-001: collaudo manuale positivo sul commit e197cc86829acf52e326a712331cc7ff6cfef6b5 (16 ottobre 2026); controlli sintetici CI precedenti superati. MAIN-FLOW-001: sequenza predefinita PY->DEP candidata in PR, nuovi test da eseguire; test hardware, lock e compatibilita' runtime esclusi."
 }
