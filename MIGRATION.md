@@ -260,3 +260,14 @@ GPU-MANUAL-001 richiesta solo dopo main, secondo MIG-FLOW-002.
   sulla verifica manuale pendente restano storiche.
 - Non sono versionati inventari, modelli, misure di memoria o log
   host (DATA-001). Prossima migrazione solo previo scope approvato.
+
+## CAT-SCOPE-001: catalogo locale autorizzato (16 ottobre 2026)
+
+- Scopo approvato [CAT-SCOPE-001](models/catalog/MIGRATION_SCOPE.md):
+  unicamente catalogo JSON opzionale locale e lettura di riferimenti
+  dichiarati in area `.local/models` (senza download/scansioni).
+- API e contratti nuovi read-only, in `models/catalog/runtime`; nessun
+  codice di acquisizione/GGUF/inferenza migrato implicitamente.
+- `main.py` candidato PY->DEP->DIAG->HW->NVIDIA->CAT.
+- Stato candidato: implementato su ramo lavoro, CI e promozioni
+  pendenti; CAT-MANUAL-001 dopo merge (MIG-FLOW-002).

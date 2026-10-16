@@ -8,6 +8,7 @@ from environment.diagnostics import inspect as inspect_diagnostics
 from environment.runtime.contracts import DependencyPlan, PythonEnvironment
 from hardware import detect as detect_hardware
 from hardware.gpu import detect as detect_gpu
+from models.catalog import catalog as load_model_catalog
 from runtime import inspect_environment
 
 # Initial smoke check only. Ruth's full dependency set has not been approved.
@@ -88,8 +89,26 @@ def _check_gpu() -> None:
     print("Ruth: disponibilita' CUDA e compatibilita' inferenza non verificate.")
 
 
+def _check_catalog(root: Path) -> int:
+    """Sixth step: inspect only a declared local manifest, without scanning."""
+    print("Ruth: avvio controllo catalogo modelli locale.")
+    report = load_model_catalog(project_root=root)
+    for model in report.models:
+        print(f"Ruth: modello {model.id}: formato dichiarato {model.format}; stato {model.status}.")
+    for reason in report.errors:
+        print(f"Ruth: catalogo: problema {reason}.")
+    print(f"Ruth: catalogo modelli: {report.status}; {report.count} modelli dichiarati.")
+    if report.status == "not_configured":
+        print("Ruth: catalogo locale non configurato (nessun download).")
+    elif report.status == "empty":
+        print("Ruth: nessun modello dichiarato (nessun download).")
+    elif report.status == "ready":
+        print("Ruth: file dichiarati presenti (formato e compatibilita' non verificati).")
+    return 1 if report.status in ("partial", "invalid") else 0
+
+
 def main(argv: Sequence[str] = ()) -> int:
-    """Run PY -> DEP -> DIAG -> HW -> NVIDIA; targeted checks remain."""
+    """Run PY -> DEP -> DIAG -> HW -> NVIDIA -> CAT; targeted checks remain."""
     args = list(argv)
     root = Path(__file__).resolve().parent
     if not args:
@@ -100,6 +119,7 @@ def main(argv: Sequence[str] = ()) -> int:
             _diagnose(python, None)
             _check_hardware()
             _check_gpu()
+            _check_catalog(root)
             print("Ruth: sequenza controlli terminata con problemi.")
             return 1
         print("Ruth: dipendenze minime da controllare: pip (non elenco completo di Ruth).")
@@ -107,14 +127,19 @@ def main(argv: Sequence[str] = ()) -> int:
         _diagnose(python, dep)
         _check_hardware()
         _check_gpu()
-        if code == 0:
+        catalog_code = _check_catalog(root)
+        final_code = max(code, catalog_code)
+        if final_code == 0:
             print("Ruth: sequenza controlli completata; compatibilita' runtime non verificata.")
         else:
             print("Ruth: sequenza controlli terminata con problemi.")
-        return code
+        return final_code
+
+    if args == ["catalog"]:
+        return _check_catalog(root)
 
     if args[0] != "dependencies" or len(args) < 2:
-        print("Ruth: uso: python main.py [dependencies PACCHETTO [PACCHETTO==VERSIONE ...]]")
+        print("Ruth: uso: python main.py [catalog | dependencies PACCHETTO [PACCHETTO==VERSIONE ...]]")
         return 2
     return _check_dependencies(args[1:], root)[0]
 
