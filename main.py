@@ -6,6 +6,7 @@ import sys
 from environment import plan as plan_dependencies
 from environment.diagnostics import inspect as inspect_diagnostics
 from environment.runtime.contracts import DependencyPlan, PythonEnvironment
+from hardware import detect as detect_hardware
 from runtime import inspect_environment
 
 # Initial smoke check only. Ruth's full dependency set has not been approved.
@@ -58,8 +59,23 @@ def _diagnose(python: PythonEnvironment, dependencies: DependencyPlan | None) ->
     print(f"Ruth: diagnostica: {report.status} (nessuna riparazione automatica).")
 
 
+
+def _check_hardware() -> None:
+    """Fourth, independent step: CPU and total RAM only, no GPU probing."""
+    print("Ruth: avvio inventario hardware (CPU e RAM).")
+    report = detect_hardware()
+    for cpu in report.devices:
+        architecture = cpu.architecture or "unknown"
+        logical = str(cpu.logical_processors) if cpu.logical_processors is not None else "unknown"
+        print(f"Ruth: CPU: architettura {architecture}; processori logici {logical}; stato {cpu.status}.")
+    memory = (str(report.memory.total_memory_bytes)
+              if report.memory.total_memory_bytes is not None else "unknown")
+    print(f"Ruth: RAM fisica totale (byte): {memory}; stato {report.memory.status}.")
+    print(f"Ruth: inventario hardware: {report.status} (GPU e compatibilita' inferenza non verificate).")
+
+
 def main(argv: Sequence[str] = ()) -> int:
-    """Run PY -> DEP -> DIAG by default, preserving explicit DEP inspection."""
+    """Run PY -> DEP -> DIAG -> HW; keep targeted dependency checks."""
     args = list(argv)
     root = Path(__file__).resolve().parent
     if not args:
@@ -68,11 +84,13 @@ def main(argv: Sequence[str] = ()) -> int:
         if not python.interpreter_in_project_venv:
             print("Ruth: controllo dipendenze saltato: ambiente Python non conforme.")
             _diagnose(python, None)
+            _check_hardware()
             print("Ruth: sequenza controlli terminata con problemi.")
             return 1
         print("Ruth: dipendenze minime da controllare: pip (non elenco completo di Ruth).")
         code, dep = _check_dependencies(DEFAULT_CHECK_PACKAGES, root)
         _diagnose(python, dep)
+        _check_hardware()
         if code == 0:
             print("Ruth: sequenza controlli completata; compatibilita' runtime non verificata.")
         else:

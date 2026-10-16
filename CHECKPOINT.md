@@ -71,3 +71,15 @@ MAIN-FLOW-001 e richiedera' collaudo utente MIG-FLOW-002.
 CONT-001, MIG-FLOW-001/002, REMOTE-001, DATA-001, PLAN-001,
 SCOPE-001, MAIN-FLOW-001, DEP-ORDER-001 e DIAG-SCOPE-001.
 SYNC-001 resta storica e superseded.
+
+## HW-001: perimetro approvato, candidato in verifica (16 ottobre 2026)
+
+HW-SCOPE-001 approvato dall'utente: CPU (architettura e processori
+logici), RAM fisica totale disponibile tramite API portabili, contratti
+HardwareReport e ResourceReport. Provider GPU NVIDIA/AMD/Intel esclusi.
+Code path `hardware/cpu`, `hardware/runtime` e quarta fase `main.py`.
+Stato implementazione candidatura: complete; verification not_run;
+integration not_merged; HW-MANUAL-001 planned.
+Questa candidatura non misura memoria utilizzabile, benchmark, risorse GPU
+o compatibilita' nativa. CI e promozioni ancora da compiere; local_sync
+della nuova porzione pendente, clone storico intatto (REMOTE-001).

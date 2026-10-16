@@ -61,3 +61,9 @@ DIAG-001 e' integrata tecnicamente in main tramite PR #22 e verificata
 su GitHub. Il collaudo locale DIAG-MANUAL-001 e' stato confermato positivo sulla
 revisione `b379d2d8a228f55101eb98a19bfb14e8fc7a4bcb`, con ordine PY -> DEP -> DIAG.
 Consultare CHECKPOINT.md per il prossimo perimetro da approvare.
+
+## HW-SCOPE-001 approvato
+
+Perimetro iniziale hardware CPU/RAM read-only autorizzato il
+16 ottobre 2026; lo stato verificato, le promozioni e il successivo
+collaudo personale HW-MANUAL-001 sono nel CHECKPOINT.md.

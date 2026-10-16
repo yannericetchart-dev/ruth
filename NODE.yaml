@@ -13,8 +13,8 @@
   "development": "active",
   "implementation": "partial",
   "maturity": "experimental",
-  "verification": "passed",
-  "integration": "merged",
+  "verification": "stale",
+  "integration": "partial",
   "flags": [
     "in_scope"
   ],
@@ -22,7 +22,7 @@
   "depends_on": [],
   "api": [
     "runtime.inspect_environment(project_root: Path) -> PythonEnvironment [integrata in main; ispezione Python sperimentale]",
-    "main(argv: Sequence[str] = ()) -> int [sequenza PY->DEP->DIAG integrata in main; modalita mirate disponibili]"
+    "main(argv: Sequence[str] = ()) -> int [sequenza PY->DEP->DIAG integrata in main; HW-001 candidato; modalita mirate disponibili]"
   ],
   "tasks": [
     {
@@ -59,7 +59,12 @@
       "id": "MIG-003",
       "state": "complete",
       "description": "DIAG-001 implementata, verificata e integrata via PR #22; DIAG-MANUAL-001 superato sul commit b379d2d8a228f55101eb98a19bfb14e8fc7a4bcb (sequenza PY->DEP->DIAG). Prossimo componente soltanto dopo nuovo perimetro approvato."
+    },
+    {
+      "id": "MIG-004",
+      "state": "active",
+      "description": "HW-SCOPE-001 approvato; inventario CPU/RAM e quarto passaggio automatico HW candidati, test e promozioni in corso; GPU fuori ambito."
     }
   ],
-  "verification_scope": "DIAG-001: test sintetici GitHub Actions 38908192677, 38908269925, 38908370200 superati (14 PY, 12 DEP, 13 DIAG, 15 root/CLI; mappe coerenti), integrazione PR #20-#22. DIAG-MANUAL-001 superato il 16 ottobre 2026 sul commit b379d2d8a228f55101eb98a19bfb14e8fc7a4bcb: ordine PY->DEP->DIAG e output di riepilogo conformi. Nessuna certificazione hardware, CUDA o runtime."
+  "verification_scope": "HW-001/CPU-001: inventario read-only solo CPU e RAM con API stdlib, valori unknown dove non disponibili, test sintetici da eseguire in CI; GPU/vendor/backend esclusi. HW-MANUAL-001 ancora da svolgere dopo merge."
 }

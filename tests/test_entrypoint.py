@@ -7,6 +7,7 @@ from unittest.mock import patch
 
 import main
 from environment.runtime.contracts import DependencyPlan, PackageState, PythonEnvironment
+from hardware import DeviceInfo, ResourceReport, HardwareReport
 
 
 def python_report(root: str, good: bool, reasons: tuple[str, ...]) -> PythonEnvironment:
@@ -24,6 +25,11 @@ def dep_report(python: PythonEnvironment, status: str = "present_unverified") ->
     ), python.interpreter_in_project_venv and status == "present_unverified")
 
 
+def hw_report():
+    return HardwareReport((DeviceInfo("cpu", "synthetic", 4, "available"),),
+                          ResourceReport(4096, "available"), "available")
+
+
 class EntrypointTests(unittest.TestCase):
     def test_ok_runs_python_then_dependencies_then_diagnostics(self):
         py = python_report("synthetic", True, ())
@@ -31,6 +37,7 @@ class EntrypointTests(unittest.TestCase):
         with (
             patch("main.inspect_environment", return_value=py) as inspect,
             patch("main.plan_dependencies", return_value=dep_report(py)) as plan,
+            patch("main.detect_hardware", return_value=hw_report()) as hw,
             redirect_stdout(out),
         ):
             result = main.main()
@@ -43,6 +50,9 @@ class EntrypointTests(unittest.TestCase):
         self.assertLess(printed.index("avvio controllo dipendenze Python"),
                         printed.index("avvio diagnostica ambiente"))
         self.assertIn("diagnostica: ok_unverified", printed)
+        self.assertLess(printed.index("avvio diagnostica ambiente"), printed.index("avvio inventario hardware"))
+        hw.assert_called_once_with()
+        self.assertIn("RAM fisica totale (byte): 4096", printed)
         self.assertIn("sequenza controlli completata", printed)
 
     def test_invalid_python_still_diagnosed_but_packages_skipped(self):
@@ -51,6 +61,7 @@ class EntrypointTests(unittest.TestCase):
         with (
             patch("main.inspect_environment", return_value=py),
             patch("main.plan_dependencies") as plan,
+            patch("main.detect_hardware", return_value=hw_report()) as hw,
             redirect_stdout(out),
         ):
             result = main.main()
@@ -62,6 +73,8 @@ class EntrypointTests(unittest.TestCase):
                         text.index("avvio diagnostica ambiente"))
         self.assertIn("venv_configuration_missing", text)
         self.assertIn("venv_prefix_mismatch", text)
+        self.assertLess(text.index("avvio diagnostica ambiente"), text.index("avvio inventario hardware"))
+        hw.assert_called_once_with()
 
     def test_missing_dependency_explained(self):
         py = python_report("synthetic", True, ())
@@ -69,6 +82,7 @@ class EntrypointTests(unittest.TestCase):
         with (
             patch("main.inspect_environment", return_value=py),
             patch("main.plan_dependencies", return_value=dep_report(py, "missing")),
+            patch("main.detect_hardware", return_value=hw_report()) as hw,
             redirect_stdout(out),
         ):
             result = main.main()
@@ -76,6 +90,7 @@ class EntrypointTests(unittest.TestCase):
         self.assertIn("pacchetto pip: missing", out.getvalue())
         self.assertIn("package_missing", out.getvalue())
         self.assertIn("sequenza controlli terminata con problemi", out.getvalue())
+        hw.assert_called_once_with()
 
     def test_failed_metadata_lookup_explained(self):
         py = python_report("synthetic", True, ())
@@ -83,11 +98,13 @@ class EntrypointTests(unittest.TestCase):
         with (
             patch("main.inspect_environment", return_value=py),
             patch("main.plan_dependencies", return_value=dep_report(py, "inspection_failed")),
+            patch("main.detect_hardware", return_value=hw_report()) as hw,
             redirect_stdout(out),
         ):
             result = main.main()
         self.assertEqual(result, 1)
         self.assertIn("diagnostica: inspection_incomplete", out.getvalue())
+        hw.assert_called_once_with()
 
 
 if __name__ == "__main__":

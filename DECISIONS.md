@@ -211,3 +211,18 @@ Ogni sostituzione deve collegare entrambe le decisioni e aggiornare le mappe.
   Collaudo personale DIAG-MANUAL-001 **completato** sulla revisione
   `b379d2d8a228f55101eb98a19bfb14e8fc7a4bcb` il 16 ottobre 2026, confermati ordine e
   riepilogo. Ogni ulteriore migrazione richiede nuova approvazione.
+
+## HW-SCOPE-001: primo inventario CPU e RAM, GPU successiva
+
+- Stato: accepted; approvazione dell'utente il 16 ottobre 2026.
+- Scopo: report hardware portabile e read-only per CPU logiche,
+  architettura e RAM fisica totale osservabile, stati unknown/partial.
+- Contratti: DeviceInfo, ResourceReport, HardwareReport; API
+  `hardware.cpu.detect`, `hardware.detect`, `hardware.resources`.
+- Ingresso: `main.py` automatico continua le fasi precedenti e aggiunge
+  HW come quarto passaggio indipendente, anche se Python fallisce.
+- Limiti: niente GPU vendor, core fisici certi, RAM libera,
+  benchmark, driver, CUDA, inference, installazioni o risultati reali Git.
+- Verifica: CI sintetica, mappe e promozioni fino a main; collaudo personale
+  HW-MANUAL-001 necessario prima del successivo componente.
+- Vincoli: MIG-FLOW-001/002, MAIN-FLOW-001, REMOTE-001, DATA-001.

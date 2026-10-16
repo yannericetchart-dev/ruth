@@ -8,27 +8,38 @@
   "branch": {
     "name": "hardware/main",
     "parent": "main",
-    "status": "planned"
+    "status": "present"
   },
-  "development": "inactive",
-  "implementation": "skeleton",
-  "maturity": null,
+  "development": "active",
+  "implementation": "complete",
+  "maturity": "experimental",
   "verification": "not_run",
-  "integration": "merged",
+  "integration": "not_merged",
   "flags": [
     "in_scope"
   ],
   "blocked_by": [],
   "depends_on": [],
   "api": [
-    "detect() -> HardwareReport [proposta]",
-    "resources(device) -> ResourceReport [proposta]"
+    "detect() -> HardwareReport [CPU e RAM, candidata read-only]",
+    "resources(device: DeviceInfo | str = 'system') -> ResourceReport [RAM totale fisica, candidata read-only]"
   ],
   "tasks": [
     {
       "id": "HW-001",
+      "state": "active",
+      "description": "Contratti HardwareReport/ResourceReport/DeviceInfo e inventario fisico RAM portabile, codice candidato e test sintetici/CI pendenti."
+    },
+    {
+      "id": "HW-SCOPE-001",
+      "state": "complete",
+      "description": "Funzioni, ingressi, risultati, effetti, limiti e verifiche con CPU/RAM prima di GPU approvati dall'utente il 16 ottobre 2026."
+    },
+    {
+      "id": "HW-MANUAL-001",
       "state": "planned",
-      "description": "Definire e verificare il contratto prima della migrazione."
+      "description": "Dopo promozione main, utente avvia Ruth dal checkout pulito, verifica sequenza PY->DEP->DIAG->HW e SHA provato."
     }
-  ]
+  ],
+  "verification_scope": "HW-001/CPU-001: inventario read-only solo CPU e RAM con API stdlib, valori unknown dove non disponibili, test sintetici da eseguire in CI; GPU/vendor/backend esclusi. HW-MANUAL-001 ancora da svolgere dopo merge."
 }
