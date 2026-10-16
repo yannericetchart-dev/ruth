@@ -227,3 +227,15 @@ accettare GGUF-META-MANUAL-001 (MIG-FLOW-002). Le precedenti
 indicazioni CAT/GGUF pending in questo file sono storiche e
 non prevalgono sul checkpoint piu' recente. Nessuna nuova migrazione
 autorizzata; DATA-001 e REMOTE-001 restano invariati.
+
+## GGUF-META-MANUAL-001: accettazione (16 ottobre 2026)
+
+- L'utente conferma esplicitamente positivo il collaudo personale
+  del flusso ordinario di Ruth a otto fasi sul main `d318fd793da514f21ee2e8475304d1a6c883ee94`.
+- Catalogo, GGUF e META `not_configured`: skip valido.
+  Nessuna prova manuale con modello reale ne' certificazione inferenza.
+- GGUF-META-001: implementata, CI verificata, integrata (PR #50),
+  manual acceptance **passed/complete**. Le note pending precedenti
+  restano storiche, non rappresentano lo stato corrente.
+- Prossima porzione senza approvazione: richiede nuovo scope
+  secondo MIG-FLOW-001/002. DATA-001 e REMOTE-001 invariati.

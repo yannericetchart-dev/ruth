@@ -1,9 +1,9 @@
 # Ruth: checkpoint di progetto
 
-Revisione documentale: 29 (indice main); CONT-001 revisione 1.
+Revisione documentale: 30 (indice main); CONT-001 revisione 1.
 Fase 3: migrazione incrementale per componente.
-Stato: **GGUF-META-001 implementata, verificata in CI e integrata in main;
-GGUF-META-MANUAL-001 in attesa di collaudo personale**.
+Stato: **GGUF-META-001 implementata, verificata in CI, integrata in main
+e accettata personalmente (GGUF-META-MANUAL-001 complete)**.
 GGUF-MANUAL-001 e CAT-MANUAL-001 restano complete.
 PY, DEP, DIAG, HW/CPU e GPU NVIDIA restano accettate personalmente.
 L'ingresso senza argomenti di Ruth esegue tutte le funzioni integrate.
@@ -260,3 +260,27 @@ e DIAG-SCOPE-001. SYNC-001 resta storica/superseded.
   rimangono esclusi tensor payload, download, llama.cpp, CUDA, inference.
   Nessuna porzione seguente e' gia' approvata; attesa accettazione
   manuale personale prima di presentare il nuovo perimetro.
+
+## GGUF-META-MANUAL-001: accettazione personale (16 ottobre 2026)
+
+- L'utente ha eseguito il fast-forward non distruttivo di main,
+  verificato `git rev-parse HEAD` e avviato personalmente
+  `.venv/bin/python main.py` sul commit `d318fd793da514f21ee2e8475304d1a6c883ee94`,
+  identico al main pubblicato su GitHub.
+- Conferma esplicita dell'utente: **collaudo positivo**.
+- Tutte le otto fasi PY -> DEP -> DIAG -> HW -> NVIDIA -> CAT ->
+  GGUF -> META hanno prodotto il riepilogo conclusivo atteso.
+- Catalogo, intestazioni GGUF e metadati GGUF `not_configured`
+  sono skip validi. Non e' stata effettuata prova manuale su
+  GGUF reale ne' certificazione di pesi, CUDA o inferenza.
+- GGUF-META-001: implementation complete; verification passed
+  (CI sintetica); integration merged (PR #50);
+  **manual acceptance passed** (GGUF-META-MANUAL-001).
+- Le note anteriori pending/blocked/candidate sono storiche,
+  sostituite da questo checkpoint.
+- `local_sync: verified_on_tested_revision` per `d318fd793da514f21ee2e8475304d1a6c883ee94`
+  comunicato dall'utente; dopo la pubblicazione documentale
+  `local_sync: pending_docs_fast_forward`. Nessun checkout modificato.
+- DATA-001: nessun output grezzo, inventario, path, manifest,
+  modello o log reale pubblicato. Prossima porzione ancora
+  non approvata: necessario perimetro e via libera MIG-FLOW-001.

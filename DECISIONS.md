@@ -347,3 +347,15 @@ Ogni sostituzione deve collegare entrambe le decisioni e aggiornare le mappe.
   personale esplicita dell'utente dopo avvio di Ruth (MIG-FLOW-002).
 - Il perimetro resta bounded/read-only; nessun tensor, download,
   compatibilita' runtime o inferenza sono stati approvati.
+
+### GGUF-META-MANUAL-001: accettazione positiva (16 ottobre 2026)
+
+- Stato: **complete/passed** a seguito di conferma esplicita dell'utente.
+- Collaudo effettuato sul commit `d318fd793da514f21ee2e8475304d1a6c883ee94`, con avvio di
+  `main.py` senza argomenti e otto controlli nell'ordine previsto.
+- Il caso catalogo assente e' valido: GGUF e metadati
+  `not_configured` sono stati gestiti senza errore.
+- Nessun file GGUF reale ispezionato personalmente; l'accettazione
+  non dimostra integrita' dei modelli o compatibilita' inferenza.
+- GGUF-META-SCOPE-001 resta invariato. Nessuna nuova migrazione
+  approvata implicitamente (MIG-FLOW-001/002 e DATA-001).
