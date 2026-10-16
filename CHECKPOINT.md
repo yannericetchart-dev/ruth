@@ -1,6 +1,6 @@
 # Ruth: checkpoint di progetto
 
-Revisione documentale: 4.
+Revisione documentale: 6 (branch di lavoro).
 Attivita': `MIG-001` (prima porzione: `PY-001`).
 Fase corrente: **3 - migrazione incrementale per componente**.
 
@@ -34,13 +34,24 @@ Il passaggio 2 e' completato: scaffold dei domini, corsie, metadati di stato,
 mappe ricorsive e controllo di coerenza. Ambito della verifica: struttura e
 propagazione dei riepiloghi, non esecuzione applicativa o nativa.
 
-Avviare la sola porzione Python descritta in MIGRATION.md su un branch di
-componente. Aggiornare checkpoint del componente e tutti gli antenati.
+PY-001 e' implementata nel branch `environment/python/work/inspect-venv`.
+Ambito: ispezione Python in sola lettura; contratto environment e accesso
+comune runtime, con verifiche sintetiche. Vedere environment/CHECKPOINT.md
+e environment/python/CHECKPOINT.md. Non integrata nei branch padri.
+
+PY-REV-001 completata: corretto un caso di configurazione malformata ripetuta,
+verificata la catena reale delle API e la regola sull'ambito delle verifiche.
+Nessun problema bloccante residuo nell'ambito revisionato; evidenze locali.
+
+Prossimo passaggio: prima promozione della PR #2 a environment/python/main.
+Le successive promozioni saranno environment/main e main, aggiornando i
+checkpoint ad ogni passaggio. Nessun merge effettuato durante la revisione.
 Le altre porzioni rimangono pianificate; Kaggle resta inattivo.
 
 ## Limiti correnti
 
-- Nessun codice applicativo e' stato migrato nella nuova struttura.
+- Nel branch main rimane lo scaffold senza migrazione applicativa; il codice
+  di PY-001 e' confinato al branch di lavoro in attesa della prima promozione.
 - Non avviare il passaggio 3 prima della verifica dei passaggi precedenti.
 - Nessuna misurazione nativa e' certificata da questo checkpoint.
 - Branch e commit delle attivita' successive saranno indicati nei checkpoint

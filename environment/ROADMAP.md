@@ -6,17 +6,19 @@ Nodo responsabile: [ENV](NODE.yaml). Ripresa: [START_HERE](../START_HERE.md).
 
 Ispezionare Python e pianificare dipendenze senza installazioni implicite.
 
-Sviluppo: **inactive**; codice: **skeleton**; maturita: non assegnata; verifica: not_run; integrazione: merged.
+Sviluppo: **active**; codice: **partial**; maturita: experimental; verifica: passed; integrazione: not_merged.
 
 Flag: in_scope. Blocchi: nessuno registrato.
 
+Ambito verifica: PY-001/PY-REV-001: isolamento Python, catena reale delle API e coerenza delle mappe su fixture sintetiche; nessuna verifica nativa.
+
 ## Attivita locali
 
-1. `ENV-001` [planned] Definire e verificare il contratto prima della migrazione.
+1. `ENV-001` [active] Prima porzione Python revisionata e conforme al contratto comune; pronta alla prima promozione. Dipendenze e diagnostica pianificate.
 
 ## Componenti (ordine locale, ID stabili)
 
-1. [PY: Python](python/ROADMAP.md) — inactive; skeleton; not_run.
+1. [PY: Python](python/ROADMAP.md) — active; partial; passed.
 2. [DEP: Dipendenze](dependencies/ROADMAP.md) — inactive; skeleton; not_run.
 3. [DIAG: Diagnostica](diagnostics/ROADMAP.md) — inactive; skeleton; not_run.
 

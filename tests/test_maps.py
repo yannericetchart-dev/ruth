@@ -58,6 +58,15 @@ class MapTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, 'unknown dependency'):
             load_nodes(self.root, directories(self.root))
 
+    def test_passed_verification_requires_explicit_scope(self):
+        path = self.root/'NODE.yaml'
+        node = json.loads(path.read_text())
+        node['verification'] = 'passed'
+        node.pop('verification_scope', None)
+        path.write_text(json.dumps(node))
+        with self.assertRaisesRegex(ValueError, 'verification scope is required'):
+            load_nodes(self.root, directories(self.root))
+
 
 if __name__ == '__main__':
     unittest.main()

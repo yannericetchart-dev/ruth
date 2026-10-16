@@ -8,26 +8,32 @@
   "branch": {
     "name": "environment/python/main",
     "parent": "environment/main",
-    "status": "planned"
+    "status": "present"
   },
-  "development": "inactive",
-  "implementation": "skeleton",
-  "maturity": null,
-  "verification": "not_run",
-  "integration": "merged",
+  "development": "active",
+  "implementation": "partial",
+  "maturity": "experimental",
+  "verification": "passed",
+  "integration": "not_merged",
   "flags": [
     "in_scope"
   ],
   "blocked_by": [],
   "depends_on": [],
   "api": [
-    "inspect(project_root) -> PythonEnvironment [proposta]"
+    "inspect(project_root: Path, *, prefix=None, base_prefix=None, interpreter=None, python_version=None) -> PythonEnvironment [implementata nel branch di lavoro]"
   ],
   "tasks": [
     {
       "id": "PY-001",
-      "state": "planned",
-      "description": "Definire e verificare il contratto prima della migrazione."
+      "state": "complete",
+      "description": "Ispezione virtualenv estratta, verificata e revisionata; pronta per la prima promozione nel padre."
+    },
+    {
+      "id": "PY-REV-001",
+      "state": "complete",
+      "description": "Revisione tecnica: corretta configurazione malformata ripetuta; verificati ingressi pubblici reali e ambito obbligatorio delle verifiche."
     }
-  ]
+  ],
+  "verification_scope": "PY-001/PY-REV-001: isolamento Python, catena reale delle API e coerenza delle mappe su fixture sintetiche; nessuna verifica nativa."
 }

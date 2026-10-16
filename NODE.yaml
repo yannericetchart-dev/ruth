@@ -11,17 +11,17 @@
     "status": "present"
   },
   "development": "active",
-  "implementation": "skeleton",
-  "maturity": null,
-  "verification": "not_run",
-  "integration": "merged",
+  "implementation": "partial",
+  "maturity": "experimental",
+  "verification": "passed",
+  "integration": "not_merged",
   "flags": [
     "in_scope"
   ],
   "blocked_by": [],
   "depends_on": [],
   "api": [
-    "inspect_environment(project_root) -> EnvironmentReport [proposta]"
+    "runtime.inspect_environment(project_root: Path) -> PythonEnvironment [implementata nel branch di lavoro]"
   ],
   "tasks": [
     {
@@ -36,8 +36,9 @@
     },
     {
       "id": "MIG-001",
-      "state": "planned",
-      "description": "Migrazione iniziale: sola ispezione Python; poi hardware, modelli, inferenza, profiling e chat."
+      "state": "active",
+      "description": "Prima porzione Python revisionata (PY-REV-001); pronta alla prima promozione tramite PR #2. Migrazione degli altri domini pianificata."
     }
-  ]
+  ],
+  "verification_scope": "PY-001/PY-REV-001: isolamento Python, catena reale delle API e coerenza delle mappe su fixture sintetiche; nessuna verifica nativa."
 }
