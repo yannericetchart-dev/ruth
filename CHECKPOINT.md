@@ -1,6 +1,6 @@
 # Ruth: checkpoint di progetto
 
-Revisione documentale: 30 (indice main); CONT-001 revisione 1.
+Revisione documentale: 31 (indice main); CONT-001 revisione 1.
 Fase 3: migrazione incrementale per componente.
 Stato: **GGUF-META-001 implementata, verificata in CI, integrata in main
 e accettata personalmente (GGUF-META-MANUAL-001 complete)**.
@@ -302,3 +302,33 @@ e DIAG-SCOPE-001. SYNC-001 resta storica/superseded.
   collaudo GGUF-INDEX-MANUAL-001 ancora eseguibile.
 - Nessuna modifica all'host, download, tensor payload, CUDA o
   inferenza; dati reali restano locali (DATA-001).
+
+## GGUF-INDEX-001 integrata tecnicamente (16 ottobre 2026)
+
+- Autorizzazione funzionale GGUF-INDEX-SCOPE-001 registrata; soli
+  descrittori tensore di GGUF dichiarati in CAT e dati tensor esclusi.
+- Implementazione `models/formats/gguf/runtime/tensor_index.py`:
+  v2/v3 ed endian, parser KV limitato, max 16384 descrittori,
+  verifica nomi, dimensioni, offset relativi e allineamento.
+  Intervalli certi solo per tipi scalari con ampiezza nota;
+  sconosciuti e quantizzati producono `size_unverified` e stato partial.
+- Nono passaggio dell'ingresso ufficiale `main.py` senza argomenti:
+  PY -> DEP (pip minimo) -> DIAG -> HW -> NVIDIA -> CAT ->
+  GGUF -> META -> INDEX. Sottocomando mirato `gguf-index`.
+  Catalogo assente/vuoto senza GGUF = skip valido e non bloccante.
+- PR #53 foglia gguf/main (merge 8b608074ef08bbae41b8d68565e9fc38ea66e248),
+  #54 formats/main (405c77d1dbfeb0e1ffc66bb0ea261494a9f3546f),
+  #55 models/main (90b7fc5a025279c24a678d52def31b8f37576b61),
+  #56 main (`1d51cfeed2bec83119ebf56ff0cb3840089484cf`); CI success runs 38945221302,
+  38945375637, 38945463381, 38945568401.
+- Stato: implementation complete per scope autorizzato,
+  verification passed (solo fixture sintetiche),
+  integration merged. **GGUF-INDEX-MANUAL-001 active/pending**:
+  avvio personale di Ruth sul nuovo main, conferma esplicita richiesta.
+- `local_sync: pending_no_access` per il nuovo main; il clone
+  principale non e' stato modificato. Il collaudo positivo precedente
+  di GGUF-META resta valido, senza certificazione di modelli reali.
+- Nessun peso, modello, inventario, benchmark, percorso, manifest
+  o log reale in Git (DATA-001). Kaggle inattivo. CUDA, Hugging Face,
+  download e inferenza fuori scope. Nuova migrazione bloccata
+  fino al collaudo personale e a successivo scope autorizzato.

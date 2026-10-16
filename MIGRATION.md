@@ -375,3 +375,16 @@ GPU-MANUAL-001 richiesta solo dopo main, secondo MIG-FLOW-002.
 - Scope [GGUF-INDEX-SCOPE-001](models/formats/gguf/INDEX_SCOPE.md).
 - Candidato remoto; CI/promozioni pendenti, poi test personale
   GGUF-INDEX-MANUAL-001. Nessuna fase successiva autorizzata.
+
+## GGUF-INDEX-001: integrazione tecnica (16 ottobre 2026)
+
+- Scope bounded read-only di soli descriptor dell'indice tensori GGUF
+  dichiarati nel catalogo; nessun tensor payload letto.
+- CI sintetica, regressioni e mappe passate ai quattro livelli.
+  PR #53, #54, #55, #56 fino a main `1d51cfeed2bec83119ebf56ff0cb3840089484cf`.
+- Ruth default comprende ora nove fasi, con INDEX dopo META;
+  stato not_configured valido se manca il catalogo.
+- GGUF-INDEX-MANUAL-001 pending: utente dovra' eseguire main.py
+  di persona da main sincronizzato e confermare esito positivo.
+- Le annotazioni candidate precedenti restano storiche; nessuna
+  porzione successiva approvata implicitamente.

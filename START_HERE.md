@@ -139,3 +139,11 @@ L'utente approva MIG-009: verifica bounded degli indici tensori dei soli
 GGUF catalogati, senza leggere pesi. Nono passaggio automatico Ruth.
 Implementazione candidata; verifiche e promozioni pendenti: consultare
 CHECKPOINT.md. Collaudo GGUF-INDEX-MANUAL-001 solo dopo main.
+
+## GGUF-INDEX-001 integrata tecnicamente (16 ottobre 2026)
+
+Le PR #53 (gguf), #54 (formats), #55 (Models) e #56 (main) hanno
+integrato la nona fase Ruth, INDEX, sul commit `1d51cfeed2bec83119ebf56ff0cb3840089484cf`, con CI
+sintetica e mappe verificate. Solo indici descrittori, mai tensor_data.
+**GGUF-INDEX-MANUAL-001 resta in attesa di collaudo personale**.
+Nessuna migrazione successiva e' autorizzata.

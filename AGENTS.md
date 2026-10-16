@@ -239,3 +239,13 @@ autorizzata; DATA-001 e REMOTE-001 restano invariati.
   restano storiche, non rappresentano lo stato corrente.
 - Prossima porzione senza approvazione: richiede nuovo scope
   secondo MIG-FLOW-001/002. DATA-001 e REMOTE-001 invariati.
+
+## GGUF-INDEX-001: stato corrente (16 ottobre 2026)
+
+GGUF-INDEX-SCOPE-001 approvato; implementato, CI superata e integrato
+tramite PR #53-#56 fino a main `1d51cfeed2bec83119ebf56ff0cb3840089484cf`.
+La nona fase INDEX e' nel flusso default di Ruth (MAIN-FLOW-001).
+**GGUF-INDEX-MANUAL-001 resta pending** fino a prova personale e
+accettazione esplicita dell'utente dopo la sincronizzazione.
+I precedenti stati "candidate" sono storici. Nessuna nuova porzione
+e' approvata; REMOTE-001, DATA-001 e MIG-FLOW-001/002 invariati.

@@ -52,3 +52,13 @@ Vincoli: MAIN-FLOW-001, MIG-FLOW-001/002, REMOTE-001, DATA-001.
 Esclusi: dati reali Git, download, Hugging Face, CUDA,
 benchmark, llama.cpp e inferenza. Kaggle inattivo.
 Stato iniziale: approvato, candidato non ancora verificato/integrato.
+
+## Stato integrato (16 ottobre 2026)
+
+- GGUF-INDEX-001 verificata su GitHub ed integrata in main
+  tramite PR #53 (gguf), #54 (formats), #55 (models), #56 (root).
+  Commit main `1d51cfeed2bec83119ebf56ff0cb3840089484cf`; CI sintetica e mappe passate.
+- GGUF-INDEX-MANUAL-001 ancora **pending**; prova locale personale
+  necessaria dopo sync main. Non equivale a validazione di un file
+  reale né a supporto dei pesi quantizzati.
+- Le note di codice candidato sopra sono storiche.
