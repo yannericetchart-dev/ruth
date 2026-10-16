@@ -31,6 +31,12 @@ _EXACT_ACTIVITY = (
     "CUPTI_ACTIVITY_KIND_RUNTIME",
     "NVTX_EVENTS",
 )
+_AUXILIARY = (
+    "CUBLAS_EVENTS",
+    "CUDA_GRAPH_NODE_EVENTS",
+    "CUDA_GRAPH_EVENTS",
+    "CUPTI_ACTIVITY_KIND_MEMCPY",
+)
 
 
 def _has_dag_edges(table: str, columns: tuple[str,...]) -> bool:
@@ -65,6 +71,9 @@ def inspect_nsight_schema(
             "expected_flash_consistent_with_kernel_names"],
         "required_activity_tables_present":False,
         "activity_column_names":{},
+        "auxiliary_event_table_metadata":{},
+        "memcpy_virtual_address_interpretation":
+            "base address of transferred page(s), not a cuBLAS A/B operand pointer",
         "explicit_graph_edge_table_candidates":[],
         "pointer_or_buffer_column_candidates":[],
         "api_parameter_column_candidates":[],
@@ -112,6 +121,24 @@ def inspect_nsight_schema(
                 "globalTid","start","end","nameId","text","textId",
             })
         report["structural_join_fields"]=joins
+        # Count only metadata events. Never SELECT their virtualAddress,
+        # NVTX payloads, CUBLAS arguments or any device memory address.
+        auxiliary={}
+        for name in _AUXILIARY:
+            if name not in all_cols:
+                auxiliary[name]={"present":False,"record_count":0,
+                                 "join_columns":[]}
+                continue
+            rows=conn.execute('SELECT COUNT(*) FROM "'+name+'"').fetchone()[0]
+            auxiliary[name]={
+                "present":True,
+                "record_count":rows,
+                "join_columns":sorted(set(all_cols[name]) & {
+                    "graphId","graphNodeId","originalGraphNodeId",
+                    "correlationId","globalTid","streamId",
+                    "nameId","start","end","bytes","copyKind"}),
+            }
+        report["auxiliary_event_table_metadata"]=auxiliary
         pointers=[]
         params=[]
         dag=[]
