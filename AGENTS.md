@@ -180,3 +180,13 @@ in motivi e suggerimenti, senza leggere host/log o modificare .venv.
 Se PY fallisce, DEP e' saltato ma DIAG deve comunque spiegare l'errore.
 I passaggi futuri non devono sostituire quelli precedenti nel default.
 Non equiparare assenza di segnalazioni a compatibilita' nativa certificata.
+
+## HW-SCOPE-001: inventario hardware iniziale
+
+Approvata il 16 ottobre 2026 la prima porzione read-only CPU e RAM.
+L'ingresso normale `main.py` deve aggiungere HW dopo PY->DEP->DIAG,
+con messaggi anche se un prerequisito dell'ambiente non e' conforme;
+HW non dipende dalla .venv valida per osservare CPU/RAM. Non dedurre
+presenza GPU, CUDA, backend di inferenza, RAM disponibile o core fisici
+perche' la CPU o la RAM totale sono osservabili. Dati reali soltanto
+locali (DATA-001). Provider NVIDIA/AMD/Intel in componenti futuri.

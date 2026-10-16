@@ -6,10 +6,17 @@ Nodo responsabile: [CPU](NODE.yaml). Ripresa: [START_HERE](../../START_HERE.md).
 
 Scopo: Inventario CPU portabile.
 
-Branch: `hardware/cpu/main` (planned); padre Git previsto: `hardware/main`.
+Branch: `hardware/cpu/main` (present); padre Git previsto: `hardware/main`.
 
 La presenza dello scaffold non implica una implementazione runtime.
 
+## Cartelle
+
+- [runtime](runtime/CODEMAP.md)
+- [tests](tests/CODEMAP.md)
+
 ## File
 
+- [CHECKPOINT.md](CHECKPOINT.md)
 - [NODE.yaml](NODE.yaml)
+- [__init__.py](__init__.py)

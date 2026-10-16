@@ -6,8 +6,8 @@ Nodo responsabile: [HW](NODE.yaml). Ripresa: [START_HERE](../START_HERE.md).
 
 ## Contratto dichiarato
 
-- `detect() -> HardwareReport [proposta]`
-- `resources(device) -> ResourceReport [proposta]`
+- `detect() -> HardwareReport [CPU e RAM, candidata read-only]`
+- `resources(device: DeviceInfo | str = 'system') -> ResourceReport [RAM totale fisica, candidata read-only]`
 
 Dipendenze: nessuna.
 

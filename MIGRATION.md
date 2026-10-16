@@ -182,3 +182,13 @@ Non importare lock CUDA o dati host, non installare pacchetti (DATA-001).
   attesa precedenti sono storiche e non rappresentano lo stato corrente.
 - Nessun dato specifico della macchina viene pubblicato (DATA-001).
   Prossima migrazione da approvare separatamente (MIG-FLOW-001).
+
+## HW-SCOPE-001: prima porzione hardware autorizzata (16 ottobre 2026)
+
+L'utente ha approvato CPU e RAM e i contratti HardwareReport/ResourceReport,
+riservando NVIDIA, AMD e Intel GPU a migrazioni successive. Sorgente:
+nuova implementazione stdlib portabile; nessun dato host storico migrato.
+Destinazione `hardware/cpu` e `hardware/runtime`, integrazione sequenziale
+in `main.py`, test sintetici e promozioni foglia fino a main.
+Perimetro [hardware/MIGRATION_SCOPE.md](hardware/MIGRATION_SCOPE.md).
+Stato candidatura: implementato, non ancora testato o integrato.

@@ -8,26 +8,27 @@
   "branch": {
     "name": "hardware/cpu/main",
     "parent": "hardware/main",
-    "status": "planned"
+    "status": "present"
   },
-  "development": "inactive",
-  "implementation": "skeleton",
-  "maturity": null,
+  "development": "active",
+  "implementation": "complete",
+  "maturity": "experimental",
   "verification": "not_run",
-  "integration": "merged",
+  "integration": "not_merged",
   "flags": [
     "in_scope"
   ],
   "blocked_by": [],
   "depends_on": [],
   "api": [
-    "detect() -> Sequence[DeviceInfo] [proposta]"
+    "detect() -> tuple[DeviceInfo, ...] [CPU logiche/architettura, candidata stdlib read-only]"
   ],
   "tasks": [
     {
       "id": "CPU-001",
-      "state": "planned",
-      "description": "Definire e verificare il contratto prima della migrazione."
+      "state": "active",
+      "description": "Implementato rilevamento CPU portabile, unknown/partial quando osservazione non disponibile; test e promozione da verificare."
     }
-  ]
+  ],
+  "verification_scope": "CPU-001: architettura e numero logico tramite platform.machine/os.cpu_count, simulazione sintetica anche di valori mancanti; CI non ancora svolta. Non conta core fisici o GPU."
 }
