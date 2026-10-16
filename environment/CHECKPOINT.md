@@ -23,3 +23,10 @@ Non includere dati di host o log in Git secondo DATA-001.
 
 Prossimo perimetro funzionale da sottoporre all'utente;
 nessun lavoro applicativo successivo e' autorizzato implicitamente.
+
+## DEP-001: verifica dipendenze generiche
+
+DEP-SCOPE-001 approvato il 16 ottobre 2026. Codice nel branch
+`environment/dependencies/work/DEP-001`, non ancora verificato o promosso.
+La diagnostica DIAG-001 non e' inclusa. Dopo i test, propagare le mappe,
+integrare a environment/main e main, poi collaudare personalmente.

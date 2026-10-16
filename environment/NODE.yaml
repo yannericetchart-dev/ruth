@@ -13,8 +13,8 @@
   "development": "active",
   "implementation": "partial",
   "maturity": "experimental",
-  "verification": "passed",
-  "integration": "merged",
+  "verification": "stale",
+  "integration": "partial",
   "flags": [
     "in_scope"
   ],
@@ -22,7 +22,7 @@
   "depends_on": [],
   "api": [
     "inspect(project_root: Path) -> PythonEnvironment [integrata in main]",
-    "plan(requirements) -> EnvironmentPlan [proposta]",
+    "plan(requirements: Iterable[str], *, project_root: Path | None = None) -> DependencyPlan [implementata nella candidatura DEP-001]",
     "PythonEnvironment: project_root: str; interpreter: str; python_version: tuple[int, ...]; interpreter_in_project_venv: bool; venv_status: str; reasons: tuple[str, ...] [contratto immutabile della PR #2]",
     "PythonEnvironment.to_dict() -> dict [implementata in main; dati transitori, salvataggi solo locali]"
   ],
@@ -31,7 +31,12 @@
       "id": "ENV-001",
       "state": "complete",
       "description": "Porzione PY-001 testata e promossa da environment/python/main a environment/main (PR #3) e main (PR #8)."
+    },
+    {
+      "id": "ENV-002",
+      "state": "active",
+      "description": "Integrare il componente dipendenze dalla foglia verso environment/main e main dopo verifica."
     }
   ],
-  "verification_scope": "PY-001: GitHub Actions run 38885972247 e run 38886317198 conclusi con successo (test Python su fixture sintetiche, API pubbliche, test ingresso Ruth, test mappe e tools/maps.py --check). Collaudo personale PY-MANUAL-001 positivo sul commit ef4654af8ab106ef194af254d9f3884e5cabb6b0 il 16 ottobre 2026; nessuna verifica GPU o backend nativi."
+  "verification_scope": "DEP-001: validazione di nomi/versioni, report dei metadati tramite lookup sintetico e controllo del blocco Python; test su CI da eseguire. PY-001 gia' verificato separatamente."
 }

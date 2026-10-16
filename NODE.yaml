@@ -13,8 +13,8 @@
   "development": "active",
   "implementation": "partial",
   "maturity": "experimental",
-  "verification": "passed",
-  "integration": "merged",
+  "verification": "stale",
+  "integration": "partial",
   "flags": [
     "in_scope"
   ],
@@ -38,7 +38,12 @@
       "id": "MIG-001",
       "state": "complete",
       "description": "Prima porzione PY-001 integrata in main (PR #8) e accettata nel collaudo PY-MANUAL-001 sul commit ef4654af8ab106ef194af254d9f3884e5cabb6b0; prossima porzione soggetta a nuova approvazione funzionale."
+    },
+    {
+      "id": "MIG-002",
+      "state": "active",
+      "description": "DEP-SCOPE-001 approvato; sviluppo remoto della verifica dipendenze generiche e CLI, test e promozioni in corso."
     }
   ],
-  "verification_scope": "PY-001: GitHub Actions run 38885972247 e run 38886317198 conclusi con successo (test Python su fixture sintetiche, API pubbliche, test ingresso Ruth, test mappe e tools/maps.py --check). Collaudo personale PY-MANUAL-001 positivo sul commit ef4654af8ab106ef194af254d9f3884e5cabb6b0 il 16 ottobre 2026; nessuna verifica GPU o backend nativi."
+  "verification_scope": "DEP-001: validazione di nomi/versioni, report dei metadati tramite lookup sintetico e controllo del blocco Python; test su CI da eseguire. PY-001 gia' verificato separatamente."
 }
