@@ -63,12 +63,16 @@ modificare il file locale non aggiorna automaticamente le impostazioni della
 UI. Dopo una modifica del protocollo verificarli entrambi. Commit e push
 rendono condivise le modifiche, mentre un commit soltanto locale non lo fa.
 
-### Sincronizzazione del checkout dopo un merge in main (SYNC-001)
+### Controllo preliminare e sincronizzazione prima della ripresa (SYNC-001)
 
-La pubblicazione su GitHub non aggiorna automaticamente un clone sul computer.
-Se il client ha accesso esplicito alla cartella locale, prima di operare
-confrontare GitHub e il clone, senza assumere che il branch attivo sia main.
-Eseguire dalla radice del clone, senza copiare in Git i risultati locali:
+Se il client non ha accesso effettivo alla cartella del repository, **prima di
+riprendere o terminare il lavoro** deve fornire all'utente questa procedura,
+con lo SHA `main` letto in quel momento dalla connessione GitHub. Non deve
+proseguire un'attivita' che assume la sincronizzazione locale, ne' limitarsi
+a segnalare il problema a fine lavoro. In ChatGPT Ruth rimanere in modalita'
+Chat con GitHub: non passare a Work per consumare la quota condivisa con Codex.
+
+Dalla cartella locale di Ruth, l'utente esegue in terminale:
 
 ```sh
 git remote -v
@@ -77,12 +81,14 @@ git branch --show-current
 git rev-parse HEAD
 git fetch origin
 git rev-parse origin/main
+git status --porcelain --untracked-files=all
 ```
 
-Confermare che `origin` punti a yannericetchart-dev/ruth e che `origin/main`
-coincida con il commit main pubblicato, letto mediante il connettore GitHub.
-Solo se il checkout e' pulito, il branch attivo e' `main` e non ci sono
-modifiche o lavori concorrenti da preservare, aggiornare senza merge impliciti:
+Controllare che il remote `origin` sia quello di yannericetchart-dev/ruth,
+che `origin/main` coincida con il commit `main` GitHub comunicato,
+che il branch attivo sia `main` e che non ci siano modifiche locali da
+conservare (inclusi file non tracciati). Solo se tutte queste condizioni
+sono verificate, effettuare un aggiornamento senza merge impliciti:
 
 ```sh
 git merge --ff-only origin/main
@@ -90,15 +96,22 @@ git rev-parse HEAD
 git status --short --branch
 ```
 
-Il valore HEAD finale deve coincidere con il commit GitHub atteso. In caso
-di branch differente, modifiche non committate, merge non fast-forward,
-remote non atteso o incertezza, interrompere la sincronizzazione automatica
-e registrare il motivo. Non scartare o nascondere modifiche dell'utente,
-non usare reset --hard, clean, rebase, stash o force-push come scorciatoie.
+Verificare che HEAD ora sia uguale allo SHA GitHub previsto. Se il branch
+attivo non e' `main`, il remote non corrisponde, ci sono modifiche,
+`git fetch` fallisce o il fast-forward non e' possibile, **non** eseguire
+altri comandi per forzare l'aggiornamento: comunicare l'anomalia e
+concordare il percorso non distruttivo. Vietati reset --hard, clean, stash,
+rebase o force-push automatici.
 
-Se il client non puo' aprire la cartella reale, riportare in CHECKPOINT.md
-`local_sync: pending_no_access` e commit GitHub, poi fornire la procedura
-per eseguirla tramite un ambiente autorizzato (Work desktop locale,
-Codex locale o l'utente). Non riportare percorsi assoluti, output dettagliati
-o dati host in Git. Il collaudo manuale previsto da MIG-FLOW-002 resta
-obbligatorio anche se la sincronizzazione Git e' riuscita.
+L'utente deve confermare che il commit locale coincide con `main`, oppure
+segnalare che la procedura si e' fermata. Non servono percorsi personali,
+credenziali o log completi. In assenza di conferma lo stato pubblico e'
+`local_sync: pending_no_access` (o `blocked_divergence` se rilevata).
+La conferma della sincronizzazione e' una verifica operativa, **non** una
+nuova approvazione funzionale: si prosegue secondo MIG-FLOW-001 fino
+all'integrazione di main. Dopo il merge definitivo ripetere la stessa
+sincronizzazione, quindi eseguire il collaudo manuale MIG-FLOW-002.
+
+Le modifiche ai documenti GitHub non cambiano automaticamente le istruzioni
+della UI del Progetto ChatGPT: se il protocollo persistente e' stato
+aggiornato, allineare anche tali istruzioni e ripetere il test di ripresa.

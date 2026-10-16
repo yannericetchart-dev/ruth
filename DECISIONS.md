@@ -82,19 +82,34 @@ Ogni sostituzione deve collegare entrambe le decisioni e aggiornare le mappe.
   dichiarazione di capacita' gia' disponibili.
 - Sostituisce: nessuna decisione registrata.
 
-## SYNC-001: allineamento GitHub e checkout locale dopo il lavoro
+## SYNC-001: sincronizzare prima di riprendere o chiudere il lavoro
 
 - Stato: accepted.
-- Decisione: dopo una integrazione in main, verificare esplicitamente lo
-  stato GitHub e quello del checkout locale, se autorizzato e accessibile.
-  Sincronizzare solo con procedure non distruttive e verificare gli SHA.
-- Se il checkout non e' accessibile, lasciare `local_sync: pending_no_access`
-  nel checkpoint e fornire una procedura sicura: GitHub aggiornato non implica
-  macchina locale aggiornata.
-- Motivazione: evitare che ChatGPT e Codex dichiarino conclusa una
-  sincronizzazione locale mai eseguita.
-- Ambito: entrambi i client; indipendente da MIG-FLOW-001 e MIG-FLOW-002,
-  che continuano a imporre integrazione fino a main e collaudo personale.
-- Approvazione: richiesta esplicita dell'utente del 16 ottobre 2026.
-- Verifica richiesta: confronto reale HEAD/remote su un checkout autorizzato
-  e collaudo di ripresa per i client interessati; risultati locali secondo DATA-001.
+- Decisione: GitHub e checkout locale sono stati distinti. Prima della
+  ripresa di un'attivita' interrotta e prima di dichiarare completo il lavoro
+  dipendente dal checkout, verificare l'allineamento del locale con main.
+- In assenza di accesso locale, l'agente deve dare **subito**, prima della
+  prosecuzione o della chiusura dell'attivita', la procedura sicura con lo
+  SHA target e richiedere all'utente il riscontro di sincronizzazione.
+  Non basta offrire istruzioni solo al termine. Fino al riscontro registrare
+  `local_sync: pending_no_access`; in caso di divergenze non risolte,
+  `local_sync: blocked_divergence`.
+- Se il checkout e' disponibile, sincronizzare solo con operazioni sicure,
+  non distruttive, verificando branch, modifiche locali, remote e SHA finale.
+- Il blocco di sincronizzazione non costituisce un nuovo semaforo verde
+  funzionale: dopo la verifica il lavoro gia' approvato prosegue fino al merge
+  in main secondo MIG-FLOW-001. Il collaudo personale rimane distinto e
+  obbligatorio secondo MIG-FLOW-002.
+- Scelta operativa: in ChatGPT per Ruth usare Chat + GitHub; non usare Work
+  come soluzione automatica per l'accesso locale, per preservare la quota
+  condivisa con Codex.
+- Motivazione: evitare di lasciare non sincronizzata la macchina alla
+  ripresa, oltre a non dichiarare completato un processo senza verificarla.
+- Ambito: ChatGPT e Codex, con procedura pratica in PROJECT_SETUP.md.
+- Approvazione: regola approvata il 16 ottobre 2026 e precisata esplicitamente
+  dall'utente nella stessa data.
+- Verifica richiesta: riscontro di un checkout autorizzato sul commit main
+  e collaudo indipendente della ripresa; evidenze locali secondo DATA-001.
+- Precisa: la formulazione iniziale di SYNC-001, che richiedeva istruzioni
+  solo dopo il merge e permetteva `pending_no_access` senza un blocco
+  alla ripresa dell'attivita'.

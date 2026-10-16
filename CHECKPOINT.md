@@ -77,6 +77,24 @@ Ambito verificato: test sintetici dell'isolamento Python e API comuni;
 nessuna certificazione del runtime nativo. I risultati restano locali.
 Le altre porzioni rimangono pianificate; Kaggle resta inattivo.
 
+
+## Stato operativo aggiuntivo (16 ottobre 2026)
+
+- SYNC-001 precisata: in assenza di accesso al clone, fornire la procedura
+  all'utente prima di riprendere e concludere il lavoro; la sincronizzazione
+  locale richiede riscontro. Modalita' Chat + GitHub, senza Work.
+- `local_sync: pending_no_access` per questa sessione ChatGPT.
+  Commit target: risolvere nuovamente `heads/main` al momento della ripresa
+  e prima dell'aggiornamento locale; non usare SHA obsoleti.
+- PY-SCOPE-001: verde dell'utente ricevuto il 16 ottobre 2026;
+  PY-001 ha un candidato in PR #3 `environment/work/PY-001-entrypoint`
+  con ingresso Ruth implementato; i nuovi test non risultano eseguiti e
+  PR #3 non e' ancora integrata nei branch padri.
+- La ripresa di PY-001 resta sospesa alla sincronizzazione locale e al suo
+  riscontro. Dopo quel controllo, completare automaticamente il perimetro
+  gia' approvato senza nuova approvazione; PY-MANUAL-001 resta in attesa
+  del collaudo personale post-integrazione. Conservare i dati reali locali.
+
 ## Limiti correnti
 
 - In main non e' stato integrato codice applicativo. PY-001 e' disponibile

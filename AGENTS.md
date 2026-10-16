@@ -92,31 +92,44 @@ manuale ancora in attesa. Se il collaudo fallisce, restare sulla porzione
 corrente, correggerla e sottoporla nuovamente al collaudo dell'utente.
 
 
-## Sincronizzazione repository e checkout locale (SYNC-001)
+## Sincronizzazione e blocco di ripresa (SYNC-001)
 
-Dopo ogni integrazione tecnica in `main`, verificare separatamente lo stato
-pubblicato su GitHub e il checkout locale effettivamente accessibile. Confrontare
-ref `main` GitHub, `origin/main`, branch corrente, HEAD e modifiche locali
-prima di qualunque sincronizzazione. Non dedurre la presenza dei file locali
-dalla connessione GitHub e non dichiarare il locale sincronizzato senza averlo
-verificato su quel checkout.
+GitHub e checkout locale sono stati distinti. Prima di riprendere un lavoro
+interrotto, di proseguire un'attivita' dipendente dal checkout o di dichiarare
+completata una migrazione, verificare lo SHA di main su GitHub e lo stato del
+checkout locale effettivo. Controllare remote, branch, HEAD, origin/main e
+modifiche locali (anche file non tracciati). Non dedurre l'allineamento locale
+dalla disponibilita' della connessione GitHub.
 
-Se il checkout e' accessibile, controllare prima remote e modifiche non
-committate, inclusi file non tracciati rilevanti; sincronizzare `main` solo
-quando e' sicuro, con aggiornamento fast-forward senza perdita di dati, e
-verificare di nuovo gli SHA. Non effettuare automaticamente reset --hard,
-clean, force-push, scarti, stash, rebase o cambi di branch che disturbino
-lavoro dell'utente. Una divergenza o uno stato locale non pulito che non possa
-essere risolto in sicurezza va dichiarato come blocco della sincronizzazione,
-non aggirato.
+Se si ha accesso autorizzato al checkout, sincronizzarlo solo quando e'
+sicuro e in fast-forward, conservando le modifiche dell'utente, quindi
+ricontrollare SHA e stato. Mai eseguire automaticamente reset --hard, clean,
+force-push, stash, rebase, scarti o cambi branch potenzialmente distruttivi.
 
-Se il checkout non e' disponibile al client, documentare nel checkpoint
-`local_sync: pending_no_access` con lo SHA GitHub noto, dare le istruzioni
-minime e sicure per il completamento locale, e non dichiarare una verifica
-locale mai eseguita. L'integrazione su GitHub e il collaudo manuale
-MIG-FLOW-002 sono stati indipendenti dalla sincronizzazione locale.
-Consultare PROJECT_SETUP.md per la procedura. DATA-001 vieta di riversare
-output Git con nomi e percorsi personali nei documenti pubblicati.
+Se **non** si ha accesso al checkout (ad esempio Chat senza accesso alla
+cartella), fermarsi al punto di sincronizzazione: comunicare subito all'utente
+lo SHA target di main e i comandi concreti, non distruttivi, per verificare e
+sincronizzare manualmente il clone. Fornire queste istruzioni **prima di
+riprendere e terminare il lavoro dipendente dallo stato locale**, non solo
+alla consegna finale. Chiedere il riscontro dell'esito o della divergenza,
+senza domandare nuovamente un'autorizzazione funzionale gia' concessa.
+Se la verifica o la sincronizzazione non e' completata, mantenere
+`local_sync: pending_no_access` (oppure `blocked_divergence`) nel
+checkpoint e dichiarare la ripresa/consegna incompleta: nessuna presunzione
+di locale aggiornato o di collaudo personale.
+
+Il blocco di sincronizzazione non revoca il verde MIG-FLOW-001: dopo il
+riscontro si riprende e si completa autonomamente quanto autorizzato fino
+a main, interrompendosi nuovamente solo per problemi reali. La conferma
+manuale MIG-FLOW-002 e' comunque distinta e obbligatoria per abilitare
+la migrazione seguente.
+
+Per il workflow ChatGPT di Ruth, utilizzare Chat e il connettore GitHub
+senza passare a Work per colmare la mancanza di accesso locale: Work e
+Codex possono consumare una quota condivisa che l'utente vuole preservare.
+Le istruzioni di sincronizzazione vanno date per l'esecuzione personale.
+Seguire PROJECT_SETUP.md. Non registrare in Git percorsi personali, log,
+dati di host/utente o risultati reali, conformemente a DATA-001.
 
 ## Mappe ricorsive
 
