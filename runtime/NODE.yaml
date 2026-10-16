@@ -28,14 +28,14 @@
     "chat"
   ],
   "api": [
-    "inspect_environment(project_root: Path) -> PythonEnvironment [implementata nel branch di lavoro]",
+    "inspect_environment(project_root: Path) -> PythonEnvironment [implementata in environment/python/main; non promossa ai padri]",
     "PythonEnvironment [contratto comune importato da environment]"
   ],
   "tasks": [
     {
       "id": "CORE-001",
       "state": "active",
-      "description": "Contratto Python inoltrato e verificato attraverso gli ingressi pubblici; resto dell orchestrazione pianificato."
+      "description": "Contratto Python disponibile e verificato in environment/python/main; orchestrazione restante pianificata e codice non promosso a main."
     }
   ],
   "verification_scope": "PY-001/PY-REV-001: isolamento Python, catena reale delle API e coerenza delle mappe su fixture sintetiche; nessuna verifica nativa."

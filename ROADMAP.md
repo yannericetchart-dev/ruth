@@ -16,7 +16,7 @@ Ambito verifica: PY-001/PY-REV-001: isolamento Python, catena reale delle API e 
 
 1. `SETUP-001` [complete] Configurazione e collaudo indipendente dei client.
 2. `STRUCT-001` [complete] Scaffold ricorsivo senza migrazione applicativa.
-3. `MIG-001` [active] Prima porzione Python revisionata (PY-REV-001); pronta alla prima promozione tramite PR #2. Migrazione degli altri domini pianificata.
+3. `MIG-001` [active] PR #2 integrata in environment/python/main (PY-PROMOTE-001); prossima promozione a environment/main. Nessun codice applicativo in main.
 
 ## Componenti (ordine locale, ID stabili)
 

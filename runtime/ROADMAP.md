@@ -14,6 +14,6 @@ Ambito verifica: PY-001/PY-REV-001: isolamento Python, catena reale delle API e 
 
 ## Attivita locali
 
-1. `CORE-001` [active] Contratto Python inoltrato e verificato attraverso gli ingressi pubblici; resto dell orchestrazione pianificato.
+1. `CORE-001` [active] Contratto Python disponibile e verificato in environment/python/main; orchestrazione restante pianificata e codice non promosso a main.
 
 Propagare impatti e blocchi al [padre](../ROADMAP.md) e proseguire fino alla radice.

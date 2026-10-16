@@ -1,7 +1,7 @@
 # Python: checkpoint PY-001
 
-Stato: prima porzione implementata, verificata e revisionata nel branch di lavoro
-`environment/python/work/inspect-venv`; non integrata nei branch padri.
+Stato: prima porzione implementata, verificata e revisionata, integrata in
+`environment/python/main` tramite PR #2. Non promossa a environment/main o main.
 Contratto sperimentale. Fonte e perimetro: MIGRATION.md alla radice.
 
 ## Implementato
@@ -50,9 +50,20 @@ I risultati restano in `.local/verification/`. La presenza di Python non
 dimostra dipendenze installate, backend disponibile o inferenza funzionante.
 Non sono stati eseguiti benchmark o collaudi hardware.
 
+## Prima promozione PY-PROMOTE-001
+
+PR #2 integrata con merge commit `8c76080df5ba34e354f484c92adf7e132b594c2d`,
+conservando la revisione esaminata `80218739327666b0250c3715ba9cfb6fe1f114d5`.
+L'albero risultante dal merge e' identico alla revisione che ha superato i
+test sintetici e il controllo delle mappe. Evidenze locali: PY-PROMOTE-001.
+
+Il campo integration del nodo resta not_merged: il suo padre dichiarato e'
+environment/main, dove questa porzione non e' ancora presente. La promozione
+dal branch di lavoro al branch canonico del componente e' invece completata.
+
 ## Prossima azione
 
-Porzione pronta per la prima promozione a environment/python/main.
-Le successive promozioni saranno environment/main e infine main, con
-checkpoint aggiornati ad ogni passaggio. In seguito pianificare le dipendenze
+Preparare e verificare la promozione da environment/python/main a
+environment/main. La promozione finale a main e' un passaggio successivo,
+con checkpoint aggiornati ad ogni passaggio. In seguito pianificare le dipendenze
 generiche: non copiare i lock nativi specifici dalla fonte storica.

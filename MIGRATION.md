@@ -5,7 +5,7 @@ avere una fonte immutabile, una destinazione, test e una revisione separata.
 I vecchi branch vengono conservati. Le misure e gli artefatti specifici di
 macchina non sono candidati alla migrazione secondo DATA-001.
 
-## Prima porzione prevista: MIG-001 / PY-001
+## Prima porzione: MIG-001 / PY-001
 
 - Fonte: `feat/gemma3-phase28-context-dispatch`, commit
   `4ceea508025650ed64b33190834d0b5c85f69db2`,
@@ -15,8 +15,9 @@ macchina non sono candidati alla migrazione secondo DATA-001.
 - Ambito: ispezione in sola lettura dell'interprete e dell'isolamento della
   `.venv` del progetto. Nessuna installazione, download o importazione del
   lock CUDA specifico. Le versioni dei pacchetti sono una porzione successiva.
-- Stato: implementata nel branch `environment/python/work/inspect-venv`,
-  verificata e revisionata su fixture sintetiche; ancora da integrare nei branch padri.
+- Stato: integrata tramite PR #2 in `environment/python/main`, merge
+  `8c76080df5ba34e354f484c92adf7e132b594c2d`, dopo verifica e revisione
+  su fixture sintetiche. Ancora da promuovere a environment/main e main.
   Il codice e' estratto e adattato alla nuova API, non copiato integralmente.
 - Differenze intenzionali: configurazioni vuote, duplicate o illeggibili
   falliscono il controllo, anziche essere considerate implicitamente isolate.
@@ -26,7 +27,9 @@ macchina non sono candidati alla migrazione secondo DATA-001.
   globale, con site-packages condivisi e configurazione illeggibile.
 - Revisione PY-REV-001 completata: dichiarazioni malformate ripetute
   correttamente rifiutate e API pubbliche eseguite lungo la catena reale.
-  Prima promozione pronta; nessun merge nei padri ancora eseguito.
+  Prima promozione PY-PROMOTE-001 completata nel branch del componente.
+  L'albero del merge coincide con la revisione verificata; nessuna promozione
+  nei branch superiori ancora eseguita.
 
 ## Porzioni successive
 

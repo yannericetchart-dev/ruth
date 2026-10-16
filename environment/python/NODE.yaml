@@ -21,18 +21,23 @@
   "blocked_by": [],
   "depends_on": [],
   "api": [
-    "inspect(project_root: Path, *, prefix=None, base_prefix=None, interpreter=None, python_version=None) -> PythonEnvironment [implementata nel branch di lavoro]"
+    "inspect(project_root: Path, *, prefix=None, base_prefix=None, interpreter=None, python_version=None) -> PythonEnvironment [implementata in environment/python/main; non promossa ai padri]"
   ],
   "tasks": [
     {
       "id": "PY-001",
       "state": "complete",
-      "description": "Ispezione virtualenv estratta, verificata e revisionata; pronta per la prima promozione nel padre."
+      "description": "Ispezione virtualenv verificata e revisionata, integrata in environment/python/main tramite PR #2."
     },
     {
       "id": "PY-REV-001",
       "state": "complete",
       "description": "Revisione tecnica: corretta configurazione malformata ripetuta; verificati ingressi pubblici reali e ambito obbligatorio delle verifiche."
+    },
+    {
+      "id": "PY-PROMOTE-001",
+      "state": "complete",
+      "description": "Prima promozione PR #2 completata; albero del merge identico alla revisione verificata. Da promuovere a environment/main."
     }
   ],
   "verification_scope": "PY-001/PY-REV-001: isolamento Python, catena reale delle API e coerenza delle mappe su fixture sintetiche; nessuna verifica nativa."

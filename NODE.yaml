@@ -21,7 +21,7 @@
   "blocked_by": [],
   "depends_on": [],
   "api": [
-    "runtime.inspect_environment(project_root: Path) -> PythonEnvironment [implementata nel branch di lavoro]"
+    "runtime.inspect_environment(project_root: Path) -> PythonEnvironment [implementata in environment/python/main; non promossa ai padri]"
   ],
   "tasks": [
     {
@@ -37,7 +37,7 @@
     {
       "id": "MIG-001",
       "state": "active",
-      "description": "Prima porzione Python revisionata (PY-REV-001); pronta alla prima promozione tramite PR #2. Migrazione degli altri domini pianificata."
+      "description": "PR #2 integrata in environment/python/main (PY-PROMOTE-001); prossima promozione a environment/main. Nessun codice applicativo in main."
     }
   ],
   "verification_scope": "PY-001/PY-REV-001: isolamento Python, catena reale delle API e coerenza delle mappe su fixture sintetiche; nessuna verifica nativa."

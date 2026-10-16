@@ -1,6 +1,6 @@
 # Ruth: checkpoint di progetto
 
-Revisione documentale: 6 (branch di lavoro).
+Revisione documentale: 7 (environment/python/main).
 Attivita': `MIG-001` (prima porzione: `PY-001`).
 Fase corrente: **3 - migrazione incrementale per componente**.
 
@@ -34,24 +34,28 @@ Il passaggio 2 e' completato: scaffold dei domini, corsie, metadati di stato,
 mappe ricorsive e controllo di coerenza. Ambito della verifica: struttura e
 propagazione dei riepiloghi, non esecuzione applicativa o nativa.
 
-PY-001 e' implementata nel branch `environment/python/work/inspect-venv`.
+PY-001 e' integrata nel branch canonico `environment/python/main` tramite
+PR #2, merge `8c76080df5ba34e354f484c92adf7e132b594c2d`.
 Ambito: ispezione Python in sola lettura; contratto environment e accesso
 comune runtime, con verifiche sintetiche. Vedere environment/CHECKPOINT.md
-e environment/python/CHECKPOINT.md. Non integrata nei branch padri.
+e environment/python/CHECKPOINT.md. Non promossa a environment/main o main.
 
 PY-REV-001 completata: corretto un caso di configurazione malformata ripetuta,
 verificata la catena reale delle API e la regola sull'ambito delle verifiche.
 Nessun problema bloccante residuo nell'ambito revisionato; evidenze locali.
 
-Prossimo passaggio: prima promozione della PR #2 a environment/python/main.
-Le successive promozioni saranno environment/main e main, aggiornando i
-checkpoint ad ogni passaggio. Nessun merge effettuato durante la revisione.
+PY-PROMOTE-001 completata: la prima promozione conserva la storia e produce
+lo stesso albero della revisione verificata. Evidenze esclusivamente locali.
+
+Prossimo passaggio: promozione da environment/python/main a environment/main.
+La promozione a main resta successiva, aggiornando i checkpoint ad ogni passaggio.
 Le altre porzioni rimangono pianificate; Kaggle resta inattivo.
 
 ## Limiti correnti
 
 - Nel branch main rimane lo scaffold senza migrazione applicativa; il codice
-  di PY-001 e' confinato al branch di lavoro in attesa della prima promozione.
+  di PY-001 e' disponibile nel solo branch canonico del componente e nella
+  sua origine di lavoro, non nei branch superiori.
 - Non avviare il passaggio 3 prima della verifica dei passaggi precedenti.
 - Nessuna misurazione nativa e' certificata da questo checkpoint.
 - Branch e commit delle attivita' successive saranno indicati nei checkpoint

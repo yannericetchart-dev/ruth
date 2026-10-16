@@ -14,7 +14,7 @@ Ambito verifica: PY-001/PY-REV-001: isolamento Python, catena reale delle API e 
 
 ## Attivita locali
 
-1. `ENV-001` [active] Prima porzione Python revisionata e conforme al contratto comune; pronta alla prima promozione. Dipendenze e diagnostica pianificate.
+1. `ENV-001` [active] Prima porzione Python integrata nel branch canonico del componente; da promuovere a environment/main. Dipendenze e diagnostica pianificate.
 
 ## Componenti (ordine locale, ID stabili)
 

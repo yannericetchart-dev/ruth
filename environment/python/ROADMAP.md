@@ -14,7 +14,8 @@ Ambito verifica: PY-001/PY-REV-001: isolamento Python, catena reale delle API e 
 
 ## Attivita locali
 
-1. `PY-001` [complete] Ispezione virtualenv estratta, verificata e revisionata; pronta per la prima promozione nel padre.
+1. `PY-001` [complete] Ispezione virtualenv verificata e revisionata, integrata in environment/python/main tramite PR #2.
 2. `PY-REV-001` [complete] Revisione tecnica: corretta configurazione malformata ripetuta; verificati ingressi pubblici reali e ambito obbligatorio delle verifiche.
+3. `PY-PROMOTE-001` [complete] Prima promozione PR #2 completata; albero del merge identico alla revisione verificata. Da promuovere a environment/main.
 
 Propagare impatti e blocchi al [padre](../ROADMAP.md) e proseguire fino alla radice.
