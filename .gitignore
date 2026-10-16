@@ -12,3 +12,24 @@ venv/
 models/
 *.gguf
 *.log
+
+# Private machine/user state and generated results (DATA-001)
+/.local/
+/.ruth-build/
+/.ruth-src/
+/.ruth-wheelhouse/
+/.pytest_cache/
+/.mypy_cache/
+/.ruff_cache/
+logs/
+results/
+artifacts/
+*.safetensors
+*.npz
+*.npy
+*.sqlite
+*.sqlite3
+*.db
+*.whl
+*.so
+*.o
