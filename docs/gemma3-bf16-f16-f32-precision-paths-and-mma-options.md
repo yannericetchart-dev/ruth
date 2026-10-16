@@ -1265,7 +1265,114 @@ eseguiti sul checkout dell'utente. Nessun nuovo
 profiling GPU, alcuna modifica dei kernel CUDA
 o del gate `production_qualified=false`.
 
-## 19. Riferimenti interni
+## 19. Esito reale: genealogia kernel→nodo originale completa
+
+L'utente ha rieseguito
+`ruth_runtime.gemma3_phase28_aux_node_audit`
+sullo stesso export Nsight della Phase28, ottenendo:
+
+| Campo del report | Valore osservato |
+|---|---:|
+| `distinct_kernel_node_ids_checked` | **1.244** |
+| `exactly_one_original_node_candidate` | **1.244** |
+| `unique_original_node_found_in_events` | **1.244** |
+| `no_original_node_candidate` | **0** |
+| `multiple_original_node_candidates` | **0** |
+| `kernel_id_to_original_id_mapping_complete_unambiguous` | **true** |
+| `identifier_coverage_verified` | **true** |
+
+Pertanto, **per ciascuno dei 1.244 identificatori kernel
+distinti**, il nodo originale è unico ed è
+presente come `graphNodeId` in `CUDA_GRAPH_NODE_EVENTS`.
+La mappatura è verificata **per ID**, non soltanto
+per uguaglianza di conteggi. L'assenza di
+`graphNodeId` utili nei 1.756 record MEMCPY
+rimane confermata.
+
+Il join `graphNodeId→originalGraphNodeId`
+è una relazione di **clonazione**. Non è
+`producer→consumer`, non è un arco
+`cudaGraph_t`, e non contiene i buffer A/B
+di cuBLAS. I 17.184 cast F32→BF16 e
+17.184 GEMM BF16 sono ancora associati
+per fase, replay, cardinalità e ordine
+osservato, **non** per uguaglianza
+dei puntatori input/output.
+
+**Verifiche rimaste intenzionalmente false:**
+
+- `explicit_graph_dependency_edges_verified`
+- `kernel_operand_buffer_identity_verified`
+- `cast_to_gemm_producer_consumer_verified`
+- `ggml_operator_identity_verified`
+- `conversion_elimination_safe_verified` (audit sorgente separato)
+- `production_qualified`
+
+Nel messaggio con questo risultato l'utente
+ha riportato il **report CLI**, non anche
+l'output dei sei test della versione aggiornata.
+Non registrarli come superati finché il loro
+esito non sia stato esplicitamente verificato.
+
+### 19.1 Decisione sul confine delle analisi offline
+
+Il file Nsight attuale ha fornito tutte le
+relazioni documentabili di questa classe:
+gli ID di esecuzione, la classificazione delle
+famiglie, gli ID dei nodi kernel, i loro originali
+e la cronologia. Non emergono parametri
+operando di cuBLAS né archi DAG espliciti
+dal controllo dello schema delle 48 tabelle.
+**Non creare ulteriori matching ordinali
+o temporali presentandoli come dataflow.**
+
+Il passo che potrebbe realmente sbloccare
+l'identità del buffer è una **sperimentazione
+separata e previamente autorizzata**,
+non una promozione automatica del profiler:
+
+1. A livello di grafi conservati, identificare
+   il grafo e i suoi nodi, l'ID strumenti di
+   ogni nodo e gli archi di dipendenza effettivi,
+   distinguendo l'istanza originale dalla
+   clonata. La documentazione CUDA prevede
+   `cudaGraphGetNodes`,
+   `cudaGraphGetEdges`,
+   `cudaGraphNodeGetToolsId`,
+   `cudaGraphNodeFindInClone` e
+   `cudaGraphKernelNodeGetParams`.
+   **Verificare prima la disponibilità nel
+   CUDA Toolkit 13.2 pinned** e il punto del
+   ciclo di vita in cui il grafo è accessibile;
+   non dedurre che Nsight li abbia registrati.
+2. A livello del percorso
+   `ggml_cuda_mul_mat_cublas_impl<GGML_TYPE_BF16>`,
+   disegnare un *probe* opt-in che raccolga
+   soltanto identificatori opachi stabili
+   nell'esecuzione, fase/op GGML, tipo e
+   forma di `src0/src1`, ramo di conversione
+   scelto, range del buffer temporaneo di
+   destinazione e operand A/B passato a cuBLAS.
+   **Non** esportare indirizzi GPU grezzi,
+   tensori o dati del modello nel report.
+3. Validare separatamente: (a) corrispondenza
+   degli ID con il trace Nsight, (b) identità
+   del buffer prodotto dal cast e consumato
+   dalla GEMM, (c) dipendenza/ordine effettivi,
+   (d) equivalenza numerica e performance
+   **solo con autorizzazione esplicita**
+   per eventuali test GPU. La sola presenza
+   di un arco DAG non prova che il kernel
+   legga il contenuto del buffer del predecessore.
+
+Riferimenti API per lo studio (non codice
+da eseguire ora):
+[CUDA Runtime API Graph Management](https://docs.nvidia.com/cuda/cuda-runtime-api/cuda_runtime_api/group__CUDART__GRAPH.html).
+Non cambiare le revisioni native, il modello,
+l'impostazione GPU-only o i gate di produzione
+per realizzare l'analisi statica.
+
+## 20. Riferimenti interni
 
 - [Fase 27 — precisione e benchmark](phase-27-gemma3-precision-and-kernel-benchmark.md).
 - [Fase 28 — prove CUDA/NVTX e contesti](phase-28-gemma3-dispatch-and-context-scaling.md).
