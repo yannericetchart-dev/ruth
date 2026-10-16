@@ -287,3 +287,14 @@ GPU-MANUAL-001 richiesta solo dopo main, secondo MIG-FLOW-002.
 - Stato tecnico implemented/verified/integrated; collaudo personale
   CAT-MANUAL-001 pendente, quindi prossimo componente bloccato.
 - Nessuna informazione reale su host/modelli/versioni in Git (DATA-001).
+
+## CAT-MANUAL-001: chiusura personale (16 ottobre 2026)
+
+- L'utente conferma personalmente esito positivo di `.venv/bin/python main.py`
+  senza argomenti sul commit main `90e57f106fb664b0257775260044125ea85228e2`.
+- Sequenza PY -> DEP -> DIAG -> HW -> NVIDIA -> CAT completa; catalogo
+  opzionale assente con stato `not_configured` conforme al perimetro.
+- CAT-001: implementazione completa, CI sintetica superata, PR #38 in main
+  e collaudo CAT-MANUAL-001 passato. Le precedenti voci di attesa sono storiche.
+- Il prossimo componente rimane da approvare secondo MIG-FLOW-001/002;
+  dati locali esclusi dal repository secondo DATA-001.
