@@ -6,14 +6,14 @@ Nodo responsabile: [NVIDIA](NODE.yaml). Ripresa: [START_HERE](../../../START_HER
 
 Provider NVIDIA per inventario, senza certificare backend CUDA.
 
-Sviluppo: **active**; codice: **complete**; maturita: experimental; verifica: not_run; integrazione: not_merged.
+Sviluppo: **active**; codice: **complete**; maturita: experimental; verifica: passed; integrazione: merged.
 
 Flag: in_scope. Blocchi: nessuno registrato.
 
-Ambito verifica: GPU-001 NVIDIA: candidato read-only con nvidia-smi a parametri fissi e timeout; fixture sintetiche per modello/VRAM/multi-GPU e fallimenti, CI da eseguire. GPU AMD/Intel, driver, CUDA e inferenza esclusi; HW GPU manuale da confermare.
+Ambito verifica: GPU-001 NVIDIA: CI GitHub 38918374871, 38918650589, 38918759116, 38918867451 success (92 test sintetici, 258 mappe); promozioni PR #30 NVIDIA, #31 GPU, #32 hardware e #33 main. Driver, CUDA, AMD/Intel e compatibilita' inferenza non verificati. GPU-MANUAL-001 ancora pendente.
 
 ## Attivita locali
 
-1. `NVIDIA-001` [active] Provider nvidia-smi CSV, timeout e report generici senza identificatori persistenti; test e CI da verificare.
+1. `NVIDIA-001` [complete] Provider NVIDIA read-only via nvidia-smi, fixture sintetiche verificate in CI e integrato in main tramite PR #33.
 
 Propagare impatti e blocchi al [padre](../ROADMAP.md) e proseguire fino alla radice.

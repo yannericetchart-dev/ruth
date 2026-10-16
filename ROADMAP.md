@@ -6,11 +6,11 @@ Nodo responsabile: [ROOT](NODE.yaml). Ripresa: [START_HERE](START_HERE.md).
 
 Coordinare i sottosistemi tramite API comuni.
 
-Sviluppo: **active**; codice: **partial**; maturita: experimental; verifica: stale; integrazione: partial.
+Sviluppo: **active**; codice: **partial**; maturita: experimental; verifica: passed; integrazione: merged.
 
-Flag: in_scope. Blocchi: nessuno registrato.
+Flag: in_scope. Blocchi: GPU-MANUAL-001.
 
-Ambito verifica: GPU-001 NVIDIA: candidato read-only con nvidia-smi a parametri fissi e timeout; fixture sintetiche per modello/VRAM/multi-GPU e fallimenti, CI da eseguire. GPU AMD/Intel, driver, CUDA e inferenza esclusi; HW GPU manuale da confermare.
+Ambito verifica: GPU-001 NVIDIA: CI GitHub 38918374871, 38918650589, 38918759116, 38918867451 success (92 test sintetici, 258 mappe); promozioni PR #30 NVIDIA, #31 GPU, #32 hardware e #33 main. Driver, CUDA, AMD/Intel e compatibilita' inferenza non verificati. GPU-MANUAL-001 ancora pendente.
 
 ## Attivita locali
 
@@ -22,13 +22,13 @@ Ambito verifica: GPU-001 NVIDIA: candidato read-only con nvidia-smi a parametri 
 6. `MAIN-MANUAL-001` [complete] Utente: avvio sequenziale di main.py dal checkout main pulito, prima Python poi controllo pip, output conforme; commit 3f08cbad9ec06f814031bd1cbcbdc25553bd82ae verificato il 16 ottobre 2026.
 7. `MIG-003` [complete] DIAG-001 implementata, verificata e integrata via PR #22; DIAG-MANUAL-001 superato sul commit b379d2d8a228f55101eb98a19bfb14e8fc7a4bcb (sequenza PY->DEP->DIAG). Prossimo componente soltanto dopo nuovo perimetro approvato.
 8. `MIG-004` [complete] HW-SCOPE-001 CPU/RAM implementata, verificata e integrata via PR #27; collaudo personale HW-MANUAL-001 positivo sul commit 59b26fd6b427e6756ce0285fee60590cb077ebf1 (PY->DEP->DIAG->HW). Prossima porzione richiede nuovo perimetro approvato.
-9. `MIG-005` [active] GPU-SCOPE-001 NVIDIA approvato; quinto passaggio GPU e API read-only candidate da testare/promuovere sino a main, collaudo GPU-MANUAL-001 previsto.
+9. `MIG-005` [blocked] GPU-001 NVIDIA implementata, verificata da CI e integrata in main tramite PR #33; GPU-MANUAL-001 in attesa di test personale prima di qualunque altra migrazione.
 
 ## Componenti (ordine locale, ID stabili)
 
 1. [CORE: Contratti e orchestrazione](runtime/ROADMAP.md) — active; partial; passed.
 2. [ENV: Ambiente](environment/ROADMAP.md) — active; partial; passed.
-3. [HW: Hardware](hardware/ROADMAP.md) — active; complete; stale.
+3. [HW: Hardware](hardware/ROADMAP.md) — active; complete; passed.
 4. [MODEL: Modelli](models/ROADMAP.md) — inactive; skeleton; not_run.
 5. [INF: Inferenza](inference/ROADMAP.md) — inactive; skeleton; not_run.
 6. [PROF: Profilazione](profiling/ROADMAP.md) — inactive; skeleton; not_run.
