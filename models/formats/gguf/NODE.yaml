@@ -8,33 +8,34 @@
   "branch": {
     "name": "models/formats/gguf/main",
     "parent": "models/formats/main",
-    "status": "planned"
+    "status": "present"
   },
   "development": "active",
   "implementation": "complete",
   "maturity": "experimental",
-  "verification": "not_run",
-  "integration": "not_merged",
+  "verification": "passed",
+  "integration": "merged",
   "flags": [
     "in_scope"
   ],
   "blocked_by": [],
   "depends_on": [],
   "api": [
-    "inspect_header(model_id: str, *, project_root: Path | None = None) -> GGUFHeader [solo id dal catalogo; candidata]",
-    "inspect_headers(*, project_root: Path | None = None) -> GGUFReport [soli GGUF dichiarati; candidata]",
+    "inspect_header(model_id: str, *, project_root: Path | None = None) -> GGUFHeader [solo id da catalogo, integrata in main]",
+    "inspect_headers(*, project_root: Path | None = None) -> GGUFReport [soli GGUF dichiarati, integrata in main]",
     "verify(path) -> VerificationReport [proposta non implementata]"
   ],
   "tasks": [
     {
       "id": "GGUF-001",
-      "state": "active",
-      "description": "Lettore bounded dei 24 byte iniziali per v2/v3, controllo magic, versioni, contatori, endian, errori/percorsi sicuri; candidato sul work branch, verifica e merge pendenti."
+      "state": "complete",
+      "description": "Lettore bounded 24-byte GGUF v2/v3: magic, versione, contatori e endian; validato con fixture sintetiche e integrato in main via PR #44."
     },
     {
       "id": "GGUF-MANUAL-001",
-      "state": "planned",
-      "description": "Dopo merge in main serve esecuzione personale di main.py senza argomenti e conferma settima fase (skip valido quando catalogo assente)."
+      "state": "active",
+      "description": "Attesa prova personale su main.py senza argomenti dopo sincronizzazione main 15b106082c4dee37622c61a8afefd248a57464a0; skip valido se catalogo non configurato."
     }
-  ]
+  ],
+  "verification_scope": "GGUF-001: CI success runs 38935705385, 38935861881, 38935943414, 38936032188; PR #41 gguf/main, #42 formats/main, #43 models/main, #44 main (15b106082c4dee37622c61a8afefd248a57464a0). Bounded 24-byte GGUF v2/v3 header, catalog-bound; synthetic tests and recursive maps passed. GGUF-MANUAL-001 pending; no model payload or inference."
 }
