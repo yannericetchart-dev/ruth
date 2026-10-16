@@ -1,9 +1,9 @@
 # Ruth: checkpoint di progetto
 
-Revisione documentale: 26 (indice main); CONT-001 revisione 1.
+Revisione documentale: 27 (indice main); CONT-001 revisione 1.
 Fase 3: migrazione incrementale per componente.
-Stato: **CAT-001 implementata, verificata e integrata in main;
-collaudo personale CAT-MANUAL-001 superato il 16 ottobre 2026**.
+Stato: **GGUF-001 implementata, verificata con CI e integrata in main;
+GGUF-MANUAL-001 in attesa di collaudo personale**. CAT-MANUAL-001 complete.
 PY, DEP, DIAG, HW/CPU e GPU NVIDIA restano accettate personalmente.
 L'ingresso senza argomenti di Ruth esegue tutte le funzioni integrate.
 
@@ -71,7 +71,9 @@ L'ingresso senza argomenti di Ruth esegue tutte le funzioni integrate.
 ## Prossima azione
 
 MIG-006/CAT-001 e' completata e accettata personalmente sul commit
-`90e57f106fb664b0257775260044125ea85228e2`. Non vi sono nuovi componenti approvati.
+`90e57f106fb664b0257775260044125ea85228e2`. GGUF-SCOPE-001 e'
+stato approvato e integrato tecnicamente; GGUF-MANUAL-001 resta pendente.
+Nessuna porzione successiva e' gia' autorizzata.
 La prossima migrazione richiede **prima** un perimetro funzionale esplicito
 (scopo, API, ingressi, effetti, controlli, limiti, test e passaggio
 automatico `main.py`) con nuovo semaforo verde dell'utente
@@ -155,3 +157,34 @@ e DIAG-SCOPE-001. SYNC-001 resta storica/superseded.
   implementazione candidata, verifiche/CI e promozioni ancora pendenti.
 - Nessun download, metadata payload, tensor, inferenza, CUDA o modifiche host.
   Nessun dato reale in Git (DATA-001).
+
+## GGUF-001 integrata tecnicamente (16 ottobre 2026)
+
+- GGUF-SCOPE-001 approvato esplicitamente dopo CAT-MANUAL-001.
+- Lettura bounded di 24 byte dall'intestazione GGUF, solo per i modelli
+  dichiarati e validati nel manifest CAT; report immutabili, versioni
+  2/3 e byte order di v3, gestione codici errore. Non si controllano
+  metadati completi, pesi o compatibilita' per inferenza.
+- Sequenza ufficiale Ruth `main.py` senza argomenti:
+  PY -> DEP (solo pip) -> DIAG -> HW CPU/RAM -> NVIDIA -> CAT -> GGUF.
+  Catalogo assente, vuoto o senza GGUF: skip valido; il controllo GGUF
+  e' read-only e non sostituisce nessuna fase precedente.
+- Promozioni e CI superate: PR #41 `models/formats/gguf/main`
+  (merge `f783a4521f785e69374516b02c3079e99f678c78`);
+  PR #42 `models/formats/main` (`f1730969b7b024f2cdf528d64ee7e87dca566a66`);
+  PR #43 `models/main` (`4c2ece369738092af546eae0aa2967db59490008`);
+  PR #44 `main` (`15b106082c4dee37622c61a8afefd248a57464a0`).
+- CI runs 38935705385, 38935861881, 38935943414, 38936032188:
+  tutte **success**, incluse verifiche sintetiche della CLI e mappe;
+  nessuna prova su modelli reali in CI.
+- Stati: implementation complete, verification passed (CI sintetica),
+  integration merged. **GGUF-MANUAL-001 active/pending**:
+  l'utente deve sincronizzare in sicurezza il checkout pulito e avviare
+  `.venv/bin/python main.py` per confermare l'esito della settima fase.
+- `local_sync: pending_no_access` per la nuova revisione main; il clone
+  legacy divergente resta intatto. L'ultimo collaudo personale CAT
+  resta valido e non viene ripetuto per i documenti.
+- Nessun dato reale di host o manifest, log, modello o benchmark in Git.
+  GGUF metadata payload, Hugging Face, CUDA e inferenza non approvati.
+  Prossima porzione soltanto dopo GGUF-MANUAL-001 positivo e nuovo
+  perimetro esplicitamente approvato (MIG-FLOW-001/002).
