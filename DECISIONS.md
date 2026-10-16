@@ -307,3 +307,14 @@ Ogni sostituzione deve collegare entrambe le decisioni e aggiornare le mappe.
 - GGUF-MANUAL-001 ancora pending fino a prova personale dell'utente
   dalla revisione main sincronizzata; nessun componente successivo e'
   automaticamente autorizzato.
+
+### GGUF-MANUAL-001: collaudo positivo (16 ottobre 2026)
+
+- Stato: complete/passed, conferma esplicita dell'utente.
+- Revisione eseguita personalmente con Ruth senza argomenti:
+  `ab81696dc93bc5d71a208cbcdc9a6f714b462fa9` (main).
+- Sette controlli in sequenza, catalogo/GGUF `not_configured`,
+  completamento regolare. Nessun file GGUF reale ispezionato:
+  il collaudo non certifica integrita' o capacita' di inferenza.
+- Il perimetro GGUF-SCOPE-001 resta invariato. Nessuna nuova
+  migrazione autorizzata implicitamente; applicare MIG-FLOW-001/002.

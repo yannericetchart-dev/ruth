@@ -1,9 +1,9 @@
 # Ruth: checkpoint di progetto
 
-Revisione documentale: 27 (indice main); CONT-001 revisione 1.
+Revisione documentale: 28 (indice main); CONT-001 revisione 1.
 Fase 3: migrazione incrementale per componente.
-Stato: **GGUF-001 implementata, verificata con CI e integrata in main;
-GGUF-MANUAL-001 in attesa di collaudo personale**. CAT-MANUAL-001 complete.
+Stato: **GGUF-001 implementata, verificata con CI, integrata in main
+e accettata personalmente (GGUF-MANUAL-001 complete)**. CAT-MANUAL-001 complete.
 PY, DEP, DIAG, HW/CPU e GPU NVIDIA restano accettate personalmente.
 L'ingresso senza argomenti di Ruth esegue tutte le funzioni integrate.
 
@@ -72,8 +72,8 @@ L'ingresso senza argomenti di Ruth esegue tutte le funzioni integrate.
 
 MIG-006/CAT-001 e' completata e accettata personalmente sul commit
 `90e57f106fb664b0257775260044125ea85228e2`. GGUF-SCOPE-001 e'
-stato approvato e integrato tecnicamente; GGUF-MANUAL-001 resta pendente.
-Nessuna porzione successiva e' gia' autorizzata.
+stato approvato, verificato, integrato e accettato personalmente sul commit
+`ab81696dc93bc5d71a208cbcdc9a6f714b462fa9`. Nessuna porzione successiva e' gia' autorizzata.
 La prossima migrazione richiede **prima** un perimetro funzionale esplicito
 (scopo, API, ingressi, effetti, controlli, limiti, test e passaggio
 automatico `main.py`) con nuovo semaforo verde dell'utente
@@ -188,3 +188,27 @@ e DIAG-SCOPE-001. SYNC-001 resta storica/superseded.
   GGUF metadata payload, Hugging Face, CUDA e inferenza non approvati.
   Prossima porzione soltanto dopo GGUF-MANUAL-001 positivo e nuovo
   perimetro esplicitamente approvato (MIG-FLOW-001/002).
+
+## Chiusura GGUF-MANUAL-001 (16 ottobre 2026)
+
+- L'utente ha comunicato il fast-forward fino a main `ab81696dc93bc5d71a208cbcdc9a6f714b462fa9`,
+  il controllo del commit HEAD e l'esecuzione personale di
+  `.venv/bin/python main.py` senza argomenti; ha poi confermato
+  esplicitamente **esito positivo**.
+- Ordine verificato: PY -> DEP (pip minimo) -> DIAG -> HW CPU/RAM ->
+  NVIDIA -> CAT -> GGUF; completamento regolare.
+  Catalogo e GGUF `not_configured` sono stati validi.
+- Accettazione limitata al caso di catalogo assente: non dimostra
+  l'ispezione di un file GGUF reale, la verifica dei pesi,
+  la compatibilita' con CUDA o la disponibilita' di inferenza.
+- Stati: implementation complete; verification passed (CI sintetica);
+  integration merged (PR #44); **GGUF-MANUAL-001 passed/complete**.
+  Le precedenti note pending sono storiche e sostituite da questa voce.
+- `local_sync: verified_on_tested_revision` per `ab81696dc93bc5d71a208cbcdc9a6f714b462fa9`
+  comunicato dall'utente; `local_sync: pending_docs_fast_forward`
+  per questa successiva modifica di sola documentazione.
+  Il checkout legacy resta intatto.
+- DATA-001: esclusi dal Git inventari reali, log, output grezzi,
+  manifest e modelli; registrati solo esito e commit.
+- Nessuna successiva migrazione e' approvata. Occorre nuovo perimetro
+  e semaforo verde (MIG-FLOW-001).

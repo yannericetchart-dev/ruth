@@ -47,3 +47,14 @@
   completo di Ruth dopo sincronizzazione sicura del checkout.
   Nessuna migrazione successiva prima della conferma.
 - Dati macchina/manifest e pesi del modello rimangono esclusi da Git.
+
+## GGUF-MANUAL-001: accettazione (16 ottobre 2026)
+
+- Conferma positiva esplicita dell'utente dopo esecuzione personale
+  dell'ingresso Ruth senza argomenti sul main `ab81696dc93bc5d71a208cbcdc9a6f714b462fa9`.
+- Le sette fasi si sono concluse regolarmente; GGUF e catalogo
+  non configurati costituiscono skip valido, non lettura di GGUF reale.
+- Stato del perimetro GGUF-001: complete, verification passed
+  (fixture sintetiche), integration merged, manual acceptance passed.
+  Le precedenti voci pendenti o candidate sono storiche.
+- Nessuna nuova migrazione autorizzata; dati reali esclusi (DATA-001).
