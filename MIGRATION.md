@@ -61,3 +61,16 @@ virtualenv isolato. Non sono pubblicati dati di macchina o log (DATA-001).
 Il commit HEAD del checkout provato non e' ancora stato comunicato; la
 registrazione dell'accettazione sulla revisione rimane in verifica.
 Il vecchio checkout locale con modifiche e' conservato senza interventi.
+
+## Chiusura PY-MANUAL-001 (16 ottobre 2026)
+
+- Accettazione positiva **confermata** dall'utente dopo esecuzione reale
+  dell'ingresso ufficiale `python3 main.py`.
+- SHA del checkout provato: `ef4654af8ab106ef194af254d9f3884e5cabb6b0`, verificato mediante
+  `git rev-parse HEAD`. Il commit include la migrazione gia' integrata
+  in main (PR #8).
+- Stato conclusivo: PY-001 complete, verification passed, integration merged,
+  manual acceptance passed. Gli appunti precedenti che parlavano di SHA
+  non noto o collaudo pendente sono storici e ora sostituiti da questa voce.
+- La prossima porzione richiede descrizione funzionale e nuovo semaforo verde.
+  Nessun dato macchina o log incluso (DATA-001).
