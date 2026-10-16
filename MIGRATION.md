@@ -318,3 +318,15 @@ GPU-MANUAL-001 richiesta solo dopo main, secondo MIG-FLOW-002.
   di `main.py` senza argomenti sul checkout principale sincronizzato.
 - Le note di candidato non verificato/non integrato sono storiche e
   sostituite dalla presente registrazione. DATA-001 e REMOTE-001 invariati.
+
+## GGUF-MANUAL-001: chiusura collaudo (16 ottobre 2026)
+
+- L'utente ha verificato HEAD ed eseguito personalmente Ruth senza
+  argomenti da main `ab81696dc93bc5d71a208cbcdc9a6f714b462fa9`;
+  successivamente ha confermato esplicitamente esito positivo.
+- PY -> DEP -> DIAG -> HW -> NVIDIA -> CAT -> GGUF completate.
+  Catalogo e intestazioni GGUF `not_configured` sono risultati validi.
+  Questa prova non comprende un file GGUF reale.
+- GGUF-001 completa, CI superata, integrata e accettata; note di
+  attesa precedenti mantenute come storia, non come stato corrente.
+- Nessun nuovo componente approvato. DATA-001 e REMOTE-001 invariati.
