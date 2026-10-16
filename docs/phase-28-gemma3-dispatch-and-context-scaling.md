@@ -2095,8 +2095,11 @@ BF16/F16 Flash ON numeric comparison has
 since been executed successfully and is
 recorded in the next section. The
 **controlled** BF16/BF16 Flash ON→
-BF16/F16 Flash ON comparison remains
-**pending**. These offline checks do
+BF16/F16 Flash ON comparison has now
+**completed successfully** after
+SHA256-based baseline identification;
+see the final controlled numerical
+report below. These offline checks do
 not execute GPU inference. Existing
 logits artifacts sample only the last
 prefill and last decode rows and cannot
@@ -2184,26 +2187,156 @@ and full-vocabulary logits differences
 describe these **two** positions
 only, not full-token fidelity.
 
-**Current Phase28 status:** 16/16
-native GPU experiments have been
-completed. The ctx2048 secondary
-numeric check is complete.
-The **single controlled ctx2048
-BF16/BF16 Flash ON vs BF16/F16 Flash
-ON offline comparison remains pending**
-to finish the planned four-context
-V-precision numerical series.
+**Historical Phase28 status at this
+secondary comparison:** the native
+GPU compatibility matrix was 16/16,
+and the ctx2048 secondary numeric
+check was complete. The controlled
+BF16/BF16→BF16/F16 Flash ON comparison
+was pending then. It has subsequently
+**succeeded using a baseline chosen
+by the original verified SHA256**;
+see the final numerical report below.
+No new GPU inference was necessary.
+Neither comparison promotes a
+production cache policy or proves
+per-run native kernel dispatch.
 
-The existing ctx2048 controlled
-comparison command, shown in the
-previous section, should be run
-with the existing BF16/BF16 Flash
-ON baseline artifact found by a
-unique-match glob. No new native
-inference is needed. Do not
-promote a production cache policy
-or claim verified native dispatch
-from this comparison.
+## Final controlled Phase28 numerical comparison — BF16/BF16 vs BF16/F16, Flash ON, n_ctx=2048
+
+The user attempted the previously documented
+unique-glob baseline comparison, which **safely
+stopped** because **four** files matched
+`ctx-2048_flash-on_k-BF16_v-BF16_*.npz`.
+No compare ran on an arbitrarily chosen
+file, and no artifacts were removed.
+A subsequently executed **read-only
+SHA256-identity selection** found a baseline
+matching the original reference SHA256.
+
+**Exact artifact identities:**
+
+- Baseline BF16/BF16 Flash ON:
+  `.ruth-build/phase28/gemma-3-1b-it/ctx-2048_flash-on_k-BF16_v-BF16_6yd53en2.npz`.
+  SHA256:
+  `5629cf4d0e7437e12af1ec9412309e60e76192d85c5e7a822dcd4c7695e613d0`.
+- Candidate BF16/F16 Flash ON:
+  `.ruth-build/phase28/gemma-3-1b-it/ctx-2048_flash-on_k-BF16_v-F16_i3bqojc7.npz`.
+  SHA256:
+  `1f1b8042bdfc6b9692075d4103379658348a534007b2c43e1b4726388be3b729`.
+
+The comparator returned
+`status=full_logits_numeric_comparison`,
+`same_teacher_forced_tokens=true`,
+`n_ctx=2048`, `vocabulary=262144`,
+`top1_match_fraction=1.0`,
+`reference_precision_is_ground_truth=false`,
+`native_kernel_dispatch_verified=false`,
+`production_qualified=false`.
+
+In this controlled pair, K=BF16 and
+Flash ON were fixed, and the stored
+V cache precision changed BF16→F16.
+Backend kernel selection, intermediate
+conversions and other implementation
+effects are not independently isolated
+by the compared logits snapshots.
+
+### Observed numeric values, ctx2048
+
+| Metric | Recorded result |
+|---|---:|
+| Jensen–Shannon mean, nats | 2.7799827065695626e-07 |
+| KL baseline→candidate mean, nats | 1.1075276518893764e-06 |
+| KL candidate→baseline mean, nats | 1.1166228110022716e-06 |
+| RMS logit difference | 0.02535334087375546 |
+| Mean absolute logit difference | 0.020152621054933206 |
+| Max absolute logit difference | 0.11919784545898438 |
+| Top-1 agreement | 2/2 sampled positions |
+
+| Sampled position | KL baseline→candidate, nats | Max absolute logit difference | Top-1 equal |
+|---|---:|---:|---|
+| Last prefill, index 0 | 1.8605256934419658e-06 | 0.11919784545898438 | true |
+| Last decode, index 1 | 3.5452961033678676e-07 | 0.09848880767822266 | true |
+
+Prefill KL is about 5.25× decode KL
+at these **two** sampled positions,
+not necessarily elsewhere. The full
+vocabulary has 262144 output classes;
+the snapshots each record only two
+token positions (last prefill and
+last teacher-forced decode). Small
+KL/JS and equal Top-1 2/2 **do
+not** establish whole-sequence
+numerical equivalence. Raw logits
+are demonstrably non-identical.
+
+### Completed four-context controlled V-precision numerical series
+
+| Context | JS mean (nats) | KL baseline→candidate mean (nats) | RMS logit diff | Max abs logit diff | Top-1 |
+|---:|---:|---:|---:|---:|---|
+| 256 | 8.647140722172348e-07 | 3.450529555342461e-06 | 0.012705533198433759 | 0.062470436096191406 | 2/2 |
+| 512 | 1.6112830324160837e-07 | 6.386638597335922e-07 | 0.019654959610093344 | 0.10388755798339844 | 2/2 |
+| 1024 | 4.4264470887242736e-08 | 1.7772785404097928e-07 | 0.028662088104959633 | 0.13928604125976562 | 2/2 |
+| 2048 | 2.7799827065695626e-07 | 1.1075276518893764e-06 | 0.02535334087375546 | 0.11919784545898438 | 2/2 |
+
+All **eight sampled positions (8/8)**
+across these four independent
+contexts have matching Top-1 tokens.
+This is *two* recorded positions
+per context, not every prefill
+or decode position, and not
+free-running autoregressive generation.
+
+Across the four contexts, KL/JS
+declines from 256 through 1024
+then rises at 2048; raw-logit RMS
+increases from 256 through 1024
+then declines at 2048. Neither
+behavior is monotonic across all
+four contexts. Prompts and sampled
+positions differ with context,
+so cross-context trends cannot
+be causally attributed to only
+increased context capacity.
+
+The separate ctx2048 **performance**
+result had mixed-on slower than
+f32-off, but that performance
+comparison changes K, V and Flash
+simultaneously. It is not an
+isolated BF16→F16 cache V
+performance effect or a production
+policy decision.
+
+### Final experimental completion status
+
+- **16/16** Phase28 native CUDA
+  candidate/context cases executed
+  successfully with full GPU offload.
+- **4/4** controlled same-context
+  BF16/BF16 vs BF16/F16 Flash ON
+  numerical comparisons completed,
+  with `same_teacher_forced_tokens=true`.
+- Secondary F32/F32 OFF vs
+  BF16/F16 ON at ctx2048 completed,
+  but confounded by simultaneous
+  K/V/Flash changes.
+- `production_qualified=false`;
+  per-run kernel dispatch verification
+  and free-generation numerical
+  equivalence not claimed.
+
+Production KV selection still requires
+repeatable workload/temperature/clock
+controlled performance measurements,
+long-sequence logits and task-quality
+evaluation, native dispatch verification
+and full-GPU/no-CPU-fallback gates.
+No additional native inference, artifact
+deletion, GGUF modification or
+production configuration change was
+performed by this offline check.
 
 ## Promotion gate
 
