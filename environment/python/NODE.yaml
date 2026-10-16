@@ -21,13 +21,13 @@
   "blocked_by": [],
   "depends_on": [],
   "api": [
-    "inspect(project_root: Path, *, prefix=None, base_prefix=None, interpreter=None, python_version=None) -> PythonEnvironment [implementata e verificata in environment/main; pronta per main]"
+    "inspect(project_root: Path, *, prefix=None, base_prefix=None, interpreter=None, python_version=None) -> PythonEnvironment [implementata e integrata in main]"
   ],
   "tasks": [
     {
       "id": "PY-001",
       "state": "complete",
-      "description": "Ispezione Python e ingresso Ruth revisionati, verificati e integrati in environment/main tramite PR #3."
+      "description": "Ispezione Python e ingresso Ruth implementati, revisionati, verificati e integrati in main tramite PR #8."
     },
     {
       "id": "PY-REV-001",
@@ -37,7 +37,7 @@
     {
       "id": "PY-PROMOTE-001",
       "state": "complete",
-      "description": "PR #2 in environment/python/main e PR #3 promossa a environment/main; resta main finale."
+      "description": "Prima promozione nella foglia environment/python/main tramite PR #2, preservata nella storia."
     },
     {
       "id": "PY-SCOPE-001",
@@ -46,9 +46,19 @@
     },
     {
       "id": "PY-MANUAL-001",
-      "state": "planned",
-      "description": "Dopo integrazione in main: esecuzione reale dal punto d ingresso con messaggi a terminale e collaudo locale personale dell utente; la migrazione successiva attende la sua conferma positiva (MIG-FLOW-002)."
+      "state": "active",
+      "description": "In attesa di sincronizzazione locale sicura e collaudo personale di python3 main.py sulla revisione main; conferma esplicita necessaria prima di migrazione successiva."
+    },
+    {
+      "id": "PY-PROMOTE-002",
+      "state": "complete",
+      "description": "Promozione in environment/main completata con PR #3, merge fd61723874052053f38446ee82eca954870804e1."
+    },
+    {
+      "id": "PY-PROMOTE-003",
+      "state": "complete",
+      "description": "Promozione in main completata con PR #8, merge ce1b0bb47b4ae4ad0da40f3f83c964b66015680f."
     }
   ],
-  "verification_scope": "GitHub Actions run 38885972247 su 5fc816407f5c8873fd2ed39baa9d5293a9810c73: test sintetici isolamento Python, test ingresso Ruth, test mappe e maps --check; nessuna prova nativa hardware"
+  "verification_scope": "PY-001: GitHub Actions run 38885972247 e run 38886317198 conclusi con successo (test Python su fixture sintetiche, API pubbliche, test ingresso Ruth, test mappe e tools/maps.py --check). Non verifica GPU, pacchetti nativi o hardware; collaudo personale PY-MANUAL-001 pendente."
 }

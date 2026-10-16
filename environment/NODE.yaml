@@ -14,24 +14,24 @@
   "implementation": "partial",
   "maturity": "experimental",
   "verification": "passed",
-  "integration": "not_merged",
+  "integration": "merged",
   "flags": [
     "in_scope"
   ],
   "blocked_by": [],
   "depends_on": [],
   "api": [
-    "inspect(project_root: Path) -> PythonEnvironment [verificata in environment/main; non integrata in main]",
+    "inspect(project_root: Path) -> PythonEnvironment [integrata in main]",
     "plan(requirements) -> EnvironmentPlan [proposta]",
     "PythonEnvironment: project_root: str; interpreter: str; python_version: tuple[int, ...]; interpreter_in_project_venv: bool; venv_status: str; reasons: tuple[str, ...] [contratto immutabile della PR #2]",
-    "PythonEnvironment.to_dict() -> dict [implementata in environment/main; dati transitori, salvataggi solo locali]"
+    "PythonEnvironment.to_dict() -> dict [implementata in main; dati transitori, salvataggi solo locali]"
   ],
   "tasks": [
     {
       "id": "ENV-001",
-      "state": "active",
-      "description": "PY-001 integrata in environment/main tramite PR #3, verificata su GitHub; resta la promozione a main."
+      "state": "complete",
+      "description": "Porzione PY-001 testata e promossa da environment/python/main a environment/main (PR #3) e main (PR #8)."
     }
   ],
-  "verification_scope": "GitHub Actions run 38885972247 su 5fc816407f5c8873fd2ed39baa9d5293a9810c73: test sintetici isolamento Python, test ingresso Ruth, test mappe e maps --check; nessuna prova nativa hardware"
+  "verification_scope": "PY-001: GitHub Actions run 38885972247 e run 38886317198 conclusi con successo (test Python su fixture sintetiche, API pubbliche, test ingresso Ruth, test mappe e tools/maps.py --check). Non verifica GPU, pacchetti nativi o hardware; collaudo personale PY-MANUAL-001 pendente."
 }
