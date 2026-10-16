@@ -1015,7 +1015,94 @@ Lo strumento non pubblica indirizzi grezzi.
 I test sul checkout dell'utente e il report
 dello schema non sono ancora stati eseguiti.
 
-## 16. Riferimenti interni
+## 16. Esito reale dello schema Nsight e significato di virtualAddress
+
+L'utente ha eseguito sul proprio host
+`gemma3_phase28_nsight_schema_audit --candidate bf16-on --n-ctx 2048`
+sulla traccia node-level approvata.
+Sono risultate **48 tabelle SQLite**,
+`schema_survey_verified=true`,
+`expected_flash_consistent_with_kernel_names=true` e
+`required_activity_tables_present=true`.
+
+Nello schema esistente delle tabelle primarie:
+
+- `CUPTI_ACTIVITY_KIND_KERNEL`: `correlationId`,
+  `graphId`, `graphNodeId`, `streamId`, timestamp e
+  configurazione dei lanci; **nessun** campo sorgente/destinazione
+  degli operandi GEMM;
+- `CUPTI_ACTIVITY_KIND_RUNTIME`: `correlationId`,
+  `nameId`, timestamp e thread ID; **nessuna**
+  colonna candidata per parametri delle API;
+- `NVTX_EVENTS`: tempi, tag e payload generici;
+  nessuna relazione tra operandi GEMM;
+- `explicit_graph_edge_table_candidates=[]`:
+  nessuna tabella identificata con archi
+  espliciti di dipendenza del DAG.
+
+La sola colonna candidata a indirizzo era
+`CUPTI_ACTIVITY_KIND_MEMCPY.virtualAddress`.
+Secondo lo **schema SQLite NVIDIA Nsight Systems** è il
+**virtual base address delle pagine trasferite**,
+non un campo A/B di GEMM e **non** un puntatore
+dei parametri passati a cuBLAS. Fonte ufficiale:
+[Post-Collection Analysis Guide, schema `CUPTI_ACTIVITY_KIND_MEMCPY`](https://docs.nvidia.com/nsight-systems/AnalysisGuide/#sqlite-schema).
+Il campo può aiutare a diagnosticare eventi di trasferimento,
+ma non è valido usarlo come identità del buffer prodotto
+dal kernel `convert_unary` senza altre evidenze indipendenti.
+
+La presenza di `graphNodeId` e `correlationId`
+documenta gli **eventi registrati**, non l'effettiva
+dipendenza tra i due kernel. `CUDA_GRAPH_NODE_EVENTS`
+(se presente) documenta eventi dei nodi e può includere
+`originalGraphNodeId` per nodi clonati; **non
+costituisce una tabella di archi DAG**.
+
+### 16.1 Metadati ausiliari, senza lettura degli indirizzi
+
+L'audit è stato esteso per restituire
+`auxiliary_event_table_metadata` con **solo presenza,
+conteggio delle righe e campi identificativi**
+per quattro tabelle, quando presenti:
+`CUBLAS_EVENTS`, `CUDA_GRAPH_NODE_EVENTS`,
+`CUDA_GRAPH_EVENTS`,
+`CUPTI_ACTIVITY_KIND_MEMCPY`.
+Non estrae alcun valore di `virtualAddress`,
+buffer, payload NVTX o parametri di cuBLAS;
+non modifica il database.
+
+```bash
+cd ~/Dev/ruth-model-profiling
+git pull --ff-only origin feat/gemma3-phase28-context-dispatch
+
+.venv/bin/python -m unittest \
+  tests.test_phase28_gemma3_nsight_schema_audit -v
+
+.venv/bin/python -m ruth_runtime.gemma3_phase28_nsight_schema_audit \
+  --sqlite .ruth-build/phase28/bf16-on-ctx2048-nvtx3-nodes.sqlite \
+  --candidate bf16-on --n-ctx 2048
+```
+
+Questi **sei test** e i nuovi conteggi
+non sono ancora stati eseguiti sul checkout
+locale dell'utente. Non attribuire loro risultati
+prima della verifica.
+
+**Decisione:** la traccia disponibile è sufficiente
+per la correlazione NVTX/CUPTI per range/replay,
+ma **non** dimostra l'identità A/B di ciascuna
+delle 17.184 GEMM BF16. Evitare ulteriori pairing
+ordinali di timestamp: un avanzamento richiederà
+evidenze sui parametri/indirizzi degli operandi
+o sugli archi del DAG, previa autorizzazione
+di una strategia sperimentale dedicata.
+Rimangono falsi:
+`observed_cast_gemm_dependency_verified`,
+`cublas_operand_pointer_identity_verified`,
+`conversion_elimination_safe_verified`,
+`production_qualified`.
+
+## 17. Riferimenti interni
 
 - [Fase 27 — precisione e benchmark](phase-27-gemma3-precision-and-kernel-benchmark.md).
 - [Fase 28 — prove CUDA/NVTX e contesti](phase-28-gemma3-dispatch-and-context-scaling.md).
