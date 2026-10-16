@@ -23,7 +23,7 @@ Ambito verifica: CI GitHub Actions run 38900998138: 14 Python, 12 dipendenze, 14
 
 ## Componenti (ordine locale, ID stabili)
 
-1. [CORE: Contratti e orchestrazione](runtime/ROADMAP.md) — active; partial; stale.
+1. [CORE: Contratti e orchestrazione](runtime/ROADMAP.md) — active; partial; passed.
 2. [ENV: Ambiente](environment/ROADMAP.md) — active; partial; passed.
 3. [HW: Hardware](hardware/ROADMAP.md) — inactive; skeleton; not_run.
 4. [MODEL: Modelli](models/ROADMAP.md) — inactive; skeleton; not_run.
