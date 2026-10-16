@@ -10,7 +10,7 @@ in quella revisione. PY-PROMOTE-001 completata; il codice non e' ancora
 integrato in environment/main.
 
 Revisione funzionale [PY-SCOPE-001](MIGRATION_SCOPE.md): semaforo verde
-dell'utente in attesa. Dopo il verde, completare autonomamente le promozioni
+concesso dall'utente il 16 ottobre 2026. Dopo il verde, completare autonomamente le promozioni
 a environment/main e main secondo MIG-FLOW-001, senza conferme a ogni merge.
 
 Prima di passare alla migrazione successiva, PY-MANUAL-001 richiede che
@@ -20,3 +20,10 @@ Collegamento al punto d'ingresso e collaudo non ancora realizzati.
 Questo branch main contiene lo scaffold, senza il codice della porzione.
 Vedere il
 [checkpoint della porzione](https://github.com/yannericetchart-dev/ruth/blob/b80520ad903ff18f93398725ea95cd91f51da5d8/environment/python/CHECKPOINT.md).
+
+## PY-PROMOTE-002: integrazione in environment/main (16 ottobre 2026)
+
+- PR #3 integrata in environment/main al merge `fd61723874052053f38446ee82eca954870804e1`.
+- Verifiche remote sulla revisione candidata `5fc816407f5c8873fd2ed39baa9d5293a9810c73`: GitHub Actions run `38885972247`, esito positivo (suite Python e test root, mappe coerenti, nessun file tracciato generato).
+- API Python, catena environment/runtime e main.py integrate in environment/main; in main resta da promuovere. Nessun dato utente o log versionato.
+- Prossimo passo: PR environment/main -> main, verifica sul commit effettivo e aggiornamento dei nodi/checkpoint fino alla radice. `local_sync: pending_final_merge`, collaudo PY-MANUAL-001 non eseguito.

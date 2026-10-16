@@ -6,3 +6,7 @@ Nodo responsabile: [PY](../NODE.yaml). Ripresa: [START_HERE](../../../START_HERE
 
 Contenuto riservato a: implementazioni eseguibili.
 
+## File
+
+- [__init__.py](__init__.py)
+- [inspection.py](inspection.py)

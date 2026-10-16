@@ -54,7 +54,7 @@ environment/main: la prima promozione al branch canonico e' invece completata.
 
 Passaggio corrente: revisione funzionale del perimetro
 [PY-SCOPE-001](environment/python/MIGRATION_SCOPE.md) da parte dell'utente.
-Semaforo verde su questa descrizione: **concesso dall'utente il 16 ottobre 2026**. Il codice del punto d'ingresso e' candidato in PR #3; le suite nuove e le promozioni fino a main non sono ancora completate.
+Semaforo verde PY-SCOPE-001: **concesso il 16 ottobre 2026**. PR #3 aggiornata sul protocollo REMOTE-001 e in verifica; promozioni fino a main e PY-MANUAL-001 non completate.
 
 Secondo REMOTE-001, completare direttamente su GitHub le promozioni da
 environment/python/main a environment/main e quindi main, con test
@@ -111,3 +111,10 @@ Le altre porzioni rimangono pianificate; Kaggle resta inattivo.
 - Nessuna misurazione nativa e' certificata da questo checkpoint.
 - Branch e commit delle attivita' successive saranno indicati nei checkpoint
   relativi; i riferimenti di revisione sono Git, non copie di dati di host.
+
+## PY-PROMOTE-002: integrazione in environment/main (16 ottobre 2026)
+
+- PR #3 integrata in environment/main al merge `fd61723874052053f38446ee82eca954870804e1`.
+- Verifiche remote sulla revisione candidata `5fc816407f5c8873fd2ed39baa9d5293a9810c73`: GitHub Actions run `38885972247`, esito positivo (suite Python e test root, mappe coerenti, nessun file tracciato generato).
+- API Python, catena environment/runtime e main.py integrate in environment/main; in main resta da promuovere. Nessun dato utente o log versionato.
+- Prossimo passo: PR environment/main -> main, verifica sul commit effettivo e aggiornamento dei nodi/checkpoint fino alla radice. `local_sync: pending_final_merge`, collaudo PY-MANUAL-001 non eseguito.

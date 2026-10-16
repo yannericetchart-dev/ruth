@@ -13,3 +13,4 @@ La presenza dello scaffold non implica una implementazione runtime.
 ## File
 
 - [NODE.yaml](NODE.yaml)
+- [__init__.py](__init__.py)

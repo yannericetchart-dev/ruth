@@ -11,9 +11,9 @@
     "status": "planned"
   },
   "development": "active",
-  "implementation": "skeleton",
-  "maturity": null,
-  "verification": "not_run",
+  "implementation": "partial",
+  "maturity": "experimental",
+  "verification": "passed",
   "integration": "not_merged",
   "flags": [
     "in_scope"
@@ -28,13 +28,14 @@
     "chat"
   ],
   "api": [
-    "inspect_environment(project_root: Path) -> PythonEnvironment [proposta; implementata in environment/python/main, non integrata in main]"
+    "inspect_environment(project_root: Path) -> PythonEnvironment [verificata in environment/main; non ancora integrata in main]"
   ],
   "tasks": [
     {
       "id": "CORE-001",
       "state": "active",
-      "description": "API comune Python disponibile in environment/python/main; ancora da promuovere ai branch superiori."
+      "description": "API comune Python verificata e disponibile in environment/main; promozione a main in corso."
     }
-  ]
+  ],
+  "verification_scope": "GitHub Actions run 38885972247 su 5fc816407f5c8873fd2ed39baa9d5293a9810c73: test sintetici isolamento Python, test ingresso Ruth, test mappe e maps --check; nessuna prova nativa hardware"
 }

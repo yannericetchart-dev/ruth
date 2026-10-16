@@ -6,10 +6,10 @@ Nodo responsabile: [ENV](NODE.yaml). Ripresa: [START_HERE](../START_HERE.md).
 
 ## Contratto dichiarato
 
-- `inspect(project_root: Path) -> PythonEnvironment [proposta; implementata in environment/python/main, non integrata in main]`
+- `inspect(project_root: Path) -> PythonEnvironment [verificata in environment/main; non integrata in main]`
 - `plan(requirements) -> EnvironmentPlan [proposta]`
 - `PythonEnvironment: project_root: str; interpreter: str; python_version: tuple[int, ...]; interpreter_in_project_venv: bool; venv_status: str; reasons: tuple[str, ...] [contratto immutabile della PR #2]`
-- `PythonEnvironment.to_dict() -> dict [proposta; dati transitori, salvataggi solo locali]`
+- `PythonEnvironment.to_dict() -> dict [implementata in environment/main; dati transitori, salvataggi solo locali]`
 
 Dipendenze: nessuna.
 

@@ -11,28 +11,27 @@
     "status": "present"
   },
   "development": "active",
-  "implementation": "skeleton",
-  "maturity": null,
-  "verification": "not_run",
+  "implementation": "partial",
+  "maturity": "experimental",
+  "verification": "passed",
   "integration": "not_merged",
   "flags": [
     "in_scope"
   ],
-  "blocked_by": [
-    "PY-SCOPE-001"
-  ],
+  "blocked_by": [],
   "depends_on": [],
   "api": [
-    "inspect(project_root: Path) -> PythonEnvironment [proposta; implementata in environment/python/main, non integrata in main]",
+    "inspect(project_root: Path) -> PythonEnvironment [verificata in environment/main; non integrata in main]",
     "plan(requirements) -> EnvironmentPlan [proposta]",
     "PythonEnvironment: project_root: str; interpreter: str; python_version: tuple[int, ...]; interpreter_in_project_venv: bool; venv_status: str; reasons: tuple[str, ...] [contratto immutabile della PR #2]",
-    "PythonEnvironment.to_dict() -> dict [proposta; dati transitori, salvataggi solo locali]"
+    "PythonEnvironment.to_dict() -> dict [implementata in environment/main; dati transitori, salvataggi solo locali]"
   ],
   "tasks": [
     {
       "id": "ENV-001",
-      "state": "blocked",
-      "description": "Attendere il verde su PY-SCOPE-001; poi promuovere la porzione da environment/python/main fino a main senza ulteriori conferme intermedie."
+      "state": "active",
+      "description": "PY-001 integrata in environment/main tramite PR #3, verificata su GitHub; resta la promozione a main."
     }
-  ]
+  ],
+  "verification_scope": "GitHub Actions run 38885972247 su 5fc816407f5c8873fd2ed39baa9d5293a9810c73: test sintetici isolamento Python, test ingresso Ruth, test mappe e maps --check; nessuna prova nativa hardware"
 }

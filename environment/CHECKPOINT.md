@@ -10,7 +10,7 @@ PY-REV-001 completata: configurazioni ripetute malformate rifiutate e
 catena reale delle API verificata. PY-PROMOTE-001 completata: PR #2 integrata
 in environment/python/main.
 
-Revisione funzionale PY-SCOPE-001 in attesa del verde dell'utente: vedere
+Revisione funzionale PY-SCOPE-001 approvata dall'utente il 16 ottobre 2026: vedere
 [descrizione delle funzioni](python/MIGRATION_SCOPE.md). Dopo il verde,
 completare le promozioni a environment/main e main senza ulteriori conferme
 intermedie; fermarsi per dubbi o decisioni da chiarire (MIG-FLOW-001).
@@ -23,3 +23,10 @@ qualunque migrazione successiva. Il collegamento e il collaudo restano da fare.
 Esaminare il checkpoint Python nella revisione di lavoro prima della
 promozione. Le API indicate come proposte nelle mappe main restano tali
 finche il codice non e' stato integrato lungo i branch padri.
+
+## PY-PROMOTE-002: integrazione in environment/main (16 ottobre 2026)
+
+- PR #3 integrata in environment/main al merge `fd61723874052053f38446ee82eca954870804e1`.
+- Verifiche remote sulla revisione candidata `5fc816407f5c8873fd2ed39baa9d5293a9810c73`: GitHub Actions run `38885972247`, esito positivo (suite Python e test root, mappe coerenti, nessun file tracciato generato).
+- API Python, catena environment/runtime e main.py integrate in environment/main; in main resta da promuovere. Nessun dato utente o log versionato.
+- Prossimo passo: PR environment/main -> main, verifica sul commit effettivo e aggiornamento dei nodi/checkpoint fino alla radice. `local_sync: pending_final_merge`, collaudo PY-MANUAL-001 non eseguito.

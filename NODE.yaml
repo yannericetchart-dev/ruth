@@ -11,19 +11,17 @@
     "status": "present"
   },
   "development": "active",
-  "implementation": "skeleton",
-  "maturity": null,
-  "verification": "not_run",
+  "implementation": "partial",
+  "maturity": "experimental",
+  "verification": "passed",
   "integration": "merged",
   "flags": [
     "in_scope"
   ],
-  "blocked_by": [
-    "PY-SCOPE-001"
-  ],
+  "blocked_by": [],
   "depends_on": [],
   "api": [
-    "runtime.inspect_environment(project_root: Path) -> PythonEnvironment [proposta; implementata in environment/python/main, non integrata in main]"
+    "runtime.inspect_environment(project_root: Path) -> PythonEnvironment [implementata e verificata in environment/main; ancora non integrata in main]"
   ],
   "tasks": [
     {
@@ -38,8 +36,9 @@
     },
     {
       "id": "MIG-001",
-      "state": "blocked",
-      "description": "PY-001 gia in environment/python/main. In attesa del verde su PY-SCOPE-001; poi completare promozioni fino a main secondo MIG-FLOW-001."
+      "state": "active",
+      "description": "PY-001 integrata in environment/main tramite PR #3; completare la promozione al main di progetto e il collaudo manuale."
     }
-  ]
+  ],
+  "verification_scope": "GitHub Actions run 38885972247 su 5fc816407f5c8873fd2ed39baa9d5293a9810c73: test sintetici isolamento Python, test ingresso Ruth, test mappe e maps --check; nessuna prova nativa hardware"
 }

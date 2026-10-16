@@ -49,6 +49,8 @@ def load_nodes(root: Path, dirs: list[str]) -> dict:
                 raise ValueError(f"{directory}: invalid {key}")
         if node["branch"]["status"] not in {"planned", "present", "archived"}:
             raise ValueError(f"{directory}: invalid branch status")
+        if node['verification'] == 'passed' and not node.get('verification_scope'):
+            raise ValueError(f"{directory}: verification scope is required")
         if "future" in node["flags"] and node["development"] == "active":
             raise ValueError(f"{directory}: future node must be explicitly activated")
         for task in node["tasks"]:
@@ -122,6 +124,8 @@ def render(root: Path) -> dict[str, str]:
             roadmap += f"Sviluppo: **{node['development']}**; codice: **{node['implementation']}**; "
             roadmap += f"maturita: {node['maturity'] or 'non assegnata'}; verifica: {node['verification']}; integrazione: {node['integration'] or 'sconosciuta'}.\n\n"
             roadmap += f"Flag: {', '.join(node['flags']) or 'nessuno'}. Blocchi: {', '.join(node['blocked_by']) or 'nessuno registrato'}.\n\n"
+            if node.get('verification_scope'):
+                roadmap += f"Ambito verifica: {node['verification_scope']}\n\n"
             roadmap += "## Attivita locali\n\n"
             roadmap += "\n".join(f"{i}. `{t['id']}` [{t['state']}] {t['description']}" for i, t in enumerate(node['tasks'], 1)) + "\n\n"
             if children:

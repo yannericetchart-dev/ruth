@@ -1,6 +1,6 @@
 # PY-SCOPE-001: ispezione strutturale dell'ambiente Python
 
-Stato della revisione funzionale: in attesa del semaforo verde dell'utente.
+Stato della revisione funzionale: approvata dall'utente il 16 ottobre 2026, incluso l'ingresso ufficiale.
 Porzione: PY-001. Regola di esecuzione: MIG-FLOW-001.
 
 Il codice e' gia implementato in environment/python/main alla revisione
@@ -80,3 +80,7 @@ esplicitamente l'esito positivo prima di iniziare la migrazione successiva.
 Registrare revisione provata e stato del collaudo nel checkpoint; mantenere
 log e risultati reali esclusivamente locali. PY-MANUAL-001 e' pianificata;
 non e' stato eseguito o confermato un collaudo personale.
+
+Stato implementazione dell'ingresso: candidato in PR #3, non ancora integrato in main. Verifica sulla revisione remota e collaudo utente ancora necessari.
+
+Verifica: GitHub Actions run 38885972247 superato; primo merge in environment/main `fd61723874052053f38446ee82eca954870804e1`. Promozione in main e collaudo personale ancora pendenti.

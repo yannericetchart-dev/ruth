@@ -11,25 +11,23 @@
     "status": "present"
   },
   "development": "active",
-  "implementation": "skeleton",
-  "maturity": null,
-  "verification": "not_run",
-  "integration": "not_merged",
+  "implementation": "partial",
+  "maturity": "experimental",
+  "verification": "passed",
+  "integration": "merged",
   "flags": [
     "in_scope"
   ],
-  "blocked_by": [
-    "PY-SCOPE-001"
-  ],
+  "blocked_by": [],
   "depends_on": [],
   "api": [
-    "inspect(project_root) -> PythonEnvironment [proposta in main; implementata in environment/python/main]"
+    "inspect(project_root: Path, *, prefix=None, base_prefix=None, interpreter=None, python_version=None) -> PythonEnvironment [implementata e verificata in environment/main; pronta per main]"
   ],
   "tasks": [
     {
       "id": "PY-001",
-      "state": "blocked",
-      "description": "PY-001 gia nel branch canonico. Revisione funzionale PY-SCOPE-001 prima delle promozioni restanti fino a main."
+      "state": "complete",
+      "description": "Ispezione Python e ingresso Ruth revisionati, verificati e integrati in environment/main tramite PR #3."
     },
     {
       "id": "PY-REV-001",
@@ -39,17 +37,18 @@
     {
       "id": "PY-PROMOTE-001",
       "state": "complete",
-      "description": "PR #2 integrata nel branch canonico environment/python/main; albero del merge identico alla revisione verificata. Da promuovere a environment/main."
+      "description": "PR #2 in environment/python/main e PR #3 promossa a environment/main; resta main finale."
     },
     {
       "id": "PY-SCOPE-001",
-      "state": "active",
-      "description": "Descrizione delle funzioni sottoposta all utente in MIGRATION_SCOPE.md; semaforo verde in attesa."
+      "state": "complete",
+      "description": "Semaforo verde esplicito dell'utente del 16 ottobre 2026, incluso ingresso Ruth."
     },
     {
       "id": "PY-MANUAL-001",
       "state": "planned",
       "description": "Dopo integrazione in main: esecuzione reale dal punto d ingresso con messaggi a terminale e collaudo locale personale dell utente; la migrazione successiva attende la sua conferma positiva (MIG-FLOW-002)."
     }
-  ]
+  ],
+  "verification_scope": "GitHub Actions run 38885972247 su 5fc816407f5c8873fd2ed39baa9d5293a9810c73: test sintetici isolamento Python, test ingresso Ruth, test mappe e maps --check; nessuna prova nativa hardware"
 }
