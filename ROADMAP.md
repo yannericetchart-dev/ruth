@@ -8,9 +8,9 @@ Coordinare i sottosistemi tramite API comuni.
 
 Sviluppo: **active**; codice: **partial**; maturita: experimental; verifica: passed; integrazione: merged.
 
-Flag: in_scope. Blocchi: HW-MANUAL-001.
+Flag: in_scope. Blocchi: nessuno registrato.
 
-Ambito verifica: HW-001/CPU-001: GitHub CI runs 38913317440, 38913438829, 38913533057 success; 14 PY, 12 DEP, 13 DIAG, 8 CPU, 12 HW/RAM, 15 root/CLI; 249 mappe coerenti. PR #25 foglia, #26 hardware/main, #27 main. Test solo sintetici, HW-MANUAL-001 in attesa. GPU, CUDA, backend e installazioni esclusi.
+Ambito verifica: HW-001/CPU-001: CI GitHub runs 38913317440, 38913438829, 38913533057 passed (74 test sintetici e 249 mappe); PR #25, #26, #27 integrate. Collaudo personale HW-MANUAL-001 passed il 16 ottobre 2026 sul commit 59b26fd6b427e6756ce0285fee60590cb077ebf1, con sequenza PY->DEP->DIAG->HW e report CPU/RAM disponibili; non certifica GPU, CUDA, backend o inferenza.
 
 ## Attivita locali
 
@@ -21,7 +21,7 @@ Ambito verifica: HW-001/CPU-001: GitHub CI runs 38913317440, 38913438829, 389135
 5. `MAIN-FLOW-001` [complete] Sequenza automatica PY->DEP (pip minimo) verificata su GitHub e integrata in main tramite PR #17, e605a02bdd72441fd4e79d36a943109ee3ba5c57.
 6. `MAIN-MANUAL-001` [complete] Utente: avvio sequenziale di main.py dal checkout main pulito, prima Python poi controllo pip, output conforme; commit 3f08cbad9ec06f814031bd1cbcbdc25553bd82ae verificato il 16 ottobre 2026.
 7. `MIG-003` [complete] DIAG-001 implementata, verificata e integrata via PR #22; DIAG-MANUAL-001 superato sul commit b379d2d8a228f55101eb98a19bfb14e8fc7a4bcb (sequenza PY->DEP->DIAG). Prossimo componente soltanto dopo nuovo perimetro approvato.
-8. `MIG-004` [blocked] HW-SCOPE-001: CPU/RAM implementati, testati e integrati in main via PR #27; collaudo personale HW-MANUAL-001 ancora in attesa prima di una nuova porzione.
+8. `MIG-004` [complete] HW-SCOPE-001 CPU/RAM implementata, verificata e integrata via PR #27; collaudo personale HW-MANUAL-001 positivo sul commit 59b26fd6b427e6756ce0285fee60590cb077ebf1 (PY->DEP->DIAG->HW). Prossima porzione richiede nuovo perimetro approvato.
 
 ## Componenti (ordine locale, ID stabili)
 

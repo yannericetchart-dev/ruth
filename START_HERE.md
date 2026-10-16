@@ -47,7 +47,7 @@ dedurre il completamento di una fase dalla sola presenza dei documenti.
 Avviando `main.py` senza argomenti Ruth esegue automaticamente **tutte le
 operazioni integrate e approvate** in sequenza secondo le loro dipendenze.
 I sottocomandi restano disponibili per verifiche mirate, non sono il flusso
-normale. Flusso integrato corrente: PY-001, DEP-001, DIAG-001, con il
+normale. Flusso integrato corrente: PY-001, DEP-001, DIAG-001 e HW-001 (CPU/RAM), con il
 solo controllo minimo di `pip`; l'inventario completo dei requisiti non e'
 ancora definito. DIAG usa report preesistenti, senza modifiche host. MAIN-FLOW-001 e' integrata in main tramite PR #17 e verificata da CI.
 Il collaudo personale dell'avvio sequenziale senza argomenti e' stato
@@ -72,5 +72,7 @@ collaudo personale HW-MANUAL-001 sono nel CHECKPOINT.md.
 
 Inventario CPU/RAM tramite `hardware.detect()` e quarto passaggio del
 flusso `main.py`, dopo PY->DEP->DIAG. Verifiche sintetiche CI superate,
-PR #27 integrata in main. HW-MANUAL-001 personale ancora da effettuare:
-consultare CHECKPOINT.md, non partire con un'altra migrazione.
+PR #27 integrata in main. HW-MANUAL-001 superato personalmente
+sulla revisione `59b26fd6b427e6756ce0285fee60590cb077ebf1` il 16 ottobre 2026.
+Prossima migrazione soltanto dopo nuovo perimetro approvato;
+consultare CHECKPOINT.md.

@@ -10,7 +10,7 @@ Sviluppo: **active**; codice: **complete**; maturita: experimental; verifica: pa
 
 Flag: in_scope. Blocchi: nessuno registrato.
 
-Ambito verifica: HW-001/CPU-001: GitHub CI runs 38913317440, 38913438829, 38913533057 success; 14 PY, 12 DEP, 13 DIAG, 8 CPU, 12 HW/RAM, 15 root/CLI; 249 mappe coerenti. PR #25 foglia, #26 hardware/main, #27 main. Test solo sintetici, HW-MANUAL-001 in attesa. GPU, CUDA, backend e installazioni esclusi.
+Ambito verifica: HW-001/CPU-001: CI GitHub runs 38913317440, 38913438829, 38913533057 passed (74 test sintetici e 249 mappe); PR #25, #26, #27 integrate. Collaudo personale HW-MANUAL-001 passed il 16 ottobre 2026 sul commit 59b26fd6b427e6756ce0285fee60590cb077ebf1, con sequenza PY->DEP->DIAG->HW e report CPU/RAM disponibili; non certifica GPU, CUDA, backend o inferenza.
 
 ## Attivita locali
 

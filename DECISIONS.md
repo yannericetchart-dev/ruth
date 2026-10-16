@@ -228,5 +228,8 @@ Ogni sostituzione deve collegare entrambe le decisioni e aggiornare le mappe.
 - Vincoli: MIG-FLOW-001/002, MAIN-FLOW-001, REMOTE-001, DATA-001.
 
 - Applicazione HW-SCOPE-001 (16 ottobre 2026): integrata in main
-  tramite PR #27 dopo CI sintetica superata; HW-MANUAL-001 e' ancora
-  in attesa. La presenza GPU non e' stata verificata o autorizzata.
+  tramite PR #27 dopo CI sintetica superata; HW-MANUAL-001 e' stata
+  accettata personalmente il 16 ottobre 2026 sulla revisione
+  `59b26fd6b427e6756ce0285fee60590cb077ebf1`, con sequenza PY -> DEP -> DIAG -> HW.
+  GPU e compatibilita' di inferenza non sono state verificate
+  ne' autorizzate in HW-SCOPE-001.

@@ -10,13 +10,13 @@ Sviluppo: **active**; codice: **complete**; maturita: experimental; verifica: pa
 
 Flag: in_scope. Blocchi: nessuno registrato.
 
-Ambito verifica: HW-001/CPU-001: GitHub CI runs 38913317440, 38913438829, 38913533057 success; 14 PY, 12 DEP, 13 DIAG, 8 CPU, 12 HW/RAM, 15 root/CLI; 249 mappe coerenti. PR #25 foglia, #26 hardware/main, #27 main. Test solo sintetici, HW-MANUAL-001 in attesa. GPU, CUDA, backend e installazioni esclusi.
+Ambito verifica: HW-001/CPU-001: CI GitHub runs 38913317440, 38913438829, 38913533057 passed (74 test sintetici e 249 mappe); PR #25, #26, #27 integrate. Collaudo personale HW-MANUAL-001 passed il 16 ottobre 2026 sul commit 59b26fd6b427e6756ce0285fee60590cb077ebf1, con sequenza PY->DEP->DIAG->HW e report CPU/RAM disponibili; non certifica GPU, CUDA, backend o inferenza.
 
 ## Attivita locali
 
 1. `HW-001` [complete] Contratti e rilevamento read-only CPU/RAM implementati, verificati in CI e integrati in main tramite PR #27.
 2. `HW-SCOPE-001` [complete] Funzioni, ingressi, risultati, effetti, limiti e verifiche con CPU/RAM prima di GPU approvati dall'utente il 16 ottobre 2026.
-3. `HW-MANUAL-001` [active] Dopo aggiornamento fast-forward della copia pulita, l'utente deve avviare main.py senza argomenti e confermare sequenza PY->DEP->DIAG->HW e SHA reale.
+3. `HW-MANUAL-001` [complete] Utente: copia main sincronizzata in fast-forward; commit 59b26fd6b427e6756ce0285fee60590cb077ebf1 verificato; avvio main.py completato con ordine PY->DEP->DIAG->HW e rilevamento CPU/RAM con stato available, 16 ottobre 2026 (MIG-FLOW-002).
 4. `HW-PROMOTE-001` [complete] PR #26 promossa da hardware/cpu/main in hardware/main; merge d2ea16b14b89cefacea574f1e209fecec29f7f01.
 5. `HW-PROMOTE-002` [complete] PR #27 promossa in main; merge 35a6ac79a1b1287090c1a3d1dc9208d4129a15ec.
 
