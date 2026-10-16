@@ -1,9 +1,9 @@
 # Ruth: checkpoint di progetto
 
-Revisione documentale: 25 (indice main); CONT-001 revisione 1.
+Revisione documentale: 26 (indice main); CONT-001 revisione 1.
 Fase 3: migrazione incrementale per componente.
 Stato: **CAT-001 implementata, verificata e integrata in main;
-collaudo personale CAT-MANUAL-001 ancora da confermare**.
+collaudo personale CAT-MANUAL-001 superato il 16 ottobre 2026**.
 PY, DEP, DIAG, HW/CPU e GPU NVIDIA restano accettate personalmente.
 L'ingresso senza argomenti di Ruth esegue tutte le funzioni integrate.
 
@@ -70,9 +70,9 @@ L'ingresso senza argomenti di Ruth esegue tutte le funzioni integrate.
 
 ## Prossima azione
 
-MIG-006 e' bloccata da CAT-MANUAL-001: il catalogo locale e' tecnicamente
-integrato ma non ancora collaudato personalmente. La prossima
-migrazione richiede **prima** un perimetro funzionale esplicito
+MIG-006/CAT-001 e' completata e accettata personalmente sul commit
+`90e57f106fb664b0257775260044125ea85228e2`. Non vi sono nuovi componenti approvati.
+La prossima migrazione richiede **prima** un perimetro funzionale esplicito
 (scopo, API, ingressi, effetti, controlli, limiti, test e passaggio
 automatico `main.py`) con nuovo semaforo verde dell'utente
 (MIG-FLOW-001). Il successivo collaudo personale resta obbligatorio
@@ -123,3 +123,24 @@ e DIAG-SCOPE-001. SYNC-001 resta storica/superseded.
   modifiche. `legacy_checkout: blocked_divergence` invariato.
 - DATA-001: non versionare manifest o elenco reale di modelli,
   percorsi locali e output utente. Kaggle resta inattivo.
+
+## Chiusura CAT-MANUAL-001 (16 ottobre 2026)
+
+- Conferma esplicita dell'utente: collaudo personale **positivo** con
+  `.venv/bin/python main.py` senza argomenti sul checkout main al commit
+  `90e57f106fb664b0257775260044125ea85228e2` (SHA locale dichiarato e coincidente con GitHub).
+- Sequenza di sei fasi confermata: PY -> DEP (solo pip) -> DIAG -> HW CPU/RAM
+  -> NVIDIA -> CAT; riepilogo conclusivo regolare. L'assenza del manifest
+  catalogo produce `not_configured`, stato valido e non bloccante.
+- Stato conclusivo CAT-001: implementation complete; verification passed
+  (CI sintetica gia' registrata); integration merged (PR #38);
+  manual acceptance **passed** (CAT-MANUAL-001).
+- Le precedenti note che indicano CAT-MANUAL-001 active/pending/blocked
+  restano registrazioni storiche, sostituite dalla presente chiusura.
+- `local_sync: verified_on_tested_revision` per HEAD `90e57f106fb664b0257775260044125ea85228e2`
+  comunicato dall'utente; dopo questo aggiornamento documentale in main
+  `local_sync: pending_docs_fast_forward` finche' non sara' sincronizzato.
+  Vecchio checkout divergente non toccato.
+- Nessun dato reale, inventario, output grezzo o manifest e' pubblicato
+  (DATA-001). La prossima porzione richiede nuovo scope e via libera esplicito
+  (MIG-FLOW-001), prima di qualsiasi migrazione.

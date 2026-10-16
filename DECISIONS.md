@@ -278,5 +278,7 @@ Ogni sostituzione deve collegare entrambe le decisioni e aggiornare le mappe.
 
 - Applicazione CAT-SCOPE-001 (16 ottobre 2026): implementazione
   verificata in CI e integrata in main con PR #38.
-  CAT-MANUAL-001 ancora in attesa (MIG-FLOW-002); GGUF,
+  CAT-MANUAL-001 completato positivamente dall'utente il 16 ottobre 2026
+  sul commit `90e57f106fb664b0257775260044125ea85228e2` (MIG-FLOW-002); GGUF,
   Hugging Face, scansione, acquisizione e inferenza non inclusi.
+  Nessuna nuova porzione funzionale e' approvata implicitamente.

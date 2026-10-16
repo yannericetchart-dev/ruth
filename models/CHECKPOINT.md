@@ -2,12 +2,12 @@
 
 - CAT-SCOPE-001 approvato 16 ottobre 2026; solo catalogo locale
   read-only dichiarativo e opzionale, sesto passaggio di Ruth.
-- models/catalog candidata, con test sintetici/CI e promozioni ancora
-  da compiere. Il resto di Models e' ancora scaffold inattivo:
+- models/catalog implementata, verificata e integrata in main tramite
+  PR #36-#38; collaudo manuale CAT-MANUAL-001 superato. Il resto di Models e' ancora scaffold inattivo:
   GGUF, sorgenti/acquisizione Hugging Face, cataloghi remoti,
   verifica degli artefatti e inferenza esclusi.
-- CAT-MANUAL-001 non svolto: dopo l'integrazione in main servira'
-  conferma della revisione eseguita personalmente dall'utente.
+- CAT-MANUAL-001 completato positivamente dall'utente il 16 ottobre 2026
+  sul commit `90e57f106fb664b0257775260044125ea85228e2`.
 
 ## CAT-001 verificata e integrata (16 ottobre 2026)
 
@@ -16,5 +16,14 @@
   264 mappe). Si tratta soltanto del catalogo locale dichiarativo.
 - Il dominio Models resta parziale: catalogo completo per il solo
   perimetro approvato, GGUF/download/Hugging Face non implementati.
-- CAT-MANUAL-001 active: in attesa di avvio personale Ruth dalla
-  revisione main sincronizzata. Nessun dato host salvato su Git.
+- CAT-MANUAL-001 complete: conferma personale successiva alla CI
+  e all'integrazione, registrata senza dati host su Git.
+
+## Accettazione manuale CAT-001 (16 ottobre 2026)
+
+- Conferma positiva dell'utente: Ruth eseguita dall'ingresso ufficiale
+  sul commit `90e57f106fb664b0257775260044125ea85228e2` (sei controlli in sequenza).
+- Catalogo non configurato: `not_configured` valido; non e' richiesta
+  la creazione di un manifest per il collaudo.
+- Prossima migrazione Models non autorizzata: attendere descrizione
+  funzionale e nuova approvazione. DATA-001 e REMOTE-001 invariati.
