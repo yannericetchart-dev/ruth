@@ -8,9 +8,9 @@ Coordinare i sottosistemi tramite API comuni.
 
 Sviluppo: **active**; codice: **partial**; maturita: experimental; verifica: passed; integrazione: merged.
 
-Flag: in_scope. Blocchi: DIAG-MANUAL-001.
+Flag: in_scope. Blocchi: nessuno registrato.
 
-Ambito verifica: DIAG-001: GitHub Actions 38908192677, 38908269925, 38908370200 superate (14 PY, 12 DEP, 13 DIAG, 15 test root/CLI, mappe coerenti). PR #20 figlio, #21 environment/main e #22 main. Solo analisi sintetiche di report; collaudo DIAG-MANUAL-001 pendente; nessuna diagnostica GPU/CUDA.
+Ambito verifica: DIAG-001: test sintetici GitHub Actions 38908192677, 38908269925, 38908370200 superati (14 PY, 12 DEP, 13 DIAG, 15 root/CLI; mappe coerenti), integrazione PR #20-#22. DIAG-MANUAL-001 superato il 16 ottobre 2026 sul commit b379d2d8a228f55101eb98a19bfb14e8fc7a4bcb: ordine PY->DEP->DIAG e output di riepilogo conformi. Nessuna certificazione hardware, CUDA o runtime.
 
 ## Attivita locali
 
@@ -20,7 +20,7 @@ Ambito verifica: DIAG-001: GitHub Actions 38908192677, 38908269925, 38908370200 
 4. `MIG-002` [complete] DEP-001 integrata in main e accettata dall'utente sul commit e197cc86829acf52e326a712331cc7ff6cfef6b5; manual DEP-MANUAL-001 concluso.
 5. `MAIN-FLOW-001` [complete] Sequenza automatica PY->DEP (pip minimo) verificata su GitHub e integrata in main tramite PR #17, e605a02bdd72441fd4e79d36a943109ee3ba5c57.
 6. `MAIN-MANUAL-001` [complete] Utente: avvio sequenziale di main.py dal checkout main pulito, prima Python poi controllo pip, output conforme; commit 3f08cbad9ec06f814031bd1cbcbdc25553bd82ae verificato il 16 ottobre 2026.
-7. `MIG-003` [blocked] DIAG-001 verificata con CI, integrata in main tramite PR #22; collaudo personale DIAG-MANUAL-001 ancora in attesa, senza autorizzare un componente successivo.
+7. `MIG-003` [complete] DIAG-001 implementata, verificata e integrata via PR #22; DIAG-MANUAL-001 superato sul commit b379d2d8a228f55101eb98a19bfb14e8fc7a4bcb (sequenza PY->DEP->DIAG). Prossimo componente soltanto dopo nuovo perimetro approvato.
 
 ## Componenti (ordine locale, ID stabili)
 

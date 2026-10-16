@@ -208,5 +208,6 @@ Ogni sostituzione deve collegare entrambe le decisioni e aggiornare le mappe.
 
 - Applicazione DIAG-SCOPE-001: implementata e verificata in GitHub,
   integrata in main mediante PR #22 il 16 ottobre 2026.
-  Collaudo personale DIAG-MANUAL-001 in attesa, senza autorizzare
-  la migrazione successiva automaticamente.
+  Collaudo personale DIAG-MANUAL-001 **completato** sulla revisione
+  `b379d2d8a228f55101eb98a19bfb14e8fc7a4bcb` il 16 ottobre 2026, confermati ordine e
+  riepilogo. Ogni ulteriore migrazione richiede nuova approvazione.

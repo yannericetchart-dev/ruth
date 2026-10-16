@@ -62,3 +62,12 @@ GitHub CI run 38908192677, 38908269925 e 38908370200: success
 su report sintetici e default sequenziale PY->DEP->DIAG.
 Il collaudo personale DIAG-MANUAL-001 resta active e il prossimo
 componente non puo' iniziare. Nessun dato host e' versionato.
+
+## DIAG-MANUAL-001: collaudo confermato (16 ottobre 2026)
+
+Il collaudo personale sul commit `b379d2d8a228f55101eb98a19bfb14e8fc7a4bcb` e' positivo:
+la copia main pulita e' stata aggiornata in fast-forward e
+`main.py` ha eseguito nell'ordine PY, DEP e DIAG, mostrando
+diagnostica `ok_unverified` e riepilogo finale. DIAG-MANUAL-001
+**complete**; l'annotazione precedente `active` e' storica.
+Nessun dato host, log o versione reale e' pubblicato (DATA-001).

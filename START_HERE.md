@@ -58,5 +58,6 @@ perimetro, che richiede una nuova approvazione funzionale.
 ## Stato DIAG-001
 
 DIAG-001 e' integrata tecnicamente in main tramite PR #22 e verificata
-su GitHub. Il collaudo locale del nuovo passaggio resta da confermare
-(DIAG-MANUAL-001). Consultare CHECKPOINT.md per revisione e istruzioni.
+su GitHub. Il collaudo locale DIAG-MANUAL-001 e' stato confermato positivo sulla
+revisione `b379d2d8a228f55101eb98a19bfb14e8fc7a4bcb`, con ordine PY -> DEP -> DIAG.
+Consultare CHECKPOINT.md per il prossimo perimetro da approvare.
