@@ -1909,15 +1909,19 @@ The native test by itself neither
 qualifies model accuracy nor proves
 a particular kernel instruction path.
 
-### Phase28 matrix status: 15/16
+### Historical Phase28 matrix status: 15/16
 
-All four candidates have passed native
+At the time of this F32/F32 run,
+all four candidates had passed native
 CUDA model evaluation at ctx256,
-ctx512 and ctx1024. At ctx2048,
-`f16-off`, `bf16-on` and now
-`f32-off` have been verified;
-**only `mixed-on` (BF16/F16 Flash ON)
-ctx2048 remains untested**.
+ctx512 and ctx1024, while ctx2048
+`f16-off`, `bf16-on` and `f32-off`
+had succeeded. **The remaining
+`mixed-on` BF16/F16 Flash ON ctx2048
+test has since succeeded and is
+documented in the next section,
+bringing Phase28 native evidence
+to 16/16.**
 
 The next experiment starts with
 a **read-only plan**, never an
@@ -1928,33 +1932,179 @@ implicit GPU run:
   --candidate mixed-on --n-ctx 2048
 ```
 
-Expected from the approved gate:
-1536 prefill tokens, 24 chunks,
-16 teacher-forced decode calls
-and **52 MiB** source-derived
-BF16/F16 logical KV. This is a
-forecast, **not** native observation
-for `mixed-on` ctx2048.
+The plan forecast 1536 prefill tokens,
+24 chunks, 16 decode calls and
+52 MiB of logical BF16/F16 KV.
+The subsequent separately authorized
+native result confirmed these values.
+See the next section for the full
+native report and controlled
+offline numerical comparison plan.
+No CUDA profiler rework, automatic
+cache selection or production
+promotion followed from this test.
 
-Once the plan is inspected, a
-single native `mixed-on` test may
-be run only under separately
-explicit `--execute --allow-gpu-inference`
-user authorization and with the
-same pinned GPU preflight and
-full-offload checks. On success,
-use matching ctx2048 logits
-artifacts for offline numerical
-comparisons, most importantly
-BF16/BF16 Flash ON vs BF16/F16
-Flash ON (fixed K and Flash),
-and secondarily F32/F32 Flash
-OFF vs BF16/F16 Flash ON
-(multiple variables changed).
-No new CUDA profiler investigation,
-auto-selection or production
-promotion is implied by the
-16-case experiment matrix.
+## Final Phase 28 native experiment — BF16/F16, Flash ON, n_ctx=2048
+
+The user first ran the **read-only**
+`mixed-on` ctx2048 plan,
+`inference_executed=false`,
+then separately executed the **explicitly
+authorized** native GPU experiment:
+
+```bash
+.venv/bin/python -m ruth_runtime.gemma3_phase28 \
+  --candidate mixed-on --n-ctx 2048 \
+  --execute --allow-gpu-inference
+```
+
+The reported `status=native_long_context_inference_observed`
+verified `inference_executed=true`,
+`full_gpu_offload_observed=true`,
+`offloaded_layers=27`, `total_layers=27`,
+native `n_ctx=2048`, K=BF16, V=F16,
+Flash ON, and full logits requested in
+**all 16** teacher-forced decode calls.
+The immutable 1536-token prefill ran
+in 24 chunks of 64 tokens; `swa_full=true`,
+`n_batch=n_ubatch=64`, one sequence,
+no CPU fallback or production promotion.
+
+### 2048-token native result and contrasts
+
+| Metric | F32/F32 Flash OFF | BF16/F16 Flash ON |
+|---|---:|---:|
+| Prefill median, ms | 342.3211 | **363.8851** |
+| Prefill throughput, tokens/s | 4487.02 | **4221.11** |
+| Individual decode median, ms/token | 14.1392 | **14.5507** |
+| Median full 16-token decode round, ms | 226.6777 | **239.7058** |
+| Decode throughput, tokens/s | 70.58 | **66.75** |
+| Native and logical KV, MiB | 104/104 | **52/52** |
+| GPU process memory peak sampled, MiB | 2190 | **2146** |
+
+The `mixed-on` result has **about
+5.9% lower prefill throughput and
+5.4% lower decode throughput**
+than `f32-off` on this fixed Phase28
+ctx2048 workload. This direction
+**reverses** the ctx512/ctx1024
+cross-mode comparisons, in which
+mixed-on was measured faster.
+K, V and FlashAttention all differ
+across these two candidates,
+so the observed reversal is **not**
+evidence that any single cache dtype
+or Flash kernel path caused it.
+The mixed-on decode calls show
+noticeable within/between-round
+variability (observed values roughly
+13.61–17.39 ms); repetition and
+GPU clock/thermal and power telemetry
+would be needed before interpreting
+this as a reproducible performance
+regression. No such measurements
+are claimed here.
+
+The `mixed-on` worker reported CUDA
+model buffer `1907.39 MiB`,
+KV buffers `8.0 + 44.0 = 52.0 MiB`,
+compute buffer `64.28 MiB` and
+`CPU_Mapped` model buffer
+`576.0 MiB`. The latter is not
+a separately reported CUDA VRAM
+buffer. Native KV exactly matches
+the source-derived `52.0 MiB`;
+the GPU process memory peak is
+sampled rather than an exact
+instantaneous maximum.
+The three observed prefill timings
+were `362.819071`, `363.885055`,
+`370.346064` ms.
+
+### Immutable evidence
+
+- Pinned GGUF SHA256:
+  `b144bde489651d3d292d7e47a59c6f811cdd96d184be582e5ad30ab338b9b6bf`.
+- Native CUDA wheel SHA256:
+  `ad5057352154d90f95a473d01d039c975f1987cd9b25f8ad7a83cf6c7e80ee74`.
+- Prompt token IDs SHA256:
+  `8cab7dc542f4f12f2b73989ddf29d0c32d87f8cbdd79e6f1b04b923526dfbc25`,
+  matching the `f32-off` ctx2048
+  native report; all 16 fixed decode
+  token IDs also match.
+- Local logits artifact: F32,
+  shape `[2,262144]`, containing
+  **last-prefill and last-decode** rows:
+  `.ruth-build/phase28/gemma-3-1b-it/ctx-2048_flash-on_k-BF16_v-F16_i3bqojc7.npz`.
+- Artifact SHA256:
+  `1f1b8042bdfc6b9692075d4103379658348a534007b2c43e1b4726388be3b729`.
+
+The worker reported
+`native_kernel_dispatch_verified=false`,
+`nvtx_ranges_available=false`,
+`production_qualified=false`,
+`runtime_profile_published=false`.
+All Phase28 **native** candidate×context
+pairs have now passed GPU inference:
+**16/16** at n_ctx 256, 512, 1024
+and 2048. This is a completed
+**experimental compatibility matrix**,
+not production qualification or
+all-position numerical equivalence.
+
+### Outstanding Phase28 ctx2048 numerical comparisons (offline)
+
+The **controlled** comparison holds
+K=BF16 and Flash ON fixed and changes
+V=BF16→F16. The exact earlier
+BF16/BF16 ctx2048 artifact basename
+is not confirmed by this report.
+Use a unique-match guarded local glob;
+the comparator checks exact prompt
+and decode arrays, same context and
+the integrity of logits structure:
+
+```bash
+cd ~/Dev/ruth-model-profiling
+(
+  shopt -s nullglob
+  baseline=(.ruth-build/phase28/gemma-3-1b-it/ctx-2048_flash-on_k-BF16_v-BF16_*.npz)
+  if (( ${#baseline[@]} != 1 )); then
+    printf 'BF16/BF16 ctx2048 baselines found: %d\\n' "${#baseline[@]}"
+    exit 1
+  fi
+  .venv/bin/python -m ruth_runtime.gemma3_phase28_compare \
+    --baseline "${baseline[0]}" \
+    --candidate .ruth-build/phase28/gemma-3-1b-it/ctx-2048_flash-on_k-BF16_v-F16_i3bqojc7.npz
+)
+```
+
+A **secondary** numerical comparison
+F32/F32 Flash OFF→BF16/F16 Flash ON
+changes more than one variable and
+cannot isolate cache V precision:
+
+```bash
+.venv/bin/python -m ruth_runtime.gemma3_phase28_compare \
+  --baseline .ruth-build/phase28/gemma-3-1b-it/ctx-2048_flash-off_k-F32_v-F32_r7anfs8n.npz \
+  --candidate .ruth-build/phase28/gemma-3-1b-it/ctx-2048_flash-on_k-BF16_v-F16_i3bqojc7.npz
+```
+
+Both numeric comparisons remain
+**pending**, and no KL, JS, RMS or
+Top-1 comparison has been invented.
+They are read-only and run without
+GPU inference. The logits snapshots
+cover only **two** positions (last
+prefill and last decode), not
+all intermediate model states.
+Deciding on a production KV policy
+also requires repeatability,
+quality and long-sequence benchmarks
+and retaining the current
+full-offload/no-fallback constraints.
+No native CUDA source or pinned
+model modifications were made.
 
 ## Promotion gate
 
