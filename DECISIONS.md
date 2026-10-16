@@ -183,5 +183,8 @@ Ogni sostituzione deve collegare entrambe le decisioni e aggiornare le mappe.
   precisa MIG-FLOW-002; compatibile con MIG-FLOW-001, REMOTE-001 e DATA-001.
 
 - Stato applicativo MAIN-FLOW-001 (16 ottobre 2026): codice e verifiche
-  automatiche integrate in main tramite PR #17; resta il collaudo personale
-  MAIN-MANUAL-001. Questo non revoca l'accettazione DEP-MANUAL-001.
+  automatiche integrate in main tramite PR #17, collaudo personale
+  MAIN-MANUAL-001 superato sul commit
+  `3f08cbad9ec06f814031bd1cbcbdc25553bd82ae`.
+  L'accettazione DEP-MANUAL-001 resta distinta e confermata.
+  Nessun componente successivo avviato senza nuovo perimetro approvato.

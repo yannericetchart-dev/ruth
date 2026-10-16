@@ -42,3 +42,11 @@ La verifica read-only dei metadati DEP-001 e' disponibile ora anche nel
 flusso default, dopo Python, inizialmente sul solo `pip` (smoke check,
 non lista requisiti complessivi). PR #17 integrata, CI `38900998138`
 success. Il collaudo personale del nuovo flusso default e' pendente.
+
+## MAIN-MANUAL-001 completata (16 ottobre 2026)
+
+Avvio normale di Ruth (`main.py`, senza argomenti) confermato
+personalmente sul commit `3f08cbad9ec06f814031bd1cbcbdc25553bd82ae`:
+isolamento Python prima del controllo dei metadati del solo `pip`,
+stato `present_unverified`, riepilogo finale positivo. Non implica
+elenco completo dei requisiti o compatibilita' operativa.

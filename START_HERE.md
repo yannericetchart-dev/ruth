@@ -49,6 +49,8 @@ operazioni integrate e approvate** in sequenza secondo le loro dipendenze.
 I sottocomandi restano disponibili per verifiche mirate, non sono il flusso
 normale. Per la prima integrazione automatica: PY-001 poi DEP-001, con il
 solo controllo minimo di `pip`; l'inventario completo dei requisiti non e'
-ancora definito. MAIN-FLOW-001 e' integrata in main tramite PR #17 e verificata da CI;
-il collaudo personale dell'avvio sequenziale senza argomenti e' ancora
-pendente (MAIN-MANUAL-001). Consultare CHECKPOINT.md.
+ancora definito. MAIN-FLOW-001 e' integrata in main tramite PR #17 e verificata da CI.
+Il collaudo personale dell'avvio sequenziale senza argomenti e' stato
+superato sul commit `3f08cbad9ec06f814031bd1cbcbdc25553bd82ae`
+(MAIN-MANUAL-001 complete). Consultare CHECKPOINT.md per il prossimo
+perimetro, che richiede una nuova approvazione funzionale.
