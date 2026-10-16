@@ -8,12 +8,12 @@
   "branch": {
     "name": "environment/dependencies/main",
     "parent": "environment/main",
-    "status": "planned"
+    "status": "present"
   },
-  "development": "inactive",
-  "implementation": "skeleton",
-  "maturity": null,
-  "verification": "not_run",
+  "development": "active",
+  "implementation": "complete",
+  "maturity": "experimental",
+  "verification": "passed",
   "integration": "merged",
   "flags": [
     "in_scope"
@@ -21,13 +21,34 @@
   "blocked_by": [],
   "depends_on": [],
   "api": [
-    "plan(requirements) -> DependencyPlan [proposta]"
+    "plan(requirements: Iterable[str], python_report: PythonEnvironment, *, version_lookup=metadata.version) -> DependencyPlan [implementata e verificata in environment/main; non ancora in main]"
   ],
   "tasks": [
     {
       "id": "DEP-001",
+      "state": "complete",
+      "description": "Ispezione metadata, gate venv e CLI verificati da CI, promossi da work a dependencies/main PR #12 e environment/main PR #13."
+    },
+    {
+      "id": "DEP-SCOPE-001",
+      "state": "complete",
+      "description": "Perimetro funzionale e sequenza dipendenze prima di hardware approvati dall'utente il 16 ottobre 2026."
+    },
+    {
+      "id": "DEP-MANUAL-001",
       "state": "planned",
-      "description": "Definire e verificare il contratto prima della migrazione."
+      "description": "Dopo integrazione main: eseguire personalmente .venv/bin/python main.py dependencies pip e confermare esito con commit Git."
+    },
+    {
+      "id": "DEP-PROMOTE-001",
+      "state": "complete",
+      "description": "PR #12 promossa in environment/dependencies/main al merge 4af2050e5fc59477f9ab854173bf915b7933d186."
+    },
+    {
+      "id": "DEP-PROMOTE-002",
+      "state": "complete",
+      "description": "PR #13 promossa in environment/main al merge c89c02ac0afa828b2c53ebd922a04331069ba527."
     }
-  ]
+  ],
+  "verification_scope": "DEP-001: GitHub Actions 38895348468 (14 Python, 12 dipendenze, 13 root/CLI, 237 mappe), e 38895479549 (promozione padre): success su fixture sintetiche; nessuna verifica nativa, sicurezza o installabilita' certificata. DEP-MANUAL-001 ancora da svolgere dopo main."
 }

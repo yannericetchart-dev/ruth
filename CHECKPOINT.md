@@ -57,3 +57,26 @@ Kaggle resta inattivo.
 
 CONT-001, MIG-FLOW-001, MIG-FLOW-002, REMOTE-001, DATA-001,
 PLAN-001 e SCOPE-001. SYNC-001 resta storica e superseded.
+
+## DEP-001: seconda migrazione avviata (16 ottobre 2026)
+
+- DEP-SCOPE-001 approvato dall'utente, compresa la CLI `main.py dependencies`,
+  DEP-001 prima della migrazione hardware, diagnostica DIAG-001 separata.
+- Codice candidato nel branch `environment/dependencies/work/DEP-001`, senza
+  integrazione a `main` e senza verifica conclusiva: non dichiararlo finito.
+- Stato: implementation complete (ambito approvato), verification not_run,
+  integration not_merged, manual acceptance pending.
+- Prossimo passo: test automatici, mappe, PR verso branch foglia e padri
+  e ingresso reale nel main, quindi sync locale e collaudo personale.
+- REMOTE-001: nessuna modifica al checkout locale; dati reali esclusi.
+
+## DEP-PROMOTE-001/002 verificati e integrati nei branch figli
+
+- PR #12: merge environment/dependencies/main `4af2050e5fc59477f9ab854173bf915b7933d186`.
+- PR #13: merge environment/main `c89c02ac0afa828b2c53ebd922a04331069ba527`.
+- Verifica: GitHub Actions 38895348468 e 38895479549, entrambe success;
+  14 test Python, 12 dipendenze, 13 root/CLI, 237 mappe coerenti.
+- Stato attuale: DEP-001 implementata e verificata, integrata in
+  environment/main **ma non ancora in main**. Prossimo passo obbligatorio:
+  promozione environment/main -> main, allineamento documenti finali;
+  poi sync locale sicura e collaudo manuale DEP-MANUAL-001.

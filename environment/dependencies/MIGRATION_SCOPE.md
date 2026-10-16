@@ -1,0 +1,38 @@
+# DEP-SCOPE-001: verifica delle dipendenze Python generiche
+
+Perimetro funzionale **approvato esplicitamente dall'utente il 16 ottobre 2026** (MIG-FLOW-001).
+Porzione DEP-001; fase 3. La revisione di origine e' main `6dfc34252501f9e708855588c69fbad7d39af73b`.
+Sorgente storica: `ruth_runtime/venv_packages.py` al commit `4ceea508025650ed64b33190834d0b5c85f69db2`; solo ispezione dei metadati, senza lock CUDA, requisiti compilazione e backend nativi.
+
+## Funzioni, ingressi e risultati
+
+| Funzione | Ingresso | Risultato |
+| --- | --- | --- |
+| `environment.dependencies.plan` | Elenco esplicito di nomi, eventualmente `nome==versione`, e `PythonEnvironment` | `DependencyPlan` immutabile con `PackageState` per ogni pacchetto, stato ed eventuale versione rilevata. |
+| `environment.plan` | Requisiti e radice del progetto | Controlla prima `environment.inspect`, poi pianifica tramite il componente; nessuna query se il virtualenv non e' conforme. |
+| `DependencyPlan.to_dict` | Report in memoria | Dizionario transitorio, non scritto in Git. |
+| `main.py dependencies pip [nome==versione ...]` | Argomenti CLI | Stampa avvio, ogni stato, motivi e risultato; codice 0 se tutti `present_unverified`, 1 per controlli non confermati, 2 per uso errato. |
+
+Gli stati sono `present_unverified`, `missing`, `incompatible` (soltanto confronto di versione esatta), `blocked` e `inspection_failed`.
+Il nome e' validato e i duplicati normalizzati sono rifiutati; intervalli e specifiche complesse non sono supportati in questa porzione. Il controllo Python gia' implementato resta il gate necessario: se non isolato, non viene interrogato alcun metadato di pacchetto.
+
+## Effetti e limiti
+
+Read-only con `importlib.metadata.version` del processo attuale: nessuna importazione del pacchetto, installazione, download, modifica della `.venv`, analisi GPU, build o lock. La presenza di un pacchetto *non* ne certifica compatibilita', integrita', sicurezza o operativita' runtime. Non salvare versioni rilevate, percorsi o dati host in Git (DATA-001).
+
+La diagnostica avanzata DIAG-001, le versioni con intervalli, le dipendenze native e la configurazione backend restano in porzioni successive.
+Il comando `python3 main.py` senza argomenti conserva la funzione e i messaggi di PY-001.
+
+## Verifiche e sequenza
+
+Test unitari con lookup sintetico per presente, assente, esatto compatibile/incompatibile, errori di lettura, duplicati, input malformati e gate Python; test CLI per esiti e codici; verifica delle mappe e CI remoto. Revisioni e promozioni `environment/dependencies/work/DEP-001` -> `environment/dependencies/main` -> `environment/main` -> `main` senza nuovo via libera (MIG-FLOW-001).
+Il collaudo personale dopo merge e sincronizzazione locale (DEP-MANUAL-001) segue MIG-FLOW-002 e impedisce di iniziare il componente successivo prima della sua conferma.
+
+**Stato:** codice candidato nel branch di lavoro, test della revisione finale non ancora eseguiti, non integrato in main.
+
+## Stato di promozione (16 ottobre 2026)
+
+- PR #12 verso environment/dependencies/main: merge `4af2050e5fc59477f9ab854173bf915b7933d186`.
+- PR #13 verso environment/main: merge `c89c02ac0afa828b2c53ebd922a04331069ba527`.
+- Verifica remota su fixture sintetiche e API/CLI: run 38895348468 e
+  38895479549, success. Main e collaudo personale ancora pendenti.
