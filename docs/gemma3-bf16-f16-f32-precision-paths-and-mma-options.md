@@ -855,7 +855,17 @@ Il nuovo comando non avvia CUDA, non modifica file e non
 si basa sui soli simboli Nsight. Controlla undici
 pattern di struttura del sorgente **entro le funzioni
 pertinenti**; non è un parser C++ o una verifica
-del dataflow runtime. Fallisce se manca il checkout
+del dataflow runtime.
+
+**Verifica upstream già eseguita:** sono state lette le due
+unità sorgente esattamente al commit
+`0c1e57098bba43ac29e6e3b677cdceebdd22334f`
+e i medesimi pattern circoscritti sono stati controllati:
+**11/11 presenti**. Questo non equivale ad aver eseguito il
+modulo Python sul computer dell'utente, né certifica
+un checksum della sua copia locale o il suo stato Git.
+I quattro test sintetici nuovi sono pubblicati, ma
+la loro esecuzione locale non è ancora stata riportata. Fallisce se manca il checkout
 approvato, se non corrispondono i commit o se il
 checkout è sporco (seguendo l'esistente
 `inspect_checkout` di Ruth).
