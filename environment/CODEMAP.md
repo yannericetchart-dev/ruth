@@ -24,3 +24,4 @@ La presenza dello scaffold non implica una implementazione runtime.
 
 - [CHECKPOINT.md](CHECKPOINT.md)
 - [NODE.yaml](NODE.yaml)
+- [__init__.py](__init__.py)

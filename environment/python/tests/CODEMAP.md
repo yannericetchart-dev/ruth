@@ -6,3 +6,6 @@ Nodo responsabile: [PY](../NODE.yaml). Ripresa: [START_HERE](../../../START_HERE
 
 Contenuto riservato a: test e fixture sintetiche.
 
+## File
+
+- [test_inspection.py](test_inspection.py)

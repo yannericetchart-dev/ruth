@@ -8,4 +8,5 @@ Contenuto riservato a: test e fixture sintetiche.
 
 ## File
 
+- [test_entrypoint.py](test_entrypoint.py)
 - [test_maps.py](test_maps.py)
