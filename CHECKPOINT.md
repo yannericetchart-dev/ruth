@@ -1,8 +1,8 @@
 # Ruth: checkpoint di progetto
 
-Revisione documentale: 2.
-Attivita': `SETUP-001`.
-Fase corrente: **1 - configurazione della continuita' fra client**.
+Revisione documentale: 3.
+Attivita': `STRUCT-001`.
+Fase corrente: **2 - scaffold e mappe, senza migrazione applicativa**.
 
 ## Completato
 
@@ -16,17 +16,22 @@ Fase corrente: **1 - configurazione della continuita' fra client**.
   Questa verifica riguarda il caricamento, non la risposta di un modello.
 - Verificata l'esclusione Git dei percorsi convenzionali per artefatti locali.
 
-## Non ancora verificato
+## Collaudo SETUP-001 completato
 
-- Configurazione delle istruzioni del Progetto ChatGPT.
-- Ripartenza indipendente di una nuova sessione Codex e di una nuova chat
-  ChatGPT, con lettura effettiva della revisione pubblicata.
+- Salvate le istruzioni nel Progetto ChatGPT.
+- Una nuova sessione Codex e una nuova chat ChatGPT hanno letto da GitHub
+  l'ingresso alla revisione `b59dc7b3477918ffc4a11e520608f301d50ac155`.
+  Entrambe hanno ricostruito fase, prossima azione e vincoli CONT-001,
+  DATA-001 e Kaggle inattivo. Evidenze: `SETUP-001`, conservate solo localmente.
+- Codex ha confrontato il checkout. ChatGPT ha dichiarato l'indisponibilita'
+  del checkout nella sessione: l'accesso locale non deriva dalla sincronizzazione
+  Git e non e' un requisito per la lettura della fonte GitHub.
+- Il passaggio 1 e' completato. Ripetere il collaudo se cambia il protocollo.
 
 ## Prossima azione
 
-Completare PROJECT_SETUP.md e conservare i risultati dei collaudi solo
-localmente. Segnare il passaggio 1 completato soltanto dopo entrambi i
-collaudi. Poi preparare/pubblicare le mappe e lo scaffold del passaggio 2.
+Preparare e verificare le mappe ricorsive, i metadati di stato e lo scaffold.
+Pubblicare il passaggio 2 senza copiare codice applicativo dai branch storici.
 
 ## Limiti correnti
 

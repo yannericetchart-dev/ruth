@@ -13,7 +13,9 @@ Ogni sostituzione deve collegare entrambe le decisioni e aggiornare le mappe.
 - Motivazione: evitare perdita di strategia e confusione fra proposto,
   implementato, verificato e integrato quando cambia la conversazione.
 - Verifica richiesta: ripartenza senza cronologia su entrambi i client.
-- Implementazione del protocollo: avviata; collaudo completo ancora pendente.
+- Implementazione del protocollo: configurata e collaudata con ripartenza
+  indipendente su entrambi i client. I risultati restano locali. Il collaudo
+  riguarda la revisione di ingresso del protocollo, non tutte le chat future.
 - Sostituisce: nessuna decisione registrata.
 
 ## DATA-001: repository portabile, artefatti locali
