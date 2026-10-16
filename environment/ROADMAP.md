@@ -12,7 +12,7 @@ Flag: in_scope. Blocchi: nessuno registrato.
 
 ## Attivita locali
 
-1. `ENV-001` [active] PY-001 implementata nel branch di lavoro; revisione PR #2 prima della promozione. Il codice in questo branch resta scaffold.
+1. `ENV-001` [active] Prima porzione Python revisionata, pronta alla prima promozione nella PR #2. Il codice in main resta scaffold.
 
 ## Componenti (ordine locale, ID stabili)
 

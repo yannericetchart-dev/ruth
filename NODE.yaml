@@ -21,7 +21,7 @@
   "blocked_by": [],
   "depends_on": [],
   "api": [
-    "inspect_environment(project_root) -> EnvironmentReport [proposta]"
+    "runtime.inspect_environment(project_root: Path) -> PythonEnvironment [proposta; implementata nella PR #2, non integrata in main]"
   ],
   "tasks": [
     {
@@ -37,7 +37,7 @@
     {
       "id": "MIG-001",
       "state": "active",
-      "description": "Prima porzione Python in revisione nella PR #2; poi migrazione incrementale dei domini."
+      "description": "Prima porzione Python revisionata (PY-REV-001); PR #2 pronta per la prima promozione. Codice ancora fuori da main."
     }
   ]
 }

@@ -22,8 +22,10 @@ L'indice non implica che il codice dei branch di sviluppo sia gia' in main.
 
 La riorganizzazione e' stata autorizzata per passaggi: prima la continuita'
 fra i client, poi lo scaffold documentale, infine la migrazione incrementale.
-L'architettura proposta resta evolvibile. Il codice applicativo esistente
-rimane nei branch storici; non e' stato migrato in questa fase.
+L'architettura proposta resta evolvibile. Il checkpoint indica branch,
+revisioni e stato di integrazione di ciascuna porzione. Un'implementazione
+nel branch di lavoro non deve essere considerata gia disponibile in main.
+I branch storici rimangono fonti conservate della migrazione.
 
 Kaggle e' un'integrazione futura inattiva. Log, misure, modelli e dati di
 macchina rimangono locali secondo DATA-001. Non sono fonti pubbliche di stato.

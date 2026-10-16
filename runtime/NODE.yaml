@@ -10,7 +10,7 @@
     "parent": "main",
     "status": "planned"
   },
-  "development": "inactive",
+  "development": "active",
   "implementation": "skeleton",
   "maturity": null,
   "verification": "not_run",
@@ -28,13 +28,13 @@
     "chat"
   ],
   "api": [
-    "inspect_environment(project_root) -> EnvironmentReport [proposta]"
+    "inspect_environment(project_root: Path) -> PythonEnvironment [proposta; implementata nella PR #2, non integrata in main]"
   ],
   "tasks": [
     {
       "id": "CORE-001",
-      "state": "planned",
-      "description": "Definire e verificare il contratto prima della migrazione."
+      "state": "active",
+      "description": "Contratto comune Python inoltrato nella PR #2 e revisionato; ancora da integrare."
     }
   ]
 }

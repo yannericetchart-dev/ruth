@@ -27,7 +27,12 @@
     {
       "id": "PY-001",
       "state": "active",
-      "description": "PY-001 implementata nel branch di lavoro; revisione PR #2 prima della promozione. Il codice in questo branch resta scaffold."
+      "description": "PY-001 revisionata nel branch di lavoro; prima promozione PR #2 pronta. Il codice in main resta scaffold."
+    },
+    {
+      "id": "PY-REV-001",
+      "state": "complete",
+      "description": "Revisione tecnica completata con correzione del caso malformato ripetuto e verifica delle API reali; nessun merge eseguito."
     }
   ]
 }

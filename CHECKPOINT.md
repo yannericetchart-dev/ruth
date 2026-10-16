@@ -1,6 +1,6 @@
 # Ruth: checkpoint di progetto
 
-Revisione documentale: 5 (indice main).
+Revisione documentale: 6 (indice main).
 Attivita': `MIG-001` (prima porzione: `PY-001`).
 Fase corrente: **3 - migrazione incrementale per componente**.
 
@@ -36,13 +36,20 @@ propagazione dei riepiloghi, non esecuzione applicativa o nativa.
 
 Prima porzione Python implementata e verificata nel branch
 `environment/python/work/inspect-venv`, commit
-`2f4cfa7c0cec9bddbbfea22ba2dc94e6c82e57ec`:
-[PR #2 in bozza](https://github.com/yannericetchart-dev/ruth/pull/2).
+`80218739327666b0250c3715ba9cfb6fe1f114d5`:
+[PR #2 pronta per la revisione finale](https://github.com/yannericetchart-dev/ruth/pull/2).
 Destinazione immediata: `environment/python/main`, poi `environment/main`,
 infine `main`. Tutti i branch padri conservano ancora lo scaffold.
 
-Prima di proseguire, esaminare la porzione in revisione e il suo
-[checkpoint immutabile](https://github.com/yannericetchart-dev/ruth/blob/2f4cfa7c0cec9bddbbfea22ba2dc94e6c82e57ec/environment/python/CHECKPOINT.md).
+Revisione tecnica PY-REV-001 completata: corretto un caso in cui una
+dichiarazione malformata ripetuta veniva ignorata; verificati gli ingressi
+pubblici reali e l'ambito obbligatorio delle verifiche nelle mappe.
+Nessun problema bloccante residuo nell'ambito della porzione. La PR non e'
+piu in bozza e nessun merge e' stato eseguito.
+
+Prossimo passaggio: prima promozione a environment/python/main. Consultare
+il [checkpoint immutabile](https://github.com/yannericetchart-dev/ruth/blob/80218739327666b0250c3715ba9cfb6fe1f114d5/environment/python/CHECKPOINT.md)
+prima dell'integrazione; aggiornare lo stato dopo ogni promozione.
 Ambito verificato: test sintetici dell'isolamento Python e API comuni;
 nessuna certificazione del runtime nativo. I risultati restano locali.
 Le altre porzioni rimangono pianificate; Kaggle resta inattivo.

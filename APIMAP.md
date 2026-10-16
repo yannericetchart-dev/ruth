@@ -6,7 +6,7 @@ Nodo responsabile: [ROOT](NODE.yaml). Ripresa: [START_HERE](START_HERE.md).
 
 ## Contratto dichiarato
 
-- `inspect_environment(project_root) -> EnvironmentReport [proposta]`
+- `runtime.inspect_environment(project_root: Path) -> PythonEnvironment [proposta; implementata nella PR #2, non integrata in main]`
 
 Dipendenze: nessuna.
 
