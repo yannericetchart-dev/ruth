@@ -81,3 +81,20 @@ Ogni sostituzione deve collegare entrambe le decisioni e aggiornare le mappe.
 - L'albero e le firme proposte restano una base evolvibile, non una
   dichiarazione di capacita' gia' disponibili.
 - Sostituisce: nessuna decisione registrata.
+
+## SYNC-001: allineamento GitHub e checkout locale dopo il lavoro
+
+- Stato: accepted.
+- Decisione: dopo una integrazione in main, verificare esplicitamente lo
+  stato GitHub e quello del checkout locale, se autorizzato e accessibile.
+  Sincronizzare solo con procedure non distruttive e verificare gli SHA.
+- Se il checkout non e' accessibile, lasciare `local_sync: pending_no_access`
+  nel checkpoint e fornire una procedura sicura: GitHub aggiornato non implica
+  macchina locale aggiornata.
+- Motivazione: evitare che ChatGPT e Codex dichiarino conclusa una
+  sincronizzazione locale mai eseguita.
+- Ambito: entrambi i client; indipendente da MIG-FLOW-001 e MIG-FLOW-002,
+  che continuano a imporre integrazione fino a main e collaudo personale.
+- Approvazione: richiesta esplicita dell'utente del 16 ottobre 2026.
+- Verifica richiesta: confronto reale HEAD/remote su un checkout autorizzato
+  e collaudo di ripresa per i client interessati; risultati locali secondo DATA-001.
