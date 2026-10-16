@@ -26,3 +26,12 @@ Perimetro DEP-SCOPE-001 approvato il 16 ottobre 2026.
   del nuovo ingresso. Non avviare la migrazione successiva.
 - DIAG-001, CUDA e installazioni fuori ambito (DATA-001);
   sviluppo remoto e sync post-merge secondo REMOTE-001.
+
+## Chiusura DEP-MANUAL-001 (16 ottobre 2026)
+
+Collaudo personale confermato dopo sincronizzazione fast-forward:
+commit `e197cc86829acf52e326a712331cc7ff6cfef6b5`, comando `.venv/bin/python main.py dependencies pip`,
+report `present_unverified` e riepilogo di compatibilita' non verificata.
+Stato **complete**. Non sono pubblicati dettagli o log di host (DATA-001).
+MAIN-FLOW-001 integra in seguito il controllo nel normale avvio sequenziale
+senza argomenti, con una verifica minima di pip e test dedicati.

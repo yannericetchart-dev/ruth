@@ -41,3 +41,13 @@ Per il lavoro corrente applicare REMOTE-001, che sostituisce SYNC-001:
 nessun blocco di ripresa dovuto al mancato allineamento del clone locale.
 Se manca una fonte o un collaudo non e' stato svolto, dichiararlo. Non
 dedurre il completamento di una fase dalla sola presenza dei documenti.
+
+## Regola del punto d'ingresso (MAIN-FLOW-001)
+
+Avviando `main.py` senza argomenti Ruth esegue automaticamente **tutte le
+operazioni integrate e approvate** in sequenza secondo le loro dipendenze.
+I sottocomandi restano disponibili per verifiche mirate, non sono il flusso
+normale. Per la prima integrazione automatica: PY-001 poi DEP-001, con il
+solo controllo minimo di `pip`; l'inventario completo dei requisiti non e'
+ancora definito. Il codice e i nuovi test sono candidati finche' il checkpoint
+non registra verifica, merge e collaudo dell'orchestrazione.

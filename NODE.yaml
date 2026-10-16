@@ -13,17 +13,16 @@
   "development": "active",
   "implementation": "partial",
   "maturity": "experimental",
-  "verification": "passed",
+  "verification": "stale",
   "integration": "merged",
   "flags": [
     "in_scope"
   ],
-  "blocked_by": [
-    "DEP-MANUAL-001"
-  ],
+  "blocked_by": [],
   "depends_on": [],
   "api": [
-    "runtime.inspect_environment(project_root: Path) -> PythonEnvironment [integrata in main; ispezione Python sperimentale]"
+    "runtime.inspect_environment(project_root: Path) -> PythonEnvironment [integrata in main; ispezione Python sperimentale]",
+    "main(argv: Sequence[str] = ()) -> int [sequenza PY->DEP candidata; modalita mirate disponibili]"
   ],
   "tasks": [
     {
@@ -43,9 +42,14 @@
     },
     {
       "id": "MIG-002",
-      "state": "blocked",
-      "description": "DEP-001 integrata tecnicamente in main via PR #15; in attesa del collaudo personale DEP-MANUAL-001 prima del prossimo componente."
+      "state": "complete",
+      "description": "DEP-001 integrata in main e accettata dall'utente sul commit e197cc86829acf52e326a712331cc7ff6cfef6b5; manual DEP-MANUAL-001 concluso."
+    },
+    {
+      "id": "MAIN-FLOW-001",
+      "state": "active",
+      "description": "Avvio Ruth senza argomenti: eseguire sequenzialmente PY-001 e DEP-001 (pip minimo, senza inventario di progetto), arrestare la sequenza se Python non conforme; candidato da verificare e integrare."
     }
   ],
-  "verification_scope": "DEP-001: GitHub Actions 38895348468, 38895479549, 38895836703 e 38895924627, success: 14 test Python, 12 dipendenze, 13 CLI/root e 237 mappe. Test sintetici e metadati soltanto; non verifica installabilita', lock, GPU o backend. DEP-MANUAL-001 in attesa."
+  "verification_scope": "DEP-001: collaudo manuale positivo sul commit e197cc86829acf52e326a712331cc7ff6cfef6b5 (16 ottobre 2026); controlli sintetici CI precedenti superati. MAIN-FLOW-001: sequenza predefinita PY->DEP candidata in PR, nuovi test da eseguire; test hardware, lock e compatibilita' runtime esclusi."
 }

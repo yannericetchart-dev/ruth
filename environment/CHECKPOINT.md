@@ -21,3 +21,13 @@
 
 REMOTE-001: il checkout preesistente con modifiche rimane intatto.
 DATA-001: nessun output reale della macchina in Git. Kaggle inattivo.
+
+## DEP-MANUAL-001 confermata (16 ottobre 2026)
+
+L'utente ha verificato il commit `e197cc86829acf52e326a712331cc7ff6cfef6b5` dopo sincronizzazione
+fast-forward e ha avviato il controllo esplicito `dependencies pip`:
+esito positivo present_unverified, accettazione manuale complete.
+La verifica non equivale a certificazione di compatibilita' e non
+include dati reali di host in Git. Le note precedenti di stato pending
+rimangono storiche. Avvio default sequenziale in MAIN-FLOW-001 (root)
+ancora candidato e soggetto a CI e successivo collaudo personale.

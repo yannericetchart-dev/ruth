@@ -162,3 +162,22 @@ Ogni sostituzione deve collegare entrambe le decisioni e aggiornare le mappe.
 - Motivo: seguire il checkpoint e MIGRATION.md correnti, riallineando
   ARCHITECTURE.md. La diagnostica DIAG-001 non e' approvata in DEP-001.
 - Vincoli: MIG-FLOW-001/002, REMOTE-001, DATA-001 e Kaggle inattivo.
+
+## MAIN-FLOW-001: eseguire tutti i passaggi integrati da main.py in ordine
+
+- Stato: accepted.
+- Approvazione: chiarimento esplicito dell'utente il 16 ottobre 2026,
+  contestuale al collaudo DEP-MANUAL-001 completato.
+- Decisione: `main.py` senza argomenti avvia e coordina in sequenza
+  tutte le operazioni gia' migrate, approvate e integrate, rispettando i
+  prerequisiti. Stampa stato e motivi, arresta le operazioni dipendenti se
+  manca il prerequisito; i sottocomandi restano per diagnosi mirate.
+- Primo ambito: controllo isolamento Python (PY-001), poi verifica minima
+  dei metadati del pacchetto `pip` (DEP-001), senza presentare `pip`
+  come lista esaustiva dei requisiti di Ruth. Ulteriori requisiti e le
+  future funzioni si collegano solo nei perimetri autorizzati.
+- Verifica richiesta: test sintetici dell'ordine e del mancato avvio
+  delle dipendenze in caso di Python non conforme, CI GitHub, avvio reale
+  da parte dell'utente dopo il merge in main.
+- Ambito: root/orchestrazione, applicabile a ChatGPT e Codex;
+  precisa MIG-FLOW-002; compatibile con MIG-FLOW-001, REMOTE-001 e DATA-001.

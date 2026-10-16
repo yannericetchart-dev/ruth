@@ -106,3 +106,14 @@ Dopo l'integrazione, l'utente esegue Ruth localmente di persona e conferma
 l'esito positivo prima della migrazione successiva. L'integrazione tecnica
 e il collaudo manuale sono due stati distinti; test automatici e silenzio non
 sostituiscono la conferma dell'utente.
+
+## Punto d'ingresso completo e sequenziale (MAIN-FLOW-001)
+
+L'esecuzione normale di Ruth usa `main.py` senza argomenti. L'ingresso
+ordina e avvia automaticamente tutte le funzioni approvate e integrate,
+senza richiedere un sottocomando per ogni porzione. Ogni migrazione futura
+deve collegarsi a questo flusso, aggiungendo test di ordinamento e di
+comportamento quando un prerequisito non e' valido. I sottocomandi restano
+per controlli isolati. Finche non esiste un elenco approvato delle
+dipendenze dell'app, l'autoverifica DEP-001 controlla solo `pip`, descritto
+come controllo minimo e non come inventario o certificazione di compatibilita'.
