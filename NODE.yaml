@@ -18,9 +18,7 @@
   "flags": [
     "in_scope"
   ],
-  "blocked_by": [
-    "MAIN-MANUAL-001"
-  ],
+  "blocked_by": [],
   "depends_on": [],
   "api": [
     "runtime.inspect_environment(project_root: Path) -> PythonEnvironment [integrata in main; ispezione Python sperimentale]",
@@ -54,9 +52,9 @@
     },
     {
       "id": "MAIN-MANUAL-001",
-      "state": "active",
-      "description": "Attende esecuzione personale di .venv/bin/python main.py sul commit main aggiornato e conferma dell'esito sequenziale PY poi DEP prima della prossima migrazione."
+      "state": "complete",
+      "description": "Utente: avvio sequenziale di main.py dal checkout main pulito, prima Python poi controllo pip, output conforme; commit 3f08cbad9ec06f814031bd1cbcbdc25553bd82ae verificato il 16 ottobre 2026."
     }
   ],
-  "verification_scope": "CI GitHub Actions run 38900998138: 14 Python, 12 dipendenze, 14 root/CLI (inclusi sequenza e gate), controllo di 237 mappe: success. Merge PR #17 in main e605a02bdd72441fd4e79d36a943109ee3ba5c57; manual MAIN-MANUAL-001 in attesa; nessuna certificazione host/GPU/lock."
+  "verification_scope": "MAIN-FLOW-001: CI GitHub run 38900998138 e 38901495978 superate per test Python/dipendenze, ordine e gate dell'ingresso; integrazione PR #17 in main. MAIN-MANUAL-001 superato su revisione 3f08cbad9ec06f814031bd1cbcbdc25553bd82ae (16 ottobre 2026), sequenza PY->DEP con pip, senza certificare runtime/hardware."
 }

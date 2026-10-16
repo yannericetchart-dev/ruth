@@ -39,3 +39,11 @@ minimo di `pip` DEP-001; uso mirato `dependencies` preservato.
 Codice in main tramite PR #17, CI `38900998138` superata. DEP-MANUAL-001
 completata sul commit `e197cc86829acf52e326a712331cc7ff6cfef6b5`; il nuovo collaudo della sequenza
 MAIN-MANUAL-001 e' in attesa. Nessun inventario o risultato host in Git.
+
+## Accettazione del flusso MAIN-FLOW-001 (16 ottobre 2026)
+
+L'utente ha confermato il collaudo positivo di `main.py` senza
+argomenti sul commit `3f08cbad9ec06f814031bd1cbcbdc25553bd82ae`.
+Python precede la verifica minima dei metadati `pip`; nessuna
+installazione o certificazione di compatibilita' runtime.
+MAIN-MANUAL-001 **complete**; i precedenti stati pending sono storici.

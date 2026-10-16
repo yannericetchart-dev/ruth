@@ -128,3 +128,18 @@ Non importare lock CUDA o dati host, non installare pacchetti (DATA-001).
 - Nuova verifica personale dell'avvio *sequenziale* MAIN-MANUAL-001
   ancora pendente, da effettuare dopo sincronizzazione sicura di main.
 - Non migrare ulteriori funzioni finche' non arriva conferma positiva.
+
+## MAIN-MANUAL-001 completata (16 ottobre 2026)
+
+- L'utente ha sincronizzato la copia pulita sul commit
+  `3f08cbad9ec06f814031bd1cbcbdc25553bd82ae` in fast-forward,
+  verificando personalmente HEAD ed eseguendo `.venv/bin/python main.py`
+  senza argomenti.
+- Esito positivo: controllo Python conforme, successivo controllo minimo
+  `pip` presente (stato `present_unverified`), sequenza completata.
+- Stato MAIN-FLOW-001: implementato, verificato, integrato e accettato.
+  Le note precedenti di collaudo pendente sono storiche.
+- Ogni nuovo componente dovra' entrare nella sequenza automatica
+  di Ruth e richiedera' l'approvazione del proprio perimetro,
+  poi il collaudo personale (MIG-FLOW-001/002).
+- Nessun dato reale della macchina o log e' stato versionato (DATA-001).
