@@ -363,3 +363,15 @@ GPU-MANUAL-001 richiesta solo dopo main, secondo MIG-FLOW-002.
   PR #50 integrata e collaudo personale passato.
 - Le voci anteriori di manual pending restano storiche.
   Prossima migrazione solo previo nuovo scope e approvazione.
+
+## GGUF-INDEX-SCOPE-001: nona porzione autorizzata (16 ottobre 2026)
+
+- Solo descrittori tensor di GGUF catalogati; lettura bounded,
+  nome/dimensioni/codice tipo/offset, no payload.
+- Nuove API inspect_tensor_index e inspect_all_tensor_indexes;
+  nona fase default Ruth e comando mirato `gguf-index`.
+- Verifica dimensionale solo per tipi scalari noti; altri tipi
+  registrati come size_unverified.
+- Scope [GGUF-INDEX-SCOPE-001](models/formats/gguf/INDEX_SCOPE.md).
+- Candidato remoto; CI/promozioni pendenti, poi test personale
+  GGUF-INDEX-MANUAL-001. Nessuna fase successiva autorizzata.
