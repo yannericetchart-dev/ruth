@@ -10,7 +10,7 @@ Sviluppo: **active**; codice: **partial**; maturita: experimental; verifica: pas
 
 Flag: in_scope. Blocchi: nessuno registrato.
 
-Ambito verifica: DIAG-001: GitHub Actions 38908192677, 38908269925, 38908370200 superate (14 PY, 12 DEP, 13 DIAG, 15 test root/CLI, mappe coerenti). PR #20 figlio, #21 environment/main e #22 main. Solo analisi sintetiche di report; collaudo DIAG-MANUAL-001 pendente; nessuna diagnostica GPU/CUDA.
+Ambito verifica: DIAG-001: test sintetici GitHub Actions 38908192677, 38908269925, 38908370200 superati (14 PY, 12 DEP, 13 DIAG, 15 root/CLI; mappe coerenti), integrazione PR #20-#22. DIAG-MANUAL-001 superato il 16 ottobre 2026 sul commit b379d2d8a228f55101eb98a19bfb14e8fc7a4bcb: ordine PY->DEP->DIAG e output di riepilogo conformi. Nessuna certificazione hardware, CUDA o runtime.
 
 ## Attivita locali
 

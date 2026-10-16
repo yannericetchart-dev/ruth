@@ -169,3 +169,16 @@ Non importare lock CUDA o dati host, non installare pacchetti (DATA-001).
 - Stato tecnico: implemented / verified / integrated; collaudo personale
   DIAG-MANUAL-001 pending fino a test utente sulla revisione main.
 - Niente CUDA, driver, log nativi, installazioni o dati reali in Git.
+
+## DIAG-MANUAL-001: chiusura confermata (16 ottobre 2026)
+
+- Collaudo positivo comunicato dall'utente per `main.py` avviato
+  senza argomenti sulla revisione `b379d2d8a228f55101eb98a19bfb14e8fc7a4bcb`, verificata
+  con `git rev-parse HEAD` dopo fast-forward della copia pulita.
+- Ordine PY-001 -> DEP-001 -> DIAG-001 rispettato; diagnostica
+  `ok_unverified` e riepilogo finale positivo.
+- Stato DIAG-001: implementation complete, verification passed,
+  integration merged, manual acceptance passed. Le annotazioni di
+  attesa precedenti sono storiche e non rappresentano lo stato corrente.
+- Nessun dato specifico della macchina viene pubblicato (DATA-001).
+  Prossima migrazione da approvare separatamente (MIG-FLOW-001).

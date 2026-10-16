@@ -32,6 +32,8 @@
 **Stato implementazione (16 ottobre 2026)**: DIAG-001 implementata,
 verificata da CI e integrata in main tramite PR #20, #21 e #22,
 merge finale `dfdb41e981f32ee233320f77998aadab55ce4d7b`.
-Il collaudo personale DIAG-MANUAL-001 e' ancora in attesa.
+Il collaudo personale DIAG-MANUAL-001 e' stato completato con esito
+positivo sul commit `b379d2d8a228f55101eb98a19bfb14e8fc7a4bcb` (16 ottobre 2026), confermando
+la sequenza PY -> DEP -> DIAG e lo stato `ok_unverified`.
 Le evidenze di verifica riguardano fixture sintetiche, non la macchina
 dell'utente ne' runtime nativi.
