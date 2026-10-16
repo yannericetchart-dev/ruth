@@ -8,27 +8,38 @@
   "branch": {
     "name": "models/catalog/main",
     "parent": "models/main",
-    "status": "planned"
+    "status": "present"
   },
-  "development": "inactive",
-  "implementation": "skeleton",
-  "maturity": null,
+  "development": "active",
+  "implementation": "complete",
+  "maturity": "experimental",
   "verification": "not_run",
-  "integration": "merged",
+  "integration": "not_merged",
   "flags": [
     "in_scope"
   ],
   "blocked_by": [],
   "depends_on": [],
   "api": [
-    "catalog(query) -> ModelCatalog [proposta]",
-    "resolve(reference) -> ModelArtifact [proposta]"
+    "catalog(*, project_root: Path | None = None) -> ModelCatalog [implementata su branch candidato, non verificata]",
+    "resolve(reference: str, *, project_root: Path | None = None) -> ModelRecord | None [candidata]"
   ],
   "tasks": [
     {
       "id": "CAT-001",
+      "state": "active",
+      "description": "Manifest locale JSON rigoroso, report immutabili ModelCatalog/ModelRecord, protezione directory/symlink e controllo file dichiarati; CI e promozione pending."
+    },
+    {
+      "id": "CAT-SCOPE-001",
+      "state": "complete",
+      "description": "Catalogo locale dichiarativo read-only, percorso manifest opzionale, casi invalidi e sesto passaggio approvati esplicitamente il 16 ottobre 2026."
+    },
+    {
+      "id": "CAT-MANUAL-001",
       "state": "planned",
-      "description": "Definire e verificare il contratto prima della migrazione."
+      "description": "Dopo merge su main, test personale dal flusso main.py completo con catalogo not_configured/empty oppure manifest locale; comunicare SHA e stato, nessun riferimento host in Git."
     }
-  ]
+  ],
+  "verification_scope": "CAT-001: manifest JSON opzionale in .local/models/catalog.json, file dichiarati sotto .local/models senza symlink o traversal, report read-only, niente discovery/download/GGUF o dati reali su Git. Test sintetici e promozioni ancora da eseguire."
 }

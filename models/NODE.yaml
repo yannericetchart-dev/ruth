@@ -8,29 +8,30 @@
   "branch": {
     "name": "models/main",
     "parent": "main",
-    "status": "planned"
+    "status": "present"
   },
-  "development": "inactive",
-  "implementation": "skeleton",
-  "maturity": null,
-  "verification": "not_run",
-  "integration": "merged",
+  "development": "active",
+  "implementation": "partial",
+  "maturity": "experimental",
+  "verification": "stale",
+  "integration": "partial",
   "flags": [
     "in_scope"
   ],
   "blocked_by": [],
   "depends_on": [],
   "api": [
-    "catalog(query) -> ModelCatalog [proposta]",
-    "resolve(reference) -> ModelArtifact [proposta]",
+    "catalog(*, project_root: Path | None = None) -> ModelCatalog [CAT-001 candidata, solo manifest locale]",
+    "resolve(reference: str, *, project_root: Path | None = None) -> ModelRecord | None [CAT-001 candidata]",
     "acquire(request) -> AcquisitionResult [proposta]",
     "verify(artifact) -> VerificationReport [proposta]"
   ],
   "tasks": [
     {
       "id": "MODEL-001",
-      "state": "planned",
-      "description": "Definire e verificare il contratto prima della migrazione."
+      "state": "active",
+      "description": "Prima porzione del dominio: catalogo locale CAT-001 approvato e candidato; acquisizione, GGUF e sorgenti restano skeleton."
     }
-  ]
+  ],
+  "verification_scope": "CAT-001: manifest JSON opzionale in .local/models/catalog.json, file dichiarati sotto .local/models senza symlink o traversal, report read-only, niente discovery/download/GGUF o dati reali su Git. Test sintetici e promozioni ancora da eseguire."
 }
