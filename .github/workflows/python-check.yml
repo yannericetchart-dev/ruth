@@ -1,0 +1,27 @@
+name: Verify Ruth Python isolation
+on:
+  pull_request:
+    branches: [main, environment/main]
+  push:
+    branches: [main, environment/main]
+jobs:
+  python:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Python component tests
+        run: |
+          if [ -f environment/python/tests/test_inspection.py ]; then
+            python3 -m unittest discover -s environment/python/tests -v
+          else
+            echo 'Python component tests not yet present in scaffold'
+          fi
+      - name: Root tests and entrypoint
+        run: python3 -m unittest discover -s tests -v
+      - name: Check generated maps
+        run: python3 tools/maps.py --check
+      - name: Verify no generated tracked changes
+        run: git diff --exit-code

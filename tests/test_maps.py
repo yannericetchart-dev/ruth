@@ -18,7 +18,7 @@ class MapTests(unittest.TestCase):
 
     def write_node(self, path, ident, parent, dependencies):
         node = copy.deepcopy(self.template)
-        node.update(id=ident, parent=parent, depends_on=dependencies, tasks=[])
+        node.update(id=ident, parent=parent, depends_on=dependencies, tasks=[], blocked_by=[])
         node['branch'] = dict(name='main' if path == '.' else path+'/main',
                               parent=None if parent is None else 'main', status='planned')
         destination = self.root/path
