@@ -49,4 +49,9 @@ Fase 3, migrazione per componente, MIG-FLOW-001/002.
   `models/catalog/main` -> `models/main` -> `main`.
   Dopo main richiedere collaudo personale CAT-MANUAL-001.
 
-**Stato iniziale:** codice candidato; CI e integrazione pending.
+**Stato tecnico (16 ottobre 2026):** implementato, CI verificata e
+integrato in main via PR #36, #37 e #38, merge finale
+`12c395ba3bb272d66095d4e468794936b1693892`.
+CI run 38928909391, 38929028829 e 38929118836: success,
+116 test sintetici e 264 mappe. **CAT-MANUAL-001 ancora pendente**:
+nessun test personale dell'utente sulla nuova revisione dichiarato.

@@ -6,11 +6,11 @@ Nodo responsabile: [ROOT](NODE.yaml). Ripresa: [START_HERE](START_HERE.md).
 
 Coordinare i sottosistemi tramite API comuni.
 
-Sviluppo: **active**; codice: **partial**; maturita: experimental; verifica: stale; integrazione: partial.
+Sviluppo: **active**; codice: **partial**; maturita: experimental; verifica: passed; integrazione: merged.
 
-Flag: in_scope. Blocchi: nessuno registrato.
+Flag: in_scope. Blocchi: CAT-MANUAL-001.
 
-Ambito verifica: CAT-001: manifest JSON opzionale in .local/models/catalog.json, file dichiarati sotto .local/models senza symlink o traversal, report read-only, niente discovery/download/GGUF o dati reali su Git. Test sintetici e promozioni ancora da eseguire.
+Ambito verifica: CAT-001: CI GitHub 38928909391, 38929028829, 38929118836 success (116 test sintetici inclusi 21 catalogo e 20 CLI, 264 mappe). PR #36 models/catalog/main, #37 models/main e #38 main. Manifest locale read-only, file solo dichiarati, niente download, lettura GGUF, inferenza o dati reali Git. CAT-MANUAL-001 ancora da eseguire.
 
 ## Attivita locali
 
@@ -23,14 +23,14 @@ Ambito verifica: CAT-001: manifest JSON opzionale in .local/models/catalog.json,
 7. `MIG-003` [complete] DIAG-001 implementata, verificata e integrata via PR #22; DIAG-MANUAL-001 superato sul commit b379d2d8a228f55101eb98a19bfb14e8fc7a4bcb (sequenza PY->DEP->DIAG). Prossimo componente soltanto dopo nuovo perimetro approvato.
 8. `MIG-004` [complete] HW-SCOPE-001 CPU/RAM implementata, verificata e integrata via PR #27; collaudo personale HW-MANUAL-001 positivo sul commit 59b26fd6b427e6756ce0285fee60590cb077ebf1 (PY->DEP->DIAG->HW). Prossima porzione richiede nuovo perimetro approvato.
 9. `MIG-005` [complete] GPU-SCOPE-001 NVIDIA implementata, verificata e integrata in main via PR #33; GPU-MANUAL-001 confermata positiva sul commit c344c71013cfa05da4f49f3204900f4bdc89b8ea con sequenza PY->DEP->DIAG->HW->NVIDIA. Il prossimo perimetro richiede nuova approvazione.
-10. `MIG-006` [active] CAT-SCOPE-001 autorizzato: catalogo locale dichiarativo in sola lettura e sesto passaggio main.py candidati; CI, promozioni e collaudo manuale pendenti.
+10. `MIG-006` [blocked] CAT-SCOPE-001: catalogo locale manifest read-only implementato, verificato e integrato in main (PR #38); collaudo personale CAT-MANUAL-001 pendente prima del componente successivo.
 
 ## Componenti (ordine locale, ID stabili)
 
 1. [CORE: Contratti e orchestrazione](runtime/ROADMAP.md) — active; partial; passed.
 2. [ENV: Ambiente](environment/ROADMAP.md) — active; partial; passed.
 3. [HW: Hardware](hardware/ROADMAP.md) — active; complete; passed.
-4. [MODEL: Modelli](models/ROADMAP.md) — active; partial; stale.
+4. [MODEL: Modelli](models/ROADMAP.md) — active; partial; passed.
 5. [INF: Inferenza](inference/ROADMAP.md) — inactive; skeleton; not_run.
 6. [PROF: Profilazione](profiling/ROADMAP.md) — inactive; skeleton; not_run.
 7. [CHAT: Chat](chat/ROADMAP.md) — inactive; skeleton; not_run.
