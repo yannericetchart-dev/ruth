@@ -1189,7 +1189,83 @@ Non è un'autorizzazione a nuove catture
 Nsight, nuovi benchmark o modifica
 della libreria pinned.
 
-## 18. Riferimenti interni
+## 18. Esito reale dell'audit ID e join delle origini dei nodi
+
+L'utente ha eseguito lo strumento ausiliario sul file Nsight
+Phase28 già acquisito e ha riportato **quattro test passati**,
+`identifier_coverage_verified=true`, senza inferenza CUDA.
+
+| Controllo aggregato | Valore |
+|---|---:|
+| Righe `CUDA_GRAPH_NODE_EVENTS` | 23.386 |
+| `graphNodeId` distinti negli eventi | 22.142 |
+| Eventi con `originalGraphNodeId` valido | 1.244 |
+| Eventi originali risolti nella medesima tabella | 1.244 |
+| ID kernel Graph distinti | 1.244 |
+| ID kernel presenti tra i `graphNodeId` degli eventi | **1.244/1.244** |
+| ID kernel usati come `originalGraphNodeId` | **0** |
+| Eventi MEMCPY | 1.756 |
+| Eventi MEMCPY con `graphNodeId` non nullo/nonzero | **0** |
+
+**Interpretazione:** tutti gli ID dei nodi kernel osservati
+possono essere trovati in eventi di creazione/clonazione.
+La coincidenza fra *1.244 eventi con origine* e
+*1.244 ID kernel distinti* non costituisce però da sola
+una verifica che **quegli specifici eventi**
+riguardino gli stessi ID. Una corrispondenza distinta
+fra identificatori richiede una query dedicata.
+
+La nuova versione di
+`ruth_runtime.gemma3_phase28_aux_node_audit`
+introduce pertanto `kernel_node_original_id_mapping`:
+per ciascun **ID kernel distinto** raggruppa gli eventi
+con `graphNodeId` uguale e calcola il numero di
+`originalGraphNodeId` distinti e validi. Restituisce
+**solo aggregati**:
+
+- `no_original_node_candidate` — ID kernel senza
+  alcun riferimento di origine nel corrispondente
+  evento;
+- `exactly_one_original_node_candidate` — un
+  riferimento distinto, eventualmente ripetuto;
+- `multiple_original_node_candidates` — almeno
+  due riferimenti diversi: mappatura ambigua;
+- `unique_original_node_found_in_events` — ID kernel
+  con esattamente una origine il cui identificatore
+  compare anche come `graphNodeId` in un altro
+  evento registrato;
+- `kernel_id_to_original_id_mapping_complete_unambiguous`
+  — criterio **esclusivamente di consistenza degli ID
+  di clonazione**, mai prova di una dipendenza DAG.
+
+Se la verifica delle origini risulterà completa,
+potremo affermare che i nodi kernel registrati
+sono associati univocamente a nodi originali nella
+**struttura degli eventi Nsight**. Non avremo
+ancora dimostrato il buffer `convert_unary` che
+alimenta una GEMM o gli operatori GGML.
+Non leggere né esportare indirizzi di memoria.
+
+```bash
+cd ~/Dev/ruth-model-profiling
+git pull --ff-only origin feat/gemma3-phase28-context-dispatch
+
+.venv/bin/python -m unittest \
+  tests.test_phase28_gemma3_aux_node_audit -v
+
+.venv/bin/python -m ruth_runtime.gemma3_phase28_aux_node_audit \
+  --sqlite .ruth-build/phase28/bf16-on-ctx2048-nvtx3-nodes.sqlite \
+  --candidate bf16-on --n-ctx 2048
+```
+
+Sono stati aggiunti **due test sintetici** (sei in
+totale) che distinguono un'origina unica da una
+mappatura conflittuale. Non sono ancora stati
+eseguiti sul checkout dell'utente. Nessun nuovo
+profiling GPU, alcuna modifica dei kernel CUDA
+o del gate `production_qualified=false`.
+
+## 19. Riferimenti interni
 
 - [Fase 27 — precisione e benchmark](phase-27-gemma3-precision-and-kernel-benchmark.md).
 - [Fase 28 — prove CUDA/NVTX e contesti](phase-28-gemma3-dispatch-and-context-scaling.md).
