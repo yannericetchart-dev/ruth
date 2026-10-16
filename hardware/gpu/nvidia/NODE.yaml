@@ -13,22 +13,22 @@
   "development": "active",
   "implementation": "complete",
   "maturity": "experimental",
-  "verification": "not_run",
-  "integration": "not_merged",
+  "verification": "passed",
+  "integration": "merged",
   "flags": [
     "in_scope"
   ],
   "blocked_by": [],
   "depends_on": [],
   "api": [
-    "detect() -> GPUReport [provider nvidia-smi read-only, candidata]"
+    "detect() -> GPUReport [provider nvidia-smi read-only, verificata e integrata in main]"
   ],
   "tasks": [
     {
       "id": "NVIDIA-001",
-      "state": "active",
-      "description": "Provider nvidia-smi CSV, timeout e report generici senza identificatori persistenti; test e CI da verificare."
+      "state": "complete",
+      "description": "Provider NVIDIA read-only via nvidia-smi, fixture sintetiche verificate in CI e integrato in main tramite PR #33."
     }
   ],
-  "verification_scope": "GPU-001 NVIDIA: candidato read-only con nvidia-smi a parametri fissi e timeout; fixture sintetiche per modello/VRAM/multi-GPU e fallimenti, CI da eseguire. GPU AMD/Intel, driver, CUDA e inferenza esclusi; HW GPU manuale da confermare."
+  "verification_scope": "GPU-001 NVIDIA: CI GitHub 38918374871, 38918650589, 38918759116, 38918867451 success (92 test sintetici, 258 mappe); promozioni PR #30 NVIDIA, #31 GPU, #32 hardware e #33 main. Driver, CUDA, AMD/Intel e compatibilita' inferenza non verificati. GPU-MANUAL-001 ancora pendente."
 }

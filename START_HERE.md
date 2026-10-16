@@ -82,3 +82,10 @@ consultare CHECKPOINT.md.
 Il 16 ottobre 2026 e' stato approvato solo il provider NVIDIA con
 interrogazione read-only a `nvidia-smi`. AMD/Intel non autorizzati;
 lo stato di verifica, integrazione e collaudo e' in CHECKPOINT.md.
+
+## GPU-001 NVIDIA integrata tecnicamente (16 ottobre 2026)
+
+Il quinto passaggio di `main.py` interroga soltanto NVIDIA in sola
+lettura; verifica CI superata e PR #33 integrata in main.
+GPU-MANUAL-001 richiede ancora il collaudo personale sulla revisione
+finale, come da CHECKPOINT.md. AMD/Intel e CUDA non sono migrati.

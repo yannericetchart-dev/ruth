@@ -6,7 +6,7 @@ Nodo responsabile: [GPU](NODE.yaml). Ripresa: [START_HERE](../../START_HERE.md).
 
 ## Contratto dichiarato
 
-- `detect() -> GPUReport [solo NVIDIA, candidata read-only; AMD/Intel inattive]`
+- `detect() -> GPUReport [solo NVIDIA, verificata e integrata in main; AMD/Intel inattive]`
 
 Dipendenze: nessuna.
 

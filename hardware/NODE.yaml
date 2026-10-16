@@ -13,8 +13,8 @@
   "development": "active",
   "implementation": "complete",
   "maturity": "experimental",
-  "verification": "stale",
-  "integration": "partial",
+  "verification": "passed",
+  "integration": "merged",
   "flags": [
     "in_scope"
   ],
@@ -52,9 +52,9 @@
     },
     {
       "id": "HW-GPU-001",
-      "state": "active",
-      "description": "Estendere l'inventario GPU alla sola NVIDIA, lasciando intatti CPU/RAM; dopo test e merge richiedere collaudo utente."
+      "state": "complete",
+      "description": "Estensione NVIDIA GPU-001 read-only verificata e integrata in main (PR #33), con CPU/RAM preservate e collaudo personale GPU ancora pendente."
     }
   ],
-  "verification_scope": "GPU-001 NVIDIA: candidato read-only con nvidia-smi a parametri fissi e timeout; fixture sintetiche per modello/VRAM/multi-GPU e fallimenti, CI da eseguire. GPU AMD/Intel, driver, CUDA e inferenza esclusi; HW GPU manuale da confermare."
+  "verification_scope": "GPU-001 NVIDIA: CI GitHub 38918374871, 38918650589, 38918759116, 38918867451 success (92 test sintetici, 258 mappe); promozioni PR #30 NVIDIA, #31 GPU, #32 hardware e #33 main. Driver, CUDA, AMD/Intel e compatibilita' inferenza non verificati. GPU-MANUAL-001 ancora pendente."
 }

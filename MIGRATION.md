@@ -230,3 +230,20 @@ read-only con modello e VRAM, senza driver/CUDA/inferenza, AMD/Intel non
 migrati. Punto di ingresso `main.py` con sequenza PY -> DEP -> DIAG ->
 HW -> NVIDIA. CI e promozioni ancora pendenti. Accettazione personale
 GPU-MANUAL-001 richiesta solo dopo main, secondo MIG-FLOW-002.
+
+## GPU-001 NVIDIA integrata (16 ottobre 2026)
+
+- GPU-SCOPE-001 esplicitamente approvato: solo NVIDIA e read-only.
+- PR #30 `hardware/gpu/nvidia/main` merge
+  `21c17032af358120b7cf0d56246a9c135f2833f7`;
+  PR #31 `hardware/gpu/main` merge
+  `0010c43b75c1f28c18b6c83dba0c913f384a40c2`;
+  PR #32 `hardware/main` merge `a7c5e63ea460c00d9ff5c73913af3835c182b2e2`;
+  PR #33 `main` merge `54a02cf37262a78f5a1ed0aa84cd6d210060a14c`.
+- CI GitHub 38918374871, 38918650589, 38918759116 e 38918867451:
+  success, 92 test sintetici e 258 mappe.
+- Default `main.py` e' ora PY->DEP->DIAG->HW CPU/RAM->NVIDIA,
+  con errori NVIDIA non bloccanti e nessun controllo driver/CUDA.
+- Stato tecnico complete/passed/merged; collaudo personale
+  GPU-MANUAL-001 **pending** (MIG-FLOW-002). Annotazioni precedenti
+  della candidatura non ancora integrata sono storiche.
