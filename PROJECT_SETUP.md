@@ -62,3 +62,43 @@ Le istruzioni del Progetto ChatGPT e AGENTS.md sono due ingressi distinti:
 modificare il file locale non aggiorna automaticamente le impostazioni della
 UI. Dopo una modifica del protocollo verificarli entrambi. Commit e push
 rendono condivise le modifiche, mentre un commit soltanto locale non lo fa.
+
+### Sincronizzazione del checkout dopo un merge in main (SYNC-001)
+
+La pubblicazione su GitHub non aggiorna automaticamente un clone sul computer.
+Se il client ha accesso esplicito alla cartella locale, prima di operare
+confrontare GitHub e il clone, senza assumere che il branch attivo sia main.
+Eseguire dalla radice del clone, senza copiare in Git i risultati locali:
+
+```sh
+git remote -v
+git status --short --branch
+git branch --show-current
+git rev-parse HEAD
+git fetch origin
+git rev-parse origin/main
+```
+
+Confermare che `origin` punti a yannericetchart-dev/ruth e che `origin/main`
+coincida con il commit main pubblicato, letto mediante il connettore GitHub.
+Solo se il checkout e' pulito, il branch attivo e' `main` e non ci sono
+modifiche o lavori concorrenti da preservare, aggiornare senza merge impliciti:
+
+```sh
+git merge --ff-only origin/main
+git rev-parse HEAD
+git status --short --branch
+```
+
+Il valore HEAD finale deve coincidere con il commit GitHub atteso. In caso
+di branch differente, modifiche non committate, merge non fast-forward,
+remote non atteso o incertezza, interrompere la sincronizzazione automatica
+e registrare il motivo. Non scartare o nascondere modifiche dell'utente,
+non usare reset --hard, clean, rebase, stash o force-push come scorciatoie.
+
+Se il client non puo' aprire la cartella reale, riportare in CHECKPOINT.md
+`local_sync: pending_no_access` e commit GitHub, poi fornire la procedura
+per eseguirla tramite un ambiente autorizzato (Work desktop locale,
+Codex locale o l'utente). Non riportare percorsi assoluti, output dettagliati
+o dati host in Git. Il collaudo manuale previsto da MIG-FLOW-002 resta
+obbligatorio anche se la sincronizzazione Git e' riuscita.

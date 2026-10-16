@@ -91,6 +91,33 @@ dell'utente. Distinguere integrazione tecnica completata da accettazione
 manuale ancora in attesa. Se il collaudo fallisce, restare sulla porzione
 corrente, correggerla e sottoporla nuovamente al collaudo dell'utente.
 
+
+## Sincronizzazione repository e checkout locale (SYNC-001)
+
+Dopo ogni integrazione tecnica in `main`, verificare separatamente lo stato
+pubblicato su GitHub e il checkout locale effettivamente accessibile. Confrontare
+ref `main` GitHub, `origin/main`, branch corrente, HEAD e modifiche locali
+prima di qualunque sincronizzazione. Non dedurre la presenza dei file locali
+dalla connessione GitHub e non dichiarare il locale sincronizzato senza averlo
+verificato su quel checkout.
+
+Se il checkout e' accessibile, controllare prima remote e modifiche non
+committate, inclusi file non tracciati rilevanti; sincronizzare `main` solo
+quando e' sicuro, con aggiornamento fast-forward senza perdita di dati, e
+verificare di nuovo gli SHA. Non effettuare automaticamente reset --hard,
+clean, force-push, scarti, stash, rebase o cambi di branch che disturbino
+lavoro dell'utente. Una divergenza o uno stato locale non pulito che non possa
+essere risolto in sicurezza va dichiarato come blocco della sincronizzazione,
+non aggirato.
+
+Se il checkout non e' disponibile al client, documentare nel checkpoint
+`local_sync: pending_no_access` con lo SHA GitHub noto, dare le istruzioni
+minime e sicure per il completamento locale, e non dichiarare una verifica
+locale mai eseguita. L'integrazione su GitHub e il collaudo manuale
+MIG-FLOW-002 sono stati indipendenti dalla sincronizzazione locale.
+Consultare PROJECT_SETUP.md per la procedura. DATA-001 vieta di riversare
+output Git con nomi e percorsi personali nei documenti pubblicati.
+
 ## Mappe ricorsive
 
 Seguire ARCHITECTURE.md. Modificare NODE.yaml (sottoinsieme JSON di YAML),
