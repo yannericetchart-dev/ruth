@@ -6,20 +6,21 @@ Nodo responsabile: [ENV](NODE.yaml). Ripresa: [START_HERE](../START_HERE.md).
 
 Ispezionare Python e pianificare dipendenze senza installazioni implicite.
 
-Sviluppo: **active**; codice: **partial**; maturita: experimental; verifica: passed; integrazione: merged.
+Sviluppo: **active**; codice: **partial**; maturita: experimental; verifica: stale; integrazione: partial.
 
 Flag: in_scope. Blocchi: nessuno registrato.
 
-Ambito verifica: PY-001: GitHub Actions run 38885972247 e run 38886317198 conclusi con successo (test Python su fixture sintetiche, API pubbliche, test ingresso Ruth, test mappe e tools/maps.py --check). Collaudo personale PY-MANUAL-001 positivo sul commit ef4654af8ab106ef194af254d9f3884e5cabb6b0 il 16 ottobre 2026; nessuna verifica GPU o backend nativi.
+Ambito verifica: DEP-001: validazione di nomi/versioni, report dei metadati tramite lookup sintetico e controllo del blocco Python; test su CI da eseguire. PY-001 gia' verificato separatamente.
 
 ## Attivita locali
 
 1. `ENV-001` [complete] Porzione PY-001 testata e promossa da environment/python/main a environment/main (PR #3) e main (PR #8).
+2. `ENV-002` [active] Integrare il componente dipendenze dalla foglia verso environment/main e main dopo verifica.
 
 ## Componenti (ordine locale, ID stabili)
 
 1. [PY: Python](python/ROADMAP.md) — active; partial; passed.
-2. [DEP: Dipendenze](dependencies/ROADMAP.md) — inactive; skeleton; not_run.
+2. [DEP: Dipendenze](dependencies/ROADMAP.md) — active; complete; not_run.
 3. [DIAG: Diagnostica](diagnostics/ROADMAP.md) — inactive; skeleton; not_run.
 
 Propagare impatti e blocchi al [padre](../ROADMAP.md) e proseguire fino alla radice.
