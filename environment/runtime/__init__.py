@@ -2,7 +2,9 @@
 from pathlib import Path
 from collections.abc import Iterable
 
-from .contracts import DependencyPlan, PackageState, PythonEnvironment
+from .contracts import (
+    DependencyPlan, DiagnosticIssue, DiagnosticReport, PackageState, PythonEnvironment,
+)
 
 
 def inspect(project_root: Path) -> PythonEnvironment:
@@ -21,4 +23,7 @@ def plan(
     return plan_dependencies(requirements, python_report)
 
 
-__all__ = ['DependencyPlan', 'PackageState', 'PythonEnvironment', 'inspect', 'plan']
+__all__ = [
+    "DependencyPlan", "DiagnosticIssue", "DiagnosticReport", "PackageState",
+    "PythonEnvironment", "inspect", "plan",
+]
