@@ -99,7 +99,7 @@ def main(argv: Sequence[str] = ()) -> int:
             print("Ruth: controllo dipendenze saltato: ambiente Python non conforme.")
             _diagnose(python, None)
             _check_hardware()
-        _check_gpu()
+            _check_gpu()
             print("Ruth: sequenza controlli terminata con problemi.")
             return 1
         print("Ruth: dipendenze minime da controllare: pip (non elenco completo di Ruth).")
