@@ -98,3 +98,10 @@ Prima di ogni porzione sottoporre all'utente la descrizione delle funzioni
 e attendere il verde sul perimetro (MIG-FLOW-001). Dopo l'approvazione,
 completare tutte le promozioni fino a main senza chiedere conferma a ogni
 passaggio; fermarsi per dubbi o domande che richiedono una decisione.
+
+Ogni porzione deve inoltre essere eseguita dal punto d'ingresso ufficiale
+di Ruth in main con messaggi a terminale corrispondenti (MIG-FLOW-002).
+Dopo l'integrazione, l'utente esegue Ruth localmente di persona e conferma
+l'esito positivo prima della migrazione successiva. L'integrazione tecnica
+e il collaudo manuale sono due stati distinti; test automatici e silenzio non
+sostituiscono la conferma dell'utente.

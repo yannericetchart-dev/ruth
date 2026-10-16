@@ -34,6 +34,24 @@ Ogni sostituzione deve collegare entrambe le decisioni e aggiornare le mappe.
 - Sostituisce: l'interpretazione operativa che richiedeva un nuovo via libera
   per ogni singolo passaggio fra branch padri.
 
+## MIG-FLOW-002: esecuzione dall'ingresso e conferma manuale
+
+- Stato: accepted.
+- Decisione: ogni porzione integrata in main deve essere eseguita dal
+  punto d'ingresso ufficiale di Ruth e produrre messaggi a terminale relativi
+  alla funzione e al suo esito. Dopo l'integrazione l'utente avvia Ruth
+  localmente di persona; la migrazione successiva attende la sua conferma
+  esplicita dell'esito positivo.
+- Verifica: fornire comando ed esiti attesi e registrare nel checkpoint la
+  revisione provata e l'accettazione ancora in attesa oppure confermata.
+  Test automatici o esecuzioni dell'agente non sostituiscono il collaudo.
+- Dati: log e risultati reali restano locali secondo DATA-001; in Git si
+  registra solo lo stato del processo senza dati specifici di macchina.
+- Estende: MIG-FLOW-001. Il verde iniziale autorizza il completamento fino
+  a main; il collaudo personale positivo abilita la migrazione successiva.
+- Ambito: tutte le porzioni, inclusa PY-001. Questa modifica registra la
+  regola; non approva il perimetro corrente e non avvia migrazioni.
+
 ## DATA-001: repository portabile, artefatti locali
 
 - Stato: accepted.

@@ -71,6 +71,26 @@ sostanziale del perimetro. Una normale scelta tecnica interna non e' un nuovo
 passaggio di approvazione. Non iniziare la porzione seguente senza averne
 prima presentato le funzioni e ricevuto il relativo verde.
 
+## Migrazioni: ingresso reale e collaudo manuale (MIG-FLOW-002)
+
+Ogni porzione migrata deve essere eseguita attraverso il punto d'ingresso
+ufficiale di Ruth in main, con messaggi a terminale corrispondenti alla
+funzione e al suo esito. Un import, una API isolata o i soli test non
+soddisfano questo requisito. Includere questo percorso nella descrizione
+funzionale sottoposta all'utente prima del verde.
+
+Dopo l'integrazione in main fornire all'utente il comando di avvio e i
+messaggi/esiti attesi. L'utente deve avviare Ruth localmente di persona e
+confermare esplicitamente l'esito positivo. Registrare nel checkpoint la
+revisione di main provata e lo stato del collaudo; log e risultati reali
+rimangono locali secondo DATA-001. I test automatici e le esecuzioni
+dell'agente non sostituiscono questa conferma, ne' il silenzio la implica.
+
+Non iniziare la migrazione successiva prima della conferma positiva
+dell'utente. Distinguere integrazione tecnica completata da accettazione
+manuale ancora in attesa. Se il collaudo fallisce, restare sulla porzione
+corrente, correggerla e sottoporla nuovamente al collaudo dell'utente.
+
 ## Mappe ricorsive
 
 Seguire ARCHITECTURE.md. Modificare NODE.yaml (sottoinsieme JSON di YAML),

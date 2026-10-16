@@ -15,6 +15,11 @@ Revisione funzionale PY-SCOPE-001 in attesa del verde dell'utente: vedere
 completare le promozioni a environment/main e main senza ulteriori conferme
 intermedie; fermarsi per dubbi o decisioni da chiarire (MIG-FLOW-001).
 
+MIG-FLOW-002 richiede esecuzione della funzione dal punto d'ingresso di Ruth
+in main e messaggi a terminale. Dopo l'integrazione, il collaudo locale
+personale dell'utente (PY-MANUAL-001) e la sua conferma positiva precedono
+qualunque migrazione successiva. Il collegamento e il collaudo restano da fare.
+
 Esaminare il checkpoint Python nella revisione di lavoro prima della
 promozione. Le API indicate come proposte nelle mappe main restano tali
 finche il codice non e' stato integrato lungo i branch padri.

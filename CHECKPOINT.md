@@ -1,6 +1,6 @@
 # Ruth: checkpoint di progetto
 
-Revisione documentale: 8 (indice main).
+Revisione documentale: 9 (indice main).
 Attivita': `MIG-001` (prima porzione: `PY-001`).
 Fase corrente: **3 - migrazione incrementale per componente**.
 
@@ -64,6 +64,15 @@ Fermarsi per dubbi o domande che richiedono una decisione dell'utente,
 secondo MIG-FLOW-001. Consultare il
 [checkpoint immutabile](https://github.com/yannericetchart-dev/ruth/blob/b80520ad903ff18f93398725ea95cd91f51da5d8/environment/python/CHECKPOINT.md)
 e aggiornare lo stato dopo ogni promozione.
+
+MIG-FLOW-002 aggiunta: per PY-001 il percorso finale in main deve eseguire
+l'ispezione dal punto d'ingresso di Ruth con messaggi a terminale relativi
+alla funzione e al suo esito. Tale collegamento non e' ancora implementato.
+Dopo l'integrazione fornire comando ed esiti attesi all'utente, che avviera
+Ruth localmente di persona. PY-MANUAL-001: pianificata, nessuna conferma
+positiva registrata. Non iniziare la migrazione successiva finche l'utente
+non conferma l'esito positivo del collaudo sulla revisione provata.
+
 Ambito verificato: test sintetici dell'isolamento Python e API comuni;
 nessuna certificazione del runtime nativo. I risultati restano locali.
 Le altre porzioni rimangono pianificate; Kaggle resta inattivo.

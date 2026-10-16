@@ -65,3 +65,18 @@ environment/python/main a environment/main e quindi main, comprese le
 correzioni necessarie entro il perimetro e gli aggiornamenti dei checkpoint,
 senza ulteriori conferme intermedie. Nuovi dubbi su decisioni o un ampliamento
 sostanziale del perimetro richiedono un chiarimento.
+
+## Ingresso Ruth e collaudo personale richiesto (MIG-FLOW-002)
+
+Nella versione integrata in main il punto d'ingresso ufficiale di Ruth deve
+eseguire questa ispezione e mostrare messaggi a terminale relativi all'avvio
+del controllo, al suo esito e ai motivi rilevanti. Il collegamento al punto
+d'ingresso e i messaggi non sono ancora implementati: sono un requisito
+del completamento di questa porzione.
+
+Dopo l'integrazione fornire all'utente il comando concreto per avviare Ruth
+e gli esiti attesi. L'utente lo esegue localmente di persona e conferma
+esplicitamente l'esito positivo prima di iniziare la migrazione successiva.
+Registrare revisione provata e stato del collaudo nel checkpoint; mantenere
+log e risultati reali esclusivamente locali. PY-MANUAL-001 e' pianificata;
+non e' stato eseguito o confermato un collaudo personale.

@@ -45,6 +45,11 @@
       "id": "PY-SCOPE-001",
       "state": "active",
       "description": "Descrizione delle funzioni sottoposta all utente in MIGRATION_SCOPE.md; semaforo verde in attesa."
+    },
+    {
+      "id": "PY-MANUAL-001",
+      "state": "planned",
+      "description": "Dopo integrazione in main: esecuzione reale dal punto d ingresso con messaggi a terminale e collaudo locale personale dell utente; la migrazione successiva attende la sua conferma positiva (MIG-FLOW-002)."
     }
   ]
 }
