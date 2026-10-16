@@ -104,6 +104,48 @@ class TestNsightSchemaAudit(unittest.TestCase):
         self.assertFalse(report["cublas_operand_pointer_identity_verified"])
         self.assertFalse(report["observed_cast_gemm_dependency_verified"])
 
+    def test_auxiliary_counts_are_only_metadata_not_pointer_proof(self):
+        with TemporaryDirectory() as tmp:
+            root=Path(tmp)
+            folder=root/".ruth-build/phase28"
+            folder.mkdir(parents=True)
+            fp=folder/"synthetic.sqlite"
+            sample_sqlite(fp,added_data=True,graph_edges=True)
+            with sqlite3.connect(fp) as db:
+                db.execute(
+                    "CREATE TABLE CUBLAS_EVENTS (start INTEGER,end INTEGER,"
+                    "globalTid INTEGER,nameId INTEGER)")
+                db.execute("INSERT INTO CUBLAS_EVENTS VALUES (1,2,3,4)")
+                db.execute(
+                    "CREATE TABLE CUDA_GRAPH_NODE_EVENTS ("
+                    "start INTEGER,end INTEGER,graphNodeId INTEGER,"
+                    "originalGraphNodeId INTEGER)")
+                db.execute(
+                    "INSERT INTO CUDA_GRAPH_NODE_EVENTS VALUES (1,2,10,9)")
+                db.execute(
+                    "CREATE TABLE CUPTI_ACTIVITY_KIND_MEMCPY ("
+                    "start INTEGER,end INTEGER,bytes INTEGER,"
+                    "virtualAddress TEXT,graphNodeId INTEGER)")
+                db.execute(
+                    "INSERT INTO CUPTI_ACTIVITY_KIND_MEMCPY "
+                    "VALUES (1,2,64,'SECRET_PAGE_ADDRESS',10)")
+            out=inspect_nsight_schema(
+                fp,candidate="bf16-on",n_ctx=2048,root=root)
+            self.assertTrue(out["schema_survey_verified"])
+            aux=out["auxiliary_event_table_metadata"]
+            self.assertEqual(aux["CUBLAS_EVENTS"]["record_count"],1)
+            self.assertEqual(
+                aux["CUDA_GRAPH_NODE_EVENTS"]["record_count"],1)
+            self.assertEqual(
+                aux["CUPTI_ACTIVITY_KIND_MEMCPY"]["record_count"],1)
+            self.assertFalse(aux["CUDA_GRAPH_EVENTS"]["present"])
+            self.assertIn("originalGraphNodeId",
+                          aux["CUDA_GRAPH_NODE_EVENTS"]["join_columns"])
+            self.assertNotIn("SECRET_PAGE_ADDRESS",str(out))
+            self.assertFalse(out["raw_operand_pointer_values_examined"])
+            self.assertFalse(out["cublas_operand_pointer_identity_verified"])
+            self.assertFalse(out["observed_cast_gemm_dependency_verified"])
+
     def test_missing_cuda_runtime_table_does_not_pass(self):
         report=self.run_on_sample(runtime=False)
         self.assertFalse(report["required_activity_tables_present"])
