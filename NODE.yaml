@@ -11,17 +11,17 @@
     "status": "present"
   },
   "development": "active",
-  "implementation": "skeleton",
-  "maturity": null,
-  "verification": "not_run",
-  "integration": "merged",
+  "implementation": "partial",
+  "maturity": "experimental",
+  "verification": "passed",
+  "integration": "not_merged",
   "flags": [
     "in_scope"
   ],
   "blocked_by": [],
   "depends_on": [],
   "api": [
-    "inspect_environment(project_root) -> EnvironmentReport [proposta]"
+    "runtime.inspect_environment(project_root: Path) -> PythonEnvironment [implementata nel branch di lavoro]"
   ],
   "tasks": [
     {
@@ -36,8 +36,9 @@
     },
     {
       "id": "MIG-001",
-      "state": "planned",
+      "state": "active",
       "description": "Migrazione iniziale: sola ispezione Python; poi hardware, modelli, inferenza, profiling e chat."
     }
-  ]
+  ],
+  "verification_scope": "PY-001: contratti e ispezione Python su fixture sintetiche; nessuna verifica nativa."
 }

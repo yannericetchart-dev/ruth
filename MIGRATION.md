@@ -15,7 +15,13 @@ macchina non sono candidati alla migrazione secondo DATA-001.
 - Ambito: ispezione in sola lettura dell'interprete e dell'isolamento della
   `.venv` del progetto. Nessuna installazione, download o importazione del
   lock CUDA specifico. Le versioni dei pacchetti sono una porzione successiva.
-- Stato: pianificata; nessun codice applicativo ancora importato.
+- Stato: implementata nel branch `environment/python/work/inspect-venv`,
+  verificata su fixture sintetiche; ancora da integrare nei branch padri.
+  Il codice e' estratto e adattato alla nuova API, non copiato integralmente.
+- Differenze intenzionali: configurazioni vuote, duplicate o illeggibili
+  falliscono il controllo, anziche essere considerate implicitamente isolate.
+  Il contratto vive nel padre; la configurazione e' esplicita, senza root
+  derivata dal vecchio launcher o dipendenze da lock e installer.
 - Verifica prevista: fixture sintetiche per virtualenv attivo, errato,
   globale, con site-packages condivisi e configurazione illeggibile.
 

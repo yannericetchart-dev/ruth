@@ -10,11 +10,11 @@
     "parent": "main",
     "status": "planned"
   },
-  "development": "inactive",
-  "implementation": "skeleton",
-  "maturity": null,
-  "verification": "not_run",
-  "integration": "merged",
+  "development": "active",
+  "implementation": "partial",
+  "maturity": "experimental",
+  "verification": "passed",
+  "integration": "not_merged",
   "flags": [
     "in_scope"
   ],
@@ -28,13 +28,15 @@
     "chat"
   ],
   "api": [
-    "inspect_environment(project_root) -> EnvironmentReport [proposta]"
+    "inspect_environment(project_root: Path) -> PythonEnvironment [implementata nel branch di lavoro]",
+    "PythonEnvironment [contratto comune importato da environment]"
   ],
   "tasks": [
     {
       "id": "CORE-001",
-      "state": "planned",
+      "state": "active",
       "description": "Definire e verificare il contratto prima della migrazione."
     }
-  ]
+  ],
+  "verification_scope": "PY-001: contratti e ispezione Python su fixture sintetiche; nessuna verifica nativa."
 }

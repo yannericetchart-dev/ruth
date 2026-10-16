@@ -6,3 +6,7 @@ Nodo responsabile: [ENV](../NODE.yaml). Ripresa: [START_HERE](../../START_HERE.m
 
 Contenuto riservato a: implementazioni eseguibili.
 
+## File
+
+- [__init__.py](__init__.py)
+- [contracts.py](contracts.py)
