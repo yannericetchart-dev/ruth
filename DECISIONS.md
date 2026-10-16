@@ -253,5 +253,7 @@ Ogni sostituzione deve collegare entrambe le decisioni e aggiornare le mappe.
 
 - Applicazione GPU-SCOPE-001 (16 ottobre 2026): codice e test
   sintetici verificati su GitHub e integrati sino a main tramite PR #33.
-  GPU-MANUAL-001 ancora da eseguire; AMD, Intel, driver e backend
-  non sono stati autorizzati o verificati in questo perimetro.
+  GPU-MANUAL-001 completata positivamente il 16 ottobre 2026 sul
+  commit `c344c71013cfa05da4f49f3204900f4bdc89b8ea`, con quinta fase NVIDIA `available` e
+  sequenza Ruth conclusa. AMD, Intel, driver, CUDA e backend restano
+  fuori dall'ambito e non sono stati verificati o autorizzati.

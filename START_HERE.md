@@ -87,5 +87,7 @@ lo stato di verifica, integrazione e collaudo e' in CHECKPOINT.md.
 
 Il quinto passaggio di `main.py` interroga soltanto NVIDIA in sola
 lettura; verifica CI superata e PR #33 integrata in main.
-GPU-MANUAL-001 richiede ancora il collaudo personale sulla revisione
-finale, come da CHECKPOINT.md. AMD/Intel e CUDA non sono migrati.
+GPU-MANUAL-001 e' stata superata personalmente il 16 ottobre 2026
+sulla revisione `c344c71013cfa05da4f49f3204900f4bdc89b8ea`; tutte le cinque fasi completate.
+La successiva migrazione richiede nuova approvazione del perimetro
+(MIG-FLOW-001). AMD/Intel e CUDA non sono migrati.

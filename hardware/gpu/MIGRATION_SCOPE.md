@@ -54,4 +54,8 @@ GitHub Actions e integrata in main via PR #30, #31, #32, #33;
 merge finale `54a02cf37262a78f5a1ed0aa84cd6d210060a14c`.
 Run 38918374871, 38918650589, 38918759116, 38918867451:
 success, 92 test sintetici e 258 mappe.
-**GPU-MANUAL-001 rimane in attesa**: nessun collaudo reale dichiarato.
+**GPU-MANUAL-001 complete**: il 16 ottobre 2026 l'utente ha
+confermato fast-forward main al commit `c344c71013cfa05da4f49f3204900f4bdc89b8ea` e avvio Ruth con
+cinque passaggi in ordine e provider NVIDIA stato available.
+Il risultato non certifica CUDA, driver o inferenza.
+Nessun dato GPU reale e' stato copiato in Git.

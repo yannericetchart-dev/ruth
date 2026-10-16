@@ -1,15 +1,16 @@
 # NVIDIA: checkpoint NVIDIA-001
 
-**Implementato, verificato e integrato in main** per l'ambito
-GPU-SCOPE-001 autorizzato il 16 ottobre 2026.
+GPU-001 NVIDIA **implementata, verificata, integrata e accettata
+con collaudo personale positivo** il 16 ottobre 2026.
 
-- Fonte: interrogazione read-only `nvidia-smi` su modello e VRAM
-  totale, nessun UUID, seriale o log stderr usato.
-- API `hardware.gpu.nvidia.detect() -> GPUReport` tramite contratti
-  pubblici `hardware.gpu`; AMD/Intel non interpellati.
-- CI 38918374871, 38918650589, 38918759116 e 38918867451
-  superate: 16 test provider, suite PY/DEP/DIAG/HW/CLI e mappe.
-- PR #30, #31, #32 e #33 integrate fino a main, merge finale
-  `54a02cf37262a78f5a1ed0aa84cd6d210060a14c`.
-- GPU-MANUAL-001: **pending**. Nessuna prova effettiva sulla
-  macchina utente ancora confermata, nessun dato host salvato.
+- API `hardware.gpu.nvidia.detect() -> GPUReport`, read-only,
+  informazioni transitorie; nessun test driver/CUDA/backend incluso.
+- Test sintetici in CI GitHub runs 38918374871, 38918650589,
+  38918759116, 38918867451, 38919460341 tutti success;
+  92 test complessivi e 258 mappe coerenti.
+- PR #30, #31, #32 e #33 integrate fino a main;
+  revisione verificata personalmente dall'utente `c344c71013cfa05da4f49f3204900f4bdc89b8ea`.
+- **GPU-MANUAL-001 complete**: l'utente conferma quinto passaggio
+  NVIDIA stato `available` e termine positivo del flusso Ruth.
+  Specifiche hardware reali omesse (DATA-001).
+- Prossima migrazione solo dopo perimetro nuovo e approvazione.
