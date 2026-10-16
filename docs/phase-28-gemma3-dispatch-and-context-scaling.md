@@ -2070,7 +2070,7 @@ cd ~/Dev/ruth-model-profiling
   shopt -s nullglob
   baseline=(.ruth-build/phase28/gemma-3-1b-it/ctx-2048_flash-on_k-BF16_v-BF16_*.npz)
   if (( ${#baseline[@]} != 1 )); then
-    printf 'BF16/BF16 ctx2048 baselines found: %d\\n' "${#baseline[@]}"
+    printf 'BF16/BF16 ctx2048 baselines found: %d\n' "${#baseline[@]}"
     exit 1
   fi
   .venv/bin/python -m ruth_runtime.gemma3_phase28_compare \
