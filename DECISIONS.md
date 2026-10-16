@@ -334,3 +334,16 @@ Ogni sostituzione deve collegare entrambe le decisioni e aggiornare le mappe.
   inferenza. Migrazione GitHub-first con CI e maps, poi collaudo
   personale GGUF-META-MANUAL-001 obbligatorio (MIG-FLOW-002).
 - Nessuna porzione successiva approvata implicitamente.
+
+### Applicazione GGUF-META-SCOPE-001 (16 ottobre 2026)
+
+- Codice implementato e verificato con CI sintetica; promozioni
+  PR #47 (GGUF), #48 (Formats), #49 (Models) e #50 (main).
+- CI success: runs 38940033886, 38940265778, 38940360999,
+  38940625555. Il job finale e' stato riattivato senza
+  modifiche al contenuto candidato, poi ha restituito success.
+- Commit di integrazione main: `a630c83f6c62a229e18fe5e64f0863c19de16018`.
+- GGUF-META-MANUAL-001 **pending**: ancora necessaria conferma
+  personale esplicita dell'utente dopo avvio di Ruth (MIG-FLOW-002).
+- Il perimetro resta bounded/read-only; nessun tensor, download,
+  compatibilita' runtime o inferenza sono stati approvati.

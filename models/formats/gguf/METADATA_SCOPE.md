@@ -49,3 +49,13 @@ prima di proporre una migrazione ulteriore.
 
 Stato iniziale: approvato; codice candidato; CI e integrazione non ancora
 verificate; il perimetro non e' una certificazione di compatibilita'.
+
+## Stato tecnico integrato (16 ottobre 2026)
+
+- GGUF-META-001 implementato, CI sintetica e mappe verificate;
+  PR #47 (GGUF), #48 (Formats), #49 (Models), #50 (main).
+  SHA main `a630c83f6c62a229e18fe5e64f0863c19de16018`.
+- GGUF-META-MANUAL-001 ancora pending: dopo la prova personale
+  di Ruth sul main sincronizzato occorre conferma esplicita.
+- Le precedenti note candidate sono storiche. Il perimetro
+  approvato non include lettura tensor o verifica di compatibilita'.

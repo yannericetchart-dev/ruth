@@ -125,5 +125,8 @@ Nessun download, metadato esteso, peso tensor o inferenza autorizzato.
 
 L'utente ha approvato una lettura read-only, bounded, dei metadati
 tecnici GGUF dichiarati in CAT, come ottava fase dopo GGUF.
-Il lavoro e' candidato e non ancora integrato: consultare CHECKPOINT.md.
+Le PR #47, #48, #49 e #50 hanno integrato il componente in main
+(commit `a630c83f6c62a229e18fe5e64f0863c19de16018`), con CI e test sintetici superati.
+**GGUF-META-MANUAL-001 resta da collaudare personalmente**
+tramite l'ottavo passaggio di Ruth. Consultare CHECKPOINT.md.
 Nessun download, lettura pesi o inferenza autorizzato.

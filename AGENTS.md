@@ -216,3 +216,14 @@ CI sintetica e promozioni fino a main effettuate tramite PR #36,
 PY->DEP->DIAG->HW->NVIDIA->CAT; nessuna config catalogo e' un esito
 valido. CAT-MANUAL-001 e' ancora in attesa: non procedere con
 GGUF, download o altri componenti prima del collaudo dell'utente.
+
+## GGUF-META-001: stato corrente (16 ottobre 2026)
+
+GGUF-META-SCOPE-001 e' implementato, verificato su GitHub e integrato
+tramite PR #47-#50, main `a630c83f6c62a229e18fe5e64f0863c19de16018`. MAIN-FLOW-001
+ora include l'ottavo controllo di metadati GGUF dichiarati.
+L'utente deve ancora eseguire personalmente il nuovo main ed
+accettare GGUF-META-MANUAL-001 (MIG-FLOW-002). Le precedenti
+indicazioni CAT/GGUF pending in questo file sono storiche e
+non prevalgono sul checkpoint piu' recente. Nessuna nuova migrazione
+autorizzata; DATA-001 e REMOTE-001 restano invariati.
