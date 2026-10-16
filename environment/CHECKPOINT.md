@@ -30,3 +30,11 @@ DEP-SCOPE-001 approvato il 16 ottobre 2026. Codice nel branch
 `environment/dependencies/work/DEP-001`, non ancora verificato o promosso.
 La diagnostica DIAG-001 non e' inclusa. Dopo i test, propagare le mappe,
 integrare a environment/main e main, poi collaudare personalmente.
+
+## Verifica e integrazione DEP-001 nei branch figli
+
+- PR #12 -> environment/dependencies/main: merge `4af2050e5fc59477f9ab854173bf915b7933d186`.
+- PR #13 -> environment/main: merge `c89c02ac0afa828b2c53ebd922a04331069ba527`.
+- Verifiche GitHub Actions 38895348468 e 38895479549: success;
+  14 test Python, 12 dipendenze, 13 root/CLI e 237 mappe coerenti.
+- RESTA: integrazione a main e collaudo personale DEP-MANUAL-001.

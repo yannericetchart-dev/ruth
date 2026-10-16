@@ -29,3 +29,10 @@ Test unitari con lookup sintetico per presente, assente, esatto compatibile/inco
 Il collaudo personale dopo merge e sincronizzazione locale (DEP-MANUAL-001) segue MIG-FLOW-002 e impedisce di iniziare il componente successivo prima della sua conferma.
 
 **Stato:** codice candidato nel branch di lavoro, test della revisione finale non ancora eseguiti, non integrato in main.
+
+## Stato di promozione (16 ottobre 2026)
+
+- PR #12 verso environment/dependencies/main: merge `4af2050e5fc59477f9ab854173bf915b7933d186`.
+- PR #13 verso environment/main: merge `c89c02ac0afa828b2c53ebd922a04331069ba527`.
+- Verifica remota su fixture sintetiche e API/CLI: run 38895348468 e
+  38895479549, success. Main e collaudo personale ancora pendenti.

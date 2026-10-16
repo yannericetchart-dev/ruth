@@ -7,7 +7,7 @@ Nodo responsabile: [ENV](NODE.yaml). Ripresa: [START_HERE](../START_HERE.md).
 ## Contratto dichiarato
 
 - `inspect(project_root: Path) -> PythonEnvironment [integrata in main]`
-- `plan(requirements: Iterable[str], *, project_root: Path | None = None) -> DependencyPlan [implementata nella candidatura DEP-001]`
+- `plan(requirements: Iterable[str], *, project_root: Path | None = None) -> DependencyPlan [implementata e verificata in environment/main; in attesa main]`
 - `PythonEnvironment: project_root: str; interpreter: str; python_version: tuple[int, ...]; interpreter_in_project_venv: bool; venv_status: str; reasons: tuple[str, ...] [contratto immutabile della PR #2]`
 - `PythonEnvironment.to_dict() -> dict [implementata in main; dati transitori, salvataggi solo locali]`
 
