@@ -3,8 +3,10 @@
 Il repository GitHub `yannericetchart-dev/ruth` e' la fonte comune del progetto.
 All'inizio di una nuova attivita' leggere `START_HERE.md` dal branch `main`
 su GitHub; fissare il commit letto e seguire i rimandi alle decisioni, al
-checkpoint e alle mappe. Confrontare la revisione pubblicata con il checkout
-locale prima di modificare file. Dichiarare quando GitHub non e' accessibile.
+checkpoint e alle mappe. Il checkout locale, se accessibile, si puo' leggere
+per diagnosi ma non va modificato durante lo sviluppo: REMOTE-001 impone
+pubblicazione direttamente su GitHub e sincronizzazione locale soltanto dopo
+il merge in main. Dichiarare quando GitHub non e' accessibile.
 
 Per fissare la revisione, leggere prima il ref `heads/main` tramite il
 connettore GitHub: `https://api.github.com/repos/yannericetchart-dev/ruth/git/ref/heads/main`.
@@ -17,7 +19,9 @@ incompleta e non iniziare sviluppo dipendente da una revisione presunta.
 Prima di sviluppare riportare brevemente: obiettivo, attivita', decisioni
 vigenti, branch/revisione, limiti, problemi aperti e prossima azione. Non
 interpretare una proposta come decisione approvata o uno skeleton come codice
-funzionante. Una modifica locale non e' pubblicata finche' non e' su GitHub.
+funzionante. Nessuna modifica locale al checkout principale e' fonte di
+sviluppo: ogni modifica versionata deve essere pubblicata direttamente su
+GitHub e identificata con commit o PR.
 
 ## Continuita' CONT-001
 
@@ -90,6 +94,55 @@ Non iniziare la migrazione successiva prima della conferma positiva
 dell'utente. Distinguere integrazione tecnica completata da accettazione
 manuale ancora in attesa. Se il collaudo fallisce, restare sulla porzione
 corrente, correggerla e sottoporla nuovamente al collaudo dell'utente.
+
+
+## Sviluppo remoto e sincronizzazione finale (REMOTE-001)
+
+Decisione vigente: REMOTE-001 sostituisce la precedente SYNC-001.
+**ChatGPT e Codex seguono lo stesso flusso GitHub-first**: per ogni
+modifica versionata leggere il commit main attuale, usare i branch di lavoro
+e i commit su GitHub, aprire le PR, svolgere revisioni, aggiornare mappe e
+checkpoint e promuovere fino a main entro il perimetro approvato. Non
+scrivere, creare, modificare, cancellare, formattare, generare o mettere
+in stage file nel checkout principale del progetto, neppure se Codex ha
+accesso alla cartella. Non eseguire checkout, merge, pull o reset del
+clone principale durante sviluppo. Non usare i cambiamenti non committati
+del clone come fonte canonica: non importarli, pubblicarli o cancellarli
+senza una decisione separata. In caso di assenza di accesso GitHub o di
+strumenti di scrittura remota, dichiarare il blocco: non ripiegare
+silenziosamente sul checkout principale.
+
+**Prove locali permesse solo in spazi isolati ed esclusi dalla sync Git**:
+directory temporanee fuori dal checkout o sotto `.local/verification/`
+(ignorata da Git), usando snapshot puliti del *commit candidato pubblicato
+su GitHub*. Test, fixture, generazione delle mappe e build temporanee
+possono modificare esclusivamente queste copie e le directory di cache
+escluse, mai il checkout principale. Eseguire le verifiche sullo stesso
+contenuto candidato alla promozione; ogni correzione destinata al progetto
+deve essere ripubblicata con gli strumenti GitHub e verificata nuovamente.
+Non includere cache, dati, log o misure locali nei commit (DATA-001).
+Non dichiarare superati test che non sono stati eseguiti.
+
+**Sincronizzazione solo al termine dell'integrazione in main**: prima
+completare autonomamente il flusso MIG-FLOW-001 fino al merge e registrare
+lo SHA di main. Poi, e soltanto allora, confrontare il clone principale
+locale con quello SHA e, se si dispone di accesso autorizzato, aggiornarlo
+in modo non distruttivo. In caso di assenza di accesso locale, dare
+all'utente le istruzioni di PROJECT_SETUP.md e registrare
+`local_sync: pending_no_access` senza bloccare retroattivamente la fase
+di sviluppo remoto. Se il checkout e' sporco, su altro branch o divergente,
+non forzare reset, clean, stash, rebase, scarti, cambio branch o merge:
+segnalare `local_sync: blocked_divergence` finche' venga scelta una
+procedura sicura. Nessuna modifica locale preesistente deve essere persa.
+
+Separare sempre: codice pubblicato e verificato su GitHub, integrazione in
+main, sincronizzazione del checkout personale e collaudo manuale
+MIG-FLOW-002. La migrazione successiva resta bloccata finche' l'utente
+non conferma il collaudo locale positivo; non e' bloccata la promozione
+gia' autorizzata dalla mera assenza di sincronizzazione preliminare.
+In ChatGPT Ruth si usa Chat + GitHub, non Work come soluzione implicita
+per accedere al filesystem locale.
+
 
 ## Mappe ricorsive
 

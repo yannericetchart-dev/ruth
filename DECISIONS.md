@@ -81,3 +81,72 @@ Ogni sostituzione deve collegare entrambe le decisioni e aggiornare le mappe.
 - L'albero e le firme proposte restano una base evolvibile, non una
   dichiarazione di capacita' gia' disponibili.
 - Sostituisce: nessuna decisione registrata.
+
+## SYNC-001: sincronizzare prima di riprendere o chiudere il lavoro
+
+- Stato: superseded.
+- Sostituita da: REMOTE-001, approvata il 16 ottobre 2026.
+- Nota storica: il blocco di ripresa fino alla sincronizzazione del clone
+  e' stato superato; non applicarlo al lavoro remoto via GitHub.
+- Decisione: GitHub e checkout locale sono stati distinti. Prima della
+  ripresa di un'attivita' interrotta e prima di dichiarare completo il lavoro
+  dipendente dal checkout, verificare l'allineamento del locale con main.
+- In assenza di accesso locale, l'agente deve dare **subito**, prima della
+  prosecuzione o della chiusura dell'attivita', la procedura sicura con lo
+  SHA target e richiedere all'utente il riscontro di sincronizzazione.
+  Non basta offrire istruzioni solo al termine. Fino al riscontro registrare
+  `local_sync: pending_no_access`; in caso di divergenze non risolte,
+  `local_sync: blocked_divergence`.
+- Se il checkout e' disponibile, sincronizzare solo con operazioni sicure,
+  non distruttive, verificando branch, modifiche locali, remote e SHA finale.
+- Il blocco di sincronizzazione non costituisce un nuovo semaforo verde
+  funzionale: dopo la verifica il lavoro gia' approvato prosegue fino al merge
+  in main secondo MIG-FLOW-001. Il collaudo personale rimane distinto e
+  obbligatorio secondo MIG-FLOW-002.
+- Scelta operativa: in ChatGPT per Ruth usare Chat + GitHub; non usare Work
+  come soluzione automatica per l'accesso locale, per preservare la quota
+  condivisa con Codex.
+- Motivazione: evitare di lasciare non sincronizzata la macchina alla
+  ripresa, oltre a non dichiarare completato un processo senza verificarla.
+- Ambito: ChatGPT e Codex, con procedura pratica in PROJECT_SETUP.md.
+- Approvazione: regola approvata il 16 ottobre 2026 e precisata esplicitamente
+  dall'utente nella stessa data.
+- Verifica richiesta: riscontro di un checkout autorizzato sul commit main
+  e collaudo indipendente della ripresa; evidenze locali secondo DATA-001.
+- Precisa: la formulazione iniziale di SYNC-001, che richiedeva istruzioni
+  solo dopo il merge e permetteva `pending_no_access` senza un blocco
+  alla ripresa dell'attivita'.
+
+## REMOTE-001: sviluppo GitHub-first e sincronizzazione locale post-merge
+
+- Stato: accepted.
+- Decisione: ChatGPT e Codex modificano file versionati, decisioni,
+  checkpoint e mappe *direttamente su GitHub*, usando branch, commit, PR
+  e promozioni fino a main; il checkout principale locale resta intatto
+  durante tutto lo sviluppo. Una modifica non pubblicata al clone non e'
+  una fonte canonica e non viene importata o cancellata implicitamente.
+- Test ed esecuzioni locali: Codex puo' creare copie temporanee pulite della
+  revisione GitHub candidata **fuori dalla directory versionata di lavoro**
+  o in `.local/verification/`, ignorata da Git. Sono ammessi file e build
+  generati solo in tali spazi isolati, senza alterare il checkout principale.
+  Le modifiche da integrare vanno pubblicate su GitHub e nuovamente verificate.
+- Sincronizzazione: solo dopo il merge definitivo in main, confrontare
+  commit GitHub e clone locale, aggiornare in sicurezza o dare all'utente
+  i comandi e richiedere conferma. Un checkout sporco, divergente o su un
+  branch diverso va preservato senza scarti automatici.
+- Se GitHub non consente letture/scritture richieste, fermarsi ed esplicitare
+  il blocco, senza convertire il flusso in sviluppo locale del clone.
+- L'assenza di sync preliminare non blocca lo sviluppo remoto approvato.
+  Restano MIG-FLOW-001 (merge completo senza conferme intermedie) e
+  MIG-FLOW-002 (esecuzione dal punto d'ingresso e collaudo personale positivo).
+- Motivazione: evitare le modifiche concorrenti non committate che rendono
+  difficile la ripresa tra ChatGPT e Codex e separare i test temporanei
+  dai file che verranno sincronizzati.
+- Sostituisce: SYNC-001, le cui istruzioni di sync obbligatoria prima della
+  ripresa sono ormai storiche e non vigenti.
+- Ambito: entrambi i client; non autorizza la cancellazione o il recupero
+  automatico di modifiche locali preesistenti. DATA-001 resta valido.
+- Approvazione: richiesta esplicita dell'utente il 16 ottobre 2026.
+- Verifica richiesta: collaudo indipendente di ripresa su ChatGPT e Codex,
+  conferma che l'area di test e' ignorata e il checkout principale rimane
+  invariato, verifica della promozione su GitHub e sincronizzazione finale.
