@@ -54,10 +54,9 @@ environment/main: la prima promozione al branch canonico e' invece completata.
 
 Passaggio corrente: revisione funzionale del perimetro
 [PY-SCOPE-001](environment/python/MIGRATION_SCOPE.md) da parte dell'utente.
-Semaforo verde su questa descrizione: **in attesa**. Non eseguire le
-promozioni restanti prima del verde.
+Semaforo verde su questa descrizione: **concesso dall'utente il 16 ottobre 2026**. Il codice del punto d'ingresso e' candidato in PR #3; le suite nuove e le promozioni fino a main non sono ancora completate.
 
-Dopo il verde, completare autonomamente le promozioni da
+Dopo la sincronizzazione locale richiesta da SYNC-001, completare autonomamente le promozioni da
 environment/python/main a environment/main e quindi main, con test,
 revisioni e aggiornamenti delle mappe, senza ulteriori conferme intermedie.
 Fermarsi per dubbi o domande che richiedono una decisione dell'utente,
@@ -67,7 +66,7 @@ e aggiornare lo stato dopo ogni promozione.
 
 MIG-FLOW-002 aggiunta: per PY-001 il percorso finale in main deve eseguire
 l'ispezione dal punto d'ingresso di Ruth con messaggi a terminale relativi
-alla funzione e al suo esito. Tale collegamento non e' ancora implementato.
+alla funzione e al suo esito. Il collegamento e' implementato nella PR #3, ma non verificato o integrato in main.
 Dopo l'integrazione fornire comando ed esiti attesi all'utente, che avviera
 Ruth localmente di persona. PY-MANUAL-001: pianificata, nessuna conferma
 positiva registrata. Non iniziare la migrazione successiva finche l'utente
@@ -100,7 +99,7 @@ Le altre porzioni rimangono pianificate; Kaggle resta inattivo.
 - In main non e' stato integrato codice applicativo. PY-001 e' disponibile
   in environment/python/main e non deve essere descritta come disponibile
   in environment/main o main.
-- Non avviare il passaggio 3 prima della verifica dei passaggi precedenti.
+- Non iniziare la migrazione successiva finche PY-001 non e' integrata, sincronizzata localmente e collaudata personalmente secondo MIG-FLOW-002.
 - Nessuna misurazione nativa e' certificata da questo checkpoint.
 - Branch e commit delle attivita' successive saranno indicati nei checkpoint
   relativi; i riferimenti di revisione sono Git, non copie di dati di host.
