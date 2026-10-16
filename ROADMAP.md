@@ -10,13 +10,13 @@ Sviluppo: **active**; codice: **partial**; maturita: experimental; verifica: pas
 
 Flag: in_scope. Blocchi: nessuno registrato.
 
-Ambito verifica: PY-001: contratti e ispezione Python su fixture sintetiche; nessuna verifica nativa.
+Ambito verifica: PY-001/PY-REV-001: isolamento Python, catena reale delle API e coerenza delle mappe su fixture sintetiche; nessuna verifica nativa.
 
 ## Attivita locali
 
 1. `SETUP-001` [complete] Configurazione e collaudo indipendente dei client.
 2. `STRUCT-001` [complete] Scaffold ricorsivo senza migrazione applicativa.
-3. `MIG-001` [active] Migrazione iniziale: sola ispezione Python; poi hardware, modelli, inferenza, profiling e chat.
+3. `MIG-001` [active] Prima porzione Python revisionata (PY-REV-001); pronta alla prima promozione tramite PR #2. Migrazione degli altri domini pianificata.
 
 ## Componenti (ordine locale, ID stabili)
 

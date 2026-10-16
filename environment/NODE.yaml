@@ -22,14 +22,16 @@
   "depends_on": [],
   "api": [
     "inspect(project_root: Path) -> PythonEnvironment [implementata nel branch di lavoro]",
-    "plan(requirements) -> EnvironmentPlan [proposta]"
+    "plan(requirements) -> EnvironmentPlan [proposta]",
+    "PythonEnvironment: project_root: str; interpreter: str; python_version: tuple[int, ...]; interpreter_in_project_venv: bool; venv_status: str; reasons: tuple[str, ...] [dataclass immutabile]",
+    "PythonEnvironment.to_dict() -> dict [dati transitori, salvataggi solo locali]"
   ],
   "tasks": [
     {
       "id": "ENV-001",
       "state": "active",
-      "description": "Definire e verificare il contratto prima della migrazione."
+      "description": "Prima porzione Python revisionata e conforme al contratto comune; pronta alla prima promozione. Dipendenze e diagnostica pianificate."
     }
   ],
-  "verification_scope": "PY-001: contratti e ispezione Python su fixture sintetiche; nessuna verifica nativa."
+  "verification_scope": "PY-001/PY-REV-001: isolamento Python, catena reale delle API e coerenza delle mappe su fixture sintetiche; nessuna verifica nativa."
 }

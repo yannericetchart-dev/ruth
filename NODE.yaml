@@ -37,8 +37,8 @@
     {
       "id": "MIG-001",
       "state": "active",
-      "description": "Migrazione iniziale: sola ispezione Python; poi hardware, modelli, inferenza, profiling e chat."
+      "description": "Prima porzione Python revisionata (PY-REV-001); pronta alla prima promozione tramite PR #2. Migrazione degli altri domini pianificata."
     }
   ],
-  "verification_scope": "PY-001: contratti e ispezione Python su fixture sintetiche; nessuna verifica nativa."
+  "verification_scope": "PY-001/PY-REV-001: isolamento Python, catena reale delle API e coerenza delle mappe su fixture sintetiche; nessuna verifica nativa."
 }

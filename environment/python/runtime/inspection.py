@@ -6,7 +6,6 @@ ruth_runtime/venv_packages.py. Package inspection and native locks are excluded.
 from __future__ import annotations
 
 from pathlib import Path
-import re
 import sys
 
 from environment.runtime.contracts import PythonEnvironment
@@ -41,10 +40,11 @@ def inspect(
             contents = configuration.read_text(encoding='utf-8')
             settings = []
             for line in contents.splitlines():
-                match = re.fullmatch(r'include-system-site-packages\s*=\s*(\S+)\s*',
-                                     line.strip(), flags=re.IGNORECASE)
-                if match:
-                    settings.append(match.group(1).lower())
+                key, separator, value = line.partition('=')
+                if key.strip().lower() == 'include-system-site-packages':
+                    # Keep malformed declarations too: ignoring one would hide
+                    # a duplicate after an otherwise valid isolation setting.
+                    settings.append(value.strip().lower() if separator else '')
             if settings == ['true']:
                 reasons.append('shared_site_packages')
             elif settings != ['false']:

@@ -35,8 +35,8 @@
     {
       "id": "CORE-001",
       "state": "active",
-      "description": "Definire e verificare il contratto prima della migrazione."
+      "description": "Contratto Python inoltrato e verificato attraverso gli ingressi pubblici; resto dell orchestrazione pianificato."
     }
   ],
-  "verification_scope": "PY-001: contratti e ispezione Python su fixture sintetiche; nessuna verifica nativa."
+  "verification_scope": "PY-001/PY-REV-001: isolamento Python, catena reale delle API e coerenza delle mappe su fixture sintetiche; nessuna verifica nativa."
 }

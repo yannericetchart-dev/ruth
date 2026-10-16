@@ -27,8 +27,13 @@
     {
       "id": "PY-001",
       "state": "complete",
-      "description": "Ispezione virtualenv estratta e verificata; in revisione prima dell integrazione nel padre."
+      "description": "Ispezione virtualenv estratta, verificata e revisionata; pronta per la prima promozione nel padre."
+    },
+    {
+      "id": "PY-REV-001",
+      "state": "complete",
+      "description": "Revisione tecnica: corretta configurazione malformata ripetuta; verificati ingressi pubblici reali e ambito obbligatorio delle verifiche."
     }
   ],
-  "verification_scope": "PY-001: contratti e ispezione Python su fixture sintetiche; nessuna verifica nativa."
+  "verification_scope": "PY-001/PY-REV-001: isolamento Python, catena reale delle API e coerenza delle mappe su fixture sintetiche; nessuna verifica nativa."
 }

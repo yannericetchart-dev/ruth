@@ -10,10 +10,10 @@ Sviluppo: **active**; codice: **partial**; maturita: experimental; verifica: pas
 
 Flag: in_scope. Blocchi: nessuno registrato.
 
-Ambito verifica: PY-001: contratti e ispezione Python su fixture sintetiche; nessuna verifica nativa.
+Ambito verifica: PY-001/PY-REV-001: isolamento Python, catena reale delle API e coerenza delle mappe su fixture sintetiche; nessuna verifica nativa.
 
 ## Attivita locali
 
-1. `CORE-001` [active] Definire e verificare il contratto prima della migrazione.
+1. `CORE-001` [active] Contratto Python inoltrato e verificato attraverso gli ingressi pubblici; resto dell orchestrazione pianificato.
 
 Propagare impatti e blocchi al [padre](../ROADMAP.md) e proseguire fino alla radice.

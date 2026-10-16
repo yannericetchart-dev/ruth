@@ -10,10 +10,11 @@ Sviluppo: **active**; codice: **partial**; maturita: experimental; verifica: pas
 
 Flag: in_scope. Blocchi: nessuno registrato.
 
-Ambito verifica: PY-001: contratti e ispezione Python su fixture sintetiche; nessuna verifica nativa.
+Ambito verifica: PY-001/PY-REV-001: isolamento Python, catena reale delle API e coerenza delle mappe su fixture sintetiche; nessuna verifica nativa.
 
 ## Attivita locali
 
-1. `PY-001` [complete] Ispezione virtualenv estratta e verificata; in revisione prima dell integrazione nel padre.
+1. `PY-001` [complete] Ispezione virtualenv estratta, verificata e revisionata; pronta per la prima promozione nel padre.
+2. `PY-REV-001` [complete] Revisione tecnica: corretta configurazione malformata ripetuta; verificati ingressi pubblici reali e ambito obbligatorio delle verifiche.
 
 Propagare impatti e blocchi al [padre](../ROADMAP.md) e proseguire fino alla radice.

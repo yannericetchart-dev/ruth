@@ -1,6 +1,6 @@
 # Python: checkpoint PY-001
 
-Stato: prima porzione implementata e verificata nel branch di lavoro
+Stato: prima porzione implementata, verificata e revisionata nel branch di lavoro
 `environment/python/work/inspect-venv`; non integrata nei branch padri.
 Contratto sperimentale. Fonte e perimetro: MIGRATION.md alla radice.
 
@@ -21,6 +21,23 @@ virtualenv esterno, site-packages condivisi, configurazioni mancanti/errate,
 errori di lettura e codifica, versione minima, symlink, contratto dei padri
 e assenza di modifiche alla configurazione.
 
+## Revisione PY-REV-001
+
+La revisione ha riprodotto e corretto un errore nella lettura delle
+dichiarazioni ripetute: una riga malformata dopo una impostazione valida
+veniva ignorata. Tutte le dichiarazioni della chiave di isolamento vengono
+ora considerate; una configurazione ambigua fallisce il controllo.
+
+Il contratto e' verificato anche eseguendo i tre ingressi pubblici reali
+su osservazioni sintetiche, senza sostituire il componente figlio con un mock.
+Verificato inoltre che una dichiarazione `passed` senza ambito esplicito
+venga rifiutata dal validatore delle mappe.
+
+Esito: nessun problema bloccante residuo nell'ambito di questa porzione.
+Riferimento delle evidenze locali: PY-REV-001. La revisione non certifica
+pacchetti, GPU o inferenza. Non e' una revisione indipendente di un secondo
+manutentore.
+
 Comandi dalla radice:
 
 ```sh
@@ -35,6 +52,7 @@ Non sono stati eseguiti benchmark o collaudi hardware.
 
 ## Prossima azione
 
-Revisionare questa porzione prima della promozione a environment/python/main,
-poi environment/main e infine main. In seguito pianificare le dipendenze
+Porzione pronta per la prima promozione a environment/python/main.
+Le successive promozioni saranno environment/main e infine main, con
+checkpoint aggiornati ad ogni passaggio. In seguito pianificare le dipendenze
 generiche: non copiare i lock nativi specifici dalla fonte storica.
