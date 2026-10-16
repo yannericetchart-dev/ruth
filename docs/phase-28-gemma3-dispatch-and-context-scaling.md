@@ -1011,9 +1011,9 @@ validates that both inputs have matching exact
 token sequences and shape. Passing this gate
 must not be mistaken for complete numerical
 fidelity at unrecorded token positions.
-The comparison reports are still **pending**;
-none of their KL, JS, RMS or top-1 metrics
-have been assumed in advance.
+Both exact offline comparisons have now **completed successfully**;
+see the measured logit metrics and limitations in the section below.
+Do not infer results for unmeasured positions.
 
 For this `mixed-on` experiment:
 `native_kernel_dispatch_verified=false`,
@@ -1022,6 +1022,111 @@ For this `mixed-on` experiment:
 `runtime_profile_published=false`.
 No new Nsight collection is required for the
 planned offline comparisons.
+
+## Observed same-context numerical comparisons — ctx256 (both successful)
+
+The user executed the two read-only comparisons between already
+verified Phase28 Gemma 3 1B IT BF16 logits artifacts.
+Both returned `status=full_logits_numeric_comparison`,
+`same_teacher_forced_tokens=true`, `n_ctx=256`,
+`vocabulary=262144`, `top1_match_fraction=1.0`,
+`reference_precision_is_ground_truth=false`,
+`native_kernel_dispatch_verified=false` and
+`production_qualified=false`.
+
+The numerical sample is **exactly two** full-vocabulary
+F32 logit vectors per experiment: the last prefill position
+(index 0) and last teacher-forced decode position (index 1).
+It is *not* all intermediate positions of the 128-token
+prefill or all 16 decode calls. Top-1=1.0 means 2/2
+**recorded positions**, not general generation
+equivalence.
+
+| Metric | BF16/BF16 → BF16/F16 (Flash ON) | F16/F16 → F32/F32 (Flash OFF) |
+|---|---:|---:|
+| Jensen–Shannon mean (nats) | 8.647140722172348e-07 | 3.3662174115573566e-07 |
+| KL baseline→candidate mean (nats) | 3.450529555342461e-06 | 1.3477870552100879e-06 |
+| KL candidate→baseline mean (nats) | 3.4672603925615703e-06 | 1.3452012525382377e-06 |
+| RMS logits difference | 0.012705533198433759 | 0.011415320492665115 |
+| Mean absolute logits difference | 0.010114680961265776 | 0.009012389704039947 |
+| Maximum absolute logits difference | 0.062470436096191406 | 0.05967235565185547 |
+| Top-1 agreement | 2/2 | 2/2 |
+
+**Per-position KL baseline→candidate:**
+
+| Position | BF16/BF16 → BF16/F16 | F16/F16 → F32/F32 |
+|---|---:|---:|
+| Last prefill | 6.897949821766372e-06 | 2.6916049517113536e-06 |
+| Last decode | 3.1092889185496652e-09 | 3.969158708822265e-09 |
+| Maximum absolute difference at prefill | 0.062470436096191406 | 0.05967235565185547 |
+| Maximum absolute difference at decode | 0.06228673458099365 | 0.0431060791015625 |
+
+**Verified artifact identities — Flash ON, V storage changed:**
+
+- Baseline K=BF16/V=BF16:
+  `ctx-256_flash-on_k-BF16_v-BF16_tfujrtrn.npz`,
+  SHA256
+  `7741651087b5b6f3c1ecc57884c58efd4189c03c601d575f5c5065577733b84b`.
+- Candidate K=BF16/V=F16:
+  `ctx-256_flash-on_k-BF16_v-F16_2g3xd9db.npz`,
+  SHA256
+  `69ed0413b8cb9de5472dae56297349d16fd5ba19ae07ea7086c2caeffe30ce16`.
+
+**Verified artifact identities — Flash OFF, both K and V storage changed:**
+
+- Baseline K=F16/V=F16:
+  `ctx-256_flash-off_k-F16_v-F16_xapq63id.npz`,
+  SHA256
+  `fa812cf2dd909729910981de78217fcc1dd3de9bdafdb3677c490495fd208de2`.
+- Candidate K=F32/V=F32:
+  `ctx-256_flash-off_k-F32_v-F32_hxddceoy.npz`,
+  SHA256
+  `93e993e1e1b9d72024044481727602486a2c8b03392a62ff8177fb71dcf2464e`.
+
+### Numerical interpretation and remaining limits
+
+Both experiments show very small mean
+probability-distribution divergences on their
+**two sampled token positions**, consistent
+Top-1 labels, and nonzero raw logit differences
+(up to about 0.06). The larger prefill KL than
+decode KL in both comparisons is a fact of
+these samples, not proof that other decode
+positions always have negligible error.
+
+The two comparisons are **not mutually ranked
+for fidelity**: BF16/BF16 vs BF16/F16 changes only
+V storage with Flash ON, while F16/F16 vs F32/F32
+changes both K and V storage with Flash OFF.
+Neither uses a true all-F32 model, and no
+exact numerical ground truth is present.
+Cross-pair JS or KL magnitudes are not a
+quality score against a shared reference.
+
+**Phase28 status:** the ctx256 four-candidate
+native-inference slice is complete and these
+two prioritized offline numeric checks are
+complete. There are still **six of the sixteen**
+candidate/context pairs without a reported
+Phase28 native test: `f32-off` and `mixed-on`
+at ctx512, ctx1024 and ctx2048.
+The baseline `f16-off`/`bf16-on` runs at
+those contexts have been reported previously.
+Continuation requires a separately authorized
+one-at-a-time GPU run, respecting the existing
+native preflight and no-fallback requirements.
+
+**Next recommended Phase28 gate:** inspect the
+read-only ctx512 plans for `f32-off` and
+`mixed-on`, then conduct the **single**
+`f32-off` ctx512 native experiment if
+explicitly authorized and review its JSON
+before attempting `mixed-on`.
+Ctx512 uses 384 prefill tokens and 16 decode
+tokens: absolute prefill latencies are therefore
+not directly comparable to the ctx256
+128-token workload. Do not silently promote
+any configuration to production.
 
 ## Promotion gate
 
