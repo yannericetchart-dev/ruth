@@ -43,3 +43,18 @@
   nessuna modifica all'accettazione GGUF-MANUAL-001 precedente.
 - GGUF-META-MANUAL-001 prevista solo dopo merge in main.
   Download, tensor payload, inferenza e dati locali restano esclusi.
+
+## GGUF-META-001 verificata e integrata (16 ottobre 2026)
+
+- Reader bounded metadata approvato e integrato tramite PR #47-#50,
+  main `a630c83f6c62a229e18fe5e64f0863c19de16018`; CI sintetica e mappe verificate in tutti
+  e quattro i livelli.
+- Solo `general.architecture`, `general.file_type` e
+  `{architecture}.context_length` opzionali. Non legge tensori,
+  non certifica quantizzazione o compatibilita' inference.
+- Stato tecnico del nuovo scope: implementation complete;
+  verification passed (fixture sintetiche); integration merged.
+- **GGUF-META-MANUAL-001 active/pending**: prova manuale dopo
+  sync sicura e avvio default Ruth con tutte le otto fasi.
+  Gli stati candidati precedenti sono storici.
+- Dati reali esclusi da Git (DATA-001); prossimo scope da approvare.
