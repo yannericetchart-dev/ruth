@@ -10,7 +10,7 @@ PY-REV-001 completata: configurazioni ripetute malformate rifiutate e
 catena reale delle API verificata. PY-PROMOTE-001 completata: PR #2 integrata
 in environment/python/main.
 
-Revisione funzionale PY-SCOPE-001 in attesa del verde dell'utente: vedere
+Revisione funzionale PY-SCOPE-001 approvata dall'utente il 16 ottobre 2026: vedere
 [descrizione delle funzioni](python/MIGRATION_SCOPE.md). Dopo il verde,
 completare le promozioni a environment/main e main senza ulteriori conferme
 intermedie; fermarsi per dubbi o decisioni da chiarire (MIG-FLOW-001).

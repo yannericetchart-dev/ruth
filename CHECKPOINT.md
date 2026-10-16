@@ -54,7 +54,7 @@ environment/main: la prima promozione al branch canonico e' invece completata.
 
 Passaggio corrente: revisione funzionale del perimetro
 [PY-SCOPE-001](environment/python/MIGRATION_SCOPE.md) da parte dell'utente.
-Semaforo verde su questa descrizione: **concesso dall'utente il 16 ottobre 2026**. Il codice del punto d'ingresso e' candidato in PR #3; le suite nuove e le promozioni fino a main non sono ancora completate.
+Semaforo verde PY-SCOPE-001: **concesso il 16 ottobre 2026**. PR #3 aggiornata sul protocollo REMOTE-001 e in verifica; promozioni fino a main e PY-MANUAL-001 non completate.
 
 Secondo REMOTE-001, completare direttamente su GitHub le promozioni da
 environment/python/main a environment/main e quindi main, con test

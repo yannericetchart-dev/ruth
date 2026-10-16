@@ -18,7 +18,7 @@ class MapTests(unittest.TestCase):
 
     def write_node(self, path, ident, parent, dependencies):
         node = copy.deepcopy(self.template)
-        node.update(id=ident, parent=parent, depends_on=dependencies, tasks=[], blocked_by=[])
+        node.update(id=ident, parent=parent, depends_on=dependencies, tasks=[])
         node['branch'] = dict(name='main' if path == '.' else path+'/main',
                               parent=None if parent is None else 'main', status='planned')
         destination = self.root/path
@@ -56,6 +56,15 @@ class MapTests(unittest.TestCase):
     def test_unknown_dependency_is_rejected(self):
         self.write_node('environment', 'ENV', '.', ['missing'])
         with self.assertRaisesRegex(ValueError, 'unknown dependency'):
+            load_nodes(self.root, directories(self.root))
+
+    def test_passed_verification_requires_explicit_scope(self):
+        path = self.root/'NODE.yaml'
+        node = json.loads(path.read_text())
+        node['verification'] = 'passed'
+        node.pop('verification_scope', None)
+        path.write_text(json.dumps(node))
+        with self.assertRaisesRegex(ValueError, 'verification scope is required'):
             load_nodes(self.root, directories(self.root))
 
 

@@ -11,19 +11,17 @@
     "status": "present"
   },
   "development": "active",
-  "implementation": "skeleton",
-  "maturity": null,
+  "implementation": "partial",
+  "maturity": "experimental",
   "verification": "not_run",
   "integration": "merged",
   "flags": [
     "in_scope"
   ],
-  "blocked_by": [
-    "PY-SCOPE-001"
-  ],
+  "blocked_by": [],
   "depends_on": [],
   "api": [
-    "runtime.inspect_environment(project_root: Path) -> PythonEnvironment [proposta; implementata in environment/python/main, non integrata in main]"
+    "runtime.inspect_environment(project_root: Path) -> PythonEnvironment [implementata nella PR #3; non integrata in main]"
   ],
   "tasks": [
     {
@@ -38,8 +36,8 @@
     },
     {
       "id": "MIG-001",
-      "state": "blocked",
-      "description": "PY-001 gia in environment/python/main. In attesa del verde su PY-SCOPE-001; poi completare promozioni fino a main secondo MIG-FLOW-001."
+      "state": "active",
+      "description": "PY-SCOPE-001 approvata; PR #3 candidata con ingresso Ruth; test e promozioni ai branch padri in corso."
     }
   ]
 }
