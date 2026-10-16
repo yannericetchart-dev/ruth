@@ -6,8 +6,8 @@ Nodo responsabile: [CAT](NODE.yaml). Ripresa: [START_HERE](../../START_HERE.md).
 
 ## Contratto dichiarato
 
-- `catalog(query) -> ModelCatalog [proposta]`
-- `resolve(reference) -> ModelArtifact [proposta]`
+- `catalog(*, project_root: Path | None = None) -> ModelCatalog [implementata su branch candidato, non verificata]`
+- `resolve(reference: str, *, project_root: Path | None = None) -> ModelRecord | None [candidata]`
 
 Dipendenze: nessuna.
 

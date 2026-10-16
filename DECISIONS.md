@@ -257,3 +257,21 @@ Ogni sostituzione deve collegare entrambe le decisioni e aggiornare le mappe.
   commit `c344c71013cfa05da4f49f3204900f4bdc89b8ea`, con quinta fase NVIDIA `available` e
   sequenza Ruth conclusa. AMD, Intel, driver, CUDA e backend restano
   fuori dall'ambito e non sono stati verificati o autorizzati.
+
+## CAT-SCOPE-001: catalogo locale dei modelli dichiarati
+
+- Stato: accepted, approvazione esplicita dell'utente 16 ottobre 2026.
+- Manifest opzionale JSON sotto `.local/models/catalog.json`, soltanto
+  file esplicitamente elencati, riferimenti relativi confinati alla
+  cartella locale, senza percorso assoluto, traversal o symlink.
+- API: `models.catalog.catalog` e `resolve`, report immutabili;
+  riconoscere non configurato, vuoto, pronto, parziale e non valido.
+  `present_unverified` non certifica il formato o inferenza.
+- MAIN-FLOW-001: sesta fase automatica dopo NVIDIA, indipendente da
+  altre fasi; controllo mirato `main.py catalog`. Un catalogo assente
+  o vuoto non e' errore; dati invalidi o file dichiarati mancanti
+  vengono segnalati, senza modifiche all'ambiente.
+- Proibiti scanning generale del disco, download, verifica binaria GGUF,
+  acquisizione Hugging Face, runtime inference e pubblicazione manifest.
+- Test sintetici, CI, branch fino a main, poi CAT-MANUAL-001 obbligatorio
+  prima di un nuovo componente (MIG-FLOW-001/002, DATA-001, REMOTE-001).

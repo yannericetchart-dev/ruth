@@ -91,3 +91,10 @@ GPU-MANUAL-001 e' stata superata personalmente il 16 ottobre 2026
 sulla revisione `c344c71013cfa05da4f49f3204900f4bdc89b8ea`; tutte le cinque fasi completate.
 La successiva migrazione richiede nuova approvazione del perimetro
 (MIG-FLOW-001). AMD/Intel e CUDA non sono migrati.
+
+## CAT-SCOPE-001 approvato
+
+Avvio della porzione Models catalogo locale, approvata il
+16 ottobre 2026: manifest JSON opzionale ignorato da Git,
+sesto passaggio Ruth; nessuna scansione/download/GGUF/inferenza.
+Stato implementazione, CI e collaudo CAT-MANUAL-001 in CHECKPOINT.md.

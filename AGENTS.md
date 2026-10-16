@@ -199,3 +199,12 @@ passaggio indipendente della CLI Ruth. AMD e Intel restano inattive,
 e GPU rilevata non equivale a compatibilita CUDA/driver/backend.
 Non riportare inventari reali, stderr o identificativi persistenti
 in Git (DATA-001). Dopo promozione serve GPU-MANUAL-001 (MIG-FLOW-002).
+
+## CAT-SCOPE-001: primo modello dichiarativo locale
+
+Approvato il 16 ottobre 2026: solo manifest JSON opzionale in
+`.local/models/catalog.json` con riferimenti relativi confinati, report
+read-only e sesta fase automatica di main.py; `catalog` mirato.
+No scansione, no GGUF binary, no Hugging Face, no installazione,
+no download o inferenza. Nessun dato modelli reale su Git (DATA-001).
+Dopo merge serve collaudo personale CAT-MANUAL-001 (MIG-FLOW-002).
