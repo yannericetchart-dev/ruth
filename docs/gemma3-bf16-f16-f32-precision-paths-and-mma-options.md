@@ -1102,7 +1102,94 @@ Rimangono falsi:
 `conversion_elimination_safe_verified`,
 `production_qualified`.
 
-## 17. Riferimenti interni
+## 17. Verifica locale superata e 23.386 eventi di creazione/clonazione Graph
+
+L'utente ha eseguito `gemma3_phase28_nsight_schema_audit`
+sul medesimo file `bf16-on-ctx2048-nvtx3-nodes.sqlite`,
+ottenendo **6 test superati**, `schema_survey_verified=true`,
+`sqlite_tables_observed=48`, e i seguenti conteggi reali:
+
+| Tabella | Presente | Record |
+|---|---|---:|
+| `CUDA_GRAPH_NODE_EVENTS` | sì | **23.386** |
+| `CUPTI_ACTIVITY_KIND_MEMCPY` | sì | **1.756** |
+| `CUBLAS_EVENTS` | no | 0 |
+| `CUDA_GRAPH_EVENTS` | no | 0 |
+
+Lo schema degli eventi dei nodi Graph espone
+`start`, `end`, `globalTid`, `nameId`,
+`graphNodeId` e `originalGraphNodeId`.
+**Come specificato da NVIDIA**, `originalGraphNodeId`
+identifica il nodo originale se un nodo è stato
+**clonato**, non il nodo che produce i suoi input:
+[Post-Collection Analysis Guide — schema `CUDA_GRAPH_NODE_EVENTS`](https://docs.nvidia.com/nsight-systems/AnalysisGuide/#sqlite-schema).
+Gli eventi descrivono quindi la creazione/clonazione
+e l'associazione di identificatori; non sono una
+rappresentazione degli archi producer→consumer
+del DAG. Non equiparare i 23.386 record a
+23.386 kernel o replay.
+
+I 1.756 record MEMCPY descrivono eventi di
+trasferimento; il campo `virtualAddress`
+non identifica gli operandi A/B delle GEMM.
+La tabella `CUBLAS_EVENTS` è assente, e
+`api_parameter_column_candidates=[]`.
+L'export resta valido per le correlazioni
+temporali e i `graphNodeId`, non per
+provare il legame di ogni buffer dei
+**17.184 cast F32→BF16** con una specifica GEMM.
+
+### 17.1 Nuovo controllo aggregato, privo di puntatori
+
+Il modulo sperimentale
+`ruth_runtime.gemma3_phase28_aux_node_audit`
+riutilizza il gate dello schema della traccia
+approvata ed esegue esclusivamente query
+SQL `COUNT`, `COUNT DISTINCT` e `EXISTS`.
+Misura la copertura degli **identificatori**
+(non degli indirizzi di memoria):
+
+- quanti eventi `CUDA_GRAPH_NODE_EVENTS` hanno
+  `originalGraphNodeId` e quanti ID originali
+  sono presenti fra gli stessi eventi;
+- quanti `graphNodeId` distinti degli eventi
+  kernel corrispondono a quelli della tabella
+  di creazione/clonazione e/o a `originalGraphNodeId`;
+- quanti record MEMCPY hanno ID di nodo non
+  nulli/non zero, e quanti coincidono con
+  identificatori degli eventi dei nodi o dei kernel.
+
+Non legge `virtualAddress`, payload di
+trasferimento, contenuti NVTX, parametri cuBLAS
+o valori dei puntatori. Non produce
+liste di indirizzi né inferisce dipendenze DAG
+dai soli ID comuni. Anche se il matching
+degli ID risulterà completo,
+`explicit_graph_dependency_edges_verified=false`
+e `cast_to_gemm_producer_consumer_verified=false`.
+
+```bash
+cd ~/Dev/ruth-model-profiling
+git pull --ff-only origin feat/gemma3-phase28-context-dispatch
+
+.venv/bin/python -m unittest \
+  tests.test_phase28_gemma3_aux_node_audit -v
+
+.venv/bin/python -m ruth_runtime.gemma3_phase28_aux_node_audit \
+  --sqlite .ruth-build/phase28/bf16-on-ctx2048-nvtx3-nodes.sqlite \
+  --candidate bf16-on --n-ctx 2048
+```
+
+I **4 test sintetici nuovi** e
+il nuovo audit aggregato non sono ancora
+stati eseguiti sul checkout locale dell'utente.
+Il report reale dovrà chiarire quanti ID
+sono riutilizzati negli eventi registrati.
+Non è un'autorizzazione a nuove catture
+Nsight, nuovi benchmark o modifica
+della libreria pinned.
+
+## 18. Riferimenti interni
 
 - [Fase 27 — precisione e benchmark](phase-27-gemma3-precision-and-kernel-benchmark.md).
 - [Fase 28 — prove CUDA/NVTX e contesti](phase-28-gemma3-dispatch-and-context-scaling.md).
