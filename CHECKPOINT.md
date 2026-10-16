@@ -54,8 +54,7 @@ environment/main: la prima promozione al branch canonico e' invece completata.
 
 Passaggio corrente: revisione funzionale del perimetro
 [PY-SCOPE-001](environment/python/MIGRATION_SCOPE.md) da parte dell'utente.
-Semaforo verde su questa descrizione: **in attesa**. Non eseguire le
-promozioni restanti prima del verde.
+Semaforo verde su questa descrizione: **concesso il 16 ottobre 2026**. Attivita' di promozione avviata in `environment/work/PY-001-entrypoint`: codice Python e ingresso Ruth nel commit `1a59190b98c8b07b6bfc658c10edf286f974ae05`. Verifiche sulla nuova revisione e promozioni ai padri ancora da completare.
 
 Dopo il verde, completare autonomamente le promozioni da
 environment/python/main a environment/main e quindi main, con test,
@@ -67,7 +66,7 @@ e aggiornare lo stato dopo ogni promozione.
 
 MIG-FLOW-002 aggiunta: per PY-001 il percorso finale in main deve eseguire
 l'ispezione dal punto d'ingresso di Ruth con messaggi a terminale relativi
-alla funzione e al suo esito. Tale collegamento non e' ancora implementato.
+alla funzione e al suo esito. Collegamento implementato nel branch di lavoro, non ancora verificato o integrato.
 Dopo l'integrazione fornire comando ed esiti attesi all'utente, che avviera
 Ruth localmente di persona. PY-MANUAL-001: pianificata, nessuna conferma
 positiva registrata. Non iniziare la migrazione successiva finche l'utente

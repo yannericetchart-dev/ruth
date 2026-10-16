@@ -1,6 +1,6 @@
 # PY-SCOPE-001: ispezione strutturale dell'ambiente Python
 
-Stato della revisione funzionale: in attesa del semaforo verde dell'utente.
+Stato della revisione funzionale: approvato esplicitamente dall'utente il 16 ottobre 2026, incluso il collegamento al punto d'ingresso di Ruth.
 Porzione: PY-001. Regola di esecuzione: MIG-FLOW-001.
 
 Il codice e' gia implementato in environment/python/main alla revisione
@@ -78,5 +78,4 @@ Dopo l'integrazione fornire all'utente il comando concreto per avviare Ruth
 e gli esiti attesi. L'utente lo esegue localmente di persona e conferma
 esplicitamente l'esito positivo prima di iniziare la migrazione successiva.
 Registrare revisione provata e stato del collaudo nel checkpoint; mantenere
-log e risultati reali esclusivamente locali. PY-MANUAL-001 e' pianificata;
-non e' stato eseguito o confermato un collaudo personale.
+log e risultati reali esclusivamente locali. PY-MANUAL-001 e' pianificata; non e' stato eseguito o confermato un collaudo personale.

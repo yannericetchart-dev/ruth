@@ -9,14 +9,13 @@ La sola ispezione Python e' implementata, testata e revisionata (PY-REV-001)
 in quella revisione. PY-PROMOTE-001 completata; il codice non e' ancora
 integrato in environment/main.
 
-Revisione funzionale [PY-SCOPE-001](MIGRATION_SCOPE.md): semaforo verde
-dell'utente in attesa. Dopo il verde, completare autonomamente le promozioni
+Revisione funzionale [PY-SCOPE-001](MIGRATION_SCOPE.md): semaforo verde concesso dall'utente il 16 ottobre 2026. Dopo il verde, completare autonomamente le promozioni
 a environment/main e main secondo MIG-FLOW-001, senza conferme a ogni merge.
 
 Prima di passare alla migrazione successiva, PY-MANUAL-001 richiede che
 l'utente avvii Ruth localmente dal punto d'ingresso di main, osservi i
 messaggi della funzione e confermi l'esito positivo (MIG-FLOW-002).
-Collegamento al punto d'ingresso e collaudo non ancora realizzati.
+Collegamento al punto d'ingresso implementato nel branch di lavoro `environment/work/PY-001-entrypoint`, non ancora verificato/integrato; collaudo manuale non realizzato.
 Questo branch main contiene lo scaffold, senza il codice della porzione.
 Vedere il
 [checkpoint della porzione](https://github.com/yannericetchart-dev/ruth/blob/b80520ad903ff18f93398725ea95cd91f51da5d8/environment/python/CHECKPOINT.md).

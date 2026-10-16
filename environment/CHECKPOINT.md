@@ -10,7 +10,7 @@ PY-REV-001 completata: configurazioni ripetute malformate rifiutate e
 catena reale delle API verificata. PY-PROMOTE-001 completata: PR #2 integrata
 in environment/python/main.
 
-Revisione funzionale PY-SCOPE-001 in attesa del verde dell'utente: vedere
+Revisione funzionale PY-SCOPE-001 approvata dall'utente il 16 ottobre 2026: vedere
 [descrizione delle funzioni](python/MIGRATION_SCOPE.md). Dopo il verde,
 completare le promozioni a environment/main e main senza ulteriori conferme
 intermedie; fermarsi per dubbi o decisioni da chiarire (MIG-FLOW-001).
@@ -18,7 +18,7 @@ intermedie; fermarsi per dubbi o decisioni da chiarire (MIG-FLOW-001).
 MIG-FLOW-002 richiede esecuzione della funzione dal punto d'ingresso di Ruth
 in main e messaggi a terminale. Dopo l'integrazione, il collaudo locale
 personale dell'utente (PY-MANUAL-001) e la sua conferma positiva precedono
-qualunque migrazione successiva. Il collegamento e il collaudo restano da fare.
+qualunque migrazione successiva. Il collegamento e' nel branch `environment/work/PY-001-entrypoint` (commit `1a59190b`), ma non ancora verificato/integrato; il collaudo personale resta da fare.
 
 Esaminare il checkpoint Python nella revisione di lavoro prima della
 promozione. Le API indicate come proposte nelle mappe main restano tali
