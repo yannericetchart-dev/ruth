@@ -20,8 +20,13 @@ macchina. Non e' sufficiente allegare il documento a una singola chat.
 ```text
 Progetto: yannericetchart-dev/ruth. Protocollo CONT-001 revisione 1.
 All'inizio di ogni nuova chat o ripresa del lavoro, usa la connessione GitHub
-per leggere START_HERE.md dal branch main del repository, fissando il commit
-letto. Segui i riferimenti a AGENTS.md, DECISIONS.md, CHECKPOINT.md e alle
+per risolvere prima il commit main tramite
+https://api.github.com/repos/yannericetchart-dev/ruth/git/ref/heads/main
+(campo object.sha; in alternativa branch API, campo commit.sha).
+Leggi poi START_HERE.md e gli altri documenti usando quel commit come ref.
+Lo SHA del blob di un file non e' lo SHA del commit. Se non riesci a risolvere
+il ref, dichiara la ripresa incompleta prima di sviluppare.
+Segui i riferimenti a AGENTS.md, DECISIONS.md, CHECKPOINT.md e alle
 mappe applicabili. Non presumere che un file caricato o una chat precedente
 rappresenti l'ultima revisione. Se GitHub non e' accessibile, dichiaralo.
 Confronta il checkout locale con la revisione pubblicata quando disponibile.

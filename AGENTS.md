@@ -6,6 +6,14 @@ su GitHub; fissare il commit letto e seguire i rimandi alle decisioni, al
 checkpoint e alle mappe. Confrontare la revisione pubblicata con il checkout
 locale prima di modificare file. Dichiarare quando GitHub non e' accessibile.
 
+Per fissare la revisione, leggere prima il ref `heads/main` tramite il
+connettore GitHub: `https://api.github.com/repos/yannericetchart-dev/ruth/git/ref/heads/main`.
+Usare `object.sha` come commit e leggere START_HERE.md e i documenti
+successivi con quel SHA nel parametro ref. In alternativa leggere la branch
+API e usare `commit.sha`. Lo SHA del blob restituito da un file non identifica
+il commit del repository. Se il ref non e' risolvibile, dichiarare la ripresa
+incompleta e non iniziare sviluppo dipendente da una revisione presunta.
+
 Prima di sviluppare riportare brevemente: obiettivo, attivita', decisioni
 vigenti, branch/revisione, limiti, problemi aperti e prossima azione. Non
 interpretare una proposta come decisione approvata o uno skeleton come codice
