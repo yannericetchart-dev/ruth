@@ -155,3 +155,17 @@ Non importare lock CUDA o dati host, non installare pacchetti (DATA-001).
 - Stato iniziale: candidato remoto, test e integrazione main pendenti;
   dopo merge servira' DIAG-MANUAL-001 (MIG-FLOW-002).
 - Inventario hardware e diagnostica CUDA nativa restano esclusi.
+
+## DIAG-001 integrata in main (16 ottobre 2026)
+
+- Perimetro DIAG-SCOPE-001 esplicitamente approvato dall'utente.
+- Contratto puro di diagnostica sui report PY-001 e DEP-001, sequenza
+  `main.py` ora PY -> DEP -> DIAG. Se PY non e' isolato, DEP si ferma
+  ma DIAG spiega i motivi in base al report esistente.
+- Promozioni: PR #20 (`ec7eba74bc71e62ea8562fa51d62295f5f3c01b8`),
+  PR #21 (`69ae0821cc0043bd76254bc46dff12b40d0d7b30`),
+  PR #22 (`dfdb41e981f32ee233320f77998aadab55ce4d7b`).
+- Verifica CI run 38908192677, 38908269925 e 38908370200: success.
+- Stato tecnico: implemented / verified / integrated; collaudo personale
+  DIAG-MANUAL-001 pending fino a test utente sulla revisione main.
+- Niente CUDA, driver, log nativi, installazioni o dati reali in Git.

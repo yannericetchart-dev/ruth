@@ -47,10 +47,16 @@ dedurre il completamento di una fase dalla sola presenza dei documenti.
 Avviando `main.py` senza argomenti Ruth esegue automaticamente **tutte le
 operazioni integrate e approvate** in sequenza secondo le loro dipendenze.
 I sottocomandi restano disponibili per verifiche mirate, non sono il flusso
-normale. Per la prima integrazione automatica: PY-001 poi DEP-001, con il
+normale. Flusso integrato corrente: PY-001, DEP-001, DIAG-001, con il
 solo controllo minimo di `pip`; l'inventario completo dei requisiti non e'
-ancora definito. MAIN-FLOW-001 e' integrata in main tramite PR #17 e verificata da CI.
+ancora definito. DIAG usa report preesistenti, senza modifiche host. MAIN-FLOW-001 e' integrata in main tramite PR #17 e verificata da CI.
 Il collaudo personale dell'avvio sequenziale senza argomenti e' stato
 superato sul commit `3f08cbad9ec06f814031bd1cbcbdc25553bd82ae`
 (MAIN-MANUAL-001 complete). Consultare CHECKPOINT.md per il prossimo
 perimetro, che richiede una nuova approvazione funzionale.
+
+## Stato DIAG-001
+
+DIAG-001 e' integrata tecnicamente in main tramite PR #22 e verificata
+su GitHub. Il collaudo locale del nuovo passaggio resta da confermare
+(DIAG-MANUAL-001). Consultare CHECKPOINT.md per revisione e istruzioni.

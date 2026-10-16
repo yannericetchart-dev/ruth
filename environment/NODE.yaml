@@ -13,8 +13,8 @@
   "development": "active",
   "implementation": "partial",
   "maturity": "experimental",
-  "verification": "stale",
-  "integration": "partial",
+  "verification": "passed",
+  "integration": "merged",
   "flags": [
     "in_scope"
   ],
@@ -25,7 +25,7 @@
     "plan(requirements: Iterable[str], *, project_root: Path | None = None) -> DependencyPlan [implementata, verificata e integrata in main]",
     "PythonEnvironment: project_root: str; interpreter: str; python_version: tuple[int, ...]; interpreter_in_project_venv: bool; venv_status: str; reasons: tuple[str, ...] [contratto immutabile della PR #2]",
     "PythonEnvironment.to_dict() -> dict [implementata in main; dati transitori, salvataggi solo locali]",
-    "diagnostics.inspect(python_report: PythonEnvironment, dependencies: DependencyPlan | None = None) -> DiagnosticReport [candidata in DIAG-001]"
+    "diagnostics.inspect(python_report: PythonEnvironment, dependencies: DependencyPlan | None = None) -> DiagnosticReport [implementata, verificata e integrata in main]"
   ],
   "tasks": [
     {
@@ -40,9 +40,9 @@
     },
     {
       "id": "ENV-003",
-      "state": "active",
-      "description": "Integrare la diagnostica dei report PY e DEP nel flusso principale; test e promozioni ancora pendenti."
+      "state": "complete",
+      "description": "Diagnostica DIAG-001 verificata e promossa da foglia PR #20 a environment/main PR #21 e main PR #22."
     }
   ],
-  "verification_scope": "DIAG-001: test sintetici della traduzione di report Python/dipendenze e dell'ordine PY->DEP->DIAG ancora da eseguire in CI; nessun controllo native/CUDA, nessuna compatibilita' certificata."
+  "verification_scope": "DIAG-001: GitHub Actions 38908192677, 38908269925, 38908370200 superate (14 PY, 12 DEP, 13 DIAG, 15 test root/CLI, mappe coerenti). PR #20 figlio, #21 environment/main e #22 main. Solo analisi sintetiche di report; collaudo DIAG-MANUAL-001 pendente; nessuna diagnostica GPU/CUDA."
 }

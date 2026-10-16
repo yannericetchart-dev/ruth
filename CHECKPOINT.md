@@ -1,83 +1,73 @@
 # Ruth: checkpoint di progetto
 
-Revisione documentale: 18 (stato candidato DIAG-001). Protocollo CONT-001 rev 1.
-Fase: 3 - migrazione incrementale per componente.
-Stato: **PY-001, DEP-001 e MAIN-FLOW-001 implementati, verificati,
-integrati in main e accettati con collaudo personale**.
+Revisione documentale: 19 (indice main), CONT-001 revisione 1.
+Fase 3 - migrazione incrementale per componente.
+Stato attuale: **DIAG-001 implementata, verificata e integrata in main;
+accettazione personale DIAG-MANUAL-001 ancora in attesa**.
 
-## Stato accettato (16 ottobre 2026)
+## Perimetri precedenti accettati
 
-- PY-001: ispezione dell'ambiente Python e della .venv read-only;
-  test automatici e collaudo personale PY-MANUAL-001 superati sulla
-  revisione `ef4654af8ab106ef194af254d9f3884e5cabb6b0`.
-- DEP-001: pianificazione read-only di dipendenze Python dichiarate,
-  test automatici superati; DEP-MANUAL-001 superato sulla revisione
+- PY-001: ispezione read-only Python/.venv integrata e collaudata
+  positivamente dall'utente sul commit
+  `ef4654af8ab106ef194af254d9f3884e5cabb6b0`.
+- DEP-001: presenza e confronto versioni esatte di pacchetti Python
+  dichiarati, in sola lettura; collaudo utente positivo sul commit
   `e197cc86829acf52e326a712331cc7ff6cfef6b5`.
-- MAIN-FLOW-001: `main.py` senza argomenti avvia automaticamente le
-  operazioni integrate nell'ordine dei prerequisiti. Primo flusso:
-  ispezione Python e successivo controllo minimo dei metadati `pip`.
-  I sottocomandi restano per diagnosi mirata. Se Python non e'
-  conforme, non viene eseguito il controllo dipendenze.
-- CI della sequenza: run 38900998138 e 38901495978 success;
-  suite Python, dipendenze, ingresso, mappe. PR #17 merge in main
-  `e605a02bdd72441fd4e79d36a943109ee3ba5c57`;
-  PR #18 checkpoint finale `3f08cbad9ec06f814031bd1cbcbdc25553bd82ae`.
-- **MAIN-MANUAL-001 complete**: l'utente ha sincronizzato la copia
-  pulita di main tramite fast-forward e verificato HEAD
-  `3f08cbad9ec06f814031bd1cbcbdc25553bd82ae`; ha eseguito
-  personalmente `.venv/bin/python main.py` senza argomenti.
-  Confermati ordine Python -> dipendenze, isolamento conforme,
-  `pip: present_unverified` e riepilogo di compatibilita' non verificata.
-  Nessun errore segnalato.
+- MAIN-FLOW-001: sequenza automatica da `main.py`, collaudata
+  positivamente sul commit
+  `3f08cbad9ec06f814031bd1cbcbdc25553bd82ae`.
+  Queste accettazioni restano valide.
 
-## Limiti e sicurezza
+## DIAG-001 integrata
 
-- `pip` e' soltanto la prima verifica minima: non e' l'elenco completo
-  delle dipendenze Ruth. `present_unverified` non certifica la
-  compatibilita', la sicurezza o la funzionalita' dei pacchetti.
-- Nessun controllo GPU, backend nativi, installabilita', benchmark
-  o inferenza implementato o collaudato da questa migrazione.
-- DATA-001: nessun percorso locale, nome host, log completo, versione
-  realmente osservata, credenziale o inventario pubblicato.
+- DIAG-SCOPE-001: perimetro approvato esplicitamente dall'utente
+  il 16 ottobre 2026. Interpretazione read-only di report PY e DEP,
+  categorie e suggerimenti portabili, senza intervenire sull'ambiente.
+- API `environment.diagnostics.inspect(python_report, dependencies=None)`
+  -> `DiagnosticReport` immutabile. Classifica configurazione .venv,
+  pacchetto mancante, incompatibile o non ispezionabile, senza
+  indovinare errori CUDA o altri problemi nativi.
+- `main.py` senza argomenti ora esegue PY -> DEP -> DIAG. Se PY non
+  e' conforme, salta DEP ma DIAG spiega comunque il report Python.
+  I sottocomandi specifici restano disponibili; controllo pacchetto
+  predefinito limitato a `pip` (non elenco completo delle dipendenze).
+- Promozioni: PR #20 in environment/diagnostics/main
+  (merge `ec7eba74bc71e62ea8562fa51d62295f5f3c01b8`);
+  PR #21 in environment/main
+  (merge `69ae0821cc0043bd76254bc46dff12b40d0d7b30`);
+  PR #22 in main (merge `dfdb41e981f32ee233320f77998aadab55ce4d7b`).
+- CI GitHub Actions: 38908192677, 38908269925 e 38908370200:
+  **success**. 14 test Python, 12 dipendenze, 13 diagnostica,
+  15 ingresso/root e mappe coerenti. Verifiche sintetiche.
+- **DIAG-MANUAL-001 active**: l'utente non ha ancora confermato
+  l'esecuzione personale del nuovo flusso DIAG sul commit finale.
+  Nessuna successiva migrazione autorizzata senza questa verifica.
+
+## Limiti e dati
+
+- Nessun controllo hardware, CUDA, driver, log nativi, riparazione,
+  installazione automatica, inferenza, benchmark o certificazione runtime.
+- DATA-001: log, dati host, credenziali e versioni reali restano locali.
   Kaggle inattivo.
-
-## Sincronizzazione locale (REMOTE-001)
-
-- `local_sync: verified` **alla revisione collaudata**
-  `3f08cbad9ec06f814031bd1cbcbdc25553bd82ae` sulla copia
-  pulita `main`, in precedenza senza modifiche tracciate.
-- I commit documentali di chiusura successivi potranno portare main
-  avanti: `local_sync: pending_docs_fast_forward` fino a nuova verifica.
-  Il collaudo sul commit provato rimane valido perché le modifiche
-  successive di questa chiusura sono documentali.
-- Il checkout storico con modifiche preesistenti resta preservato
-  e fuori dalla sincronizzazione automatica
+- REMOTE-001: checkout principale non modificato durante lo sviluppo.
+  La copia pulita collaudata prima di DIAG deve essere sincronizzata
+  dopo l'integrazione, in fast-forward e senza scartare lavoro.
+  `local_sync: pending_no_access` per questa revisione.
+  Il clone storico con modifiche locali rimane intatto
   (`legacy_checkout: blocked_divergence`).
 
 ## Prossima azione
 
-Il blocco MAIN-MANUAL-001 e' rimosso. **Non iniziare una nuova porzione
-senza un perimetro funzionale esplicito e il semaforo verde dell'utente**
-(MIG-FLOW-001). Diagnosticare la prossima scelta di ambito tra
-DIAG-001 e gli altri componenti a partire dai documenti vigenti;
-nessuna successiva migrazione avviata o accettata implicitamente.
-Ogni componente futuro va collegato al flusso sequenziale di
-`main.py` e collaudato dall'utente (MAIN-FLOW-001, MIG-FLOW-002).
+Sincronizzare la copia pulita `ruth-main` solo dopo averne verificato
+remote, branch `main` e assenza di modifiche locali da preservare.
+Eseguire `.venv/bin/python main.py` e confermare SHA e risultato
+dell'ordine PY -> DEP -> DIAG. Fino all'accettazione manuale,
+la migrazione successiva e' bloccata (MIG-FLOW-002).
+Dopo DIAG-MANUAL-001, presentare il prossimo perimetro e attendere
+nuovo semaforo verde (MIG-FLOW-001).
 
 ## Decisioni vigenti
 
-CONT-001, MIG-FLOW-001, MIG-FLOW-002, REMOTE-001, MAIN-FLOW-001,
-DATA-001, PLAN-001, DEP-ORDER-001. SYNC-001 superseded.
-
-## DIAG-001: perimetro approvato e lavoro remoto in corso (16 ottobre 2026)
-
-- L'utente ha confermato `DIAG-SCOPE-001` dopo la descrizione
-  di scopo, API, ingressi, risultati, effetti, limiti e prove.
-- Sequenza documentale: diagnostica di ambiente dopo dipendenze e
-  prima dell'inventario hardware (allineamento di ARCHITECTURE.md).
-- Candidato `environment/diagnostics/work/DIAG-001`: convertitore
-  read-only dei report PY e DEP e flusso default `PY -> DEP -> DIAG`.
-- `implementation: complete` per il perimetro proposto, `verification:
-  not_run`, `integration: not_merged`; CI e promozioni da completare.
-- DIAG-MANUAL-001 non svolto; non avviare la migrazione successiva.
-- REMOTE-001: nessuna scrittura sul checkout locale; dati reali non in Git.
+CONT-001, DATA-001, PLAN-001, SCOPE-001, MIG-FLOW-001/002,
+REMOTE-001, MAIN-FLOW-001, DEP-ORDER-001 e DIAG-SCOPE-001.
+SYNC-001 rimane superseded.

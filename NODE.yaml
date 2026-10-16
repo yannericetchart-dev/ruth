@@ -13,16 +13,18 @@
   "development": "active",
   "implementation": "partial",
   "maturity": "experimental",
-  "verification": "stale",
-  "integration": "partial",
+  "verification": "passed",
+  "integration": "merged",
   "flags": [
     "in_scope"
   ],
-  "blocked_by": [],
+  "blocked_by": [
+    "DIAG-MANUAL-001"
+  ],
   "depends_on": [],
   "api": [
     "runtime.inspect_environment(project_root: Path) -> PythonEnvironment [integrata in main; ispezione Python sperimentale]",
-    "main(argv: Sequence[str] = ()) -> int [sequenza PY->DEP integrata in main; estensione DIAG candidata; modalita mirate disponibili]"
+    "main(argv: Sequence[str] = ()) -> int [sequenza PY->DEP->DIAG integrata in main; modalita mirate disponibili]"
   ],
   "tasks": [
     {
@@ -57,9 +59,9 @@
     },
     {
       "id": "MIG-003",
-      "state": "active",
-      "description": "DIAG-SCOPE-001 approvato il 16 ottobre 2026; diagnostica read-only e passaggio PY->DEP->DIAG implementati sul ramo candidato, CI e promozioni pendenti."
+      "state": "blocked",
+      "description": "DIAG-001 verificata con CI, integrata in main tramite PR #22; collaudo personale DIAG-MANUAL-001 ancora in attesa, senza autorizzare un componente successivo."
     }
   ],
-  "verification_scope": "DIAG-001: test sintetici della traduzione di report Python/dipendenze e dell'ordine PY->DEP->DIAG ancora da eseguire in CI; nessun controllo native/CUDA, nessuna compatibilita' certificata."
+  "verification_scope": "DIAG-001: GitHub Actions 38908192677, 38908269925, 38908370200 superate (14 PY, 12 DEP, 13 DIAG, 15 test root/CLI, mappe coerenti). PR #20 figlio, #21 environment/main e #22 main. Solo analisi sintetiche di report; collaudo DIAG-MANUAL-001 pendente; nessuna diagnostica GPU/CUDA."
 }

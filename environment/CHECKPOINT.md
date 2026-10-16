@@ -53,3 +53,12 @@ MAIN-MANUAL-001 **complete**; i precedenti stati pending sono storici.
 DIAG-SCOPE-001 approvato dall'utente; nuovo diagnostico sui report PY e
 DEP con sequenza default dopo DEP, ma codice ancora candidato; CI e
 promozioni non completate. DIAG-MANUAL-001 ancora da eseguire.
+
+## DIAG-001 integrata (16 ottobre 2026)
+
+Completate le promozioni PR #20 in environment/diagnostics/main,
+PR #21 in environment/main e PR #22 in main.
+GitHub CI run 38908192677, 38908269925 e 38908370200: success
+su report sintetici e default sequenziale PY->DEP->DIAG.
+Il collaudo personale DIAG-MANUAL-001 resta active e il prossimo
+componente non puo' iniziare. Nessun dato host e' versionato.

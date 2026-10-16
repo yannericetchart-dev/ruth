@@ -13,8 +13,8 @@
   "development": "active",
   "implementation": "complete",
   "maturity": "experimental",
-  "verification": "not_run",
-  "integration": "not_merged",
+  "verification": "passed",
+  "integration": "merged",
   "flags": [
     "in_scope"
   ],
@@ -24,13 +24,13 @@
     "environment/dependencies"
   ],
   "api": [
-    "inspect(python_report: PythonEnvironment, dependencies: DependencyPlan | None = None) -> DiagnosticReport [implementata sul branch candidato, non verificata]"
+    "inspect(python_report: PythonEnvironment, dependencies: DependencyPlan | None = None) -> DiagnosticReport [implementata, verificata e integrata in main]"
   ],
   "tasks": [
     {
       "id": "DIAG-001",
-      "state": "active",
-      "description": "Diagnostica pura su report Python e dipendenze, codici portabili e suggerimenti, esito automatico dopo PY/DEP; test e promozioni pendenti."
+      "state": "complete",
+      "description": "Contratto immutabile, diagnostica dei report e passaggio PY->DEP->DIAG verificati in CI e integrati in main tramite PR #22."
     },
     {
       "id": "DIAG-SCOPE-001",
@@ -39,8 +39,24 @@
     },
     {
       "id": "DIAG-MANUAL-001",
-      "state": "planned",
-      "description": "Dopo merge finale: verificare su copia locale pulita main.py senza argomenti e ordine PY->DEP->DIAG, con conferma SHA utente."
+      "state": "active",
+      "description": "Attende sincronizzazione non distruttiva della copia main e conferma personale dell'ordine PY->DEP->DIAG e del commit effettivamente collaudato."
+    },
+    {
+      "id": "DIAG-PROMOTE-001",
+      "state": "complete",
+      "description": "PR #20 integrata in environment/diagnostics/main, merge ec7eba74bc71e62ea8562fa51d62295f5f3c01b8."
+    },
+    {
+      "id": "DIAG-PROMOTE-002",
+      "state": "complete",
+      "description": "PR #21 integrata in environment/main, merge 69ae0821cc0043bd76254bc46dff12b40d0d7b30."
+    },
+    {
+      "id": "DIAG-PROMOTE-003",
+      "state": "complete",
+      "description": "PR #22 integrata in main, merge dfdb41e981f32ee233320f77998aadab55ce4d7b."
     }
-  ]
+  ],
+  "verification_scope": "DIAG-001: GitHub Actions 38908192677, 38908269925, 38908370200 superate (14 PY, 12 DEP, 13 DIAG, 15 test root/CLI, mappe coerenti). PR #20 figlio, #21 environment/main e #22 main. Solo analisi sintetiche di report; collaudo DIAG-MANUAL-001 pendente; nessuna diagnostica GPU/CUDA."
 }
