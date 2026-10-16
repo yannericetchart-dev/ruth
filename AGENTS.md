@@ -55,6 +55,22 @@ Kaggle e' inattivo e fuori dal perimetro di sviluppo corrente. Il codice
 storico deve essere censito senza attivarlo o installarne le dipendenze.
 Lo stato corrente del processo e' indicato in `CHECKPOINT.md`.
 
+## Migrazioni: semaforo verde sul perimetro (MIG-FLOW-001)
+
+Prima di ogni porzione presentare all'utente una descrizione delle funzioni:
+scopo, ingressi, risultati, controlli, effetti sui dati, limiti e verifiche.
+Attendere il suo semaforo verde su quel perimetro prima di migrare.
+Registrare perimetro e approvazione nel checkpoint, senza dedurli dal silenzio.
+
+Dopo il verde, completare autonomamente implementazione, correzioni, test,
+revisioni, PR e promozioni lungo tutti i branch padri fino all'integrazione
+in main, aggiornando mappe e checkpoint. Non richiedere ulteriori conferme
+per ciascuna promozione gia compresa nel perimetro approvato. Fermarsi per
+dubbi o domande che richiedono una decisione dell'utente, inclusa una modifica
+sostanziale del perimetro. Una normale scelta tecnica interna non e' un nuovo
+passaggio di approvazione. Non iniziare la porzione seguente senza averne
+prima presentato le funzioni e ricevuto il relativo verde.
+
 ## Mappe ricorsive
 
 Seguire ARCHITECTURE.md. Modificare NODE.yaml (sottoinsieme JSON di YAML),

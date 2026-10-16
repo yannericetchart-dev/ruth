@@ -8,11 +8,11 @@ Ispezionare Python e pianificare dipendenze senza installazioni implicite.
 
 Sviluppo: **active**; codice: **skeleton**; maturita: non assegnata; verifica: not_run; integrazione: not_merged.
 
-Flag: in_scope. Blocchi: nessuno registrato.
+Flag: in_scope. Blocchi: PY-SCOPE-001.
 
 ## Attivita locali
 
-1. `ENV-001` [active] Prima porzione Python integrata nel branch canonico environment/python/main; da promuovere a environment/main. Il codice in main resta scaffold.
+1. `ENV-001` [blocked] Attendere il verde su PY-SCOPE-001; poi promuovere la porzione da environment/python/main fino a main senza ulteriori conferme intermedie.
 
 ## Componenti (ordine locale, ID stabili)
 

@@ -18,6 +18,22 @@ Ogni sostituzione deve collegare entrambe le decisioni e aggiornare le mappe.
   riguarda la revisione di ingresso del protocollo, non tutte le chat future.
 - Sostituisce: nessuna decisione registrata.
 
+## MIG-FLOW-001: approvazione delle funzioni, poi integrazione completa
+
+- Stato: accepted.
+- Decisione: prima di ogni porzione di migrazione descrivere le funzioni
+  all'utente e attendere il semaforo verde sul perimetro. Dopo l'approvazione
+  procedere autonomamente attraverso test, revisioni e branch padri fino a
+  main. Interrompere per dubbi o domande che richiedono una decisione, senza
+  chiedere nuovamente conferma a ogni promozione ordinaria.
+- Motivazione: consentire la revisione funzionale prima del lavoro e
+  completare poi l'intera porzione approvata senza fermate intermedie.
+- Ambito corrente: PY-001 e' gia in environment/python/main; descrizione
+  PY-SCOPE-001 sottoposta all'utente prima delle promozioni restanti.
+- Precisa: PLAN-001; la sequenza per componenti resta valida.
+- Sostituisce: l'interpretazione operativa che richiedeva un nuovo via libera
+  per ogni singolo passaggio fra branch padri.
+
 ## DATA-001: repository portabile, artefatti locali
 
 - Stato: accepted.

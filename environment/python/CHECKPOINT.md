@@ -6,8 +6,12 @@ PY-001 e' integrata in environment/python/main tramite
 al commit `b80520ad903ff18f93398725ea95cd91f51da5d8`.
 
 La sola ispezione Python e' implementata, testata e revisionata (PY-REV-001)
-in quella revisione. PY-PROMOTE-001 completata; il prossimo passaggio e' la
-promozione a environment/main, dove il codice non e' ancora integrato.
+in quella revisione. PY-PROMOTE-001 completata; il codice non e' ancora
+integrato in environment/main.
+
+Revisione funzionale [PY-SCOPE-001](MIGRATION_SCOPE.md): semaforo verde
+dell'utente in attesa. Dopo il verde, completare autonomamente le promozioni
+a environment/main e main secondo MIG-FLOW-001, senza conferme a ogni merge.
 Questo branch main contiene lo scaffold, senza il codice della porzione.
 Vedere il
 [checkpoint della porzione](https://github.com/yannericetchart-dev/ruth/blob/b80520ad903ff18f93398725ea95cd91f51da5d8/environment/python/CHECKPOINT.md).

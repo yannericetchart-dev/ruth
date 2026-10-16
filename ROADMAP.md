@@ -8,13 +8,13 @@ Coordinare i sottosistemi tramite API comuni.
 
 Sviluppo: **active**; codice: **skeleton**; maturita: non assegnata; verifica: not_run; integrazione: merged.
 
-Flag: in_scope. Blocchi: nessuno registrato.
+Flag: in_scope. Blocchi: PY-SCOPE-001.
 
 ## Attivita locali
 
 1. `SETUP-001` [complete] Configurazione e collaudo indipendente dei client.
 2. `STRUCT-001` [complete] Scaffold ricorsivo senza migrazione applicativa.
-3. `MIG-001` [active] Prima porzione Python integrata in environment/python/main tramite PR #2 (PY-PROMOTE-001). Prossima promozione a environment/main; codice non presente in main.
+3. `MIG-001` [blocked] PY-001 gia in environment/python/main. In attesa del verde su PY-SCOPE-001; poi completare promozioni fino a main secondo MIG-FLOW-001.
 
 ## Componenti (ordine locale, ID stabili)
 

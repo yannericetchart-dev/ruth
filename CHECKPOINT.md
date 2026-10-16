@@ -1,6 +1,6 @@
 # Ruth: checkpoint di progetto
 
-Revisione documentale: 7 (indice main).
+Revisione documentale: 8 (indice main).
 Attivita': `MIG-001` (prima porzione: `PY-001`).
 Fase corrente: **3 - migrazione incrementale per componente**.
 
@@ -52,9 +52,16 @@ albero della revisione che ha superato i test. Le evidenze restano locali.
 Il campo integration del nodo Python resta not_merged rispetto al suo padre
 environment/main: la prima promozione al branch canonico e' invece completata.
 
-Prossimo passaggio: preparare e verificare la promozione da
-environment/python/main a environment/main. La promozione a main resta
-successiva. Consultare il
+Passaggio corrente: revisione funzionale del perimetro
+[PY-SCOPE-001](environment/python/MIGRATION_SCOPE.md) da parte dell'utente.
+Semaforo verde su questa descrizione: **in attesa**. Non eseguire le
+promozioni restanti prima del verde.
+
+Dopo il verde, completare autonomamente le promozioni da
+environment/python/main a environment/main e quindi main, con test,
+revisioni e aggiornamenti delle mappe, senza ulteriori conferme intermedie.
+Fermarsi per dubbi o domande che richiedono una decisione dell'utente,
+secondo MIG-FLOW-001. Consultare il
 [checkpoint immutabile](https://github.com/yannericetchart-dev/ruth/blob/b80520ad903ff18f93398725ea95cd91f51da5d8/environment/python/CHECKPOINT.md)
 e aggiornare lo stato dopo ogni promozione.
 Ambito verificato: test sintetici dell'isolamento Python e API comuni;

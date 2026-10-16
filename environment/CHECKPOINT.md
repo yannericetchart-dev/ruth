@@ -8,7 +8,12 @@ revisione `b80520ad903ff18f93398725ea95cd91f51da5d8`.
 
 PY-REV-001 completata: configurazioni ripetute malformate rifiutate e
 catena reale delle API verificata. PY-PROMOTE-001 completata: PR #2 integrata
-in environment/python/main. Prossimo passaggio: promozione a environment/main.
+in environment/python/main.
+
+Revisione funzionale PY-SCOPE-001 in attesa del verde dell'utente: vedere
+[descrizione delle funzioni](python/MIGRATION_SCOPE.md). Dopo il verde,
+completare le promozioni a environment/main e main senza ulteriori conferme
+intermedie; fermarsi per dubbi o decisioni da chiarire (MIG-FLOW-001).
 
 Esaminare il checkpoint Python nella revisione di lavoro prima della
 promozione. Le API indicate come proposte nelle mappe main restano tali

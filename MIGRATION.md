@@ -7,6 +7,10 @@ macchina non sono candidati alla migrazione secondo DATA-001.
 
 ## Prima porzione prevista: MIG-001 / PY-001
 
+Revisione funzionale: [PY-SCOPE-001](environment/python/MIGRATION_SCOPE.md),
+in attesa del semaforo verde dell'utente. Dopo il verde, completare la
+porzione fino a main senza ulteriori conferme intermedie (MIG-FLOW-001).
+
 - Fonte: `feat/gemma3-phase28-context-dispatch`, commit
   `4ceea508025650ed64b33190834d0b5c85f69db2`,
   `ruth_runtime/venv_packages.py`, logica di verifica del virtualenv.

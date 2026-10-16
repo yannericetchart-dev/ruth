@@ -18,7 +18,9 @@
   "flags": [
     "in_scope"
   ],
-  "blocked_by": [],
+  "blocked_by": [
+    "PY-SCOPE-001"
+  ],
   "depends_on": [],
   "api": [
     "inspect(project_root) -> PythonEnvironment [proposta in main; implementata in environment/python/main]"
@@ -26,8 +28,8 @@
   "tasks": [
     {
       "id": "PY-001",
-      "state": "active",
-      "description": "PY-001 integrata in environment/python/main; da promuovere a environment/main e main. Il codice in main resta scaffold."
+      "state": "blocked",
+      "description": "PY-001 gia nel branch canonico. Revisione funzionale PY-SCOPE-001 prima delle promozioni restanti fino a main."
     },
     {
       "id": "PY-REV-001",
@@ -38,6 +40,11 @@
       "id": "PY-PROMOTE-001",
       "state": "complete",
       "description": "PR #2 integrata nel branch canonico environment/python/main; albero del merge identico alla revisione verificata. Da promuovere a environment/main."
+    },
+    {
+      "id": "PY-SCOPE-001",
+      "state": "active",
+      "description": "Descrizione delle funzioni sottoposta all utente in MIGRATION_SCOPE.md; semaforo verde in attesa."
     }
   ]
 }

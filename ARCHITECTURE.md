@@ -93,3 +93,8 @@ native di un motore appartengono ai suoi tools, non all'ambiente generico.
 Migrare una porzione per volta con provenienza, test pertinenti, checkpoint
 del componente e propagazione fino alla radice. Non copiare risultati,
 inventari di macchina, lock specifici dell'host o registrazioni reali.
+
+Prima di ogni porzione sottoporre all'utente la descrizione delle funzioni
+e attendere il verde sul perimetro (MIG-FLOW-001). Dopo l'approvazione,
+completare tutte le promozioni fino a main senza chiedere conferma a ogni
+passaggio; fermarsi per dubbi o domande che richiedono una decisione.

@@ -18,7 +18,9 @@
   "flags": [
     "in_scope"
   ],
-  "blocked_by": [],
+  "blocked_by": [
+    "PY-SCOPE-001"
+  ],
   "depends_on": [],
   "api": [
     "runtime.inspect_environment(project_root: Path) -> PythonEnvironment [proposta; implementata in environment/python/main, non integrata in main]"
@@ -36,8 +38,8 @@
     },
     {
       "id": "MIG-001",
-      "state": "active",
-      "description": "Prima porzione Python integrata in environment/python/main tramite PR #2 (PY-PROMOTE-001). Prossima promozione a environment/main; codice non presente in main."
+      "state": "blocked",
+      "description": "PY-001 gia in environment/python/main. In attesa del verde su PY-SCOPE-001; poi completare promozioni fino a main secondo MIG-FLOW-001."
     }
   ]
 }

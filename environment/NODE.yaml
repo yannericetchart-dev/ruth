@@ -18,7 +18,9 @@
   "flags": [
     "in_scope"
   ],
-  "blocked_by": [],
+  "blocked_by": [
+    "PY-SCOPE-001"
+  ],
   "depends_on": [],
   "api": [
     "inspect(project_root: Path) -> PythonEnvironment [proposta; implementata in environment/python/main, non integrata in main]",
@@ -29,8 +31,8 @@
   "tasks": [
     {
       "id": "ENV-001",
-      "state": "active",
-      "description": "Prima porzione Python integrata nel branch canonico environment/python/main; da promuovere a environment/main. Il codice in main resta scaffold."
+      "state": "blocked",
+      "description": "Attendere il verde su PY-SCOPE-001; poi promuovere la porzione da environment/python/main fino a main senza ulteriori conferme intermedie."
     }
   ]
 }
