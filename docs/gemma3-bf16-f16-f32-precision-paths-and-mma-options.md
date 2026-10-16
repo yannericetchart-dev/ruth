@@ -921,7 +921,101 @@ senza mostrare puntatori grezzi nei report. Richiedere
 autorizzazione esplicita prima di nuove catture,
 esecuzioni GPU o modifiche della libreria pinned.
 
-## 15. Riferimenti interni
+## 15. Audit sorgente eseguito sul computer dell'utente
+
+L'utente ha eseguito
+`.venv/bin/python -m ruth_runtime.gemma3_phase28_cublas_source_audit`
+sul proprio checkout Ruth,
+restituendo `status=pinned_cublas_source_control_flow_patterns_verified`,
+`source_checkout_status=verified`,
+`source_checkout_verified=true`,
+`source_control_flow_patterns_verified=true` e
+`all_pinned_source_patterns_recognized=true`.
+
+Tutte le **11 condizioni** risultano `true`, incluse
+`src0_bf16_reuse_or_convert`,
+`src1_bf16_reuse_or_convert`,
+`bf16_gemm_uses_converted_operand_ptrs`,
+`bf16_trait_cublas_f32_compute`,
+`bf16_output_f32_on_nvidia`,
+`cublas_variants_distinguished`,
+`dispatch_precision_overrides` e
+`vec4_conversion_conditional_not_universal`.
+
+La verifica Git locale restituisce esattamente
+`source_parent_commit_observed=1652066e0af45f2313b339670ef9555e8a54e545`
+e `source_llama_cpp_commit_observed=0c1e57098bba43ac29e6e3b677cdceebdd22334f`.
+Non è stato necessario scaricare, compilare o eseguire
+modelli. Il risultato non sostituisce un'ispezione
+AST né prova i buffer di ogni GEMM osservata.
+Il risultato riportato non include l'esecuzione
+della suite unitaria dei cinque test sintetici nuovi.
+
+**Gate rimasti falsi:**
+`observed_17184_cast_to_gemm_buffer_identity_verified`,
+`individual_cuda_graph_buffer_dependencies_verified`,
+`ggml_operator_to_kernel_identity_verified`,
+`source_src0_src1_branch_identity_verified`,
+`conversion_elimination_safe_verified`,
+`production_qualified`.
+
+### 15.1 Verifica in sola lettura di ciò che l'export Nsight contiene
+
+Prima di progettare una cattura CUDA strumentata,
+è stato pubblicato
+`ruth_runtime.gemma3_phase28_nsight_schema_audit`,
+che riutilizza il gate `inspect_export`:
+file SQLite approvato nella cartella Phase28,
+dimensioni limitate, tipo Flash atteso `on`,
+**nessuna lettura dei valori di puntatori** e
+nessuna esecuzione GPU.
+
+Ispeziona **solo i nomi** delle tabelle e delle
+colonne SQLite con `sqlite_master` e `PRAGMA table_info`;
+segnala separatamente: campi identificativi
+`correlationId`, `graphId`, `graphNodeId`,
+`streamId`; possibili tabelle di archi DAG;
+possibili colonne di puntatori/buffer; e
+possibili colonne di parametri delle API.
+
+```bash
+cd ~/Dev/ruth-model-profiling
+git pull --ff-only origin feat/gemma3-phase28-context-dispatch
+
+.venv/bin/python -m unittest \
+  tests.test_phase28_gemma3_nsight_schema_audit -v
+
+.venv/bin/python -m ruth_runtime.gemma3_phase28_nsight_schema_audit \
+  --sqlite .ruth-build/phase28/bf16-on-ctx2048-nvtx3-nodes.sqlite \
+  --candidate bf16-on --n-ctx 2048
+```
+
+Lo scopo è capire se possiamo ottenere nuove evidenze
+**da dati già acquisiti**. Il risultato
+`schema_survey_verified=true` significherà
+soltanto che i metadati dello schema sono stati
+letti e filtrati. La presenza di una colonna
+dal nome `devicePointerAddress`, di una
+tabella `GRAPH_EDGE` o di campi simili
+costituirebbe un candidato da ispezionare,
+**non** una verifica degli indirizzi o delle
+dipendenze effettive. La loro assenza non
+dimostrerebbe invece che sia impossibile
+ottenere tali dati con un altro strumento.
+
+I campi
+`raw_operand_pointer_values_examined`,
+`explicit_graph_edge_data_verified`,
+`cublas_operand_pointer_identity_verified`,
+`observed_cast_gemm_dependency_verified`,
+`ggml_operator_identity_verified`,
+`production_qualified`
+rimangono tutti `false` per costruzione.
+Lo strumento non pubblica indirizzi grezzi.
+I test sul checkout dell'utente e il report
+dello schema non sono ancora stati eseguiti.
+
+## 16. Riferimenti interni
 
 - [Fase 27 — precisione e benchmark](phase-27-gemma3-precision-and-kernel-benchmark.md).
 - [Fase 28 — prove CUDA/NVTX e contesti](phase-28-gemma3-dispatch-and-context-scaling.md).
