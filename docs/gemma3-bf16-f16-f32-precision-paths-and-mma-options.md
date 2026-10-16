@@ -604,7 +604,78 @@ significa che restano `producer_consumer_buffer_dependency_verified=false`,
 Non ipotizzare accelerazioni percentuali a partire dal solo
 tempo di conversione GPU cumulato.
 
-## 12. Riferimenti interni
+## 12. Outlier localizzato nel replay prefill con correlationId 10072
+
+L'utente ha rieseguito l'audit con `--explain-order`, senza
+nuova inferenza. Rimangono veri
+`per_range_attribution_verified=true`,
+`graph_node_kernel_order_stable=true`,
+`prefill_per_range_count_balance_verified=true`,
+`unattributed_or_ambiguous_target_kernels=0`. Il risultato
+`gpu_timeline_candidate_pairing_verified=false` proviene da
+**un unico replay**: range NVTX prefill con indice zero-based
+`1`, `graphId=2`, CUDA runtime graph-launch
+`correlationId=10072`, con **quattro** coppie ordinali
+cast F32→BF16 e GEMM BF16 che hanno una differenza temporale
+negativa (fine cast meno inizio GEMM). Tutti i kernel hanno
+`streamId=14` in questo specifico replay.
+
+| Indice ordinale | graphNodeId cast | graphNodeId GEMM | start GEMM − end cast (ns) |
+|---:|---:|---:|---:|
+| 36 | 8589934753 | 8589934754 | −608 |
+| 45 | 8589934797 | 8589934798 | −224 |
+| 56 | 8589934842 | 8589934843 | −160 |
+| 61 | 8589934865 | 8589934866 | −160 |
+
+La distanza massima è 608 ns, dunque **sotto un
+microsecondo**. Questa rilevazione da sola **non dimostra**
+alcuna violazione del DAG, una dipendenza di memoria, un
+errore numerico o un costo di conversione eliminabile.
+L'ordine dei kernel in un trace GPU non contiene gli archi
+espliciti producer→consumer del grafo né i puntatori dei buffer.
+Possibili effetti della granularità temporale o del profiler
+sono ipotesi, non conclusioni provate.
+
+### 12.1 Ulteriore diagnostica: stesso graphNodeId in tutti i replay
+
+Il lettore è stato esteso affinché `--explain-order` aggiunga
+`same_node_ids_across_replays` a ogni coppia incompatibile.
+Per il medesimo `graphId` e per i **medesimi** due
+`graphNodeId` osservati, cerca i nodi nelle altre esecuzioni
+del prefill già registrate. I nuovi campi riportano:
+
+- `node_pair_replay_count_observed` e
+  `node_pair_replays_missing_or_ambiguous`: numero di
+  confronti con nodi presenti esattamente una volta;
+- `negative_gap_count`, `zero_gap_count`,
+  `positive_gap_count`: frequenza del segno del gap;
+- `min_gpu_gap_ns`, `median_gpu_gap_ns`,
+  `max_gpu_gap_ns`: distribuzione in nanosecondi
+  della stessa coppia di ID nei replay;
+- `same_stream_id_replay_count` e
+  `stream_id_unavailable_replay_count`.
+
+```bash
+cd ~/Dev/ruth-model-profiling
+git pull --ff-only origin feat/gemma3-phase28-context-dispatch
+
+.venv/bin/python -m unittest \
+  tests.test_phase28_gemma3_cast_gemm_audit -v
+
+.venv/bin/python -m ruth_runtime.gemma3_phase28_cast_gemm_audit \
+  --sqlite .ruth-build/phase28/bf16-on-ctx2048-nvtx3-nodes.sqlite \
+  --candidate bf16-on --n-ctx 2048 --explain-order
+```
+
+In entrambi i casi (anomalia isolata o ricorrente),
+`producer_consumer_buffer_dependency_verified=false`,
+`ggml_operator_identity_verified=false` e
+`potential_conversion_elimination_verified=false`.
+Il test sintetico nuovo distingue un replay discordante da
+68 replay discordanti; va eseguito sul sistema dell'utente
+prima di attribuirgli lo stato «passato» sull'hardware reale.
+
+## 13. Riferimenti interni
 
 - [Fase 27 — precisione e benchmark](phase-27-gemma3-precision-and-kernel-benchmark.md).
 - [Fase 28 — prove CUDA/NVTX e contesti](phase-28-gemma3-dispatch-and-context-scaling.md).
