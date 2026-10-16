@@ -190,3 +190,12 @@ HW non dipende dalla .venv valida per osservare CPU/RAM. Non dedurre
 presenza GPU, CUDA, backend di inferenza, RAM disponibile o core fisici
 perche' la CPU o la RAM totale sono osservabili. Dati reali soltanto
 locali (DATA-001). Provider NVIDIA/AMD/Intel in componenti futuri.
+
+## GPU-SCOPE-001: solo provider NVIDIA
+
+Perimetro GPU-SCOPE-001 approvato 16 ottobre 2026: aggiungere
+unicamente l'inventario NVIDIA read-only da nvidia-smi, come quinto
+passaggio indipendente della CLI Ruth. AMD e Intel restano inattive,
+e GPU rilevata non equivale a compatibilita CUDA/driver/backend.
+Non riportare inventari reali, stderr o identificativi persistenti
+in Git (DATA-001). Dopo promozione serve GPU-MANUAL-001 (MIG-FLOW-002).
