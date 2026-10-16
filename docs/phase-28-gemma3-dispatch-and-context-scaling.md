@@ -1106,29 +1106,29 @@ quality score against a shared reference.
 **Phase28 status:** the ctx256 four-candidate
 native-inference slice is complete and these
 two prioritized offline numeric checks are
-complete. After the now-observed F32/F32 Flash OFF ctx512 result
-(see next section), there are **five of the sixteen**
-candidate/context pairs without a reported
-Phase28 native test: `mixed-on` at ctx512,
-ctx1024 and ctx2048, plus `f32-off` at
-ctx1024 and ctx2048.
+complete. After the subsequently observed F32/F32 and
+BF16/F16 ctx512 successes (see following
+experimental reports), **four of the sixteen**
+candidate/context pairs remain without
+Phase28 native validation: `mixed-on` and
+`f32-off` at ctx1024 and ctx2048.
 The baseline `f16-off`/`bf16-on` runs at
 those contexts have been reported previously.
 Continuation requires a separately authorized
 one-at-a-time GPU run, respecting the existing
 native preflight and no-fallback requirements.
 
-**Next recommended Phase28 gate:** inspect the
-read-only ctx512 plans for `f32-off` and
-`mixed-on`, then conduct the **single**
-`f32-off` ctx512 native experiment if
-explicitly authorized and review its JSON
-before attempting `mixed-on`.
+**Next recommended Phase28 gate:** compare the
+newly verified ctx512 BF16/BF16 and BF16/F16
+Flash-ON logits snapshots offline, holding
+Flash and K fixed; use the existing exact
+same-context artifact/token checks.
+The ctx512 native experiments are complete.
 Ctx512 uses 384 prefill tokens and 16 decode
-tokens: absolute prefill latencies are therefore
-not directly comparable to the ctx256
-128-token workload. Do not silently promote
-any configuration to production.
+tokens: absolute prefill latencies are not
+directly comparable to ctx256's 128-token
+workload. No automatic production promotion
+or context escalation is authorized.
 
 ## Actual Phase 28 native result — F32/F32, Flash OFF, n_ctx=512
 
@@ -1209,16 +1209,141 @@ once its exact file path is established.
 `production_qualified=false` and
 `runtime_profile_published=false` remain.
 
-**Matrix progress: 11/16 native successes.**
-The next missing pair is `mixed-on` ctx512
-(K=BF16, V=F16, Flash ON), expected source-derived
-KV=13 MiB, 384 prefill tokens and
-16 teacher-forced decode calls.
-First review its read-only plan; execute it
-only through a separate `--execute
---allow-gpu-inference` user action.
-Do not auto-escalate to 1024 or change
-the pinned stack or production gates.
+**Historical matrix progress after this
+F32-only test: 11/16 native successes.**
+The BF16/F16 Flash ON ctx512 run has since
+succeeded; see the next section for the
+updated **12/16** status.
+No automatic inference, context escalation
+or production qualification followed.
+
+## Actual Phase 28 native result — BF16/F16, Flash ON, n_ctx=512
+
+The user executed both the read-only
+`--candidate mixed-on --n-ctx 512` plan
+(`status=read_only_plan`, no inference) and,
+in a **separate explicitly authorized command**,
+the native CUDA teacher-forced workload:
+
+```bash
+.venv/bin/python -m ruth_runtime.gemma3_phase28 \
+  --candidate mixed-on --n-ctx 512 \
+  --execute --allow-gpu-inference
+```
+
+**Observed native outcome:**
+`status=native_long_context_inference_observed`,
+`inference_executed=true`,
+`full_gpu_offload_observed=true`,
+`offloaded_layers=27`, `total_layers=27`,
+`n_ctx_effective_native=512`,
+`flash_attention=on`, `type_k=BF16`,
+`type_v=F16`, `swa_full=true`;
+`decode_logits_requested_per_token=true`
+and `decode_logits_requested_count=16`.
+
+| Metric | F32/F32 Flash OFF ctx512 | BF16/F16 Flash ON ctx512 |
+|---|---:|---:|
+| Prefill tokens / chunks | 384 / 6 | **384 / 6** |
+| Decode tokens | 16 | **16** |
+| Prefill median (ms) | 85.1810 | **83.4696** |
+| Prefill throughput (tok/s) | 4,508.05 | **4,600.48** |
+| Decode individual median (ms/token) | 12.9451 | **12.5837** |
+| Decode round median (ms/16 tokens) | 207.4605 | **201.6221** |
+| Decode throughput (tok/s) | 77.12 | **79.36** |
+| Native/logical KV (MiB) | 26 / 26 | **13 / 13** |
+| Sampled GPU peak (MiB) | 2,112 | **2,108** |
+
+For the new BF16/F16 experiment, native CUDA
+buffers were model `1907.39 MiB`,
+KV `2.0 + 11.0 = 13.0 MiB`,
+compute `64.28 MiB`; the additional
+`CPU_Mapped` model buffer is `576.0 MiB`
+and should not simply be added to VRAM.
+Three observed prefill measurements:
+`83.469583`, `83.108191`, `85.058622` ms.
+Sampling of GPU peak utilization is not
+a guaranteed instantaneous high-water mark.
+
+The user's observed `f32-off` and
+`mixed-on` ctx512 reports have matching
+`prompt_ids_sha256`:
+`98bba70664e27cd85e8c566150f269e7cc1326206c40740566c63c077f2d1565`;
+the sixteen reported teacher-forced decode IDs
+also match. The pinned GGUF SHA256 is
+`b144bde489651d3d292d7e47a59c6f811cdd96d184be582e5ad30ab338b9b6bf`,
+native wheel SHA256
+`ad5057352154d90f95a473d01d039c975f1987cd9b25f8ad7a83cf6c7e80ee74`.
+
+**New mixed-on logits artifact:** two float32
+vectors, shape `[2,262144]`,
+`.ruth-build/phase28/gemma-3-1b-it/ctx-512_flash-on_k-BF16_v-F16_1ixlsmr0.npz`,
+SHA256
+`a60744b1d0935a674e580b5ba397d4e7d7589fb63221698f8df6d16202a88513`.
+Native dispatch was not captured for this
+run: `native_kernel_dispatch_verified=false`,
+`nvtx_ranges_available=false`,
+`production_qualified=false`,
+`runtime_profile_published=false`.
+
+This completes **12/16 Phase28 native experiments**:
+all four configurations at n_ctx 256 and 512;
+`f32-off` and `mixed-on` at n_ctx 1024 and
+2048 remain untested in Phase28. The faster
+reported prefill (+approximately 2.05%) and
+decode (+approximately 2.90%) throughput of
+mixed-on compared with f32-off **cannot be
+attributed solely to cache precision**, since
+K, V, Flash policy and possible dispatch
+differ. The sample peak difference of
+4 MiB is not an exact measurement of the
+13 MiB logical KV difference.
+
+### Next gate: ctx512 same-workload numerical checks (offline)
+
+The stronger controlled pair is
+**BF16/BF16 Flash ON vs BF16/F16 Flash ON**,
+holding K=BF16 and Flash ON fixed and
+changing only V's stored dtype. The
+prior baseline `bf16-on` ctx512 artifact
+was reported as
+`.ruth-build/phase28/gemma-3-1b-it/ctx-512_flash-on_k-BF16_v-BF16_3ctu967i.npz`
+(SHA256
+`2e8c8ca588ba2cb2f14fb24c5a0ce1ad385a76462f6adb433e42d58a64c2c5b6`).
+The current report alone cannot revalidate
+that previous local artifact; the offline
+comparator checks the files and exact
+prompt/decode token arrays.
+
+```bash
+.venv/bin/python -m ruth_runtime.gemma3_phase28_compare \
+  --baseline .ruth-build/phase28/gemma-3-1b-it/ctx-512_flash-on_k-BF16_v-BF16_3ctu967i.npz \
+  --candidate .ruth-build/phase28/gemma-3-1b-it/ctx-512_flash-on_k-BF16_v-F16_1ixlsmr0.npz
+```
+
+A **secondary, confounded** pair compares
+F32/F32 Flash OFF and BF16/F16 Flash ON.
+Both reports have matching prompt/decode IDs,
+but multiple independent configuration
+variables change; their numerical distance
+does not isolate V or Flash independently.
+
+```bash
+.venv/bin/python -m ruth_runtime.gemma3_phase28_compare \
+  --baseline .ruth-build/phase28/gemma-3-1b-it/ctx-512_flash-off_k-F32_v-F32_kilmv137.npz \
+  --candidate .ruth-build/phase28/gemma-3-1b-it/ctx-512_flash-on_k-BF16_v-F16_1ixlsmr0.npz
+```
+
+Neither ctx512 numerical comparison has been
+reported yet. Do not invent KL, JS, RMS or
+Top-1 results and do not infer equivalence
+for all intermediate tokens: each artifact
+contains only last-prefill and last-decode
+logit rows. No new GPU inference is needed
+to perform these offline comparisons.
+Escalation to 1024 requires a **separate
+explicitly authorized** native GPU experiment
+after the results have been evaluated.
 
 ## Promotion gate
 
