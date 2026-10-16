@@ -31,3 +31,11 @@ La verifica non equivale a certificazione di compatibilita' e non
 include dati reali di host in Git. Le note precedenti di stato pending
 rimangono storiche. Avvio default sequenziale in MAIN-FLOW-001 (root)
 ancora candidato e soggetto a CI e successivo collaudo personale.
+
+## MAIN-FLOW-001 integrata (16 ottobre 2026)
+
+L'avvio normale `main.py` connette ora in sequenza PY-001 e il controllo
+minimo di `pip` DEP-001; uso mirato `dependencies` preservato.
+Codice in main tramite PR #17, CI `38900998138` superata. DEP-MANUAL-001
+completata sul commit `e197cc86829acf52e326a712331cc7ff6cfef6b5`; il nuovo collaudo della sequenza
+MAIN-MANUAL-001 e' in attesa. Nessun inventario o risultato host in Git.

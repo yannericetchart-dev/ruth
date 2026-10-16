@@ -35,3 +35,10 @@ report `present_unverified` e riepilogo di compatibilita' non verificata.
 Stato **complete**. Non sono pubblicati dettagli o log di host (DATA-001).
 MAIN-FLOW-001 integra in seguito il controllo nel normale avvio sequenziale
 senza argomenti, con una verifica minima di pip e test dedicati.
+
+## Collegamento al flusso principale (MAIN-FLOW-001)
+
+La verifica read-only dei metadati DEP-001 e' disponibile ora anche nel
+flusso default, dopo Python, inizialmente sul solo `pip` (smoke check,
+non lista requisiti complessivi). PR #17 integrata, CI `38900998138`
+success. Il collaudo personale del nuovo flusso default e' pendente.

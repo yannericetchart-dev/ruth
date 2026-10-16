@@ -1,58 +1,62 @@
 # Ruth: checkpoint di progetto
 
-Revisione documentale: 15 (indice main). Protocollo CONT-001 rev 1.
-Fase 3 - migrazione incrementale per componente.
-Stato: **PY-001 e DEP-001 tecnicamente integrate, verificate e accettate
-manualmente; orchestrazione MAIN-FLOW-001 approvata e in verifica tecnica**.
+Revisione documentale: 16 (indice main). Protocollo CONT-001 rev 1.
+Fase: 3 - migrazione incrementale per componente.
+Stato: **PY-001 e DEP-001 integrate, verificate e collaudate personalmente;
+MAIN-FLOW-001 integrata e verificata tecnicamente, collaudo default in attesa**.
 
-## Migrazioni completate
+## Componenti completati
 
-- PY-001: accettazione PY-MANUAL-001 positiva sul commit
-  `ef4654af8ab106ef194af254d9f3884e5cabb6b0`.
-  Codice read-only in main; PR #2, #3 e #8, test CI.
-- DEP-001: DEP-SCOPE-001 approvato; promozioni PR #12, #13 e #15;
-  CI GitHub 38895348468, 38895479549, 38895836703 e 38895924627
-  success (14 Python, 12 dipendenze, 13 root/CLI, 237 mappe).
-- DEP-MANUAL-001: **complete**. L'utente ha sincronizzato il clone
-  pulito main mediante `git merge --ff-only origin/main`, confermato
-  `git rev-parse HEAD` a `e197cc86829acf52e326a712331cc7ff6cfef6b5` e avviato personalmente
-  `.venv/bin/python main.py dependencies pip`. Esito positivo:
-  `present_unverified` per `pip` e riepilogo esplicito di
-  compatibilita' non verificata (16 ottobre 2026).
-- L'esito di un metadato presente non certifica compatibilita', sicurezza,
-  installabilita', GPU o runtime. Nessun dato host o log in Git (DATA-001).
+- PY-001: ispezione Python read-only via Ruth, PY-MANUAL-001 complete
+  sul commit `ef4654af8ab106ef194af254d9f3884e5cabb6b0` (16 ottobre 2026).
+- DEP-001: ispezione read-only di dipendenze esplicitamente richieste,
+  versione esatta e stati, via `environment.plan` e CLI.
+  PR #12 (foglia), #13 (padre), #15 (root) e #16 (checkpoint).
+  Test GitHub success su run 38895348468, 38895479549,
+  38895836703, 38895924627; 14 test Python, 12 dependency,
+  13 test root e 237 mappe.
+- DEP-MANUAL-001: **complete**. L'utente ha sincronizzato il clone main
+  in fast-forward fino a `e197cc86829acf52e326a712331cc7ff6cfef6b5`, verificato lo SHA con Git,
+  avviato `.venv/bin/python main.py dependencies pip` e comunicato
+  esito positivo `present_unverified` (16 ottobre 2026).
+  Il risultato non certifica la compatibilita' o la sicurezza.
 
-## Nuova decisione del flusso (MAIN-FLOW-001)
+## MAIN-FLOW-001: avvio completo e ordinato
 
-- L'utente ha chiesto esplicitamente il 16 ottobre 2026 che `main.py`
-  esegua automaticamente **tutti i passaggi integrati** uno dopo l'altro;
-  i sottocomandi restano opzionali per diagnosi.
-- Prima sequenza candidata: isolamento .venv PY-001, poi ispezione metadati
-  `pip` DEP-001. `pip` e' un controllo minimo iniziale; non e' un
-  inventario dei requisiti complessivi di Ruth.
-- Se Python non e' conforme, il controllo dipendenze viene saltato con
-  motivazione e codice nonzero, senza interrogazioni ai pacchetti.
-- Stato: codice candidato sul branch `runtime/work/MAIN-FLOW-001`;
-  **test della nuova orchestrazione ancora da eseguire**, nessun nuovo
-  merge o collaudo default effettuato. Non dichiarare verificata/integrata
-  la modifica prima dell'esito CI e del merge.
-- Prossima azione: test sintetici, mappe, PR verso main e verifica CI,
-  aggiornamento di checkpoint e mappe, sincronizzazione locale finale.
-  Presentare poi il comando `.venv/bin/python main.py` per il collaudo
-  personale dell'avvio sequenziale prima di qualsiasi componente nuovo.
+- Decisione esplicita dell'utente (16 ottobre 2026): `main.py` senza
+  argomenti esegue automaticamente **tutte le operazioni gia' approvate
+  e integrate** nell'ordine dei prerequisiti, con esito terminale.
+  I sottocomandi sono controlli mirati e non sostituiscono l'avvio normale.
+- Prima implementazione: PY-001, poi DEP-001 con controllo minimo di
+  `pip` (non un inventario completo delle dipendenze Ruth).
+  Se Python non e' conforme, Ruth non esegue la fase dipendenze e
+  segnala il blocco. Nessuna installazione, download o modifica host.
+- Codice **implementato, verificato e integrato in main** tramite PR #17
+  (merge `e605a02bdd72441fd4e79d36a943109ee3ba5c57`); GitHub Actions run `38900998138`: success
+  (14 test Python, 12 dipendenze, 14 root/CLI, 237 mappe).
+  L'albero della revisione merge coincide con quello testato.
+- **MAIN-MANUAL-001 active**: non ancora eseguito il collaudo personale
+  dell'avvio automatico senza argomenti sulla nuova revisione.
+  Non iniziare la migrazione successiva fino alla conferma positiva
+  (MIG-FLOW-002).
 
-## Sincronizzazione locale
+## Sincronizzazione e collaudo da eseguire
 
-- La copia pulita di Ruth risulta sincronizzata al commit
-  `e197cc86829acf52e326a712331cc7ff6cfef6b5` all'atto del collaudo DEP-001.
-- Il checkout storico con modifiche locali resta separato e non va
-  toccato (`legacy_checkout: blocked_divergence`).
-- `local_sync: pending_final_merge` per la nuova orchestrazione.
-  Seguire REMOTE-001: aggiornare il clone pulito solo dopo merge main,
-  in fast-forward e preservando ogni modifica dell'utente.
+- La copia pulita `ruth-main` dell'utente era verificata a `e197cc86829acf52e326a712331cc7ff6cfef6b5`.
+  `local_sync: pending_no_access` rispetto ai commit successivi.
+  Verificare che sia su `main`, senza modifiche; aggiornare via
+  `git fetch origin` e `git merge --ff-only origin/main` e verificare
+  `git rev-parse HEAD` contro il nuovo commit root.
+- Eseguire personalmente `.venv/bin/python main.py` (senza argomenti)
+  e confermare avvio Python, esito conforme, avvio dipendenze, stato di
+  `pip`, riepilogo, SHA testato e assenza di errori.
+- Il clone storico con modifiche precedenti resta non toccato
+  (`legacy_checkout: blocked_divergence`). REMOTE-001 impedisce
+  sostituzioni forzate e sviluppo versionato nel clone locale.
 
-## Decisioni correnti
+## Decisioni vigenti
 
 CONT-001, MIG-FLOW-001/002, REMOTE-001, DATA-001, PLAN-001,
-DEP-ORDER-001 e MAIN-FLOW-001. SYNC-001 resta superseded.
-Kaggle inattivo, diagnostica avanzata e hardware non migrati.
+DEP-ORDER-001 e MAIN-FLOW-001. SYNC-001 storica e superseded.
+Kaggle inattivo, diagnostica avanzata DIAG-001 e hardware non migrati.
+Dati reali di host, log e risultati locali restano esclusi da Git (DATA-001).
