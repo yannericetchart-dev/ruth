@@ -1,0 +1,33 @@
+{
+  "schema_version": 1,
+  "id": "DIRECTC",
+  "title": "C diretto",
+  "purpose": "Binding futuro inattivo.",
+  "parent": "inference/engines/llama_cpp/bindings",
+  "order": 32,
+  "branch": {
+    "name": "inference/engines/llama.cpp/bindings/direct_c/main",
+    "parent": "inference/engines/llama.cpp/bindings/main",
+    "status": "planned"
+  },
+  "development": "inactive",
+  "implementation": "skeleton",
+  "maturity": null,
+  "verification": "not_run",
+  "integration": "merged",
+  "flags": [
+    "future"
+  ],
+  "blocked_by": [],
+  "depends_on": [],
+  "api": [
+    "open(request) -> InferenceSession [proposta]"
+  ],
+  "tasks": [
+    {
+      "id": "DIRECTC-001",
+      "state": "planned",
+      "description": "Valutare una futura attivazione esplicita; nessuno sviluppo corrente."
+    }
+  ]
+}

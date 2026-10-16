@@ -1,0 +1,33 @@
+{
+  "schema_version": 1,
+  "id": "PY",
+  "title": "Python",
+  "purpose": "Verificare interprete e isolamento del virtualenv.",
+  "parent": "environment",
+  "order": 4,
+  "branch": {
+    "name": "environment/python/main",
+    "parent": "environment/main",
+    "status": "planned"
+  },
+  "development": "inactive",
+  "implementation": "skeleton",
+  "maturity": null,
+  "verification": "not_run",
+  "integration": "merged",
+  "flags": [
+    "in_scope"
+  ],
+  "blocked_by": [],
+  "depends_on": [],
+  "api": [
+    "inspect(project_root) -> PythonEnvironment [proposta]"
+  ],
+  "tasks": [
+    {
+      "id": "PY-001",
+      "state": "planned",
+      "description": "Definire e verificare il contratto prima della migrazione."
+    }
+  ]
+}

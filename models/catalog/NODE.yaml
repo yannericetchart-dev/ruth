@@ -1,0 +1,34 @@
+{
+  "schema_version": 1,
+  "id": "CAT",
+  "title": "Catalogo",
+  "purpose": "Unificare descrizioni e riferimenti dei modelli.",
+  "parent": "models",
+  "order": 14,
+  "branch": {
+    "name": "models/catalog/main",
+    "parent": "models/main",
+    "status": "planned"
+  },
+  "development": "inactive",
+  "implementation": "skeleton",
+  "maturity": null,
+  "verification": "not_run",
+  "integration": "merged",
+  "flags": [
+    "in_scope"
+  ],
+  "blocked_by": [],
+  "depends_on": [],
+  "api": [
+    "catalog(query) -> ModelCatalog [proposta]",
+    "resolve(reference) -> ModelArtifact [proposta]"
+  ],
+  "tasks": [
+    {
+      "id": "CAT-001",
+      "state": "planned",
+      "description": "Definire e verificare il contratto prima della migrazione."
+    }
+  ]
+}

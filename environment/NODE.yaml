@@ -1,0 +1,34 @@
+{
+  "schema_version": 1,
+  "id": "ENV",
+  "title": "Ambiente",
+  "purpose": "Ispezionare Python e pianificare dipendenze senza installazioni implicite.",
+  "parent": ".",
+  "order": 3,
+  "branch": {
+    "name": "environment/main",
+    "parent": "main",
+    "status": "planned"
+  },
+  "development": "inactive",
+  "implementation": "skeleton",
+  "maturity": null,
+  "verification": "not_run",
+  "integration": "merged",
+  "flags": [
+    "in_scope"
+  ],
+  "blocked_by": [],
+  "depends_on": [],
+  "api": [
+    "inspect(project_root) -> EnvironmentReport [proposta]",
+    "plan(requirements) -> EnvironmentPlan [proposta]"
+  ],
+  "tasks": [
+    {
+      "id": "ENV-001",
+      "state": "planned",
+      "description": "Definire e verificare il contratto prima della migrazione."
+    }
+  ]
+}

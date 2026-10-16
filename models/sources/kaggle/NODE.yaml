@@ -1,0 +1,33 @@
+{
+  "schema_version": 1,
+  "id": "KAGGLE",
+  "title": "Kaggle",
+  "purpose": "Previsto ma inattivo per SCOPE-001. Nessuno sviluppo o dipendenza.",
+  "parent": "models/sources",
+  "order": 18,
+  "branch": {
+    "name": "models/sources/kaggle/main",
+    "parent": "models/sources/main",
+    "status": "planned"
+  },
+  "development": "inactive",
+  "implementation": "skeleton",
+  "maturity": null,
+  "verification": "not_run",
+  "integration": "merged",
+  "flags": [
+    "future"
+  ],
+  "blocked_by": [],
+  "depends_on": [],
+  "api": [
+    "acquire(request) -> AcquisitionResult [proposta]"
+  ],
+  "tasks": [
+    {
+      "id": "KAGGLE-001",
+      "state": "planned",
+      "description": "Valutare una futura attivazione esplicita; nessuno sviluppo corrente."
+    }
+  ]
+}

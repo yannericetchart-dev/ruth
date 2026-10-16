@@ -1,0 +1,43 @@
+{
+  "schema_version": 1,
+  "id": "ROOT",
+  "title": "Ruth",
+  "purpose": "Coordinare i sottosistemi tramite API comuni.",
+  "parent": null,
+  "order": 1,
+  "branch": {
+    "name": "main",
+    "parent": null,
+    "status": "present"
+  },
+  "development": "active",
+  "implementation": "skeleton",
+  "maturity": null,
+  "verification": "not_run",
+  "integration": "merged",
+  "flags": [
+    "in_scope"
+  ],
+  "blocked_by": [],
+  "depends_on": [],
+  "api": [
+    "inspect_environment(project_root) -> EnvironmentReport [proposta]"
+  ],
+  "tasks": [
+    {
+      "id": "SETUP-001",
+      "state": "complete",
+      "description": "Configurazione e collaudo indipendente dei client."
+    },
+    {
+      "id": "STRUCT-001",
+      "state": "complete",
+      "description": "Scaffold ricorsivo senza migrazione applicativa."
+    },
+    {
+      "id": "MIG-001",
+      "state": "planned",
+      "description": "Migrazione iniziale: sola ispezione Python; poi hardware, modelli, inferenza, profiling e chat."
+    }
+  ]
+}

@@ -1,0 +1,36 @@
+{
+  "schema_version": 1,
+  "id": "PLACE",
+  "title": "Placement",
+  "purpose": "Distribuzione esplicita dei layer e dispositivi.",
+  "parent": "profiling",
+  "order": 42,
+  "branch": {
+    "name": "profiling/placement/main",
+    "parent": "profiling/main",
+    "status": "planned"
+  },
+  "development": "inactive",
+  "implementation": "skeleton",
+  "maturity": null,
+  "verification": "not_run",
+  "integration": "merged",
+  "flags": [
+    "in_scope"
+  ],
+  "blocked_by": [],
+  "depends_on": [
+    "inference",
+    "hardware"
+  ],
+  "api": [
+    "plan(request) -> PlacementPlan [proposta]"
+  ],
+  "tasks": [
+    {
+      "id": "PLACE-001",
+      "state": "planned",
+      "description": "Definire e verificare il contratto prima della migrazione."
+    }
+  ]
+}

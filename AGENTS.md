@@ -46,3 +46,12 @@ Non anticipare la migrazione finche' i precedenti passaggi non sono verificati.
 Kaggle e' inattivo e fuori dal perimetro di sviluppo corrente. Il codice
 storico deve essere censito senza attivarlo o installarne le dipendenze.
 Lo stato corrente del processo e' indicato in `CHECKPOINT.md`.
+
+## Mappe ricorsive
+
+Seguire ARCHITECTURE.md. Modificare NODE.yaml (sottoinsieme JSON di YAML),
+poi rigenerare con `python3 tools/maps.py --write` e verificare con
+`python3 tools/maps.py --check`. Non modificare soltanto una vista Markdown.
+La rigenerazione propaga i riepiloghi; aggiornare anche semanticamente le
+attivita bloccate, le decisioni e i checkpoint degli antenati interessati.
+Nessun risultato locale deve essere copiato nelle mappe.

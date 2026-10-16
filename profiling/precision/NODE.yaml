@@ -1,0 +1,35 @@
+{
+  "schema_version": 1,
+  "id": "PREC",
+  "title": "Precisione",
+  "purpose": "Politiche e benchmark di precisione.",
+  "parent": "profiling",
+  "order": 43,
+  "branch": {
+    "name": "profiling/precision/main",
+    "parent": "profiling/main",
+    "status": "planned"
+  },
+  "development": "inactive",
+  "implementation": "skeleton",
+  "maturity": null,
+  "verification": "not_run",
+  "integration": "merged",
+  "flags": [
+    "in_scope"
+  ],
+  "blocked_by": [],
+  "depends_on": [
+    "inference"
+  ],
+  "api": [
+    "plan(request) -> PrecisionPlan [proposta]"
+  ],
+  "tasks": [
+    {
+      "id": "PREC-001",
+      "state": "planned",
+      "description": "Definire e verificare il contratto prima della migrazione."
+    }
+  ]
+}

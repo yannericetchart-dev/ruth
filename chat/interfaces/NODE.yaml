@@ -1,0 +1,35 @@
+{
+  "schema_version": 1,
+  "id": "UI",
+  "title": "Interfacce",
+  "purpose": "Interfacce sopra la conversazione.",
+  "parent": "chat",
+  "order": 47,
+  "branch": {
+    "name": "chat/interfaces/main",
+    "parent": "chat/main",
+    "status": "planned"
+  },
+  "development": "inactive",
+  "implementation": "skeleton",
+  "maturity": null,
+  "verification": "not_run",
+  "integration": "merged",
+  "flags": [
+    "in_scope"
+  ],
+  "blocked_by": [],
+  "depends_on": [
+    "chat/conversation"
+  ],
+  "api": [
+    "run(conversation) -> int [proposta]"
+  ],
+  "tasks": [
+    {
+      "id": "UI-001",
+      "state": "planned",
+      "description": "Definire e verificare il contratto prima della migrazione."
+    }
+  ]
+}

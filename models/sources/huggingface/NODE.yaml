@@ -1,0 +1,34 @@
+{
+  "schema_version": 1,
+  "id": "HF",
+  "title": "Hugging Face",
+  "purpose": "Primo provider previsto. Nessun download nello scaffold.",
+  "parent": "models/sources",
+  "order": 17,
+  "branch": {
+    "name": "models/sources/huggingface/main",
+    "parent": "models/sources/main",
+    "status": "planned"
+  },
+  "development": "inactive",
+  "implementation": "skeleton",
+  "maturity": null,
+  "verification": "not_run",
+  "integration": "merged",
+  "flags": [
+    "in_scope"
+  ],
+  "blocked_by": [],
+  "depends_on": [],
+  "api": [
+    "resolve(reference) -> ModelArtifact [proposta]",
+    "acquire(request) -> AcquisitionResult [proposta]"
+  ],
+  "tasks": [
+    {
+      "id": "HF-001",
+      "state": "planned",
+      "description": "Definire e verificare il contratto prima della migrazione."
+    }
+  ]
+}

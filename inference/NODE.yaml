@@ -1,0 +1,38 @@
+{
+  "schema_version": 1,
+  "id": "INF",
+  "title": "Inferenza",
+  "purpose": "Selezionare backend e motore dietro una sessione comune.",
+  "parent": ".",
+  "order": 22,
+  "branch": {
+    "name": "inference/main",
+    "parent": "main",
+    "status": "planned"
+  },
+  "development": "inactive",
+  "implementation": "skeleton",
+  "maturity": null,
+  "verification": "not_run",
+  "integration": "merged",
+  "flags": [
+    "in_scope"
+  ],
+  "blocked_by": [],
+  "depends_on": [
+    "models",
+    "hardware"
+  ],
+  "api": [
+    "assess(request) -> StackAssessment [proposta]",
+    "open(request) -> InferenceSession [proposta]",
+    "session.describe/count_tokens/generate/stream/cancel/close [proposta]"
+  ],
+  "tasks": [
+    {
+      "id": "INF-001",
+      "state": "planned",
+      "description": "Definire e verificare il contratto prima della migrazione."
+    }
+  ]
+}

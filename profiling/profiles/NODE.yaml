@@ -1,0 +1,33 @@
+{
+  "schema_version": 1,
+  "id": "PROFILE",
+  "title": "Profili",
+  "purpose": "Schemi generici in Git; registrazioni reali locali.",
+  "parent": "profiling",
+  "order": 44,
+  "branch": {
+    "name": "profiling/profiles/main",
+    "parent": "profiling/main",
+    "status": "planned"
+  },
+  "development": "inactive",
+  "implementation": "skeleton",
+  "maturity": null,
+  "verification": "not_run",
+  "integration": "merged",
+  "flags": [
+    "in_scope"
+  ],
+  "blocked_by": [],
+  "depends_on": [],
+  "api": [
+    "record(result, local_store) -> ProfileReference [proposta]"
+  ],
+  "tasks": [
+    {
+      "id": "PROFILE-001",
+      "state": "planned",
+      "description": "Definire e verificare il contratto prima della migrazione."
+    }
+  ]
+}

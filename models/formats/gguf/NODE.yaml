@@ -1,0 +1,34 @@
+{
+  "schema_version": 1,
+  "id": "GGUF",
+  "title": "GGUF",
+  "purpose": "Lettura strutturale del formato, separata dagli strumenti CLI.",
+  "parent": "models/formats",
+  "order": 20,
+  "branch": {
+    "name": "models/formats/gguf/main",
+    "parent": "models/formats/main",
+    "status": "planned"
+  },
+  "development": "inactive",
+  "implementation": "skeleton",
+  "maturity": null,
+  "verification": "not_run",
+  "integration": "merged",
+  "flags": [
+    "in_scope"
+  ],
+  "blocked_by": [],
+  "depends_on": [],
+  "api": [
+    "inspect(path) -> ModelMetadata [proposta]",
+    "verify(path) -> VerificationReport [proposta]"
+  ],
+  "tasks": [
+    {
+      "id": "GGUF-001",
+      "state": "planned",
+      "description": "Definire e verificare il contratto prima della migrazione."
+    }
+  ]
+}

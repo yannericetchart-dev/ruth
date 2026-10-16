@@ -14,7 +14,9 @@ L'indice non implica che il codice dei branch di sviluppo sia gia' in main.
 2. [Decisioni vigenti](DECISIONS.md).
 3. [Checkpoint corrente](CHECKPOINT.md).
 4. [Procedura di configurazione e collaudo](PROJECT_SETUP.md).
-5. Mappe del componente e dei suoi antenati quando saranno disponibili.
+5. [Roadmap](ROADMAP.md), [codemap](CODEMAP.md), [apimap](APIMAP.md)
+   e mappe del componente e dei suoi antenati.
+6. [Regole dello scaffold](ARCHITECTURE.md) e checkpoint del componente.
 
 ## Stato del progetto
 

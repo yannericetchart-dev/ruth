@@ -1,0 +1,35 @@
+{
+  "schema_version": 1,
+  "id": "DIAG",
+  "title": "Diagnostica",
+  "purpose": "Spiegare problemi di ambiente senza alterarlo.",
+  "parent": "environment",
+  "order": 6,
+  "branch": {
+    "name": "environment/diagnostics/main",
+    "parent": "environment/main",
+    "status": "planned"
+  },
+  "development": "inactive",
+  "implementation": "skeleton",
+  "maturity": null,
+  "verification": "not_run",
+  "integration": "merged",
+  "flags": [
+    "in_scope"
+  ],
+  "blocked_by": [],
+  "depends_on": [
+    "environment/python"
+  ],
+  "api": [
+    "inspect(report) -> DiagnosticReport [proposta]"
+  ],
+  "tasks": [
+    {
+      "id": "DIAG-001",
+      "state": "planned",
+      "description": "Definire e verificare il contratto prima della migrazione."
+    }
+  ]
+}

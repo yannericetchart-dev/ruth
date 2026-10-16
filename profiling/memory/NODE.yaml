@@ -1,0 +1,36 @@
+{
+  "schema_version": 1,
+  "id": "MEM",
+  "title": "Memoria",
+  "purpose": "Stime di memoria separate dalle misure.",
+  "parent": "profiling",
+  "order": 40,
+  "branch": {
+    "name": "profiling/memory/main",
+    "parent": "profiling/main",
+    "status": "planned"
+  },
+  "development": "inactive",
+  "implementation": "skeleton",
+  "maturity": null,
+  "verification": "not_run",
+  "integration": "merged",
+  "flags": [
+    "in_scope"
+  ],
+  "blocked_by": [],
+  "depends_on": [
+    "models",
+    "hardware"
+  ],
+  "api": [
+    "estimate(request) -> MemoryEstimate [proposta]"
+  ],
+  "tasks": [
+    {
+      "id": "MEM-001",
+      "state": "planned",
+      "description": "Definire e verificare il contratto prima della migrazione."
+    }
+  ]
+}

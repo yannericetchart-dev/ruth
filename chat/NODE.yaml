@@ -1,0 +1,35 @@
+{
+  "schema_version": 1,
+  "id": "CHAT",
+  "title": "Chat",
+  "purpose": "Gestire conversazioni usando il contratto di inferenza.",
+  "parent": ".",
+  "order": 45,
+  "branch": {
+    "name": "chat/main",
+    "parent": "main",
+    "status": "planned"
+  },
+  "development": "inactive",
+  "implementation": "skeleton",
+  "maturity": null,
+  "verification": "not_run",
+  "integration": "merged",
+  "flags": [
+    "in_scope"
+  ],
+  "blocked_by": [],
+  "depends_on": [
+    "inference"
+  ],
+  "api": [
+    "create_conversation(options) -> Conversation [proposta]"
+  ],
+  "tasks": [
+    {
+      "id": "CHAT-001",
+      "state": "planned",
+      "description": "Definire e verificare il contratto prima della migrazione."
+    }
+  ]
+}

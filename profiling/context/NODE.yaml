@@ -1,0 +1,35 @@
+{
+  "schema_version": 1,
+  "id": "CTX",
+  "title": "Contesto",
+  "purpose": "Piani e prove del contesto di inferenza.",
+  "parent": "profiling",
+  "order": 41,
+  "branch": {
+    "name": "profiling/context/main",
+    "parent": "profiling/main",
+    "status": "planned"
+  },
+  "development": "inactive",
+  "implementation": "skeleton",
+  "maturity": null,
+  "verification": "not_run",
+  "integration": "merged",
+  "flags": [
+    "in_scope"
+  ],
+  "blocked_by": [],
+  "depends_on": [
+    "inference"
+  ],
+  "api": [
+    "plan(request) -> ContextPlan [proposta]"
+  ],
+  "tasks": [
+    {
+      "id": "CTX-001",
+      "state": "planned",
+      "description": "Definire e verificare il contratto prima della migrazione."
+    }
+  ]
+}

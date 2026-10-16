@@ -1,0 +1,36 @@
+{
+  "schema_version": 1,
+  "id": "MODEL",
+  "title": "Modelli",
+  "purpose": "Catalogare, risolvere, acquisire e verificare artefatti modello.",
+  "parent": ".",
+  "order": 13,
+  "branch": {
+    "name": "models/main",
+    "parent": "main",
+    "status": "planned"
+  },
+  "development": "inactive",
+  "implementation": "skeleton",
+  "maturity": null,
+  "verification": "not_run",
+  "integration": "merged",
+  "flags": [
+    "in_scope"
+  ],
+  "blocked_by": [],
+  "depends_on": [],
+  "api": [
+    "catalog(query) -> ModelCatalog [proposta]",
+    "resolve(reference) -> ModelArtifact [proposta]",
+    "acquire(request) -> AcquisitionResult [proposta]",
+    "verify(artifact) -> VerificationReport [proposta]"
+  ],
+  "tasks": [
+    {
+      "id": "MODEL-001",
+      "state": "planned",
+      "description": "Definire e verificare il contratto prima della migrazione."
+    }
+  ]
+}

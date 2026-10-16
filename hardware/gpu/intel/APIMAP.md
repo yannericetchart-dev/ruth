@@ -1,0 +1,12 @@
+# Intel GPU / hardware/gpu/intel
+
+Generato da NODE.yaml con `python3 tools/maps.py --write`; modificare i metadati.
+
+Nodo responsabile: [INTEL](NODE.yaml). Ripresa: [START_HERE](../../../START_HERE.md).
+
+## Contratto dichiarato
+
+- `detect() -> Sequence[DeviceInfo] [proposta]`
+
+Dipendenze: nessuna.
+

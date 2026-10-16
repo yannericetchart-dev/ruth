@@ -1,0 +1,40 @@
+{
+  "schema_version": 1,
+  "id": "CORE",
+  "title": "Contratti e orchestrazione",
+  "purpose": "Esporre i contratti comuni e coordinare i domini.",
+  "parent": ".",
+  "order": 2,
+  "branch": {
+    "name": "runtime/main",
+    "parent": "main",
+    "status": "planned"
+  },
+  "development": "inactive",
+  "implementation": "skeleton",
+  "maturity": null,
+  "verification": "not_run",
+  "integration": "merged",
+  "flags": [
+    "in_scope"
+  ],
+  "blocked_by": [],
+  "depends_on": [
+    "environment",
+    "hardware",
+    "models",
+    "inference",
+    "profiling",
+    "chat"
+  ],
+  "api": [
+    "inspect_environment(project_root) -> EnvironmentReport [proposta]"
+  ],
+  "tasks": [
+    {
+      "id": "CORE-001",
+      "state": "planned",
+      "description": "Definire e verificare il contratto prima della migrazione."
+    }
+  ]
+}

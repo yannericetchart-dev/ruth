@@ -1,0 +1,35 @@
+{
+  "schema_version": 1,
+  "id": "ACQ",
+  "title": "Acquisizione",
+  "purpose": "Download esplicito indipendente dalla GPU.",
+  "parent": "models",
+  "order": 15,
+  "branch": {
+    "name": "models/acquisition/main",
+    "parent": "models/main",
+    "status": "planned"
+  },
+  "development": "inactive",
+  "implementation": "skeleton",
+  "maturity": null,
+  "verification": "not_run",
+  "integration": "merged",
+  "flags": [
+    "in_scope"
+  ],
+  "blocked_by": [],
+  "depends_on": [
+    "models/catalog"
+  ],
+  "api": [
+    "acquire(request) -> AcquisitionResult [proposta]"
+  ],
+  "tasks": [
+    {
+      "id": "ACQ-001",
+      "state": "planned",
+      "description": "Definire e verificare il contratto prima della migrazione."
+    }
+  ]
+}

@@ -1,0 +1,33 @@
+{
+  "schema_version": 1,
+  "id": "ONNX",
+  "title": "ONNX Runtime",
+  "purpose": "Motore futuro inattivo.",
+  "parent": "inference/engines",
+  "order": 36,
+  "branch": {
+    "name": "inference/engines/onnx_runtime/main",
+    "parent": "inference/engines/main",
+    "status": "planned"
+  },
+  "development": "inactive",
+  "implementation": "skeleton",
+  "maturity": null,
+  "verification": "not_run",
+  "integration": "merged",
+  "flags": [
+    "future"
+  ],
+  "blocked_by": [],
+  "depends_on": [],
+  "api": [
+    "open(request) -> InferenceSession [proposta]"
+  ],
+  "tasks": [
+    {
+      "id": "ONNX-001",
+      "state": "planned",
+      "description": "Valutare una futura attivazione esplicita; nessuno sviluppo corrente."
+    }
+  ]
+}

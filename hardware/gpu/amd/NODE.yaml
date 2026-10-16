@@ -1,0 +1,33 @@
+{
+  "schema_version": 1,
+  "id": "AMD",
+  "title": "AMD",
+  "purpose": "Provider AMD futuro inattivo.",
+  "parent": "hardware/gpu",
+  "order": 11,
+  "branch": {
+    "name": "hardware/gpu/amd/main",
+    "parent": "hardware/gpu/main",
+    "status": "planned"
+  },
+  "development": "inactive",
+  "implementation": "skeleton",
+  "maturity": null,
+  "verification": "not_run",
+  "integration": "merged",
+  "flags": [
+    "future"
+  ],
+  "blocked_by": [],
+  "depends_on": [],
+  "api": [
+    "detect() -> Sequence[DeviceInfo] [proposta]"
+  ],
+  "tasks": [
+    {
+      "id": "AMD-001",
+      "state": "planned",
+      "description": "Valutare una futura attivazione esplicita; nessuno sviluppo corrente."
+    }
+  ]
+}

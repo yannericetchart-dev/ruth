@@ -9,8 +9,15 @@ venv/
 .env.*
 
 # Local models and runtime artifacts
-models/
+# models/ is now a source-code domain. Downloaded models belong in .local/.
+/models/downloads/
+/models/cache/
+/models/weights/
 *.gguf
+*.bin
+*.pt
+*.pth
+*.onnx
 *.log
 
 # Private machine/user state and generated results (DATA-001)

@@ -1,0 +1,34 @@
+{
+  "schema_version": 1,
+  "id": "HW",
+  "title": "Hardware",
+  "purpose": "Descrivere risorse senza confonderle con compatibilita di inferenza.",
+  "parent": ".",
+  "order": 7,
+  "branch": {
+    "name": "hardware/main",
+    "parent": "main",
+    "status": "planned"
+  },
+  "development": "inactive",
+  "implementation": "skeleton",
+  "maturity": null,
+  "verification": "not_run",
+  "integration": "merged",
+  "flags": [
+    "in_scope"
+  ],
+  "blocked_by": [],
+  "depends_on": [],
+  "api": [
+    "detect() -> HardwareReport [proposta]",
+    "resources(device) -> ResourceReport [proposta]"
+  ],
+  "tasks": [
+    {
+      "id": "HW-001",
+      "state": "planned",
+      "description": "Definire e verificare il contratto prima della migrazione."
+    }
+  ]
+}

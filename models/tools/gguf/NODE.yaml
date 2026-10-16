@@ -1,0 +1,35 @@
+{
+  "schema_version": 1,
+  "id": "GGUFTOOL",
+  "title": "Ispezione GGUF",
+  "purpose": "Strumento diagnostico sopra il lettore GGUF.",
+  "parent": "models",
+  "order": 21,
+  "branch": {
+    "name": "models/tools/gguf/main",
+    "parent": "models/main",
+    "status": "planned"
+  },
+  "development": "inactive",
+  "implementation": "skeleton",
+  "maturity": null,
+  "verification": "not_run",
+  "integration": "merged",
+  "flags": [
+    "in_scope"
+  ],
+  "blocked_by": [],
+  "depends_on": [
+    "models/formats/gguf"
+  ],
+  "api": [
+    "main(argv) -> int [proposta]"
+  ],
+  "tasks": [
+    {
+      "id": "GGUFTOOL-001",
+      "state": "planned",
+      "description": "Definire e verificare il contratto prima della migrazione."
+    }
+  ]
+}

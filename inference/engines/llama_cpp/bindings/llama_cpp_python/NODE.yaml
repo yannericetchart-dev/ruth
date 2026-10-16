@@ -1,0 +1,33 @@
+{
+  "schema_version": 1,
+  "id": "LCP",
+  "title": "llama-cpp-python",
+  "purpose": "Primo binding previsto.",
+  "parent": "inference/engines/llama_cpp/bindings",
+  "order": 31,
+  "branch": {
+    "name": "inference/engines/llama.cpp/bindings/llama_cpp_python/main",
+    "parent": "inference/engines/llama.cpp/bindings/main",
+    "status": "planned"
+  },
+  "development": "inactive",
+  "implementation": "skeleton",
+  "maturity": null,
+  "verification": "not_run",
+  "integration": "merged",
+  "flags": [
+    "in_scope"
+  ],
+  "blocked_by": [],
+  "depends_on": [],
+  "api": [
+    "open(request) -> InferenceSession [proposta]"
+  ],
+  "tasks": [
+    {
+      "id": "LCP-001",
+      "state": "planned",
+      "description": "Definire e verificare il contratto prima della migrazione."
+    }
+  ]
+}

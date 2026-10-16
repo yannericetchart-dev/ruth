@@ -1,8 +1,8 @@
 # Ruth: checkpoint di progetto
 
-Revisione documentale: 3.
-Attivita': `STRUCT-001`.
-Fase corrente: **2 - scaffold e mappe, senza migrazione applicativa**.
+Revisione documentale: 4.
+Attivita': `MIG-001` (prima porzione: `PY-001`).
+Fase corrente: **3 - migrazione incrementale per componente**.
 
 ## Completato
 
@@ -30,8 +30,13 @@ Fase corrente: **2 - scaffold e mappe, senza migrazione applicativa**.
 
 ## Prossima azione
 
-Preparare e verificare le mappe ricorsive, i metadati di stato e lo scaffold.
-Pubblicare il passaggio 2 senza copiare codice applicativo dai branch storici.
+Il passaggio 2 e' completato: scaffold dei domini, corsie, metadati di stato,
+mappe ricorsive e controllo di coerenza. Ambito della verifica: struttura e
+propagazione dei riepiloghi, non esecuzione applicativa o nativa.
+
+Avviare la sola porzione Python descritta in MIGRATION.md su un branch di
+componente. Aggiornare checkpoint del componente e tutti gli antenati.
+Le altre porzioni rimangono pianificate; Kaggle resta inattivo.
 
 ## Limiti correnti
 

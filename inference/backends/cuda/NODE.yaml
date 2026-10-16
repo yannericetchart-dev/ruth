@@ -1,0 +1,35 @@
+{
+  "schema_version": 1,
+  "id": "CUDA",
+  "title": "CUDA",
+  "purpose": "Backend NVIDIA distinto dal motore llama.cpp.",
+  "parent": "inference/backends",
+  "order": 24,
+  "branch": {
+    "name": "inference/backends/cuda/main",
+    "parent": "inference/backends/main",
+    "status": "planned"
+  },
+  "development": "inactive",
+  "implementation": "skeleton",
+  "maturity": null,
+  "verification": "not_run",
+  "integration": "merged",
+  "flags": [
+    "in_scope"
+  ],
+  "blocked_by": [],
+  "depends_on": [
+    "hardware/gpu/nvidia"
+  ],
+  "api": [
+    "assess(device) -> BackendAssessment [proposta]"
+  ],
+  "tasks": [
+    {
+      "id": "CUDA-001",
+      "state": "planned",
+      "description": "Definire e verificare il contratto prima della migrazione."
+    }
+  ]
+}

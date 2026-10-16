@@ -1,0 +1,36 @@
+{
+  "schema_version": 1,
+  "id": "SELECT",
+  "title": "Selezione",
+  "purpose": "Selezionare candidati compatibili.",
+  "parent": "profiling",
+  "order": 39,
+  "branch": {
+    "name": "profiling/selection/main",
+    "parent": "profiling/main",
+    "status": "planned"
+  },
+  "development": "inactive",
+  "implementation": "skeleton",
+  "maturity": null,
+  "verification": "not_run",
+  "integration": "merged",
+  "flags": [
+    "in_scope"
+  ],
+  "blocked_by": [],
+  "depends_on": [
+    "models",
+    "hardware"
+  ],
+  "api": [
+    "select(request) -> ProfileSelection [proposta]"
+  ],
+  "tasks": [
+    {
+      "id": "SELECT-001",
+      "state": "planned",
+      "description": "Definire e verificare il contratto prima della migrazione."
+    }
+  ]
+}
