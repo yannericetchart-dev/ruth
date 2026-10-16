@@ -12,9 +12,10 @@ in main; contratto sperimentale in sola lettura.
   Fixture virtualenv sintetiche, tre API pubbliche, ingresso Ruth, mappe.
 - Effetti: sola lettura, nessuna installazione o raccolta telemetria.
 
-PY-MANUAL-001: `pending`. Dopo sincronizzazione sicura di main, l'utente
-deve eseguire personalmente Ruth tramite `python3 main.py`, confermare
-la revisione provata e l'esito positivo. Checkout locale precedente su
+PY-MANUAL-001: `active`, esecuzione positiva comunicata dall'utente il
+16 ottobre 2026 con `python3 main.py` e virtualenv isolato.
+Rimane da confermare il commit locale con `git rev-parse HEAD` prima
+di chiudere il collaudo della revisione effettivamente provata. Checkout locale precedente su
 branch di lavoro con modifiche, `local_sync: blocked_divergence`;
 nessun dato o lavoro locale viene scartato. Vietata migrazione successiva
-prima della conferma positiva (MIG-FLOW-002).
+prima della conferma della revisione provata (MIG-FLOW-002).
