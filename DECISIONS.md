@@ -334,3 +334,46 @@ Ogni sostituzione deve collegare entrambe le decisioni e aggiornare le mappe.
   inferenza. Migrazione GitHub-first con CI e maps, poi collaudo
   personale GGUF-META-MANUAL-001 obbligatorio (MIG-FLOW-002).
 - Nessuna porzione successiva approvata implicitamente.
+
+### Applicazione GGUF-META-SCOPE-001 (16 ottobre 2026)
+
+- Codice implementato e verificato con CI sintetica; promozioni
+  PR #47 (GGUF), #48 (Formats), #49 (Models) e #50 (main).
+- CI success: runs 38940033886, 38940265778, 38940360999,
+  38940625555. Il job finale e' stato riattivato senza
+  modifiche al contenuto candidato, poi ha restituito success.
+- Commit di integrazione main: `a630c83f6c62a229e18fe5e64f0863c19de16018`.
+- GGUF-META-MANUAL-001 **pending**: ancora necessaria conferma
+  personale esplicita dell'utente dopo avvio di Ruth (MIG-FLOW-002).
+- Il perimetro resta bounded/read-only; nessun tensor, download,
+  compatibilita' runtime o inferenza sono stati approvati.
+
+### GGUF-META-MANUAL-001: accettazione positiva (16 ottobre 2026)
+
+- Stato: **complete/passed** a seguito di conferma esplicita dell'utente.
+- Collaudo effettuato sul commit `d318fd793da514f21ee2e8475304d1a6c883ee94`, con avvio di
+  `main.py` senza argomenti e otto controlli nell'ordine previsto.
+- Il caso catalogo assente e' valido: GGUF e metadati
+  `not_configured` sono stati gestiti senza errore.
+- Nessun file GGUF reale ispezionato personalmente; l'accettazione
+  non dimostra integrita' dei modelli o compatibilita' inferenza.
+- GGUF-META-SCOPE-001 resta invariato. Nessuna nuova migrazione
+  approvata implicitamente (MIG-FLOW-001/002 e DATA-001).
+
+## GGUF-INDEX-SCOPE-001 — verifica strutturale dichiarativa
+
+- Stato: accepted; via libera esplicito dell'utente il 16 ottobre 2026.
+- Soli GGUF dichiarati in CAT, API inspect_tensor_index e
+  inspect_all_tensor_indexes, report immutabili con soli codici e conteggi.
+- Indici: numero nomi e unicita', massimo 4 dimensioni positive,
+  limiti aritmetici, offset allineati e dentro la dimensione del file;
+  solo tipi scalari con dimensione conosciuta verificano gli intervalli.
+- I tipi quantizzati/sconosciuti restano non verificabili per ingombro:
+  stato size_unverified, non una verifica positiva dell'intero modello.
+- No peso, payload, hash, runtime o inferenza. Solo metadata
+  bounded, con limitazioni e difese CAT/GGUF preesistenti.
+- Nuova nona fase Ruth dopo META, sottocomando gguf-index;
+  catalogo assente = skip regolare. Fixture sintetiche, CI,
+  mappe e PR lungo tutti gli antenati. Collaudo personale
+  GGUF-INDEX-MANUAL-001 post-merge (MIG-FLOW-002).
+- DATA-001, REMOTE-001, MAIN-FLOW-001 restano vigenti.

@@ -1,9 +1,10 @@
 # Ruth: checkpoint di progetto
 
-Revisione documentale: 28 (indice main); CONT-001 revisione 1.
+Revisione documentale: 30 (indice main); CONT-001 revisione 1.
 Fase 3: migrazione incrementale per componente.
-Stato: **GGUF-001 implementata, verificata con CI, integrata in main
-e accettata personalmente (GGUF-MANUAL-001 complete)**. CAT-MANUAL-001 complete.
+Stato: **GGUF-META-001 implementata, verificata in CI, integrata in main
+e accettata personalmente (GGUF-META-MANUAL-001 complete)**.
+GGUF-MANUAL-001 e CAT-MANUAL-001 restano complete.
 PY, DEP, DIAG, HW/CPU e GPU NVIDIA restano accettate personalmente.
 L'ingresso senza argomenti di Ruth esegue tutte le funzioni integrate.
 
@@ -230,3 +231,74 @@ e DIAG-SCOPE-001. SYNC-001 resta storica/superseded.
   compatibilita' inferenza, dato locale Git o nuova migrazione.
 - Prossimo passo: test sintetici, mappe, CI e promozioni fino
   a main; poi collaudo personale GGUF-META-MANUAL-001.
+
+## GGUF-META-001 integrata tecnicamente (16 ottobre 2026)
+
+- Perimetro approvato GGUF-META-SCOPE-001 invariato: solo
+  architettura, codice file_type e context_length dichiarati,
+  da GGUF elencati nel catalogo CAT-001, senza scansioni.
+- Lettore bounded in `models/formats/gguf/runtime/metadata.py`
+  con report immutabili e controlli su versioni v2/v3, endian,
+  lunghezze, array, profondita' e file malformati. Non legge tensori.
+- L'ingresso Ruth `main.py` default ora avvia tutte le otto fasi:
+  PY -> DEP (pip minimo) -> DIAG -> HW CPU/RAM -> NVIDIA ->
+  CAT -> GGUF -> GGUF metadata. `main.py gguf-metadata` resta
+  verifica mirata. Un catalogo non configurato o vuoto non blocca.
+- Promozioni complete: PR #47 models/formats/gguf/main,
+  #48 models/formats/main, #49 models/main, #50 main
+  (merge `a630c83f6c62a229e18fe5e64f0863c19de16018`).
+- CI runs 38940033886, 38940265778, 38940360999,
+  38940625555: **success**, inclusi test sintetici del parser,
+  test della CLI e controllo delle mappe. Nessun modello reale in CI.
+- Stato: implementation complete (scope bounded), verification passed
+  (CI sintetica), integration merged; **GGUF-META-MANUAL-001 pending**.
+  Le precedenti voci "candidate" sono storiche e non guidano il lavoro.
+- `local_sync: pending_no_access` per il nuovo main; dopo
+  l'aggiornamento documentale verra' comunicato lo SHA finale.
+  Checkout legacy non modificato (REMOTE-001).
+- Nessun dato di host, manifest, log o modello pubblicato (DATA-001);
+  rimangono esclusi tensor payload, download, llama.cpp, CUDA, inference.
+  Nessuna porzione seguente e' gia' approvata; attesa accettazione
+  manuale personale prima di presentare il nuovo perimetro.
+
+## GGUF-META-MANUAL-001: accettazione personale (16 ottobre 2026)
+
+- L'utente ha eseguito il fast-forward non distruttivo di main,
+  verificato `git rev-parse HEAD` e avviato personalmente
+  `.venv/bin/python main.py` sul commit `d318fd793da514f21ee2e8475304d1a6c883ee94`,
+  identico al main pubblicato su GitHub.
+- Conferma esplicita dell'utente: **collaudo positivo**.
+- Tutte le otto fasi PY -> DEP -> DIAG -> HW -> NVIDIA -> CAT ->
+  GGUF -> META hanno prodotto il riepilogo conclusivo atteso.
+- Catalogo, intestazioni GGUF e metadati GGUF `not_configured`
+  sono skip validi. Non e' stata effettuata prova manuale su
+  GGUF reale ne' certificazione di pesi, CUDA o inferenza.
+- GGUF-META-001: implementation complete; verification passed
+  (CI sintetica); integration merged (PR #50);
+  **manual acceptance passed** (GGUF-META-MANUAL-001).
+- Le note anteriori pending/blocked/candidate sono storiche,
+  sostituite da questo checkpoint.
+- `local_sync: verified_on_tested_revision` per `d318fd793da514f21ee2e8475304d1a6c883ee94`
+  comunicato dall'utente; dopo la pubblicazione documentale
+  `local_sync: pending_docs_fast_forward`. Nessun checkout modificato.
+- DATA-001: nessun output grezzo, inventario, path, manifest,
+  modello o log reale pubblicato. Prossima porzione ancora
+  non approvata: necessario perimetro e via libera MIG-FLOW-001.
+
+## GGUF-INDEX-SCOPE-001 approvato (16 ottobre 2026)
+
+- MIG-009 approvata esplicitamente dopo la chiusura di MIG-008;
+  base main `240e1bc8616f9087390c08603704db4165ea1587`, ramo di lavoro remoto
+  `models/formats/gguf/work/GGUF-INDEX-001`.
+- Scopo: lettura limitata e read-only dei soli descrittori tensore
+  dichiarati in GGUF del catalogo, senza leggere il tensor_data.
+- Verifica offset, nomi duplicati, dimensioni, allineamento e
+  intervalli di tipi scalari conosciuti. Quantizzazioni/tipi
+  sconosciuti esplicitamente size_unverified, mai success implicito.
+- Nona fase Ruth dopo GGUF META e comando mirato `gguf-index`;
+  catalogo assente non bloccante. Fixture sintetiche e mappe candidate.
+- Stato **candidate implemented**, verification **not_run**,
+  integration **not_merged** fino a CI e promozioni; nessun
+  collaudo GGUF-INDEX-MANUAL-001 ancora eseguibile.
+- Nessuna modifica all'host, download, tensor payload, CUDA o
+  inferenza; dati reali restano locali (DATA-001).

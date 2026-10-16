@@ -32,3 +32,40 @@
   nessuna modifica all'accettazione GGUF-MANUAL-001 precedente.
 - GGUF-META-MANUAL-001 prevista solo dopo merge in main.
   Download, tensor payload, inferenza e dati locali restano esclusi.
+
+## GGUF-META-001 verificata e integrata (16 ottobre 2026)
+
+- Reader bounded metadata approvato e integrato tramite PR #47-#50,
+  main `a630c83f6c62a229e18fe5e64f0863c19de16018`; CI sintetica e mappe verificate in tutti
+  e quattro i livelli.
+- Solo `general.architecture`, `general.file_type` e
+  `{architecture}.context_length` opzionali. Non legge tensori,
+  non certifica quantizzazione o compatibilita' inference.
+- Stato tecnico del nuovo scope: implementation complete;
+  verification passed (fixture sintetiche); integration merged.
+- **GGUF-META-MANUAL-001 active/pending**: prova manuale dopo
+  sync sicura e avvio default Ruth con tutte le otto fasi.
+  Gli stati candidati precedenti sono storici.
+- Dati reali esclusi da Git (DATA-001); prossimo scope da approvare.
+
+## GGUF-META-MANUAL-001: accettazione positiva (16 ottobre 2026)
+
+- L'utente conferma esplicitamente positivo il collaudo personale
+  del flusso ordinario di Ruth a otto fasi sul main `d318fd793da514f21ee2e8475304d1a6c883ee94`.
+- Catalogo, GGUF e META `not_configured`: skip valido.
+  Nessuna prova manuale con modello reale ne' certificazione inferenza.
+- GGUF-META-001: implementata, CI verificata, integrata (PR #50),
+  manual acceptance **passed/complete**. Le note pending precedenti
+  restano storiche, non rappresentano lo stato corrente.
+- Prossima porzione senza approvazione: richiede nuovo scope
+  secondo MIG-FLOW-001/002. DATA-001 e REMOTE-001 invariati.
+
+## GGUF-INDEX-001 candidata (16 ottobre 2026)
+
+- Perimetro GGUF-INDEX-SCOPE-001 approvato. Indici descriptor-only
+  da catalogo, nono passo Ruth; implementazione candidata sul
+  branch remoto, verifiche/integrazione non ancora eseguite.
+- Nessun tensore o dato host nel repo; fixture sintetiche e CI
+  ancora da verificare. GGUF-INDEX-MANUAL-001 dopo merge main.
+- GGUF-META-MANUAL-001 resta accettata: stato storico precedente
+  non deve essere invertito. MIG-FLOW-001/002 e DATA-001 vigenti.

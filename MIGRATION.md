@@ -341,3 +341,37 @@ GPU-MANUAL-001 richiesta solo dopo main, secondo MIG-FLOW-002.
 - Promozioni gguf -> formats -> models -> main approvate senza
   nuovi semafori intermedi. Collaudo manuale post-merge obbligatorio.
 - Scope: [GGUF-META-SCOPE-001](models/formats/gguf/METADATA_SCOPE.md).
+
+## GGUF-META-001: integrazione tecnica completata (16 ottobre 2026)
+
+- GGUF-META-SCOPE-001: lettura limitata dei tre metadati dichiarati
+  di soli GGUF del catalogo, senza tensor, download o inferenza.
+- PR #47, #48, #49, #50 promosse lungo tutti gli antenati fino
+  a main `a630c83f6c62a229e18fe5e64f0863c19de16018`; CI e test sintetici/mappe superati.
+- L'ottava fase default di Ruth e il comando mirato sono integrati.
+- GGUF-META-MANUAL-001 ancora pendente: necessita esecuzione
+  personale positiva e conferma esplicita sul main sincronizzato.
+- Gli stati precedenti di candidato sono annotazioni storiche.
+
+## Chiusura GGUF-META-MANUAL-001 (16 ottobre 2026)
+
+- Esito positivo confermato esplicitamente dall'utente dopo avvio
+  personale di Ruth dal main `d318fd793da514f21ee2e8475304d1a6c883ee94`.
+- Sequenza completa di otto controlli; catalogo e GGUF/META
+  `not_configured` sono skip validi, senza download o inferenza.
+- GGUF-META-001: implementazione completa, CI sintetica superata,
+  PR #50 integrata e collaudo personale passato.
+- Le voci anteriori di manual pending restano storiche.
+  Prossima migrazione solo previo nuovo scope e approvazione.
+
+## GGUF-INDEX-SCOPE-001: nona porzione autorizzata (16 ottobre 2026)
+
+- Solo descrittori tensor di GGUF catalogati; lettura bounded,
+  nome/dimensioni/codice tipo/offset, no payload.
+- Nuove API inspect_tensor_index e inspect_all_tensor_indexes;
+  nona fase default Ruth e comando mirato `gguf-index`.
+- Verifica dimensionale solo per tipi scalari noti; altri tipi
+  registrati come size_unverified.
+- Scope [GGUF-INDEX-SCOPE-001](models/formats/gguf/INDEX_SCOPE.md).
+- Candidato remoto; CI/promozioni pendenti, poi test personale
+  GGUF-INDEX-MANUAL-001. Nessuna fase successiva autorizzata.
