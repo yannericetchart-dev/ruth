@@ -36,6 +36,7 @@ def inspect_aux_node_ids(
         "identifier_coverage_verified":False,
         "graph_node_creation_cloning_activity":{},
         "kernel_graph_node_id_coverage":{},
+        "kernel_node_original_id_mapping":{},
         "memcpy_node_id_coverage":{},
         "explicit_graph_dependency_edges_verified":False,
         "kernel_operand_buffer_identity_verified":False,
@@ -104,6 +105,53 @@ def inspect_aux_node_ids(
                    f'AND EXISTS (SELECT 1 FROM "{n}" e '
                    'WHERE e.originalGraphNodeId=k.graphNodeId)'),
         }
+        # Aggregate by distinct observed kernel IDs. A source node in
+        # originalGraphNodeId denotes cloning lineage, never a DAG edge.
+        # No raw node identifiers are returned to Python or reported.
+        lineage_sql=f"""
+            WITH kernel_ids AS (
+                SELECT DISTINCT graphNodeId AS id FROM "{k}"
+                WHERE graphNodeId IS NOT NULL AND graphNodeId!=0
+            ), mapped AS (
+                SELECT ki.id,
+                    COUNT(DISTINCT CASE
+                        WHEN e.originalGraphNodeId IS NOT NULL
+                         AND e.originalGraphNodeId!=0
+                        THEN e.originalGraphNodeId END) AS origins,
+                    COUNT(DISTINCT CASE
+                        WHEN e.originalGraphNodeId IS NOT NULL
+                         AND e.originalGraphNodeId!=0 AND EXISTS (
+                            SELECT 1 FROM "{n}" parent
+                            WHERE parent.graphNodeId=e.originalGraphNodeId)
+                        THEN e.originalGraphNodeId END) AS resolved
+                FROM kernel_ids ki
+                LEFT JOIN "{n}" e ON e.graphNodeId=ki.id
+                GROUP BY ki.id
+            )
+            SELECT COUNT(*),
+                   COALESCE(SUM(origins=0),0),
+                   COALESCE(SUM(origins=1),0),
+                   COALESCE(SUM(origins>1),0),
+                   COALESCE(SUM(origins=1 AND resolved=1),0)
+            FROM mapped
+        """
+        total,none,single,multiple,resolved=db.execute(
+            lineage_sql).fetchone()
+        if (any(type(v) is not int or v<0 for v in
+                (total,none,single,multiple,resolved))
+            or total!=none+single+multiple or resolved>single
+            or total!=kernel["distinct_nonzero_kernel_graph_node_ids"]):
+            return result
+        lineage={
+            "distinct_kernel_node_ids_checked":total,
+            "no_original_node_candidate":none,
+            "exactly_one_original_node_candidate":single,
+            "multiple_original_node_candidates":multiple,
+            "unique_original_node_found_in_events":resolved,
+            "kernel_id_to_original_id_mapping_complete_unambiguous":bool(
+                total>0 and single==resolved==total),
+            "mapping_is_clone_lineage_not_dag_or_buffer_dependency":True,
+        }
         mem={"table_present":aux[m]["present"]}
         if aux[m]["present"]:
             columns=set(aux[m]["join_columns"])
@@ -129,6 +177,7 @@ def inspect_aux_node_ids(
                 mem["metadata_graph_node_id_absent"]=True
         result["graph_node_creation_cloning_activity"]=node
         result["kernel_graph_node_id_coverage"]=kernel
+        result["kernel_node_original_id_mapping"]=lineage
         result["memcpy_node_id_coverage"]=mem
         result["identifier_coverage_verified"]=True
         result["status"]="auxiliary_graph_node_identifier_counts_observed"
