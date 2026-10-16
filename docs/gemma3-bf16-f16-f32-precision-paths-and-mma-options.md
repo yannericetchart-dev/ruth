@@ -767,7 +767,151 @@ Lo stato verificato è la **corrispondenza numerica,
 temporale e per-run** dell'attività osservata,
 non una dimostrazione del dataflow per ciascun GEMM.
 
-## 14. Riferimenti interni
+## 14. Provenienza dei buffer delle GEMM BF16: audit statico del cuBLAS pinned
+
+**Implementazione:** `ruth_runtime.gemma3_phase28_cublas_source_audit`,
+un lettore **offline, di sola lettura e fail-closed** che ispeziona
+`.ruth-src/llama-cpp-python/vendor/llama.cpp/ggml/src/ggml-cuda/`
+dopo aver eseguito **`source_build_plan.inspect_checkout`**
+già presente in Ruth: commit padre
+`1652066e0af45f2313b339670ef9555e8a54e545` e commit
+submodule llama.cpp
+`0c1e57098bba43ac29e6e3b677cdceebdd22334f`,
+origin esatto e working tree pulito. Non scarica sorgenti,
+non crea un altro clone e non autorizza GPU/compilazione.
+
+### 14.1 Provenienza di src0 e src1 — proprietà provate dal sorgente
+
+Nella funzione
+[`ggml_cuda_mul_mat_cublas_impl`](https://github.com/ggml-org/llama.cpp/blob/0c1e57098bba43ac29e6e3b677cdceebdd22334f/ggml/src/ggml-cuda/ggml-cuda.cu#L1404-L1491)
+il percorso è esplicito:
+
+| Tipo GGML all'ingresso rispetto a `compute_type` selezionato | `src0_ptr` / `src1_ptr` passato a cuBLAS | Nuovo cast GPU? |
+|---|---|---|
+| Stesso tipo, tipicamente `src0` (peso BF16) | Punta direttamente a `src0->data` oppure `src1->data` | **No**, nel ramo di uguaglianza |
+| Tipo diverso, tipicamente `src1` (attivazione F32) | Punta a `src0_alloc.get()` oppure `src1_alloc.get()`, pool temporaneo | **Sì**, tramite `traits::convert` se contiguo, o `traits::convert_nc` altrimenti |
+| Tipo diverso su `src0` e `src1` | Entrambi i puntatori possono puntare ad allocazioni temporanee distinte | **Fino a due** cast; non assumere un cast per ogni GEMM universalmente |
+
+Per il `compute_type=GGML_TYPE_BF16`,
+[`batched_mul_mat_traits<GGML_TYPE_BF16>`](https://github.com/ggml-org/llama.cpp/blob/0c1e57098bba43ac29e6e3b677cdceebdd22334f/ggml/src/ggml-cuda/ggml-cuda.cu#L1376-L1392)
+specifica `CUDA_R_16BF`, `nv_bfloat16`,
+`CUBLAS_COMPUTE_32F` e lookup `ggml_get_to_bf16_cuda`.
+Quest'ultimo, in
+[`convert.cu`](https://github.com/ggml-org/llama.cpp/blob/0c1e57098bba43ac29e6e3b677cdceebdd22334f/ggml/src/ggml-cuda/convert.cu#L496-L550),
+sceglie `convert_unary_cont_cuda<float>` per sorgente F32.
+Il lancio vettoriale
+[`convert_unary_cont_vec4`](https://github.com/ggml-org/llama.cpp/blob/0c1e57098bba43ac29e6e3b677cdceebdd22334f/ggml/src/ggml-cuda/convert.cu#L482-L495)
+è **condizionato** a numero di elementi multiplo di
+quattro e indirizzi con allineamento sufficiente;
+altrimenti è usato il percorso alternativo.
+Il simbolo vettoriale è stato osservato nella traccia.
+
+**Interpretazione:** il codice dimostra un legame
+**interno al percorso generico** fra buffer prodotto dal cast,
+`src0_ptr/src1_ptr` e operando della GEMM cuBLAS.
+Il trace ha mostrato **179 cast F32→BF16 e 179 GEMM BF16
+per ciascuno dei 96 intervalli di prefill**, ma non ha
+associato i **singoli** 17.184 cast a indirizzi o chiamate
+GGML specifici. Perciò
+`observed_17184_cast_to_gemm_buffer_identity_verified=false`
+resta la classificazione corretta.
+
+### 14.2 Varianti cuBLAS, forma dei tensori e precisione
+
+Il percorso
+[`ggml-cuda.cu` (branch cuBLAS)](https://github.com/ggml-org/llama.cpp/blob/0c1e57098bba43ac29e6e3b677cdceebdd22334f/ggml/src/ggml-cuda/ggml-cuda.cu#L1517-L1614)
+distingue:
+
+| Condizione del sorgente | API cuBLAS invocata | Nota |
+|---|---|---|
+| `compute_type=F32`, `ne12=ne13=1` | `cublasSgemm` | Ramo **F32**, non BF16 |
+| `ne12=ne13=1`, nel ramo successivo | `cublasGemmEx` | BF16 possibile: operandi CUDA BF16, compute F32 |
+| Assenza broadcast `r2=r3=1` e layout compatibili | `cublasGemmStridedBatchedEx` | BF16 possibile |
+| Altri layout e/o broadcast | `cublasGemmBatchedEx` | Prepara array di puntatori con `k_compute_batched_ptrs` |
+
+Un output GGML `dst` F32 non significa che **tutti**
+gli intermedi dell'operazione siano F32.
+Per Ada, il BF16 attiva `prefer_f32_output`: il
+[puntatore di output destinazione è direttamente F32](https://github.com/ggml-org/llama.cpp/blob/0c1e57098bba43ac29e6e3b677cdceebdd22334f/ggml/src/ggml-cuda/ggml-cuda.cu#L1492-L1523);
+negli altri casi i risultati non F32 passano eventualmente
+da una [conversione di output](https://github.com/ggml-org/llama.cpp/blob/0c1e57098bba43ac29e6e3b677cdceebdd22334f/ggml/src/ggml-cuda/ggml-cuda.cu#L1609-L1615).
+La **configurazione** F32 di cuBLAS è verificata nel sorgente;
+le scelte *istruzione per istruzione* dei kernel interni
+proprietari cuBLAS/cuBLASLt non sono certificate da questo audit.
+
+Il `compute_type` iniziale deriva dal tipo di `src0`,
+ma può cambiare a causa di capacità hardware, richiesta
+`GGML_PREC_F32` e variabile
+`GGML_CUDA_CUBLAS_COMPUTE_TYPE`
+[ggml-cuda.cu:1617–1665](https://github.com/ggml-org/llama.cpp/blob/0c1e57098bba43ac29e6e3b677cdceebdd22334f/ggml/src/ggml-cuda/ggml-cuda.cu#L1617-L1665).
+Il dispatcher generale ha anche alternative a cuBLAS,
+compreso `mul_mat_vec_f` usato nel decode;
+dunque **un modello con pesi BF16 non prova da solo che
+ogni proiezione usi cuBLAS BF16**.
+
+### 14.3 Audit offline ripetibile, con gate sorgenti già fissato
+
+Il nuovo comando non avvia CUDA, non modifica file e non
+si basa sui soli simboli Nsight. Controlla undici
+pattern di struttura del sorgente **entro le funzioni
+pertinenti**; non è un parser C++ o una verifica
+del dataflow runtime. Fallisce se manca il checkout
+approvato, se non corrispondono i commit o se il
+checkout è sporco (seguendo l'esistente
+`inspect_checkout` di Ruth).
+
+```bash
+cd ~/Dev/ruth-model-profiling
+git pull --ff-only origin feat/gemma3-phase28-context-dispatch
+
+.venv/bin/python -m unittest \
+  tests.test_phase28_gemma3_cublas_source_audit -v
+
+.venv/bin/python -m ruth_runtime.gemma3_phase28_cublas_source_audit
+```
+
+Interpretazione del report:
+`source_control_flow_patterns_verified=true` significa
+soltanto che il **sorgente del commit approvato** contiene
+i rami e le chiamate attese; non prova i parametri
+runtime delle 17.184 GEMM. Se la checkout
+`.ruth-src/llama-cpp-python` non esiste o è sporca,
+il comando restituisce `status=pinned_cublas_source_unverified`
+o un errore equivalente senza alterarla.
+
+Le bandiere di dipendenza sperimentale,
+`observed_17184_cast_to_gemm_buffer_identity_verified`,
+`individual_cuda_graph_buffer_dependencies_verified`,
+`ggml_operator_to_kernel_identity_verified`,
+`conversion_elimination_safe_verified` e
+`production_qualified` restano **false**.
+
+### 14.4 Opzioni successive, senza ottimizzazioni premature
+
+La decisione sull'eliminazione dei cast deve distinguere due
+problemi **diversi**:
+
+- Le conversioni **F32→BF16 per le GEMM BF16** preparano
+  l'attivazione in un formato accettato dal backend.
+  Toglierle senza cambiare altro sarebbe scorretto; possibili
+  soluzioni sono riuso/fusione del cast, formato diverso
+  degli intermedi oppure un diverso percorso di GEMM,
+  verificando qualità e costo del cambiamento.
+- Le conversioni **BF16→F16 K/V nel FlashAttention prefill**
+  alimentano `FLASH_MMA_F16`. Possono motivare un
+  futuro kernel Flash MMA BF16 nativo, ma il suo sviluppo
+  è indipendente dalle conversioni cuBLAS e richiede
+  verifica della matematica interna e dei logits.
+
+**Prossimo confine sperimentale:** se si vorrà collegare
+ogni cast al suo GEMM specifico, identificare in modo
+stabile i nodi GGML e i buffer di destinazione, e verificare
+l'effettivo matching degli operandi delle API CUDA/cuBLAS
+senza mostrare puntatori grezzi nei report. Richiedere
+autorizzazione esplicita prima di nuove catture,
+esecuzioni GPU o modifiche della libreria pinned.
+
+## 15. Riferimenti interni
 
 - [Fase 27 — precisione e benchmark](phase-27-gemma3-precision-and-kernel-benchmark.md).
 - [Fase 28 — prove CUDA/NVTX e contesti](phase-28-gemma3-dispatch-and-context-scaling.md).
