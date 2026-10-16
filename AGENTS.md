@@ -208,3 +208,11 @@ read-only e sesta fase automatica di main.py; `catalog` mirato.
 No scansione, no GGUF binary, no Hugging Face, no installazione,
 no download o inferenza. Nessun dato modelli reale su Git (DATA-001).
 Dopo merge serve collaudo personale CAT-MANUAL-001 (MIG-FLOW-002).
+
+## CAT-001: integrazione tecnica completata
+
+CI sintetica e promozioni fino a main effettuate tramite PR #36,
+#37 e #38 (16 ottobre 2026). Default `main.py` ora esegue
+PY->DEP->DIAG->HW->NVIDIA->CAT; nessuna config catalogo e' un esito
+valido. CAT-MANUAL-001 e' ancora in attesa: non procedere con
+GGUF, download o altri componenti prima del collaudo dell'utente.

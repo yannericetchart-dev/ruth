@@ -271,3 +271,19 @@ GPU-MANUAL-001 richiesta solo dopo main, secondo MIG-FLOW-002.
 - `main.py` candidato PY->DEP->DIAG->HW->NVIDIA->CAT.
 - Stato candidato: implementato su ramo lavoro, CI e promozioni
   pendenti; CAT-MANUAL-001 dopo merge (MIG-FLOW-002).
+
+## CAT-001 integrata in main (16 ottobre 2026)
+
+- Scope CAT-SCOPE-001 approvato dall'utente e immutato: manifest
+  JSON locale opzionale, sola lettura, nessuno scanning/download/GGUF.
+- PR #36 `models/catalog/main` merge
+  `a562e1b4ce948d3865a15a9d06454d91b8cb7cde`;
+  PR #37 `models/main` merge
+  `77e3a7327c9f0750d6e8363766000ba830ea1c5e`;
+  PR #38 main merge `12c395ba3bb272d66095d4e468794936b1693892`.
+- CI 38928909391, 38929028829, 38929118836: success
+  con 116 test sintetici e 264 mappe; default Ruth continua
+  i cinque passaggi precedenti e aggiunge CAT per sesto.
+- Stato tecnico implemented/verified/integrated; collaudo personale
+  CAT-MANUAL-001 pendente, quindi prossimo componente bloccato.
+- Nessuna informazione reale su host/modelli/versioni in Git (DATA-001).

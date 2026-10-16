@@ -275,3 +275,8 @@ Ogni sostituzione deve collegare entrambe le decisioni e aggiornare le mappe.
   acquisizione Hugging Face, runtime inference e pubblicazione manifest.
 - Test sintetici, CI, branch fino a main, poi CAT-MANUAL-001 obbligatorio
   prima di un nuovo componente (MIG-FLOW-001/002, DATA-001, REMOTE-001).
+
+- Applicazione CAT-SCOPE-001 (16 ottobre 2026): implementazione
+  verificata in CI e integrata in main con PR #38.
+  CAT-MANUAL-001 ancora in attesa (MIG-FLOW-002); GGUF,
+  Hugging Face, scansione, acquisizione e inferenza non inclusi.

@@ -13,22 +13,22 @@
   "development": "active",
   "implementation": "complete",
   "maturity": "experimental",
-  "verification": "not_run",
-  "integration": "not_merged",
+  "verification": "passed",
+  "integration": "merged",
   "flags": [
     "in_scope"
   ],
   "blocked_by": [],
   "depends_on": [],
   "api": [
-    "catalog(*, project_root: Path | None = None) -> ModelCatalog [implementata su branch candidato, non verificata]",
-    "resolve(reference: str, *, project_root: Path | None = None) -> ModelRecord | None [candidata]"
+    "catalog(*, project_root: Path | None = None) -> ModelCatalog [implementata, verificata e integrata in main]",
+    "resolve(reference: str, *, project_root: Path | None = None) -> ModelRecord | None [implementata, verificata e integrata in main]"
   ],
   "tasks": [
     {
       "id": "CAT-001",
-      "state": "active",
-      "description": "Manifest locale JSON rigoroso, report immutabili ModelCatalog/ModelRecord, protezione directory/symlink e controllo file dichiarati; CI e promozione pending."
+      "state": "complete",
+      "description": "Catalogo locale dichiarativo con validazione/sicurezza percorsi verificato da CI e integrato via PR #36-#38 in main."
     },
     {
       "id": "CAT-SCOPE-001",
@@ -37,9 +37,24 @@
     },
     {
       "id": "CAT-MANUAL-001",
-      "state": "planned",
-      "description": "Dopo merge su main, test personale dal flusso main.py completo con catalogo not_configured/empty oppure manifest locale; comunicare SHA e stato, nessun riferimento host in Git."
+      "state": "active",
+      "description": "Richiesto test personale su main.py senza argomenti, verifica sesto passaggio catalogo e SHA locale; se il manifest manca, stato not_configured valido."
+    },
+    {
+      "id": "CAT-PROMOTE-001",
+      "state": "complete",
+      "description": "PR #36 integrata in models/catalog/main; merge a562e1b4ce948d3865a15a9d06454d91b8cb7cde."
+    },
+    {
+      "id": "CAT-PROMOTE-002",
+      "state": "complete",
+      "description": "PR #37 integrata in models/main; merge 77e3a7327c9f0750d6e8363766000ba830ea1c5e."
+    },
+    {
+      "id": "CAT-PROMOTE-003",
+      "state": "complete",
+      "description": "PR #38 integrata in main; merge 12c395ba3bb272d66095d4e468794936b1693892."
     }
   ],
-  "verification_scope": "CAT-001: manifest JSON opzionale in .local/models/catalog.json, file dichiarati sotto .local/models senza symlink o traversal, report read-only, niente discovery/download/GGUF o dati reali su Git. Test sintetici e promozioni ancora da eseguire."
+  "verification_scope": "CAT-001: CI GitHub 38928909391, 38929028829, 38929118836 success (116 test sintetici inclusi 21 catalogo e 20 CLI, 264 mappe). PR #36 models/catalog/main, #37 models/main e #38 main. Manifest locale read-only, file solo dichiarati, niente download, lettura GGUF, inferenza o dati reali Git. CAT-MANUAL-001 ancora da eseguire."
 }

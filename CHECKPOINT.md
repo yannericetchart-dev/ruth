@@ -1,9 +1,10 @@
 # Ruth: checkpoint di progetto
 
-Revisione documentale: 24 (indice main); CONT-001 revisione 1.
+Revisione documentale: 25 (indice main); CONT-001 revisione 1.
 Fase 3: migrazione incrementale per componente.
-Stato: **PY-001, DEP-001, DIAG-001, HW-001/CPU-001 e GPU-001
-(NVIDIA) implementate, verificate, integrate e accettate personalmente**.
+Stato: **CAT-001 implementata, verificata e integrata in main;
+collaudo personale CAT-MANUAL-001 ancora da confermare**.
+PY, DEP, DIAG, HW/CPU e GPU NVIDIA restano accettate personalmente.
 L'ingresso senza argomenti di Ruth esegue tutte le funzioni integrate.
 
 ## Collaudi confermati
@@ -69,9 +70,9 @@ L'ingresso senza argomenti di Ruth esegue tutte le funzioni integrate.
 
 ## Prossima azione
 
-MIG-005 e GPU-MANUAL-001 sono **complete**: nessun blocco
-residuo da collaudo. Ogni nuova migrazione GPU AMD/Intel o altro
-componente richiede **prima** un perimetro funzionale esplicito
+MIG-006 e' bloccata da CAT-MANUAL-001: il catalogo locale e' tecnicamente
+integrato ma non ancora collaudato personalmente. La prossima
+migrazione richiede **prima** un perimetro funzionale esplicito
 (scopo, API, ingressi, effetti, controlli, limiti, test e passaggio
 automatico `main.py`) con nuovo semaforo verde dell'utente
 (MIG-FLOW-001). Il successivo collaudo personale resta obbligatorio
@@ -95,3 +96,30 @@ e DIAG-SCOPE-001. SYNC-001 resta storica/superseded.
   integration not_merged; CAT-MANUAL-001 planned.
 - DATA-001: nessun contenuto di manifest, percorsi o dati reali in Git.
   REMOTE-001: nessun checkout principale modificato.
+
+## CAT-001: catalogo locale integrato, test personale pendente (16 ottobre 2026)
+
+- CAT-SCOPE-001 approvato esplicitamente: soltanto lettura di
+  `.local/models/catalog.json` opzionale, con riferimenti relativi e
+  protezione da percorsi non consentiti, duplicati, symlink e JSON invalido.
+- Contratti frozen `ModelRecord`, `ModelCatalog`, API
+  `models.catalog.catalog` e `resolve`. Nessun download, scanner,
+  decodifica GGUF, sorgente Hugging Face o inferenza.
+- `main.py` esegue ora **PY -> DEP -> DIAG -> HW CPU/RAM -> NVIDIA -> CAT**;
+  lo stato `not_configured` (manifest assente) e `empty` (nessun
+  modello dichiarato) sono esiti validi e non bloccanti. A disposizione
+  anche il sottocomando mirato `main.py catalog`.
+- Promozioni: PR #36 in models/catalog/main (merge
+  `a562e1b4ce948d3865a15a9d06454d91b8cb7cde`),
+  PR #37 in models/main (merge `77e3a7327c9f0750d6e8363766000ba830ea1c5e`),
+  PR #38 in main (merge `12c395ba3bb272d66095d4e468794936b1693892`).
+- GitHub Actions 38928909391, 38929028829, 38929118836: **success**;
+  116 test sintetici (21 CAT, 20 root/CLI) e 264 mappe coerenti.
+- Stati CAT: implementation complete, verification passed,
+  integration merged. **CAT-MANUAL-001 active**; non avviare GGUF,
+  acquisizione o altre migrazioni prima della prova utente.
+- `local_sync: pending_no_access` dopo merge Models; la copia pulita
+  deve essere aggiornata solo con fast-forward sicuro e senza perdere
+  modifiche. `legacy_checkout: blocked_divergence` invariato.
+- DATA-001: non versionare manifest o elenco reale di modelli,
+  percorsi locali e output utente. Kaggle resta inattivo.

@@ -18,7 +18,7 @@ perdere la classificazione tools ereditata dagli antenati.
 Ogni cartella di progetto ha ROADMAP, CODEMAP e APIMAP. Ogni componente
 autonomo ha anche NODE.yaml. Le directory nascoste di infrastruttura e quelle
 ignorate locali non sono nodi architetturali. Il file main.py e' l'ingresso ufficiale sequenziale delle porzioni
-PY-001, DEP-001, DIAG-001, HW-001 (CPU e RAM) e GPU-001 (solo NVIDIA); estensione CAT-001 candidata solo manifest locale. Le funzioni non ancora migrate restano pianificate.
+PY-001, DEP-001, DIAG-001, HW-001 (CPU e RAM) e GPU-001 (solo NVIDIA) e CAT-001 (solo manifest modelli locale). Le funzioni non ancora migrate restano pianificate.
 
 ## Fonte dei metadati e aggiornamento dei padri
 
