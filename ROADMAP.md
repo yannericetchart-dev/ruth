@@ -6,11 +6,11 @@ Nodo responsabile: [ROOT](NODE.yaml). Ripresa: [START_HERE](START_HERE.md).
 
 Coordinare i sottosistemi tramite API comuni.
 
-Sviluppo: **active**; codice: **partial**; maturita: experimental; verifica: stale; integrazione: merged.
+Sviluppo: **active**; codice: **partial**; maturita: experimental; verifica: passed; integrazione: merged.
 
-Flag: in_scope. Blocchi: nessuno registrato.
+Flag: in_scope. Blocchi: MAIN-MANUAL-001.
 
-Ambito verifica: DEP-001: collaudo manuale positivo sul commit e197cc86829acf52e326a712331cc7ff6cfef6b5 (16 ottobre 2026); controlli sintetici CI precedenti superati. MAIN-FLOW-001: sequenza predefinita PY->DEP candidata in PR, nuovi test da eseguire; test hardware, lock e compatibilita' runtime esclusi.
+Ambito verifica: CI GitHub Actions run 38900998138: 14 Python, 12 dipendenze, 14 root/CLI (inclusi sequenza e gate), controllo di 237 mappe: success. Merge PR #17 in main e605a02bdd72441fd4e79d36a943109ee3ba5c57; manual MAIN-MANUAL-001 in attesa; nessuna certificazione host/GPU/lock.
 
 ## Attivita locali
 
@@ -18,7 +18,8 @@ Ambito verifica: DEP-001: collaudo manuale positivo sul commit e197cc86829acf52e
 2. `STRUCT-001` [complete] Scaffold ricorsivo senza migrazione applicativa.
 3. `MIG-001` [complete] Prima porzione PY-001 integrata in main (PR #8) e accettata nel collaudo PY-MANUAL-001 sul commit ef4654af8ab106ef194af254d9f3884e5cabb6b0; prossima porzione soggetta a nuova approvazione funzionale.
 4. `MIG-002` [complete] DEP-001 integrata in main e accettata dall'utente sul commit e197cc86829acf52e326a712331cc7ff6cfef6b5; manual DEP-MANUAL-001 concluso.
-5. `MAIN-FLOW-001` [active] Avvio Ruth senza argomenti: eseguire sequenzialmente PY-001 e DEP-001 (pip minimo, senza inventario di progetto), arrestare la sequenza se Python non conforme; candidato da verificare e integrare.
+5. `MAIN-FLOW-001` [complete] Sequenza automatica PY->DEP (pip minimo) verificata su GitHub e integrata in main tramite PR #17, e605a02bdd72441fd4e79d36a943109ee3ba5c57.
+6. `MAIN-MANUAL-001` [active] Attende esecuzione personale di .venv/bin/python main.py sul commit main aggiornato e conferma dell'esito sequenziale PY poi DEP prima della prossima migrazione.
 
 ## Componenti (ordine locale, ID stabili)
 
