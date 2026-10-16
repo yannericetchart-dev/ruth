@@ -74,3 +74,13 @@ Il vecchio checkout locale con modifiche e' conservato senza interventi.
   non noto o collaudo pendente sono storici e ora sostituiti da questa voce.
 - La prossima porzione richiede descrizione funzionale e nuovo semaforo verde.
   Nessun dato macchina o log incluso (DATA-001).
+
+## Seconda porzione DEP-001 (16 ottobre 2026)
+
+Perimetro [DEP-SCOPE-001](environment/dependencies/MIGRATION_SCOPE.md)
+approvato dall'utente. Pianificazione corrente: dipendenze Python generiche
+prima dell'hardware, diagnostica DIAG-001 distinta. Provenienza parziale:
+`ruth_runtime/venv_packages.py`, commit storico
+`4ceea508025650ed64b33190834d0b5c85f69db2`.
+Stato di candidatura: implementato sul ramo work, test e promozioni pendenti.
+Non importare lock CUDA o dati host, non installare pacchetti (DATA-001).
