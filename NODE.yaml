@@ -18,10 +18,12 @@
   "flags": [
     "in_scope"
   ],
-  "blocked_by": [],
+  "blocked_by": [
+    "PY-MANUAL-001"
+  ],
   "depends_on": [],
   "api": [
-    "runtime.inspect_environment(project_root: Path) -> PythonEnvironment [implementata e verificata in environment/main; ancora non integrata in main]"
+    "runtime.inspect_environment(project_root: Path) -> PythonEnvironment [integrata in main; ispezione Python sperimentale]"
   ],
   "tasks": [
     {
@@ -36,9 +38,9 @@
     },
     {
       "id": "MIG-001",
-      "state": "active",
-      "description": "PY-001 integrata in environment/main tramite PR #3; completare la promozione al main di progetto e il collaudo manuale."
+      "state": "blocked",
+      "description": "PY-001 integrata in main tramite PR #8; prossimo componente bloccato fino a PY-MANUAL-001 e sincronizzazione locale sicura."
     }
   ],
-  "verification_scope": "GitHub Actions run 38885972247 su 5fc816407f5c8873fd2ed39baa9d5293a9810c73: test sintetici isolamento Python, test ingresso Ruth, test mappe e maps --check; nessuna prova nativa hardware"
+  "verification_scope": "PY-001: GitHub Actions run 38885972247 e run 38886317198 conclusi con successo (test Python su fixture sintetiche, API pubbliche, test ingresso Ruth, test mappe e tools/maps.py --check). Non verifica GPU, pacchetti nativi o hardware; collaudo personale PY-MANUAL-001 pendente."
 }

@@ -1,29 +1,20 @@
-# Python: indice di lavoro in main
+# Python: checkpoint PY-001
 
-PY-001 e' integrata in environment/python/main tramite
-[PR #2](https://github.com/yannericetchart-dev/ruth/pull/2), merge
-`8c76080df5ba34e354f484c92adf7e132b594c2d`. Stato del componente aggiornato
-al commit `b80520ad903ff18f93398725ea95cd91f51da5d8`.
+PY-001 implementata, revisionata, verificata e integrata tecnicamente
+in main; contratto sperimentale in sola lettura.
 
-La sola ispezione Python e' implementata, testata e revisionata (PY-REV-001)
-in quella revisione. PY-PROMOTE-001 completata; il codice non e' ancora
-integrato in environment/main.
+- PY-REV-001: correzione configurazione malformata ripetuta e verifica API.
+- PY-PROMOTE-001: PR #2 in environment/python/main, b80520ad903ff18f93398725ea95cd91f51da5d8.
+- PY-PROMOTE-002: PR #3 in environment/main, fd61723874052053f38446ee82eca954870804e1.
+- PY-PROMOTE-003: PR #8 in main, ce1b0bb47b4ae4ad0da40f3f83c964b66015680f.
+- PY-SCOPE-001: approvato dall'utente il 16 ottobre 2026.
+- Verifiche remote: run 38885972247 e 38886317198, entrambe success.
+  Fixture virtualenv sintetiche, tre API pubbliche, ingresso Ruth, mappe.
+- Effetti: sola lettura, nessuna installazione o raccolta telemetria.
 
-Revisione funzionale [PY-SCOPE-001](MIGRATION_SCOPE.md): semaforo verde
-concesso dall'utente il 16 ottobre 2026. Dopo il verde, completare autonomamente le promozioni
-a environment/main e main secondo MIG-FLOW-001, senza conferme a ogni merge.
-
-Prima di passare alla migrazione successiva, PY-MANUAL-001 richiede che
-l'utente avvii Ruth localmente dal punto d'ingresso di main, osservi i
-messaggi della funzione e confermi l'esito positivo (MIG-FLOW-002).
-Collegamento al punto d'ingresso e collaudo non ancora realizzati.
-Questo branch main contiene lo scaffold, senza il codice della porzione.
-Vedere il
-[checkpoint della porzione](https://github.com/yannericetchart-dev/ruth/blob/b80520ad903ff18f93398725ea95cd91f51da5d8/environment/python/CHECKPOINT.md).
-
-## PY-PROMOTE-002: integrazione in environment/main (16 ottobre 2026)
-
-- PR #3 integrata in environment/main al merge `fd61723874052053f38446ee82eca954870804e1`.
-- Verifiche remote sulla revisione candidata `5fc816407f5c8873fd2ed39baa9d5293a9810c73`: GitHub Actions run `38885972247`, esito positivo (suite Python e test root, mappe coerenti, nessun file tracciato generato).
-- API Python, catena environment/runtime e main.py integrate in environment/main; in main resta da promuovere. Nessun dato utente o log versionato.
-- Prossimo passo: PR environment/main -> main, verifica sul commit effettivo e aggiornamento dei nodi/checkpoint fino alla radice. `local_sync: pending_final_merge`, collaudo PY-MANUAL-001 non eseguito.
+PY-MANUAL-001: `pending`. Dopo sincronizzazione sicura di main, l'utente
+deve eseguire personalmente Ruth tramite `python3 main.py`, confermare
+la revisione provata e l'esito positivo. Checkout locale precedente su
+branch di lavoro con modifiche, `local_sync: blocked_divergence`;
+nessun dato o lavoro locale viene scartato. Vietata migrazione successiva
+prima della conferma positiva (MIG-FLOW-002).

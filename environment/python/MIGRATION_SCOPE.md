@@ -5,8 +5,8 @@ Porzione: PY-001. Regola di esecuzione: MIG-FLOW-001.
 
 Il codice e' gia implementato in environment/python/main alla revisione
 `b80520ad903ff18f93398725ea95cd91f51da5d8`, con revisione tecnica completata.
-Non e' ancora presente in environment/main o main. Questo documento descrive
-il perimetro da revisionare prima di completarne le promozioni.
+Il codice e' stato promosso in environment/main tramite PR #3 e in main
+tramite PR #8. Questo documento conserva il perimetro approvato.
 
 ## Funzioni
 
@@ -81,6 +81,7 @@ Registrare revisione provata e stato del collaudo nel checkpoint; mantenere
 log e risultati reali esclusivamente locali. PY-MANUAL-001 e' pianificata;
 non e' stato eseguito o confermato un collaudo personale.
 
-Stato implementazione dell'ingresso: candidato in PR #3, non ancora integrato in main. Verifica sulla revisione remota e collaudo utente ancora necessari.
+Stato implementazione dell'ingresso: integrato in main tramite PR #8.
+Test GitHub superati (run 38885972247 e 38886317198); collaudo personale ancora necessario.
 
 Verifica: GitHub Actions run 38885972247 superato; primo merge in environment/main `fd61723874052053f38446ee82eca954870804e1`. Promozione in main e collaudo personale ancora pendenti.

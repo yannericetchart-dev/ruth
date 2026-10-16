@@ -45,9 +45,11 @@ La provenienza puntuale e i conflitti fra implementazioni si risolvono prima
 di ogni porzione; non dedurre il comportamento dai nomi dei branch. Le API
 proposte possono cambiare con decisione registrata e aggiornamento dei padri.
 
-## PY-PROMOTE-002: integrazione in environment/main (16 ottobre 2026)
+## Stato PY-001 (16 ottobre 2026)
 
-- PR #3 integrata in environment/main al merge `fd61723874052053f38446ee82eca954870804e1`.
-- Verifiche remote sulla revisione candidata `5fc816407f5c8873fd2ed39baa9d5293a9810c73`: GitHub Actions run `38885972247`, esito positivo (suite Python e test root, mappe coerenti, nessun file tracciato generato).
-- API Python, catena environment/runtime e main.py integrate in environment/main; in main resta da promuovere. Nessun dato utente o log versionato.
-- Prossimo passo: PR environment/main -> main, verifica sul commit effettivo e aggiornamento dei nodi/checkpoint fino alla radice. `local_sync: pending_final_merge`, collaudo PY-MANUAL-001 non eseguito.
+- Perimetro PY-SCOPE-001 approvato; ispezione Python in sola lettura e ingresso `python3 main.py`.
+- Promozione foglia: PR #2 in environment/python/main, commit b80520ad903ff18f93398725ea95cd91f51da5d8.
+- Promozione intermedia: PR #3, merge environment/main fd61723874052053f38446ee82eca954870804e1.
+- Integrazione principale: PR #8, merge main ce1b0bb47b4ae4ad0da40f3f83c964b66015680f.
+- Test su GitHub superati: run 38885972247 e 38886317198 (Python sintetico, API, ingresso ufficiale, mappe). Nessun collaudo macchina nativa.
+- `local_sync: blocked_divergence` per il checkout principale osservato su branch di lavoro con modifiche; non sovrascrivere nulla. Il collaudo personale PY-MANUAL-001 e' in attesa della sincronizzazione sicura e della conferma positiva.
