@@ -72,3 +72,18 @@ collaudo utente sulla revisione provata (MIG-FLOW-002).
 CONT-001, PLAN-001, SCOPE-001, MIG-FLOW-001/002, REMOTE-001,
 MAIN-FLOW-001, DATA-001, DEP-ORDER-001, DIAG-SCOPE-001,
 HW-SCOPE-001. SYNC-001 e' storica e superseded.
+
+## GPU-001: perimetro approvato, candidato tecnico (16 ottobre 2026)
+
+- GPU-SCOPE-001 approvato dall'utente: sola NVIDIA da nvidia-smi,
+  nome/modello, VRAM totale e quantita; timeout/errori gestiti senza
+  presupporre GPU assente; AMD/Intel non migrati.
+- Codice candidato in `hardware/gpu/nvidia/work/GPU-001`, con
+  contratti GPUReport/GPUDevice e quinto passaggio in `main.py`.
+- **Stato:** implemented (candidato), verification not_run,
+  integration not_merged, GPU-MANUAL-001 planned.
+- Prossima azione: CI, mappe, PR fino a main, checkpoint finali;
+  poi collaudo personale GPU-MANUAL-001. Nessuna migrazione successiva
+  senza accettazione manuale.
+- REMOTE-001: vecchio checkout sporco intatto, nessun accesso al clone
+  pulito per sync. DATA-001: non versionare output reali.

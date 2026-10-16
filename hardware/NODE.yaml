@@ -13,8 +13,8 @@
   "development": "active",
   "implementation": "complete",
   "maturity": "experimental",
-  "verification": "passed",
-  "integration": "merged",
+  "verification": "stale",
+  "integration": "partial",
   "flags": [
     "in_scope"
   ],
@@ -49,7 +49,12 @@
       "id": "HW-PROMOTE-002",
       "state": "complete",
       "description": "PR #27 promossa in main; merge 35a6ac79a1b1287090c1a3d1dc9208d4129a15ec."
+    },
+    {
+      "id": "HW-GPU-001",
+      "state": "active",
+      "description": "Estendere l'inventario GPU alla sola NVIDIA, lasciando intatti CPU/RAM; dopo test e merge richiedere collaudo utente."
     }
   ],
-  "verification_scope": "HW-001/CPU-001: CI GitHub runs 38913317440, 38913438829, 38913533057 passed (74 test sintetici e 249 mappe); PR #25, #26, #27 integrate. Collaudo personale HW-MANUAL-001 passed il 16 ottobre 2026 sul commit 59b26fd6b427e6756ce0285fee60590cb077ebf1, con sequenza PY->DEP->DIAG->HW e report CPU/RAM disponibili; non certifica GPU, CUDA, backend o inferenza."
+  "verification_scope": "GPU-001 NVIDIA: candidato read-only con nvidia-smi a parametri fissi e timeout; fixture sintetiche per modello/VRAM/multi-GPU e fallimenti, CI da eseguire. GPU AMD/Intel, driver, CUDA e inferenza esclusi; HW GPU manuale da confermare."
 }

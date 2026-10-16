@@ -6,11 +6,11 @@ Nodo responsabile: [ROOT](NODE.yaml). Ripresa: [START_HERE](START_HERE.md).
 
 Coordinare i sottosistemi tramite API comuni.
 
-Sviluppo: **active**; codice: **partial**; maturita: experimental; verifica: passed; integrazione: merged.
+Sviluppo: **active**; codice: **partial**; maturita: experimental; verifica: stale; integrazione: partial.
 
 Flag: in_scope. Blocchi: nessuno registrato.
 
-Ambito verifica: HW-001/CPU-001: CI GitHub runs 38913317440, 38913438829, 38913533057 passed (74 test sintetici e 249 mappe); PR #25, #26, #27 integrate. Collaudo personale HW-MANUAL-001 passed il 16 ottobre 2026 sul commit 59b26fd6b427e6756ce0285fee60590cb077ebf1, con sequenza PY->DEP->DIAG->HW e report CPU/RAM disponibili; non certifica GPU, CUDA, backend o inferenza.
+Ambito verifica: GPU-001 NVIDIA: candidato read-only con nvidia-smi a parametri fissi e timeout; fixture sintetiche per modello/VRAM/multi-GPU e fallimenti, CI da eseguire. GPU AMD/Intel, driver, CUDA e inferenza esclusi; HW GPU manuale da confermare.
 
 ## Attivita locali
 
@@ -22,12 +22,13 @@ Ambito verifica: HW-001/CPU-001: CI GitHub runs 38913317440, 38913438829, 389135
 6. `MAIN-MANUAL-001` [complete] Utente: avvio sequenziale di main.py dal checkout main pulito, prima Python poi controllo pip, output conforme; commit 3f08cbad9ec06f814031bd1cbcbdc25553bd82ae verificato il 16 ottobre 2026.
 7. `MIG-003` [complete] DIAG-001 implementata, verificata e integrata via PR #22; DIAG-MANUAL-001 superato sul commit b379d2d8a228f55101eb98a19bfb14e8fc7a4bcb (sequenza PY->DEP->DIAG). Prossimo componente soltanto dopo nuovo perimetro approvato.
 8. `MIG-004` [complete] HW-SCOPE-001 CPU/RAM implementata, verificata e integrata via PR #27; collaudo personale HW-MANUAL-001 positivo sul commit 59b26fd6b427e6756ce0285fee60590cb077ebf1 (PY->DEP->DIAG->HW). Prossima porzione richiede nuovo perimetro approvato.
+9. `MIG-005` [active] GPU-SCOPE-001 NVIDIA approvato; quinto passaggio GPU e API read-only candidate da testare/promuovere sino a main, collaudo GPU-MANUAL-001 previsto.
 
 ## Componenti (ordine locale, ID stabili)
 
 1. [CORE: Contratti e orchestrazione](runtime/ROADMAP.md) — active; partial; passed.
 2. [ENV: Ambiente](environment/ROADMAP.md) — active; partial; passed.
-3. [HW: Hardware](hardware/ROADMAP.md) — active; complete; passed.
+3. [HW: Hardware](hardware/ROADMAP.md) — active; complete; stale.
 4. [MODEL: Modelli](models/ROADMAP.md) — inactive; skeleton; not_run.
 5. [INF: Inferenza](inference/ROADMAP.md) — inactive; skeleton; not_run.
 6. [PROF: Profilazione](profiling/ROADMAP.md) — inactive; skeleton; not_run.

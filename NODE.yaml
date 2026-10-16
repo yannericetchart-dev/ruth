@@ -13,8 +13,8 @@
   "development": "active",
   "implementation": "partial",
   "maturity": "experimental",
-  "verification": "passed",
-  "integration": "merged",
+  "verification": "stale",
+  "integration": "partial",
   "flags": [
     "in_scope"
   ],
@@ -22,7 +22,7 @@
   "depends_on": [],
   "api": [
     "runtime.inspect_environment(project_root: Path) -> PythonEnvironment [integrata in main; ispezione Python sperimentale]",
-    "main(argv: Sequence[str] = ()) -> int [sequenza PY->DEP->DIAG->HW integrata in main; modalita mirate disponibili]"
+    "main(argv: Sequence[str] = ()) -> int [sequenza PY->DEP->DIAG->HW integrata in main; GPU NVIDIA candidata; modalita mirate disponibili]"
   ],
   "tasks": [
     {
@@ -64,7 +64,12 @@
       "id": "MIG-004",
       "state": "complete",
       "description": "HW-SCOPE-001 CPU/RAM implementata, verificata e integrata via PR #27; collaudo personale HW-MANUAL-001 positivo sul commit 59b26fd6b427e6756ce0285fee60590cb077ebf1 (PY->DEP->DIAG->HW). Prossima porzione richiede nuovo perimetro approvato."
+    },
+    {
+      "id": "MIG-005",
+      "state": "active",
+      "description": "GPU-SCOPE-001 NVIDIA approvato; quinto passaggio GPU e API read-only candidate da testare/promuovere sino a main, collaudo GPU-MANUAL-001 previsto."
     }
   ],
-  "verification_scope": "HW-001/CPU-001: CI GitHub runs 38913317440, 38913438829, 38913533057 passed (74 test sintetici e 249 mappe); PR #25, #26, #27 integrate. Collaudo personale HW-MANUAL-001 passed il 16 ottobre 2026 sul commit 59b26fd6b427e6756ce0285fee60590cb077ebf1, con sequenza PY->DEP->DIAG->HW e report CPU/RAM disponibili; non certifica GPU, CUDA, backend o inferenza."
+  "verification_scope": "GPU-001 NVIDIA: candidato read-only con nvidia-smi a parametri fissi e timeout; fixture sintetiche per modello/VRAM/multi-GPU e fallimenti, CI da eseguire. GPU AMD/Intel, driver, CUDA e inferenza esclusi; HW GPU manuale da confermare."
 }

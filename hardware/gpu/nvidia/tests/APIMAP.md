@@ -1,0 +1,7 @@
+# NVIDIA / hardware/gpu/nvidia/tests
+
+Generato da NODE.yaml con `python3 tools/maps.py --write`; modificare i metadati.
+
+Nodo responsabile: [NVIDIA](../NODE.yaml). Ripresa: [START_HERE](../../../../START_HERE.md).
+
+Nessun contratto autonomo. Fare riferimento a [APIMAP del responsabile](../APIMAP.md).

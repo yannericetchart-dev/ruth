@@ -233,3 +233,20 @@ Ogni sostituzione deve collegare entrambe le decisioni e aggiornare le mappe.
   `59b26fd6b427e6756ce0285fee60590cb077ebf1`, con sequenza PY -> DEP -> DIAG -> HW.
   GPU e compatibilita' di inferenza non sono state verificate
   ne' autorizzate in HW-SCOPE-001.
+
+## GPU-SCOPE-001: provider NVIDIA read-only prima di AMD e Intel
+
+- Stato: accepted; approvazione esplicita dell'utente il 16 ottobre 2026.
+- Funzioni: `hardware.gpu.nvidia.detect`, `hardware.gpu.detect`;
+  modello, conteggio, VRAM totale e stato di interrogazione, con
+  distinzione tra utility mancante, driver non interrogabile, timeout
+  e risposte vuote o parziali. Nessun dato GPU salvato su Git.
+- Ingressi: esclusivamente nvidia-smi presente, subprocess senza shell
+  e con timeout, parametri fissi e parsing bounded. Non installare nulla.
+- Ingresso Ruth: quinto passaggio di `main.py`, dopo HW CPU/RAM,
+  indipendente da un virtualenv conforme o dalla presenza della utility.
+- Non approvate: migrazioni AMD/Intel, driver, CUDA e backend,
+  benchmark, memoria disponibile, inferenza e diagnostica nativa.
+- Controlli: test sintetici, CI e mappe prima di ogni promozione;
+  GPU-MANUAL-001 personale dopo merge, prima di altra migrazione.
+- Vincoli: MAIN-FLOW-001, MIG-FLOW-001/002, REMOTE-001, DATA-001.
