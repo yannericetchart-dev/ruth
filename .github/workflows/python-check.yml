@@ -1,7 +1,7 @@
 name: Verify Ruth Python and dependencies
 on:
   pull_request:
-    branches: [main, environment/main, environment/dependencies/main, environment/diagnostics/main]
+    branches: [main, environment/main, environment/dependencies/main, environment/diagnostics/main, hardware/main, hardware/cpu/main]
   push:
     branches: [main, environment/main, environment/dependencies/main]
 jobs:
@@ -24,6 +24,10 @@ jobs:
           if [ -f environment/diagnostics/tests/test_inspection.py ]; then
             python3 -m unittest discover -s environment/diagnostics/tests -v
           fi
+      - name: CPU inventory tests
+        run: python3 -m unittest discover -s hardware/cpu/tests -v
+      - name: Hardware inventory tests
+        run: python3 -m unittest discover -s hardware/tests -v
       - name: Root tests and entrypoint
         run: python3 -m unittest discover -s tests -v
       - name: Check generated maps
