@@ -1682,12 +1682,15 @@ logits shapes. No CUDA execution
 or production profile change is
 authorized by this command.
 The BF16/BF16 controlled comparison
-is still **pending** until its
-numeric JSON is supplied. An
-additional confounded F32/F32 OFF
-vs BF16/F16 ON compare can be made
-later, but cannot isolate a
-single cache dtype change.
+has now **completed successfully**.
+Its numerical JSON metrics, hashes and
+limitations are recorded in the following
+section. An additional confounded F32/F32
+OFF vs BF16/F16 ON comparison has
+**not** yet been performed at ctx1024;
+it cannot isolate a single cache dtype
+change, and is not required to complete
+the controlled V-precision comparison.
 
 The next ctx2048 GPU experiment
 requires separate authorization
@@ -1695,6 +1698,118 @@ and success of the existing
 native preflight. No automatic
 context escalation, download,
 fallback or promotion is approved.
+
+## Verified Phase 28 controlled numerical comparison — n_ctx=1024
+
+The user ran the read-only Phase28 logits comparator on
+two local ctx1024 artifacts, after the guarded Bash
+baseline glob returned exactly one BF16/BF16 Flash ON
+file. The comparator independently reported
+`status=full_logits_numeric_comparison`,
+`same_teacher_forced_tokens=true`,
+`n_ctx=1024`, `vocabulary=262144`,
+`top1_match_fraction=1.0`,
+`reference_precision_is_ground_truth=false`,
+`native_kernel_dispatch_verified=false`, and
+`production_qualified=false`.
+
+**Controlled variables:** Gemma 3 1B IT BF16 GGUF,
+same teacher-forced tokens and context length,
+K=BF16, Flash ON; only stored V dtype changes
+BF16→F16. Backend kernel selection and
+temporary conversions may still differ.
+
+**Observed artifacts:**
+
+- Baseline BF16/BF16 Flash ON at ctx1024:
+  local path prefix
+  `.ruth-build/phase28/gemma-3-1b-it/ctx-1024_flash-on_k-BF16_v-BF16_*.npz`
+  (exact basename is **not available** in the
+  reported JSON). Its full-file SHA256 was
+  `b59adb7dc00eb103b255d0ffbab8ab0425c71c868b2f1c85d48d4ea90261c167`.
+- Candidate BF16/F16 Flash ON at ctx1024:
+  `.ruth-build/phase28/gemma-3-1b-it/ctx-1024_flash-on_k-BF16_v-F16_easavhiv.npz`,
+  SHA256
+  `d93ec1476381685c029b5f50c0a5bca956eb0cb6670d3fdb6da1b18044f0ca58`.
+
+**Observed numeric metrics, across two sampled
+full-vocabulary logit positions (last prefill
+and last decode):**
+
+| Metric | Result |
+|---|---:|
+| Jensen–Shannon mean (nats) | 4.4264470887242736e-08 |
+| KL baseline→candidate mean (nats) | 1.7772785404097928e-07 |
+| KL candidate→baseline mean (nats) | 1.764449849155692e-07 |
+| RMS logit difference | 0.028662088104959633 |
+| Mean absolute logit difference | 0.023109153727887133 |
+| Maximum absolute logit difference | 0.13928604125976562 |
+| Top-1 agreement | 2/2 |
+
+Per-position measurements:
+
+| Position | KL baseline→candidate (nats) | Max absolute logit difference | Top-1 |
+|---|---:|---:|---|
+| Last prefill, index 0 | 9.557285614792214e-08 | 0.13928604125976562 | equal |
+| Last decode, index 1 | 2.5988285193403645e-07 | 0.12633800506591797 | equal |
+
+### Across-context V-precision experiment — native success and two-position metrics
+
+| ctx | JS mean (nats) | KL baseline→candidate mean (nats) | RMS logits | Max abs logits | Top-1 |
+|---:|---:|---:|---:|---:|---|
+| 256 | 8.647140722172348e-07 | 3.450529555342461e-06 | 0.012705533198433759 | 0.062470436096191406 | 2/2 |
+| 512 | 1.6112830324160837e-07 | 6.386638597335922e-07 | 0.019654959610093344 | 0.10388755798339844 | 2/2 |
+| 1024 | 4.4264470887242736e-08 | 1.7772785404097928e-07 | 0.028662088104959633 | 0.13928604125976562 | 2/2 |
+
+While raw-logit RMS and maximum
+absolute differences increased in
+these three samples, mean softmax
+KL/JS divergences decreased. These
+metrics have distinct mathematical
+definitions, and different context
+experiments have different prompt
+lengths/relative token positions:
+**do not infer monotonic improvements
+in model accuracy or degradation in
+long-sequence generation** from this
+table. The final-decode KL exceeded
+final-prefill KL by approximately
+2.72× at ctx1024, whereas ctx256 and
+ctx512 showed different prefill/decode
+relationships. No intermediate logits
+were saved, and the tests are
+teacher-forced, not sampled text
+generation. Top-1 2/2 at each context
+is a narrow observation, not a
+guarantee of sequence equivalence.
+
+**Current matrix:** 14/16 native-successful
+candidate/context cases (complete four
+candidate columns at ctx256, ctx512,
+ctx1024). The two remaining native
+tests are `f32-off` and `mixed-on`
+at ctx2048. Neither has been executed
+as a Phase28 native experiment in this
+report. The next safe step is to inspect
+the single-case **read-only plan** for
+F32/F32 Flash OFF at ctx2048:
+
+```bash
+.venv/bin/python -m ruth_runtime.gemma3_phase28 \
+  --candidate f32-off --n-ctx 2048
+```
+
+Expected source-derived planning values:
+1536 prefill tokens (24 chunks of 64),
+16 teacher-forced decode calls, 104 MiB
+logical F32/F32 KV. The corresponding
+mixed BF16/F16 Flash ON planning size
+would be 52 MiB. These are not claims
+of observed native buffers or GPU fit
+for these still-unrun combinations.
+No automatic inference, downloads,
+CPU fallback, pinned native library
+modification or production promotion.
 
 ## Promotion gate
 
