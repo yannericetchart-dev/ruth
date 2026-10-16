@@ -94,3 +94,13 @@
   restano storiche, non rappresentano lo stato corrente.
 - Prossima porzione senza approvazione: richiede nuovo scope
   secondo MIG-FLOW-001/002. DATA-001 e REMOTE-001 invariati.
+
+## GGUF-INDEX-001 candidata (16 ottobre 2026)
+
+- Perimetro GGUF-INDEX-SCOPE-001 approvato. Indici descriptor-only
+  da catalogo, nono passo Ruth; implementazione candidata sul
+  branch remoto, verifiche/integrazione non ancora eseguite.
+- Nessun tensore o dato host nel repo; fixture sintetiche e CI
+  ancora da verificare. GGUF-INDEX-MANUAL-001 dopo merge main.
+- GGUF-META-MANUAL-001 resta accettata: stato storico precedente
+  non deve essere invertito. MIG-FLOW-001/002 e DATA-001 vigenti.

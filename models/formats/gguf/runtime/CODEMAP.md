@@ -12,3 +12,4 @@ Contenuto riservato a: implementazioni eseguibili.
 - [contracts.py](contracts.py)
 - [metadata.py](metadata.py)
 - [reader.py](reader.py)
+- [tensor_index.py](tensor_index.py)

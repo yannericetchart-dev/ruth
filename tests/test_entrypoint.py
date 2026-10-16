@@ -10,7 +10,7 @@ from environment.runtime.contracts import DependencyPlan, PackageState, PythonEn
 from hardware import DeviceInfo, ResourceReport, HardwareReport
 from hardware.gpu import GPUDevice, GPUReport
 from models.catalog import ModelCatalog, ModelRecord
-from models.formats.gguf import GGUFReport, GGUFHeader, GGUFMetadata, GGUFMetadataReport
+from models.formats.gguf import GGUFReport, GGUFHeader, GGUFMetadata, GGUFMetadataReport, GGUFTensorIndex, GGUFTensorIndexReport
 
 
 def python_report(root: str, good: bool, reasons: tuple[str, ...]) -> PythonEnvironment:
@@ -53,6 +53,9 @@ class EntrypointTests(unittest.TestCase):
         self.meta_patcher = patch("main.inspect_all_metadata", return_value=GGUFMetadataReport("not_configured", ()))
         self.meta_mock = self.meta_patcher.start()
         self.addCleanup(self.meta_patcher.stop)
+        self.index_patcher = patch("main.inspect_all_tensor_indexes", return_value=GGUFTensorIndexReport("not_configured", ()))
+        self.index_mock = self.index_patcher.start()
+        self.addCleanup(self.index_patcher.stop)
 
     def test_ok_runs_python_then_dependencies_then_diagnostics(self):
         py = python_report("synthetic", True, ())
@@ -81,6 +84,7 @@ class EntrypointTests(unittest.TestCase):
         cat.assert_called_once_with(project_root=Path(main.__file__).resolve().parent)
         self.gguf_mock.assert_called_once_with(project_root=Path(main.__file__).resolve().parent)
         self.meta_mock.assert_called_once_with(project_root=Path(main.__file__).resolve().parent)
+        self.index_mock.assert_called_once_with(project_root=Path(main.__file__).resolve().parent)
         self.assertIn("RAM fisica totale (byte): 4096", printed)
         self.assertLess(printed.index("avvio inventario hardware"), printed.index("avvio inventario GPU NVIDIA"))
         self.assertIn("GPU NVIDIA: 1 rilevate; stato available", printed)
@@ -90,6 +94,8 @@ class EntrypointTests(unittest.TestCase):
         self.assertIn("controllo GGUF: not_configured", printed)
         self.assertLess(printed.index("avvio controllo intestazioni GGUF dichiarate"), printed.index("avvio controllo metadati GGUF dichiarati"))
         self.assertIn("metadati GGUF: not_configured", printed)
+        self.assertLess(printed.index("avvio controllo metadati GGUF dichiarati"), printed.index("avvio controllo indici tensori GGUF dichiarati"))
+        self.assertIn("indici GGUF: not_configured", printed)
         self.assertIn("sequenza controlli completata", printed)
 
     def test_invalid_python_still_diagnosed_but_packages_skipped(self):
@@ -233,6 +239,7 @@ class EntrypointTests(unittest.TestCase):
         python.assert_not_called()
         self.gguf_mock.assert_not_called()
         self.meta_mock.assert_not_called()
+        self.index_mock.assert_not_called()
 
 
 class GGUFEntrypointTests(unittest.TestCase):
@@ -278,6 +285,28 @@ class MetadataEntrypointTests(unittest.TestCase):
                 status = main.main(("gguf-metadata",))
         self.assertEqual(status, 1)
         self.assertIn("stato truncated_metadata", out.getvalue())
+
+
+class IndexEntrypointTests(unittest.TestCase):
+    def test_targeted_index_check(self):
+        record = GGUFTensorIndex("synthetic", "index_checked", 1)
+        with patch("main.inspect_all_tensor_indexes", return_value=GGUFTensorIndexReport("inspected", (record,))) as inspect, patch("main.inspect_environment") as py:
+            out = StringIO()
+            with redirect_stdout(out):
+                code = main.main(("gguf-index",))
+        self.assertEqual(code, 0)
+        self.assertIn("1 descrittori coerenti", out.getvalue())
+        inspect.assert_called_once_with(project_root=Path(main.__file__).resolve().parent)
+        py.assert_not_called()
+
+    def test_unknown_tensor_type_is_not_misreported_as_verified(self):
+        record = GGUFTensorIndex("synthetic", "size_unverified", 2, 1)
+        with patch("main.inspect_all_tensor_indexes", return_value=GGUFTensorIndexReport("partial", (record,))):
+            out = StringIO()
+            with redirect_stdout(out):
+                code = main.main(("gguf-index",))
+        self.assertEqual(code, 1)
+        self.assertIn("stato size_unverified", out.getvalue())
 
 
 if __name__ == "__main__":
