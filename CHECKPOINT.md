@@ -144,3 +144,14 @@ e DIAG-SCOPE-001. SYNC-001 resta storica/superseded.
 - Nessun dato reale, inventario, output grezzo o manifest e' pubblicato
   (DATA-001). La prossima porzione richiede nuovo scope e via libera esplicito
   (MIG-FLOW-001), prima di qualsiasi migrazione.
+
+## GGUF-SCOPE-001 autorizzato (16 ottobre 2026)
+
+- GGUF-MANUAL-001 non avviato: e' necessario solo dopo l'integrazione.
+- Nuova porzione MIG-007 autorizzata esplicitamente, dopo il collaudo CAT.
+  Scopo: introspezione read-only dei soli 24 byte di header GGUF per modelli
+  dichiarati da CAT; controlli di magic, versione, endian e contatori.
+- Candidato remoto su `models/formats/gguf/work/GGUF-001`;
+  implementazione candidata, verifiche/CI e promozioni ancora pendenti.
+- Nessun download, metadata payload, tensor, inferenza, CUDA o modifiche host.
+  Nessun dato reale in Git (DATA-001).

@@ -282,3 +282,17 @@ Ogni sostituzione deve collegare entrambe le decisioni e aggiornare le mappe.
   sul commit `90e57f106fb664b0257775260044125ea85228e2` (MIG-FLOW-002); GGUF,
   Hugging Face, scansione, acquisizione e inferenza non inclusi.
   Nessuna nuova porzione funzionale e' approvata implicitamente.
+
+## GGUF-SCOPE-001: intestazione dei soli GGUF catalogati
+
+- Stato: accepted; approvazione esplicita dell'utente il 16 ottobre 2026.
+- Scopo: esaminare i primi 24 byte dei soli artefatti GGUF dichiarati da
+  CAT-001; leggere firma, versione e contatori, restituendo report immutabili
+  e codici di errore portabili, senza certificare il file intero.
+- Ingresso: settimo passaggio automatico di `main.py`, dopo CAT, con
+  skip non bloccante per catalogo assente/vuoto; comando mirato GGUF.
+- Proibiti: scansione file non catalogati, download, rete, installazioni,
+  lettura metadata/tensori/pesi, Hugging Face, CUDA e inferenza.
+- Verifica: fixture sintetiche, CI, mappe e PR fino a main; successivo
+  GGUF-MANUAL-001 personale obbligatorio secondo MIG-FLOW-002.
+- Vincoli: MIG-FLOW-001/002, REMOTE-001, DATA-001 e MAIN-FLOW-001.

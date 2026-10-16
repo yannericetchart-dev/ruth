@@ -298,3 +298,12 @@ GPU-MANUAL-001 richiesta solo dopo main, secondo MIG-FLOW-002.
   e collaudo CAT-MANUAL-001 passato. Le precedenti voci di attesa sono storiche.
 - Il prossimo componente rimane da approvare secondo MIG-FLOW-001/002;
   dati locali esclusi dal repository secondo DATA-001.
+
+## GGUF-SCOPE-001 approvato (16 ottobre 2026)
+
+- Scopo circoscritto alla lettura dei 24 byte dell'intestazione di soli GGUF
+  esplicitamente dichiarati, con codici portabili; nessuna lettura dei pesi.
+- Destinazione `models/formats/gguf/runtime`, settimo controllo di `main.py`.
+- Approvazione utente acquisita, lavoro remoto candidato; test e promozioni
+  pendenti. Dopo main obbligatorio GGUF-MANUAL-001 personale.
+- Perimetro: [GGUF-SCOPE-001](models/formats/gguf/MIGRATION_SCOPE.md).
