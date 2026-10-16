@@ -10,4 +10,5 @@ Contenuto riservato a: implementazioni eseguibili.
 
 - [__init__.py](__init__.py)
 - [contracts.py](contracts.py)
+- [metadata.py](metadata.py)
 - [reader.py](reader.py)

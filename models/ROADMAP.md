@@ -16,6 +16,7 @@ Ambito verifica: CAT-001: CI GitHub 38928909391, 38929028829, 38929118836 succes
 
 1. `MODEL-001` [active] Catalogo locale CAT-001 verificato, integrato in main tramite PR #38 e accettato personalmente (CAT-MANUAL-001); altri componenti Models restano skeleton e richiedono nuova approvazione.
 2. `MODEL-002` [complete] GGUF-001 header-only catalog reader CI-verified and integrated via PR #44; manual GGUF-MANUAL-001 passed on ab81696dc93bc5d71a208cbcdc9a6f714b462fa9. Other Models work still requires scope approval.
+3. `MODEL-003` [active] GGUF-META-001 bounded selected metadata of declared GGUF candidate, CI/promotions pending. No tensors/download/inference.
 
 ## Componenti (ordine locale, ID stabili)
 

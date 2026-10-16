@@ -318,3 +318,19 @@ Ogni sostituzione deve collegare entrambe le decisioni e aggiornare le mappe.
   il collaudo non certifica integrita' o capacita' di inferenza.
 - Il perimetro GGUF-SCOPE-001 resta invariato. Nessuna nuova
   migrazione autorizzata implicitamente; applicare MIG-FLOW-001/002.
+
+## GGUF-META-SCOPE-001: metadati tecnici selezionati
+
+- Stato: accepted; approvazione esplicita il 16 ottobre 2026.
+- Ingressi: solo modelli GGUF presenti nel catalogo CAT-001.
+- Uscite: API `inspect_metadata` e `inspect_all_metadata`, report
+  immutabili e campi opzionali dichiarati architecture, file_type
+  e context_length; nessuna compatibilita' inferenza certificata.
+- Limiti bounded a metadati, stringhe, numero di voci, array e
+  profondita'; codici portabili su errori e dati malformati.
+- Ottavo step automatico dopo GGUF, sottocomando `gguf-metadata`;
+  catalogo assente = skip valido. Nessuna scrittura/download/rete.
+- Esclusi pesi, tensor payload, backend, CUDA, Hugging Face e
+  inferenza. Migrazione GitHub-first con CI e maps, poi collaudo
+  personale GGUF-META-MANUAL-001 obbligatorio (MIG-FLOW-002).
+- Nessuna porzione successiva approvata implicitamente.

@@ -15,9 +15,10 @@ Ambito verifica: GGUF-001: CI success runs 38935705385, 38935861881, 38935943414
 ## Attivita locali
 
 1. `FORMAT-001` [complete] Contratto formato minimo delegato al lettore GGUF header-only, verificato in CI e integrato in main via PR #44; formati completi futuri fuori perimetro.
+2. `FORMAT-META-001` [active] GGUF metadata reader candidate delegated by formats; CI and main integration pending.
 
 ## Componenti (ordine locale, ID stabili)
 
-1. [GGUF: GGUF](gguf/ROADMAP.md) — active; complete; passed.
+1. [GGUF: GGUF](gguf/ROADMAP.md) — active; partial; passed.
 
 Propagare impatti e blocchi al [padre](../ROADMAP.md) e proseguire fino alla radice.

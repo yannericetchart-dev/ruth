@@ -22,7 +22,7 @@
   "depends_on": [],
   "api": [
     "runtime.inspect_environment(project_root: Path) -> PythonEnvironment [integrata in main; ispezione Python sperimentale]",
-    "main(argv: Sequence[str] = ()) -> int [sequenza PY->DEP->DIAG->HW->NVIDIA->CAT->GGUF integrata in main; modalita mirate disponibili]"
+    "main(argv: Sequence[str] = ()) -> int [sequenza PY->DEP->DIAG->HW->NVIDIA->CAT->GGUF integrata; META ottava fase candidata in main; modalita mirate disponibili]"
   ],
   "tasks": [
     {
@@ -79,7 +79,12 @@
       "id": "MIG-007",
       "state": "complete",
       "description": "GGUF-SCOPE-001: bounded header reader verified by CI and merged via PR #44; GGUF-MANUAL-001 personally accepted on ab81696dc93bc5d71a208cbcdc9a6f714b462fa9 (catalog not configured). New scope requires approval."
+    },
+    {
+      "id": "MIG-008",
+      "state": "active",
+      "description": "GGUF-META-SCOPE-001 approved 2026-10-16: bounded read-only selected metadata of catalog GGUF with eighth Ruth CLI step. Candidate implementation awaiting CI and promotions; GGUF-META-MANUAL-001 after merge."
     }
   ],
-  "verification_scope": "CAT-001: CI GitHub 38928909391, 38929028829, 38929118836 success (116 test sintetici inclusi 21 catalogo e 20 CLI, 264 mappe). PR #36 models/catalog/main, #37 models/main e #38 main. Manifest locale read-only, file solo dichiarati, niente download, lettura GGUF, inferenza o dati reali Git. CAT-MANUAL-001 confermato positivo sul commit 90e57f106fb664b0257775260044125ea85228e2. GGUF-001: CI success runs 38935705385, 38935861881, 38935943414, 38936032188; PR #41 gguf/main, #42 formats/main, #43 models/main, #44 main (15b106082c4dee37622c61a8afefd248a57464a0). Bounded 24-byte GGUF v2/v3 header, catalog-bound; synthetic tests and recursive maps passed. GGUF-MANUAL-001 accepted on ab81696dc93bc5d71a208cbcdc9a6f714b462fa9 (catalog not configured; no real GGUF read); no model payload or inference."
+  "verification_scope": "CAT-001: CI GitHub 38928909391, 38929028829, 38929118836 success (116 test sintetici inclusi 21 catalogo e 20 CLI, 264 mappe). PR #36 models/catalog/main, #37 models/main e #38 main. Manifest locale read-only, file solo dichiarati, niente download, lettura GGUF, inferenza o dati reali Git. CAT-MANUAL-001 confermato positivo sul commit 90e57f106fb664b0257775260044125ea85228e2. GGUF-001: CI success runs 38935705385, 38935861881, 38935943414, 38936032188; PR #41 gguf/main, #42 formats/main, #43 models/main, #44 main (15b106082c4dee37622c61a8afefd248a57464a0). Bounded 24-byte GGUF v2/v3 header, catalog-bound; synthetic tests and recursive maps passed. GGUF-MANUAL-001 accepted on ab81696dc93bc5d71a208cbcdc9a6f714b462fa9 (catalog not configured; no real GGUF read); no model payload or inference. META-001 approved, candidate, verification not_run and integration pending. Previous passed scope unchanged."
 }

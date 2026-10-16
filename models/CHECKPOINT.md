@@ -58,3 +58,12 @@
   (fixture sintetiche), integration merged, manual acceptance passed.
   Le precedenti voci pendenti o candidate sono storiche.
 - Nessuna nuova migrazione autorizzata; dati reali esclusi (DATA-001).
+
+## GGUF-META-001 candidata (16 ottobre 2026)
+
+- Perimetro GGUF-META-SCOPE-001 approvato; nuova API bounded,
+  ottava fase Ruth, fixture sintetiche e documentazione in sviluppo.
+- Implementazione candidata, verifiche e promozioni pendenti;
+  nessuna modifica all'accettazione GGUF-MANUAL-001 precedente.
+- GGUF-META-MANUAL-001 prevista solo dopo merge in main.
+  Download, tensor payload, inferenza e dati locali restano esclusi.

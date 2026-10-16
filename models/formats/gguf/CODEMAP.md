@@ -18,6 +18,7 @@ La presenza dello scaffold non implica una implementazione runtime.
 ## File
 
 - [CHECKPOINT.md](CHECKPOINT.md)
+- [METADATA_SCOPE.md](METADATA_SCOPE.md)
 - [MIGRATION_SCOPE.md](MIGRATION_SCOPE.md)
 - [NODE.yaml](NODE.yaml)
 - [__init__.py](__init__.py)
