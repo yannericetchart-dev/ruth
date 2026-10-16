@@ -2,7 +2,6 @@
 from contextlib import redirect_stdout
 from io import StringIO
 from pathlib import Path
-from tempfile import TemporaryDirectory
 import unittest
 from unittest.mock import patch
 
@@ -26,51 +25,69 @@ def dep_report(python: PythonEnvironment, status: str = "present_unverified") ->
 
 
 class EntrypointTests(unittest.TestCase):
-    def check(self, good: bool, reasons: tuple[str, ...], expected_code: int):
-        with TemporaryDirectory() as directory:
-            python = python_report(str(Path(directory)), good, reasons)
-            output = StringIO()
-            with (
-                patch("main.inspect_environment", return_value=python) as inspect,
-                patch("main.plan_dependencies", return_value=dep_report(python)) as plan,
-                redirect_stdout(output),
-            ):
-                status = main.main()
-            self.assertEqual(status, expected_code)
-            inspect.assert_called_once()
-            self.assertEqual(inspect.call_args.args[0], Path(main.__file__).resolve().parent)
-            printed = output.getvalue()
-            self.assertIn("sequenza automatica", printed)
-            self.assertIn("avvio controllo ambiente Python", printed)
-            if good:
-                plan.assert_called_once_with(main.DEFAULT_CHECK_PACKAGES, project_root=Path(main.__file__).resolve().parent)
-                self.assertIn("ambiente Python conforme", printed)
-                self.assertIn("pacchetto pip: present_unverified", printed)
-                self.assertLess(printed.index("avvio controllo ambiente Python"), printed.index("avvio controllo dipendenze Python"))
-            else:
-                plan.assert_not_called()
-                self.assertIn("controllo dipendenze saltato", printed)
-                for reason in reasons:
-                    self.assertIn(f"motivo: {reason}", printed)
-
-    def test_ok_runs_python_then_dependencies(self):
-        self.check(True, (), 0)
-
-    def test_nonconforming_stops_before_package_metadata(self):
-        self.check(False, ("configuration_missing", "prefix_mismatch"), 1)
-
-    def test_missing_default_dependency_reports_failure(self):
-        python = python_report("synthetic", True, ())
-        buf = StringIO()
+    def test_ok_runs_python_then_dependencies_then_diagnostics(self):
+        py = python_report("synthetic", True, ())
+        out = StringIO()
         with (
-            patch("main.inspect_environment", return_value=python),
-            patch("main.plan_dependencies", return_value=dep_report(python, "missing")),
-            redirect_stdout(buf),
+            patch("main.inspect_environment", return_value=py) as inspect,
+            patch("main.plan_dependencies", return_value=dep_report(py)) as plan,
+            redirect_stdout(out),
         ):
-            code = main.main()
-        self.assertEqual(code, 1)
-        self.assertIn("pacchetto pip: missing", buf.getvalue())
-        self.assertIn("sequenza controlli terminata con problemi", buf.getvalue())
+            result = main.main()
+        self.assertEqual(result, 0)
+        inspect.assert_called_once_with(Path(main.__file__).resolve().parent)
+        plan.assert_called_once_with(main.DEFAULT_CHECK_PACKAGES, project_root=Path(main.__file__).resolve().parent)
+        printed = out.getvalue()
+        self.assertLess(printed.index("avvio controllo ambiente Python"),
+                        printed.index("avvio controllo dipendenze Python"))
+        self.assertLess(printed.index("avvio controllo dipendenze Python"),
+                        printed.index("avvio diagnostica ambiente"))
+        self.assertIn("diagnostica: ok_unverified", printed)
+        self.assertIn("sequenza controlli completata", printed)
+
+    def test_invalid_python_still_diagnosed_but_packages_skipped(self):
+        py = python_report("synthetic", False, ("configuration_missing", "prefix_mismatch"))
+        out = StringIO()
+        with (
+            patch("main.inspect_environment", return_value=py),
+            patch("main.plan_dependencies") as plan,
+            redirect_stdout(out),
+        ):
+            result = main.main()
+        self.assertEqual(result, 1)
+        plan.assert_not_called()
+        text = out.getvalue()
+        self.assertIn("controllo dipendenze saltato", text)
+        self.assertLess(text.index("controllo dipendenze saltato"),
+                        text.index("avvio diagnostica ambiente"))
+        self.assertIn("venv_configuration_missing", text)
+        self.assertIn("venv_prefix_mismatch", text)
+
+    def test_missing_dependency_explained(self):
+        py = python_report("synthetic", True, ())
+        out = StringIO()
+        with (
+            patch("main.inspect_environment", return_value=py),
+            patch("main.plan_dependencies", return_value=dep_report(py, "missing")),
+            redirect_stdout(out),
+        ):
+            result = main.main()
+        self.assertEqual(result, 1)
+        self.assertIn("pacchetto pip: missing", out.getvalue())
+        self.assertIn("package_missing", out.getvalue())
+        self.assertIn("sequenza controlli terminata con problemi", out.getvalue())
+
+    def test_failed_metadata_lookup_explained(self):
+        py = python_report("synthetic", True, ())
+        out = StringIO()
+        with (
+            patch("main.inspect_environment", return_value=py),
+            patch("main.plan_dependencies", return_value=dep_report(py, "inspection_failed")),
+            redirect_stdout(out),
+        ):
+            result = main.main()
+        self.assertEqual(result, 1)
+        self.assertIn("diagnostica: inspection_incomplete", out.getvalue())
 
 
 if __name__ == "__main__":
