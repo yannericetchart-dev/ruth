@@ -1334,16 +1334,130 @@ does not isolate V or Flash independently.
   --candidate .ruth-build/phase28/gemma-3-1b-it/ctx-512_flash-on_k-BF16_v-F16_1ixlsmr0.npz
 ```
 
-Neither ctx512 numerical comparison has been
-reported yet. Do not invent KL, JS, RMS or
-Top-1 results and do not infer equivalence
-for all intermediate tokens: each artifact
-contains only last-prefill and last-decode
-logit rows. No new GPU inference is needed
-to perform these offline comparisons.
-Escalation to 1024 requires a **separate
-explicitly authorized** native GPU experiment
-after the results have been evaluated.
+Both ctx512 offline numerical comparisons
+have now been executed successfully; the
+exact observed KL/JS/RMS/Top-1 results and
+evidence boundaries are recorded below.
+Do not infer equivalence for all intermediate
+tokens from the two recorded logits rows.
+No new GPU inference was needed for
+these offline comparisons.
+
+## Actual Phase 28 offline numerical comparisons — n_ctx=512 (completed)
+
+The user executed **both** `gemma3_phase28_compare`
+commands against the previously measured ctx512
+Gemma 3 1B BF16 logit artifacts.
+Each report returned:
+`status=full_logits_numeric_comparison`,
+`same_teacher_forced_tokens=true`,
+`n_ctx=512`, `vocabulary=262144`,
+`top1_match_fraction=1.0`,
+`reference_precision_is_ground_truth=false`,
+`native_kernel_dispatch_verified=false` and
+`production_qualified=false`.
+
+The results concern only **two sampled
+full-vocabulary F32 logits vectors per run**:
+last prefill and last teacher-forced decode.
+Top-1=1.0 means **2/2 sampled positions**,
+not general functional equivalence,
+continuous-token correctness or text
+generation fidelity.
+
+| Observed metric | BF16/BF16 → BF16/F16 (Flash ON) | F32/F32 Flash OFF → BF16/F16 Flash ON |
+|---|---:|---:|
+| Jensen–Shannon mean, nats | 1.6112830324160837e-07 | 1.1904699428559201e-08 |
+| KL baseline→candidate mean, nats | 6.386638597335922e-07 | 4.77137146009051e-08 |
+| KL candidate→baseline mean, nats | 6.505380650213616e-07 | 4.7527108356896585e-08 |
+| RMS logit difference | 0.019654959610093344 | 0.018967132781074446 |
+| Mean absolute logit difference | 0.015261355799196963 | 0.01300561648147891 |
+| Maximum absolute logit difference | 0.10388755798339844 | 0.11905193328857422 |
+| Top-1 matches | 2/2 | 2/2 |
+
+**Per-position KL baseline→candidate:**
+
+| Position | BF16/BF16 → BF16/F16 | F32/F32 OFF → BF16/F16 ON |
+|---|---:|---:|
+| Last prefill | 3.3369001611093054e-08 | 5.2371333653131703e-08 |
+| Last decode | 1.2439587178560913e-06 | 4.3056095548678495e-08 |
+| Maximum absolute logit diff, prefill | 0.10388755798339844 | 0.11905193328857422 |
+| Maximum absolute logit diff, decode | 0.0962831974029541 | 0.03526020050048828 |
+
+**Verified ctx512 artifacts and SHA256:**
+
+- Controlled BF16/BF16 Flash ON baseline:
+  `ctx-512_flash-on_k-BF16_v-BF16_3ctu967i.npz`,
+  `2e8c8ca588ba2cb2f14fb24c5a0ce1ad385a76462f6adb433e42d58a64c2c5b6`.
+- Shared mixed BF16/F16 Flash ON candidate:
+  `ctx-512_flash-on_k-BF16_v-F16_1ixlsmr0.npz`,
+  `a60744b1d0935a674e580b5ba397d4e7d7589fb63221698f8df6d16202a88513`.
+- Secondary F32/F32 Flash OFF baseline:
+  `ctx-512_flash-off_k-F32_v-F32_kilmv137.npz`,
+  `dd3d52eb5a2baa4a37f867cc16faa134fffa38d97525b1d8e4585ad973448a65`.
+
+### Interpretation and next matrix gate
+
+The **controlled** BF16/BF16→BF16/F16
+comparison holds K=BF16 and Flash ON
+constant while changing the stored V
+dtype. It reveals non-identical raw logits
+but low divergences of the associated
+probability distributions on the two sampled
+positions and unchanged Top-1. Unlike the
+ctx256 controlled pair, the sampled decode KL
+at ctx512 (1.2439587178560913e-06) is
+greater than the sampled prefill KL
+(3.3369001611093054e-08). This reversal
+must not be interpreted as a universal
+decode-instability trend: the prompt and
+relative positions change with n_ctx.
+
+The **secondary** F32/F32 Flash OFF→
+BF16/F16 Flash ON comparison changes
+multiple variables simultaneously.
+The lower KL/JS figures do **not**
+constitute evidence that the mixed cache
+is closer to mathematical truth: neither
+run is a ground-truth reference and the
+pairs have different baselines.
+An absolute logit difference as high as
+0.11905193328857422 can coexist with
+small softmax KL/JS; nonzero differences
+are not erased by Top-1 agreement.
+
+At present, **12/16** Phase28
+candidate/context GPU experiments are
+verified, including all four at 256 and 512.
+The ctx512 numerical gate is complete for
+the two chosen comparisons, subject to
+the explicitly documented two-position
+coverage. **Still untested in Phase28:
+`f32-off` and `mixed-on` at 1024 and 2048.**
+All existing `production_qualified`,
+`conversion_elimination_safe_verified`
+and related CUDA-dataflow gates remain
+unchanged.
+
+**Next step (read-only):** generate the
+explicit `f32-off` ctx1024 plan, which
+should specify 768 prefill tokens, 16
+decode tokens and 52 MiB of source-derived
+F32/F32 logical KV:
+
+```bash
+.venv/bin/python -m ruth_runtime.gemma3_phase28 \
+  --candidate f32-off --n-ctx 1024
+```
+
+This does **not** allocate a model or
+execute inference. A future native run
+needs a separate explicit user opt-in,
+respecting the existing GPU preflight,
+pinned model and no-fallback checks.
+Do not auto-run `mixed-on`, escalate
+to ctx2048 or promote a production
+configuration.
 
 ## Promotion gate
 
