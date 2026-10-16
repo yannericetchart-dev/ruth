@@ -675,7 +675,99 @@ Il test sintetico nuovo distingue un replay discordante da
 68 replay discordanti; va eseguito sul sistema dell'utente
 prima di attribuirgli lo stato «passato» sull'hardware reale.
 
-## 13. Riferimenti interni
+## 13. Confronto reale degli stessi quattro nodeId sui 68 replay
+
+L'utente ha eseguito `--explain-order` aggiornato sullo **stesso**
+export node-level e ha restituito i confronti reali con
+`same_node_ids_across_replays`. Per tutte le quattro coppie,
+il controllo ha identificato esattamente gli stessi due
+`graphNodeId` in **68/68 replay**, senza nodi mancanti o ambigui;
+`same_stream_id_replay_count=68`,
+`stream_id_unavailable_replay_count=0`.
+
+| Posizione ordinale cast/GEMM | Gap anomalo (ns) | Min (ns) | Mediana (ns) | Max (ns) | Gap negativi / positivi / zero |
+|---:|---:|---:|---:|---:|---:|
+| 36 | −608 | −608 | +32 | +64 | 1 / 67 / 0 |
+| 45 | −224 | −224 | +32 | +64 | 1 / 67 / 0 |
+| 56 | −160 | −160 | +32 | +64 | 1 / 67 / 0 |
+| 61 | −160 | −160 | +32 | +64 | 1 / 67 / 0 |
+
+Tutti e quattro i gap negativi sono concentrati nello
+**stesso replay** (`graphId=2`, `correlationId=10072`,
+`nvtx_range_index_zero_based=1`, prefill, stream 14).
+Negli **altri 67 replay di ciascuna coppia**, i gap sono
+positivi. Per ciascuna coppia gli ID dei nodi risultano
+stabili e la mediana delle 68 osservazioni è +32 ns.
+
+Questi risultati **escludono che il gap negativo sia
+sistematico nei replay osservati** per questi stessi
+identificatori. Sono coerenti con un effetto isolato
+di temporizzazione, acquisizione o ordinamento, ma
+**non identificano la causa** e non provano che il
+tempo negativo sia soltanto rumore del profiler.
+Le coppie sono tuttora formate **per posizione ordinale
+delle liste ordinate per start GPU**, non tramite
+buffer condiviso, `cudaGraphAddDependencies` o un
+arco di dipendenza estratto dal DAG. Anche quando
+i due kernel appartengono allo stesso stream, i
+timestamp esportati non costituiscono da soli una
+prova sugli indirizzi di memoria dei loro operandi.
+
+**Decisione tecnica:** non modificare il criterio
+`gpu_timeline_candidate_pairing_verified=false`
+né introdurre tolleranze arbitrarie da 608 ns o
+quantità analoghe per forzarlo a `true`.
+Non ripetere nuovi benchmark BF16 ON per inseguire
+questo singolo outlier, finché non emerga una
+domanda sperimentale ulteriore e specifica.
+
+### 13.1 Prossima verifica rilevante: identità dei buffer
+
+L'evidenza causale utile è il collegamento tra
+l'**output BF16** di un lancio `convert_unary`
+e l'**operando A/B BF16** del GEMM associato,
+possibilmente ricostruendo anche la provenienza
+dell'input F32 da un nodo GGML:
+
+1. Nel sorgente pinned il percorso
+   `ggml_cuda_mul_mat_cublas_impl<GGML_TYPE_BF16>`
+   seleziona conversioni `src0/src1` quando
+   `type != GGML_TYPE_BF16`, usa buffer temporanei
+   `src0_alloc/src1_alloc` e passa `src0_ptr/src1_ptr`
+   a cuBLAS. **Questa è una dipendenza di dati
+   verificata nel codice del percorso generale**,
+   ma non è stata ancora attribuita singolarmente
+   a ciascuno dei 17.184 GEMM del trace.
+2. Prima ricostruire staticamente le varianti
+   `cublasGemmEx`, `cublasGemmStridedBatchedEx`
+   e `cublasGemmBatchedEx` e le condizioni di cast:
+   src0/src1, `compute_type`, shape, output e
+   pool allocazioni. Questo passo non richiede GPU.
+3. Verificare se la traccia SQLite contiene **effettivi**
+   indirizzi di memoria o relazioni tra nodi.
+   Se assenti, non generarli per deduzione da
+   ordine/ID/numero di kernel.
+4. Se indispensabile, progettare **strumentazione
+   sperimentale esplicitamente autorizzata** per
+   acquisire le relazioni produttore-consumatore
+   sui puntatori dei buffer o sugli archi
+   `cudaGraphNode_t`, minimizzando esposizione
+   degli indirizzi (identificatori opachi stabili
+   nel processo, non puntatori grezzi nei report).
+   Nessun nuovo profiling o inferenza è autorizzato
+   da questo documento.
+
+Permangono **falsi**:
+`producer_consumer_buffer_dependency_verified`,
+`ggml_operator_identity_verified`,
+`potential_conversion_elimination_verified`,
+`full_precision_coverage_verified`,
+`production_qualified`.
+Lo stato verificato è la **corrispondenza numerica,
+temporale e per-run** dell'attività osservata,
+non una dimostrazione del dataflow per ciascun GEMM.
+
+## 14. Riferimenti interni
 
 - [Fase 27 — precisione e benchmark](phase-27-gemma3-precision-and-kernel-benchmark.md).
 - [Fase 28 — prove CUDA/NVTX e contesti](phase-28-gemma3-dispatch-and-context-scaling.md).
