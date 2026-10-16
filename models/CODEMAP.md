@@ -6,7 +6,7 @@ Nodo responsabile: [MODEL](NODE.yaml). Ripresa: [START_HERE](../START_HERE.md).
 
 Scopo: Catalogare, risolvere, acquisire e verificare artefatti modello.
 
-Branch: `models/main` (planned); padre Git previsto: `main`.
+Branch: `models/main` (present); padre Git previsto: `main`.
 
 La presenza dello scaffold non implica una implementazione runtime.
 
@@ -23,4 +23,6 @@ La presenza dello scaffold non implica una implementazione runtime.
 
 ## File
 
+- [CHECKPOINT.md](CHECKPOINT.md)
 - [NODE.yaml](NODE.yaml)
+- [__init__.py](__init__.py)
