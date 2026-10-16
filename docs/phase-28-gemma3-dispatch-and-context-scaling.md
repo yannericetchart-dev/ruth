@@ -1426,38 +1426,129 @@ An absolute logit difference as high as
 small softmax KL/JS; nonzero differences
 are not erased by Top-1 agreement.
 
-At present, **12/16** Phase28
-candidate/context GPU experiments are
-verified, including all four at 256 and 512.
 The ctx512 numerical gate is complete for
 the two chosen comparisons, subject to
 the explicitly documented two-position
-coverage. **Still untested in Phase28:
-`f32-off` and `mixed-on` at 1024 and 2048.**
+coverage. At that moment, **12/16** Phase28
+candidate/context GPU experiments had
+been verified (all four at 256 and 512).
+A subsequent F32/F32 Flash OFF ctx1024
+native result is now documented below and
+advances the matrix to **13/16**.
 All existing `production_qualified`,
 `conversion_elimination_safe_verified`
 and related CUDA-dataflow gates remain
 unchanged.
 
-**Next step (read-only):** generate the
-explicit `f32-off` ctx1024 plan, which
-should specify 768 prefill tokens, 16
-decode tokens and 52 MiB of source-derived
-F32/F32 logical KV:
+## Actual Phase 28 native result — F32/F32, Flash OFF, n_ctx=1024
+
+The user executed the read-only `f32-off` ctx1024
+plan separately and then explicitly authorized
+a **single** native CUDA experiment:
 
 ```bash
 .venv/bin/python -m ruth_runtime.gemma3_phase28 \
-  --candidate f32-off --n-ctx 1024
+  --candidate f32-off --n-ctx 1024 \
+  --execute --allow-gpu-inference
 ```
 
-This does **not** allocate a model or
-execute inference. A future native run
-needs a separate explicit user opt-in,
-respecting the existing GPU preflight,
-pinned model and no-fallback checks.
-Do not auto-run `mixed-on`, escalate
-to ctx2048 or promote a production
-configuration.
+The worker returned
+`status=native_long_context_inference_observed`,
+`inference_executed=true`,
+`full_gpu_offload_observed=true`,
+`offloaded_layers=27` / `total_layers=27`,
+`n_ctx_effective_native=1024`, K=F32,
+V=F32, Flash OFF and
+`decode_logits_requested_per_token=true`
+with `decode_logits_requested_count=16`.
+
+| Metric | F32/F32 OFF ctx256 | F32/F32 OFF ctx512 | F32/F32 OFF ctx1024 |
+|---|---:|---:|---:|
+| Prefill tokens | 128 | 384 | **768** |
+| Prefill chunks (`n_batch=64`) | 2 | 6 | **12** |
+| Decode teacher-forced calls | 16 | 16 | **16** |
+| Prefill median ms | 30.9847 | 85.1810 | **170.2965** |
+| Prefill throughput, tokens/s | 4,131.07 | 4,508.05 | **4,509.78** |
+| Decode individual median ms/token | 12.5920 | 12.9451 | **13.4313** |
+| Decode median whole round, ms | 202.3512 | 207.4605 | **214.7660** |
+| Decode throughput, tokens/s | 79.07 | 77.12 | **74.50** |
+| Native/logical KV, MiB | 13 / 13 | 26 / 26 | **52 / 52** |
+| NVML GPU process peak sampled, MiB | 2,100 | 2,112 | **2,138** |
+
+Observed CUDA buffers: model `1907.39 MiB`,
+KV `8.0 MiB + 44.0 MiB = 52.0 MiB`,
+compute `64.28 MiB`; the `CPU_Mapped`
+model buffer is `576.0 MiB`, not a separate
+CUDA buffer that should be added mechanically
+to the GPU peak sample. The three prefill
+measurements were `168.673348`,
+`170.829467` and `170.296532` ms.
+GPU peak is sampled, not necessarily the
+instantaneous maximum. Increasing context
+also increased the fixed prefill workload,
+so timing trends are not a context-only
+causal estimate.
+
+The recorded F32/F32 ctx1024 results
+show prefill throughput practically
+unchanged from ctx512 (4,509.78 vs
+4,508.05 tokens/s) and decode throughput
+lower than ctx256 (74.50 vs 79.07 tokens/s,
+approximately 5.8%). KV scales as
+source-derived and native allocation
+measurements predict. No quantitative
+precision or production superiority can
+be inferred from this isolated experiment.
+
+**Pinned identity and local numerical artifact:**
+
+- GGUF SHA256:
+  `b144bde489651d3d292d7e47a59c6f811cdd96d184be582e5ad30ab338b9b6bf`.
+- Native wheel SHA256:
+  `ad5057352154d90f95a473d01d039c975f1987cd9b25f8ad7a83cf6c7e80ee74`.
+- Prompt token IDs SHA256:
+  `b3f6ab50b2d2f49739d85a35470c9d9ad5328753b0feecb075df4bf4491ddeec`.
+- Logits: `float32`, shape `[2, 262144]`
+  (last prefill and last decode full-vocabulary rows).
+- Local path:
+  `.ruth-build/phase28/gemma-3-1b-it/ctx-1024_flash-off_k-F32_v-F32_54m9floe.npz`.
+- Artifact SHA256:
+  `9f8bce9ae5ef51434c0d8fdb7aac75b513d76c7bf55e6808340badaf1e3ca30c`.
+
+`native_kernel_dispatch_verified=false`,
+`nvtx_ranges_available=false`,
+`production_qualified=false` and
+`runtime_profile_published=false`.
+The two-position logits artifact is not
+proof of long-sequence numeric equivalence.
+Only compare it offline against a matching
+ctx1024 artifact with an identical
+teacher-forced token sequence, subject
+to the strict existing compare gate.
+
+**Matrix progress: 13/16 native successes.**
+The remaining Phase28 native combinations
+are `mixed-on` BF16/F16 Flash ON at 1024,
+and `f32-off` / `mixed-on` at 2048.
+The next controlled step is the
+**read-only** `mixed-on` ctx1024 plan:
+
+```bash
+.venv/bin/python -m ruth_runtime.gemma3_phase28 \
+  --candidate mixed-on --n-ctx 1024
+```
+
+This should predict 768 prefill tokens,
+16 teacher-forced decode calls and
+**26 MiB** of mixed BF16/F16 logical KV.
+No inference is implied by the plan.
+Execute a single GPU test only with
+separate explicit `--execute
+--allow-gpu-inference` flags and stop
+on unverified outcomes. Do not
+auto-escalate to ctx2048, alter
+the pinned native library or promote
+a configuration to production.
 
 ## Promotion gate
 
