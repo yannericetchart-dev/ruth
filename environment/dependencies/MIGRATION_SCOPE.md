@@ -36,3 +36,16 @@ Il collaudo personale dopo merge e sincronizzazione locale (DEP-MANUAL-001) segu
 - PR #13 verso environment/main: merge `c89c02ac0afa828b2c53ebd922a04331069ba527`.
 - Verifica remota su fixture sintetiche e API/CLI: run 38895348468 e
   38895479549, success. Main e collaudo personale ancora pendenti.
+
+## Integrazione finale DEP-001 (16 ottobre 2026)
+
+- Il componente e' integrato in main tramite PR #15,
+  merge `a542f9ee9f6d09a0496bf756615d2295a7f59ce0`.
+- Sono integrati e revisionati `environment.dependencies.plan`,
+  `environment.plan` e l'ingresso `main.py dependencies ...`;
+  `main.py` senza argomenti conserva PY-001.
+- CI GitHub 38895348468, 38895479549, 38895836703 e
+  38895924627: success sui test sintetici, CLI e mappe.
+- **DEP-MANUAL-001 in attesa**: sincronizzazione locale e avvio personale
+  da parte dell'utente sulla revisione finale, come MIG-FLOW-002 richiede.
+  Non e' avviata alcuna migrazione successiva.

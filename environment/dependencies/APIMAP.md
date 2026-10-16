@@ -6,7 +6,7 @@ Nodo responsabile: [DEP](NODE.yaml). Ripresa: [START_HERE](../../START_HERE.md).
 
 ## Contratto dichiarato
 
-- `plan(requirements: Iterable[str], python_report: PythonEnvironment, *, version_lookup=metadata.version) -> DependencyPlan [implementata e verificata in environment/main; non ancora in main]`
+- `plan(requirements: Iterable[str], python_report: PythonEnvironment, *, version_lookup=metadata.version) -> DependencyPlan [implementata, verificata e integrata in main]`
 
 Dipendenze: nessuna.
 

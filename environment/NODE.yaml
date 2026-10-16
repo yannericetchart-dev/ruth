@@ -14,7 +14,7 @@
   "implementation": "partial",
   "maturity": "experimental",
   "verification": "passed",
-  "integration": "partial",
+  "integration": "merged",
   "flags": [
     "in_scope"
   ],
@@ -22,7 +22,7 @@
   "depends_on": [],
   "api": [
     "inspect(project_root: Path) -> PythonEnvironment [integrata in main]",
-    "plan(requirements: Iterable[str], *, project_root: Path | None = None) -> DependencyPlan [implementata e verificata in environment/main; in attesa main]",
+    "plan(requirements: Iterable[str], *, project_root: Path | None = None) -> DependencyPlan [implementata, verificata e integrata in main]",
     "PythonEnvironment: project_root: str; interpreter: str; python_version: tuple[int, ...]; interpreter_in_project_venv: bool; venv_status: str; reasons: tuple[str, ...] [contratto immutabile della PR #2]",
     "PythonEnvironment.to_dict() -> dict [implementata in main; dati transitori, salvataggi solo locali]"
   ],
@@ -34,9 +34,9 @@
     },
     {
       "id": "ENV-002",
-      "state": "active",
-      "description": "DEP-001 integrata in environment/main con PR #13 e verificata; promozione a main in corso."
+      "state": "complete",
+      "description": "DEP-001 verificata e promossa in environment/main via PR #13 e in main via PR #15."
     }
   ],
-  "verification_scope": "DEP-001: GitHub Actions 38895348468 (14 Python, 12 dipendenze, 13 root/CLI, 237 mappe), e 38895479549 (promozione padre): success su fixture sintetiche; nessuna verifica nativa, sicurezza o installabilita' certificata. DEP-MANUAL-001 ancora da svolgere dopo main."
+  "verification_scope": "DEP-001: GitHub Actions 38895348468, 38895479549, 38895836703 e 38895924627, success: 14 test Python, 12 dipendenze, 13 CLI/root e 237 mappe. Test sintetici e metadati soltanto; non verifica installabilita', lock, GPU o backend. DEP-MANUAL-001 in attesa."
 }
