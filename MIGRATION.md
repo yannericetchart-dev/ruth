@@ -91,3 +91,17 @@ Non importare lock CUDA o dati host, non installare pacchetti (DATA-001).
 - PR #13 in environment/main, merge c89c02ac0afa828b2c53ebd922a04331069ba527.
 - CI sintetica success su run 38895348468 e 38895479549.
 - Integrazione root main e conferma personale DEP-MANUAL-001 da completare.
+
+## DEP-001 integrata in main (16 ottobre 2026)
+
+- DEP-SCOPE-001 autorizzato; sola lettura delle dipendenze Python generiche.
+- PR #12, #13 e #15: promozioni foglia, environment/main e main concluse.
+  Merge root `a542f9ee9f6d09a0496bf756615d2295a7f59ce0`.
+- Test remoti success: 38895348468, 38895479549, 38895836703,
+  38895924627; fixture sintetiche e mappe coerenti.
+- Stato conclusivo tecnico: implementation complete, verification passed,
+  integration merged. Stato accettazione manuale DEP-MANUAL-001: pending.
+- Le annotazioni precedenti che parlano di promozioni pendenti sono
+  storiche e non descrivono lo stato corrente.
+- Non avviare diagnostica avanzata, hardware o altro componente finche'
+  DEP-MANUAL-001 non sia confermata; dati host esclusi (DATA-001).

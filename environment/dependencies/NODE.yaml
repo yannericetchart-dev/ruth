@@ -21,13 +21,13 @@
   "blocked_by": [],
   "depends_on": [],
   "api": [
-    "plan(requirements: Iterable[str], python_report: PythonEnvironment, *, version_lookup=metadata.version) -> DependencyPlan [implementata e verificata in environment/main; non ancora in main]"
+    "plan(requirements: Iterable[str], python_report: PythonEnvironment, *, version_lookup=metadata.version) -> DependencyPlan [implementata, verificata e integrata in main]"
   ],
   "tasks": [
     {
       "id": "DEP-001",
       "state": "complete",
-      "description": "Ispezione metadata, gate venv e CLI verificati da CI, promossi da work a dependencies/main PR #12 e environment/main PR #13."
+      "description": "Ispezione metadata con gate .venv e CLI integrata in main (PR #15), verificata su CI remota."
     },
     {
       "id": "DEP-SCOPE-001",
@@ -36,8 +36,8 @@
     },
     {
       "id": "DEP-MANUAL-001",
-      "state": "planned",
-      "description": "Dopo integrazione main: eseguire personalmente .venv/bin/python main.py dependencies pip e confermare esito con commit Git."
+      "state": "active",
+      "description": "In attesa di collaudo personale dell'utente dopo sincronizzazione sicura: .venv/bin/python main.py dependencies pip e conferma commit main."
     },
     {
       "id": "DEP-PROMOTE-001",
@@ -48,7 +48,12 @@
       "id": "DEP-PROMOTE-002",
       "state": "complete",
       "description": "PR #13 promossa in environment/main al merge c89c02ac0afa828b2c53ebd922a04331069ba527."
+    },
+    {
+      "id": "DEP-PROMOTE-003",
+      "state": "complete",
+      "description": "PR #15 integrata in main al merge a542f9ee9f6d09a0496bf756615d2295a7f59ce0."
     }
   ],
-  "verification_scope": "DEP-001: GitHub Actions 38895348468 (14 Python, 12 dipendenze, 13 root/CLI, 237 mappe), e 38895479549 (promozione padre): success su fixture sintetiche; nessuna verifica nativa, sicurezza o installabilita' certificata. DEP-MANUAL-001 ancora da svolgere dopo main."
+  "verification_scope": "DEP-001: GitHub Actions 38895348468, 38895479549, 38895836703 e 38895924627, success: 14 test Python, 12 dipendenze, 13 CLI/root e 237 mappe. Test sintetici e metadati soltanto; non verifica installabilita', lock, GPU o backend. DEP-MANUAL-001 in attesa."
 }
