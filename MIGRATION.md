@@ -8,7 +8,7 @@ macchina non sono candidati alla migrazione secondo DATA-001.
 ## Prima porzione prevista: MIG-001 / PY-001
 
 Revisione funzionale: [PY-SCOPE-001](environment/python/MIGRATION_SCOPE.md),
-in attesa del semaforo verde dell'utente. Dopo il verde, completare la
+approvata dall'utente il 16 ottobre 2026. Completare la
 porzione fino a main senza ulteriori conferme intermedie (MIG-FLOW-001).
 
 - Fonte: `feat/gemma3-phase28-context-dispatch`, commit

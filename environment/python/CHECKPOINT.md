@@ -10,7 +10,7 @@ in quella revisione. PY-PROMOTE-001 completata; il codice non e' ancora
 integrato in environment/main.
 
 Revisione funzionale [PY-SCOPE-001](MIGRATION_SCOPE.md): semaforo verde
-dell'utente in attesa. Dopo il verde, completare autonomamente le promozioni
+concesso dall'utente il 16 ottobre 2026. Dopo il verde, completare autonomamente le promozioni
 a environment/main e main secondo MIG-FLOW-001, senza conferme a ogni merge.
 
 Prima di passare alla migrazione successiva, PY-MANUAL-001 richiede che

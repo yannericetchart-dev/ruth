@@ -11,8 +11,8 @@
     "status": "planned"
   },
   "development": "active",
-  "implementation": "skeleton",
-  "maturity": null,
+  "implementation": "partial",
+  "maturity": "experimental",
   "verification": "not_run",
   "integration": "not_merged",
   "flags": [
@@ -28,13 +28,13 @@
     "chat"
   ],
   "api": [
-    "inspect_environment(project_root: Path) -> PythonEnvironment [proposta; implementata in environment/python/main, non integrata in main]"
+    "inspect_environment(project_root: Path) -> PythonEnvironment [implementata nella PR #3; non integrata in main]"
   ],
   "tasks": [
     {
       "id": "CORE-001",
       "state": "active",
-      "description": "API comune Python disponibile in environment/python/main; ancora da promuovere ai branch superiori."
+      "description": "Contratto comune implementato nella PR #3; test e integrazione ai branch superiori in corso."
     }
   ]
 }
