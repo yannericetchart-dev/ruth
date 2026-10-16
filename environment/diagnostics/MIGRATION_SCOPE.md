@@ -29,6 +29,9 @@
 - Non inclusi: CUDA, GPU, driver, log nativi, installazioni, riparazioni,
   inferenza e inventari specifici della macchina. Kaggle inattivo.
 
-**Stato implementazione**: codice candidato sul ramo
-`environment/diagnostics/work/DIAG-001`. Test CI e promozioni
-non ancora completati.
+**Stato implementazione (16 ottobre 2026)**: DIAG-001 implementata,
+verificata da CI e integrata in main tramite PR #20, #21 e #22,
+merge finale `dfdb41e981f32ee233320f77998aadab55ce4d7b`.
+Il collaudo personale DIAG-MANUAL-001 e' ancora in attesa.
+Le evidenze di verifica riguardano fixture sintetiche, non la macchina
+dell'utente ne' runtime nativi.

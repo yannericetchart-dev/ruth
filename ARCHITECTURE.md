@@ -17,8 +17,8 @@ perdere la classificazione tools ereditata dagli antenati.
 
 Ogni cartella di progetto ha ROADMAP, CODEMAP e APIMAP. Ogni componente
 autonomo ha anche NODE.yaml. Le directory nascoste di infrastruttura e quelle
-ignorate locali non sono nodi architetturali. Il file main.py e' ora l'ingresso ufficiale minimo per l'ispezione
-read-only Python (PY-001); le altre funzioni applicative restano pianificate.
+ignorate locali non sono nodi architetturali. Il file main.py e' l'ingresso ufficiale sequenziale delle porzioni
+PY-001, DEP-001 e DIAG-001. Le funzioni non ancora migrate restano pianificate.
 
 ## Fonte dei metadati e aggiornamento dei padri
 

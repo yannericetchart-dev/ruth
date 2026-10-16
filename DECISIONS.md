@@ -205,3 +205,8 @@ Ogni sostituzione deve collegare entrambe le decisioni e aggiornare le mappe.
   di ARCHITECTURE.md; nessun hardware migrato implicitamente.
 - Test: fixture sintetiche e ordine/ragioni, mappe e CI GitHub;
   collaudo personale DIAG-MANUAL-001 post-merge (MIG-FLOW-002).
+
+- Applicazione DIAG-SCOPE-001: implementata e verificata in GitHub,
+  integrata in main mediante PR #22 il 16 ottobre 2026.
+  Collaudo personale DIAG-MANUAL-001 in attesa, senza autorizzare
+  la migrazione successiva automaticamente.
