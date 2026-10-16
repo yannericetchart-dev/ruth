@@ -896,6 +896,133 @@ workload, subject to the actual backend dispatch.
 No silent context increase, retry, promotion, or
 change to the pinned native stack.
 
+## Actual Phase 28 native result — BF16/F16, Flash ON, n_ctx=256
+
+The user executed the explicitly authorized `mixed-on` Gemma 3
+1B IT BF16 GPU experiment:
+
+```bash
+.venv/bin/python -m ruth_runtime.gemma3_phase28 \
+  --candidate mixed-on --n-ctx 256 \
+  --execute --allow-gpu-inference
+```
+
+Result: `status=native_long_context_inference_observed`,
+`inference_executed=true`,
+`full_gpu_offload_observed=true`,
+`offloaded_layers=27`, `total_layers=27`,
+`n_ctx_effective_native=256`,
+`type_k=BF16`, `type_v=F16`,
+`flash_attention=on`, `swa_full=true`
+and `decode_logits_requested_count=16` with
+`decode_logits_requested_per_token=true`.
+
+| Observed metric | Value | Scope |
+|---|---:|---|
+| Prefill tokens/chunks | 128 / 2 | `n_batch=n_ubatch=64` |
+| Decode calls | 16 | Teacher-forced, full-vocab logits each |
+| Prefill median | **30.7740 ms** | Three timed repetitions |
+| Prefill rate | **4,159.36 tokens/s** | 128 / median duration |
+| Median individual decode latency | **12.4773 ms/token** | Per-call median |
+| Median full decode round | **200.2478 ms** | Three 16-token rounds |
+| Decode throughput | **79.90 tokens/s** | 16 / median round duration |
+| CUDA model buffer | **1,907.39 MiB** | Native log |
+| CUDA KV buffer | **1 + 5.5 = 6.5 MiB** | Native log, agrees with source-derived logical KV |
+| CUDA compute buffer | **64.28 MiB** | Native log |
+| CPU_Mapped model buffer | **576 MiB** | Not automatically additional VRAM |
+| GPU process peak sampled | **2,100 MiB** | Sampling, not instantaneous max |
+
+The three prefill observations were `33.327650`,
+`30.557923`, `30.773997` ms.
+The immutable prompt ID hash was
+`bab4fb14dabe7263233449157076e3cfd1c317805de472c0bcf4208d1b8cad6c`,
+matching the `f32-off` ctx256 run. The 16 decode IDs in both
+reported runs were identical. Pinned GGUF SHA256
+`b144bde489651d3d292d7e47a59c6f811cdd96d184be582e5ad30ab338b9b6bf`,
+native wheel SHA256
+`ad5057352154d90f95a473d01d039c975f1987cd9b25f8ad7a83cf6c7e80ee74`.
+
+The local mixed logits artifact is
+`.ruth-build/phase28/gemma-3-1b-it/ctx-256_flash-on_k-BF16_v-F16_2g3xd9db.npz`,
+SHA256
+`69ed0413b8cb9de5472dae56297349d16fd5ba19ae07ea7086c2caeffe30ce16`,
+dtype `float32`, shape `[2,262144]`.
+It captures only last-prefill and last-decode
+full-vocabulary logits. No full-token numerical fidelity
+or production approval is implied.
+
+### Completed four-configuration ctx256 slice
+
+Earlier user-provided measured controls plus the two
+just-observed native runs give:
+
+| Candidate | K/V | Flash | Prefill median (ms) | Decode tok/s | Logical KV (MiB) |
+|---|---|---|---:|---:|---:|
+| `f16-off` | F16/F16 | OFF | 31.2959 | 79.46 | 6.5 |
+| `bf16-on` | BF16/BF16 | ON | 30.8938 | 80.20 | 6.5 |
+| `f32-off` | F32/F32 | OFF | 30.9847 | 79.07 | 13.0 |
+| `mixed-on` | BF16/F16 | ON | 30.7740 | 79.90 | 6.5 |
+
+**Four of four ctx256 cases have verified CUDA model
+evaluation; ten of the sixteen Phase28 candidate/context
+cases are now known native successes** (the previously
+verified eight F16-OFF/BF16-ON long-context runs
+plus these two new cases). This is not an assertion
+that numerical-equivalence comparisons have completed
+for all four candidates.
+
+The most controlled *cache precision* contrast in
+this slice is `bf16-on` vs `mixed-on`: Flash ON
+and K=BF16 are fixed, V changes BF16→F16.
+Kernel selection or temporary conversions may still
+change; therefore an attribution of performance
+entirely to V storage is not established. The
+`f16-off` vs `f32-off` pair keeps Flash OFF
+but changes both K and V. Comparing
+`f32-off` to `mixed-on` changes Flash as well
+and is confounded.
+
+### Required offline numerical comparisons before further context escalation
+
+Use `gemma3_phase28_compare` with previously
+verified same-context local artifacts; the reader
+checks exact prompt/decode token arrays and the
+shape of both logits arrays and does not run CUDA.
+
+**Flash ON, isolate V-cache type:**
+
+```bash
+.venv/bin/python -m ruth_runtime.gemma3_phase28_compare \
+  --baseline .ruth-build/phase28/gemma-3-1b-it/ctx-256_flash-on_k-BF16_v-BF16_tfujrtrn.npz \
+  --candidate .ruth-build/phase28/gemma-3-1b-it/ctx-256_flash-on_k-BF16_v-F16_2g3xd9db.npz
+```
+
+**Flash OFF, compare F16/F16 to F32/F32 cache storage:**
+
+```bash
+.venv/bin/python -m ruth_runtime.gemma3_phase28_compare \
+  --baseline .ruth-build/phase28/gemma-3-1b-it/ctx-256_flash-off_k-F16_v-F16_xapq63id.npz \
+  --candidate .ruth-build/phase28/gemma-3-1b-it/ctx-256_flash-off_k-F32_v-F32_hxddceoy.npz
+```
+
+Both baselines are prior user-reported Phase28
+ctx256 artifacts; the compare CLI independently
+validates that both inputs have matching exact
+token sequences and shape. Passing this gate
+must not be mistaken for complete numerical
+fidelity at unrecorded token positions.
+The comparison reports are still **pending**;
+none of their KL, JS, RMS or top-1 metrics
+have been assumed in advance.
+
+For this `mixed-on` experiment:
+`native_kernel_dispatch_verified=false`,
+`nvtx_ranges_available=false`,
+`production_qualified=false` and
+`runtime_profile_published=false`.
+No new Nsight collection is required for the
+planned offline comparisons.
+
 ## Promotion gate
 
 Phase 28 produces *diagnostic* context, timing, memory and CUDA-kernel
