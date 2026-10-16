@@ -18,6 +18,7 @@ La presenza dello scaffold non implica una implementazione runtime.
 ## File
 
 - [CHECKPOINT.md](CHECKPOINT.md)
+- [INDEX_SCOPE.md](INDEX_SCOPE.md)
 - [METADATA_SCOPE.md](METADATA_SCOPE.md)
 - [MIGRATION_SCOPE.md](MIGRATION_SCOPE.md)
 - [NODE.yaml](NODE.yaml)
