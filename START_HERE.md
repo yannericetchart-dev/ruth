@@ -104,6 +104,7 @@ Stato implementazione, CI e collaudo CAT-MANUAL-001 in CHECKPOINT.md.
 `main.py` include come sesto passaggio il catalogo modelli locale
 `.local/models/catalog.json` opzionale; manifest assente o vuoto
 sono stati validi e non causano fallimento. PR #38 in main e CI
-superate; **CAT-MANUAL-001 resta da confermare personalmente**,
-come nel CHECKPOINT.md. Il prossimo dominio richiede un nuovo
-perimetro esplicito, dopo il collaudo positivo.
+superate; **CAT-MANUAL-001 e' stata superata personalmente**
+il 16 ottobre 2026 sul commit `90e57f106fb664b0257775260044125ea85228e2`.
+Il prossimo dominio richiede un nuovo perimetro funzionale esplicito,
+ancora non approvato (MIG-FLOW-001).
