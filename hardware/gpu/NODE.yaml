@@ -13,21 +13,21 @@
   "development": "active",
   "implementation": "complete",
   "maturity": "experimental",
-  "verification": "not_run",
-  "integration": "not_merged",
+  "verification": "passed",
+  "integration": "merged",
   "flags": [
     "in_scope"
   ],
   "blocked_by": [],
   "depends_on": [],
   "api": [
-    "detect() -> GPUReport [solo NVIDIA, candidata read-only; AMD/Intel inattive]"
+    "detect() -> GPUReport [solo NVIDIA, verificata e integrata in main; AMD/Intel inattive]"
   ],
   "tasks": [
     {
       "id": "GPU-001",
-      "state": "active",
-      "description": "Aggregazione del provider NVIDIA, report GPUDevice/GPUReport portabili; test, CI e promozioni pendenti."
+      "state": "complete",
+      "description": "Provider NVIDIA aggregato e testato con report immutabili, PR #30-#33 integrate fino a main."
     },
     {
       "id": "GPU-SCOPE-001",
@@ -36,9 +36,29 @@
     },
     {
       "id": "GPU-MANUAL-001",
-      "state": "planned",
-      "description": "Dopo merge main: avvio Ruth da copia main pulita e conferma dei cinque passaggi, esito GPU e SHA; dati host non in Git."
+      "state": "active",
+      "description": "Da eseguire dopo sync fast-forward del checkout pulito: main.py senza argomenti, verifica quinta fase NVIDIA e commit Git; inviare solo esito generale, non dati host."
+    },
+    {
+      "id": "GPU-PROMOTE-001",
+      "state": "complete",
+      "description": "PR #30 in hardware/gpu/nvidia/main (merge 21c17032af358120b7cf0d56246a9c135f2833f7)."
+    },
+    {
+      "id": "GPU-PROMOTE-002",
+      "state": "complete",
+      "description": "PR #31 in hardware/gpu/main (merge 0010c43b75c1f28c18b6c83dba0c913f384a40c2)."
+    },
+    {
+      "id": "GPU-PROMOTE-003",
+      "state": "complete",
+      "description": "PR #32 in hardware/main (merge a7c5e63ea460c00d9ff5c73913af3835c182b2e2)."
+    },
+    {
+      "id": "GPU-PROMOTE-004",
+      "state": "complete",
+      "description": "PR #33 in main (merge 54a02cf37262a78f5a1ed0aa84cd6d210060a14c)."
     }
   ],
-  "verification_scope": "GPU-001 NVIDIA: candidato read-only con nvidia-smi a parametri fissi e timeout; fixture sintetiche per modello/VRAM/multi-GPU e fallimenti, CI da eseguire. GPU AMD/Intel, driver, CUDA e inferenza esclusi; HW GPU manuale da confermare."
+  "verification_scope": "GPU-001 NVIDIA: CI GitHub 38918374871, 38918650589, 38918759116, 38918867451 success (92 test sintetici, 258 mappe); promozioni PR #30 NVIDIA, #31 GPU, #32 hardware e #33 main. Driver, CUDA, AMD/Intel e compatibilita' inferenza non verificati. GPU-MANUAL-001 ancora pendente."
 }

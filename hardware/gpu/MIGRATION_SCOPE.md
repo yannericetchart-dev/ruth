@@ -49,5 +49,9 @@ e nessuna API dei loro provider e' implementata.
   dell'avvio completo. MIG-FLOW-002 blocca il componente successivo
   fino ad accettazione.
 
-**Stato della candidatura:** implementata nel branch di lavoro,
-non ancora verificata dalla CI ne' integrata in main.
+**Stato tecnico (16 ottobre 2026):** implementata, verificata con
+GitHub Actions e integrata in main via PR #30, #31, #32, #33;
+merge finale `54a02cf37262a78f5a1ed0aa84cd6d210060a14c`.
+Run 38918374871, 38918650589, 38918759116, 38918867451:
+success, 92 test sintetici e 258 mappe.
+**GPU-MANUAL-001 rimane in attesa**: nessun collaudo reale dichiarato.

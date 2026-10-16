@@ -29,3 +29,15 @@ Perimetro NVIDIA approvato, runtime GPU vendor-neutral candidato
 senza modificare il rilevamento CPU/RAM integrato; CI e promozioni
 ancora pendenti, AMD/Intel inattive. GPU-MANUAL-001 prevista dopo
 main, senza dati host su Git.
+
+## GPU-001 NVIDIA: integrazione verificata (16 ottobre 2026)
+
+- PR #30 -> hardware/gpu/nvidia/main, #31 -> hardware/gpu/main,
+  #32 -> hardware/main, #33 -> main (merge
+  `54a02cf37262a78f5a1ed0aa84cd6d210060a14c`).
+- CI 38918374871, 38918650589, 38918759116 e 38918867451:
+  success, 92 test sintetici e 258 mappe coerenti. Nessun test GPU
+  fisico o CUDA e' certificato; AMD/Intel non implementate.
+- `main.py`: PY->DEP->DIAG->HW CPU/RAM->NVIDIA.
+- Stato tecnico: verificato e integrato; GPU-MANUAL-001 ancora
+  in attesa di conferma personale post-sincronizzazione.

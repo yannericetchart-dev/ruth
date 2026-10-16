@@ -250,3 +250,8 @@ Ogni sostituzione deve collegare entrambe le decisioni e aggiornare le mappe.
 - Controlli: test sintetici, CI e mappe prima di ogni promozione;
   GPU-MANUAL-001 personale dopo merge, prima di altra migrazione.
 - Vincoli: MAIN-FLOW-001, MIG-FLOW-001/002, REMOTE-001, DATA-001.
+
+- Applicazione GPU-SCOPE-001 (16 ottobre 2026): codice e test
+  sintetici verificati su GitHub e integrati sino a main tramite PR #33.
+  GPU-MANUAL-001 ancora da eseguire; AMD, Intel, driver e backend
+  non sono stati autorizzati o verificati in questo perimetro.
