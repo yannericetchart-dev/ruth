@@ -171,3 +171,12 @@ Non inventare requisiti di pacchetti, configurazioni, dati o effetti non
 approvati. Stato attuale: PY-001 seguita da DEP-001 con la sola verifica
 minima di `pip`, **non** elenco completo delle dipendenze di Ruth;
 nessuna installazione o modifica dell'host (DATA-001).
+
+## Diagnostica read-only dei report (DIAG-SCOPE-001)
+
+Perimetro DIAG-001 approvato il 16 ottobre 2026: PY e DEP continuano
+in sequenza; DIAG li segue e trasforma i loro report gia' disponibili
+in motivi e suggerimenti, senza leggere host/log o modificare .venv.
+Se PY fallisce, DEP e' saltato ma DIAG deve comunque spiegare l'errore.
+I passaggi futuri non devono sostituire quelli precedenti nel default.
+Non equiparare assenza di segnalazioni a compatibilita' nativa certificata.

@@ -6,10 +6,18 @@ Nodo responsabile: [DIAG](NODE.yaml). Ripresa: [START_HERE](../../START_HERE.md)
 
 Scopo: Spiegare problemi di ambiente senza alterarlo.
 
-Branch: `environment/diagnostics/main` (planned); padre Git previsto: `environment/main`.
+Branch: `environment/diagnostics/main` (present); padre Git previsto: `environment/main`.
 
 La presenza dello scaffold non implica una implementazione runtime.
 
+## Cartelle
+
+- [runtime](runtime/CODEMAP.md)
+- [tests](tests/CODEMAP.md)
+
 ## File
 
+- [CHECKPOINT.md](CHECKPOINT.md)
+- [MIGRATION_SCOPE.md](MIGRATION_SCOPE.md)
 - [NODE.yaml](NODE.yaml)
+- [__init__.py](__init__.py)

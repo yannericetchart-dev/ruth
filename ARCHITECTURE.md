@@ -81,12 +81,13 @@ del branch da solo non impone nessuna compatibilita.
 ## Ordine di migrazione e dipendenze
 
 1. Ambiente Python e contratti minimi necessari (PY-001 integrata e accettata).
-2. Dipendenze Python generiche in sola lettura (DEP-001); diagnostica avanzata separata.
-3. Inventario hardware e disponibilita delle risorse.
-4. Catalogo, formati e acquisizione da Hugging Face.
-5. Backend CUDA, motore llama.cpp, binding llama-cpp-python e sessione comune.
-6. Profilazione: selezione, memoria, contesto, placement, precisione, profili.
-7. Conversazione e interfaccia terminale.
+2. Dipendenze Python generiche in sola lettura (DEP-001).
+3. Diagnostica read-only dei report Python/dipendenze (DIAG-001); i log nativi sono esclusi.
+4. Inventario hardware e disponibilita delle risorse.
+5. Catalogo, formati e acquisizione da Hugging Face.
+6. Backend CUDA, motore llama.cpp, binding llama-cpp-python e sessione comune.
+7. Profilazione: selezione, memoria, contesto, placement, precisione, profili.
+8. Conversazione e interfaccia terminale.
 
 Inference dipende da models e hardware; profiling da models, hardware e
 inference; chat da inference. Il download non richiede una GPU. Le dipendenze

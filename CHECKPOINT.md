@@ -1,6 +1,6 @@
 # Ruth: checkpoint di progetto
 
-Revisione documentale: 17 (indice main). Protocollo CONT-001 rev 1.
+Revisione documentale: 18 (stato candidato DIAG-001). Protocollo CONT-001 rev 1.
 Fase: 3 - migrazione incrementale per componente.
 Stato: **PY-001, DEP-001 e MAIN-FLOW-001 implementati, verificati,
 integrati in main e accettati con collaudo personale**.
@@ -68,3 +68,16 @@ Ogni componente futuro va collegato al flusso sequenziale di
 
 CONT-001, MIG-FLOW-001, MIG-FLOW-002, REMOTE-001, MAIN-FLOW-001,
 DATA-001, PLAN-001, DEP-ORDER-001. SYNC-001 superseded.
+
+## DIAG-001: perimetro approvato e lavoro remoto in corso (16 ottobre 2026)
+
+- L'utente ha confermato `DIAG-SCOPE-001` dopo la descrizione
+  di scopo, API, ingressi, risultati, effetti, limiti e prove.
+- Sequenza documentale: diagnostica di ambiente dopo dipendenze e
+  prima dell'inventario hardware (allineamento di ARCHITECTURE.md).
+- Candidato `environment/diagnostics/work/DIAG-001`: convertitore
+  read-only dei report PY e DEP e flusso default `PY -> DEP -> DIAG`.
+- `implementation: complete` per il perimetro proposto, `verification:
+  not_run`, `integration: not_merged`; CI e promozioni da completare.
+- DIAG-MANUAL-001 non svolto; non avviare la migrazione successiva.
+- REMOTE-001: nessuna scrittura sul checkout locale; dati reali non in Git.

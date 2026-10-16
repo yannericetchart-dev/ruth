@@ -8,28 +8,39 @@
   "branch": {
     "name": "environment/diagnostics/main",
     "parent": "environment/main",
-    "status": "planned"
+    "status": "present"
   },
-  "development": "inactive",
-  "implementation": "skeleton",
-  "maturity": null,
+  "development": "active",
+  "implementation": "complete",
+  "maturity": "experimental",
   "verification": "not_run",
-  "integration": "merged",
+  "integration": "not_merged",
   "flags": [
     "in_scope"
   ],
   "blocked_by": [],
   "depends_on": [
-    "environment/python"
+    "environment/python",
+    "environment/dependencies"
   ],
   "api": [
-    "inspect(report) -> DiagnosticReport [proposta]"
+    "inspect(python_report: PythonEnvironment, dependencies: DependencyPlan | None = None) -> DiagnosticReport [implementata sul branch candidato, non verificata]"
   ],
   "tasks": [
     {
       "id": "DIAG-001",
+      "state": "active",
+      "description": "Diagnostica pura su report Python e dipendenze, codici portabili e suggerimenti, esito automatico dopo PY/DEP; test e promozioni pendenti."
+    },
+    {
+      "id": "DIAG-SCOPE-001",
+      "state": "complete",
+      "description": "Funzioni, ingressi, risultati, effetti e limiti approvati esplicitamente dall'utente il 16 ottobre 2026."
+    },
+    {
+      "id": "DIAG-MANUAL-001",
       "state": "planned",
-      "description": "Definire e verificare il contratto prima della migrazione."
+      "description": "Dopo merge finale: verificare su copia locale pulita main.py senza argomenti e ordine PY->DEP->DIAG, con conferma SHA utente."
     }
   ]
 }

@@ -39,3 +39,26 @@ class DependencyPlan:
     def to_dict(self) -> dict:
         """Return transient data; never publish host-specific results."""
         return asdict(self)
+
+
+@dataclass(frozen=True)
+class DiagnosticIssue:
+    """A portable diagnostic, without captured paths, logs or versions."""
+
+    code: str
+    severity: str
+    message: str
+    suggested_action: str
+    package: str | None = None
+
+
+@dataclass(frozen=True)
+class DiagnosticReport:
+    """Read-only diagnostic summary; not a native/runtime certification."""
+
+    status: str  # ok_unverified / attention_required / inspection_incomplete
+    issues: tuple[DiagnosticIssue, ...]
+
+    def to_dict(self) -> dict:
+        """Return transient data only. Never write real host reports to Git."""
+        return asdict(self)

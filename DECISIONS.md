@@ -188,3 +188,20 @@ Ogni sostituzione deve collegare entrambe le decisioni e aggiornare le mappe.
   `3f08cbad9ec06f814031bd1cbcbdc25553bd82ae`.
   L'accettazione DEP-MANUAL-001 resta distinta e confermata.
   Nessun componente successivo avviato senza nuovo perimetro approvato.
+
+## DIAG-SCOPE-001: diagnosi dai soli report ambiente esistenti
+
+- Stato: accepted.
+- Approvazione: esplicita dell'utente il 16 ottobre 2026.
+- Scopo: convertire gli esiti di Python e delle dipendenze in codici,
+  spiegazioni e suggerimenti portabili, senza modificare l'ambiente.
+- Ingresso: report PY-001 e opzionale DEP-001; uscita DiagnosticReport
+  immutabile. Non inferire problemi CUDA/GPU dai report attuali.
+- Integrazione: il flusso ordinario `main.py` segue PY -> DEP -> DIAG;
+  se PY fallisce DEP e' saltato ma DIAG spiega PY. Esporre sempre
+  esiti ed eventuali blocchi all'utente (MAIN-FLOW-001).
+- Sicurezza: suggerimenti e non riparazioni; dati host esclusi (DATA-001).
+- Sequenza: chiudere diagnostica prima dell'hardware, correggendo l'ordine
+  di ARCHITECTURE.md; nessun hardware migrato implicitamente.
+- Test: fixture sintetiche e ordine/ragioni, mappe e CI GitHub;
+  collaudo personale DIAG-MANUAL-001 post-merge (MIG-FLOW-002).
