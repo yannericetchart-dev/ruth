@@ -284,3 +284,21 @@ e DIAG-SCOPE-001. SYNC-001 resta storica/superseded.
 - DATA-001: nessun output grezzo, inventario, path, manifest,
   modello o log reale pubblicato. Prossima porzione ancora
   non approvata: necessario perimetro e via libera MIG-FLOW-001.
+
+## GGUF-INDEX-SCOPE-001 approvato (16 ottobre 2026)
+
+- MIG-009 approvata esplicitamente dopo la chiusura di MIG-008;
+  base main `240e1bc8616f9087390c08603704db4165ea1587`, ramo di lavoro remoto
+  `models/formats/gguf/work/GGUF-INDEX-001`.
+- Scopo: lettura limitata e read-only dei soli descrittori tensore
+  dichiarati in GGUF del catalogo, senza leggere il tensor_data.
+- Verifica offset, nomi duplicati, dimensioni, allineamento e
+  intervalli di tipi scalari conosciuti. Quantizzazioni/tipi
+  sconosciuti esplicitamente size_unverified, mai success implicito.
+- Nona fase Ruth dopo GGUF META e comando mirato `gguf-index`;
+  catalogo assente non bloccante. Fixture sintetiche e mappe candidate.
+- Stato **candidate implemented**, verification **not_run**,
+  integration **not_merged** fino a CI e promozioni; nessun
+  collaudo GGUF-INDEX-MANUAL-001 ancora eseguibile.
+- Nessuna modifica all'host, download, tensor payload, CUDA o
+  inferenza; dati reali restano locali (DATA-001).

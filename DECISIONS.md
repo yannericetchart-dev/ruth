@@ -359,3 +359,21 @@ Ogni sostituzione deve collegare entrambe le decisioni e aggiornare le mappe.
   non dimostra integrita' dei modelli o compatibilita' inferenza.
 - GGUF-META-SCOPE-001 resta invariato. Nessuna nuova migrazione
   approvata implicitamente (MIG-FLOW-001/002 e DATA-001).
+
+## GGUF-INDEX-SCOPE-001 — verifica strutturale dichiarativa
+
+- Stato: accepted; via libera esplicito dell'utente il 16 ottobre 2026.
+- Soli GGUF dichiarati in CAT, API inspect_tensor_index e
+  inspect_all_tensor_indexes, report immutabili con soli codici e conteggi.
+- Indici: numero nomi e unicita', massimo 4 dimensioni positive,
+  limiti aritmetici, offset allineati e dentro la dimensione del file;
+  solo tipi scalari con dimensione conosciuta verificano gli intervalli.
+- I tipi quantizzati/sconosciuti restano non verificabili per ingombro:
+  stato size_unverified, non una verifica positiva dell'intero modello.
+- No peso, payload, hash, runtime o inferenza. Solo metadata
+  bounded, con limitazioni e difese CAT/GGUF preesistenti.
+- Nuova nona fase Ruth dopo META, sottocomando gguf-index;
+  catalogo assente = skip regolare. Fixture sintetiche, CI,
+  mappe e PR lungo tutti gli antenati. Collaudo personale
+  GGUF-INDEX-MANUAL-001 post-merge (MIG-FLOW-002).
+- DATA-001, REMOTE-001, MAIN-FLOW-001 restano vigenti.

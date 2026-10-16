@@ -132,3 +132,10 @@ con il flusso completo di Ruth sul commit `d318fd793da514f21ee2e8475304d1a6c883e
 Catalogo e metadati GGUF `not_configured`: stato valido; nessun
 file GGUF reale provato. Consultare CHECKPOINT.md.
 Nessun download, lettura pesi o inferenza autorizzato.
+
+## GGUF-INDEX-SCOPE-001 approvato (16 ottobre 2026)
+
+L'utente approva MIG-009: verifica bounded degli indici tensori dei soli
+GGUF catalogati, senza leggere pesi. Nono passaggio automatico Ruth.
+Implementazione candidata; verifiche e promozioni pendenti: consultare
+CHECKPOINT.md. Collaudo GGUF-INDEX-MANUAL-001 solo dopo main.
