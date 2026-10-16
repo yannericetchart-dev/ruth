@@ -13,7 +13,7 @@
   "development": "active",
   "implementation": "partial",
   "maturity": "experimental",
-  "verification": "not_run",
+  "verification": "passed",
   "integration": "merged",
   "flags": [
     "in_scope"
@@ -21,7 +21,7 @@
   "blocked_by": [],
   "depends_on": [],
   "api": [
-    "runtime.inspect_environment(project_root: Path) -> PythonEnvironment [implementata nella PR #3; non integrata in main]"
+    "runtime.inspect_environment(project_root: Path) -> PythonEnvironment [implementata e verificata in environment/main; ancora non integrata in main]"
   ],
   "tasks": [
     {
@@ -37,7 +37,8 @@
     {
       "id": "MIG-001",
       "state": "active",
-      "description": "PY-SCOPE-001 approvata; PR #3 candidata con ingresso Ruth; test e promozioni ai branch padri in corso."
+      "description": "PY-001 integrata in environment/main tramite PR #3; completare la promozione al main di progetto e il collaudo manuale."
     }
-  ]
+  ],
+  "verification_scope": "GitHub Actions run 38885972247 su 5fc816407f5c8873fd2ed39baa9d5293a9810c73: test sintetici isolamento Python, test ingresso Ruth, test mappe e maps --check; nessuna prova nativa hardware"
 }

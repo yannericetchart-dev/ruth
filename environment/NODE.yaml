@@ -13,7 +13,7 @@
   "development": "active",
   "implementation": "partial",
   "maturity": "experimental",
-  "verification": "not_run",
+  "verification": "passed",
   "integration": "not_merged",
   "flags": [
     "in_scope"
@@ -21,16 +21,17 @@
   "blocked_by": [],
   "depends_on": [],
   "api": [
-    "inspect(project_root: Path) -> PythonEnvironment [implementata nella PR #3; non integrata in main]",
+    "inspect(project_root: Path) -> PythonEnvironment [verificata in environment/main; non integrata in main]",
     "plan(requirements) -> EnvironmentPlan [proposta]",
     "PythonEnvironment: project_root: str; interpreter: str; python_version: tuple[int, ...]; interpreter_in_project_venv: bool; venv_status: str; reasons: tuple[str, ...] [contratto immutabile della PR #2]",
-    "PythonEnvironment.to_dict() -> dict [implementata nella PR #3; dati transitori, salvataggi solo locali]"
+    "PythonEnvironment.to_dict() -> dict [implementata in environment/main; dati transitori, salvataggi solo locali]"
   ],
   "tasks": [
     {
       "id": "ENV-001",
       "state": "active",
-      "description": "Promozione PY-001 in preparazione; test e verifica mappe prima del merge in environment/main."
+      "description": "PY-001 integrata in environment/main tramite PR #3, verificata su GitHub; resta la promozione a main."
     }
-  ]
+  ],
+  "verification_scope": "GitHub Actions run 38885972247 su 5fc816407f5c8873fd2ed39baa9d5293a9810c73: test sintetici isolamento Python, test ingresso Ruth, test mappe e maps --check; nessuna prova nativa hardware"
 }

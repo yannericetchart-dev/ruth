@@ -82,3 +82,5 @@ log e risultati reali esclusivamente locali. PY-MANUAL-001 e' pianificata;
 non e' stato eseguito o confermato un collaudo personale.
 
 Stato implementazione dell'ingresso: candidato in PR #3, non ancora integrato in main. Verifica sulla revisione remota e collaudo utente ancora necessari.
+
+Verifica: GitHub Actions run 38885972247 superato; primo merge in environment/main `fd61723874052053f38446ee82eca954870804e1`. Promozione in main e collaudo personale ancora pendenti.
