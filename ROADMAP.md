@@ -8,9 +8,9 @@ Coordinare i sottosistemi tramite API comuni.
 
 Sviluppo: **active**; codice: **partial**; maturita: experimental; verifica: passed; integrazione: merged.
 
-Flag: in_scope. Blocchi: GPU-MANUAL-001.
+Flag: in_scope. Blocchi: nessuno registrato.
 
-Ambito verifica: GPU-001 NVIDIA: CI GitHub 38918374871, 38918650589, 38918759116, 38918867451 success (92 test sintetici, 258 mappe); promozioni PR #30 NVIDIA, #31 GPU, #32 hardware e #33 main. Driver, CUDA, AMD/Intel e compatibilita' inferenza non verificati. GPU-MANUAL-001 ancora pendente.
+Ambito verifica: GPU-001 NVIDIA: CI runs 38918374871, 38918650589, 38918759116, 38918867451 success (92 test sintetici e 258 mappe); PR #30-#33 integrate. GPU-MANUAL-001 passato il 16 ottobre 2026 su c344c71013cfa05da4f49f3204900f4bdc89b8ea: cinque passaggi PY->DEP->DIAG->HW->NVIDIA, stato NVIDIA available e riepilogo positivo. Non certifica CUDA, driver, backend o inferenza; dati host esclusi.
 
 ## Attivita locali
 
@@ -22,7 +22,7 @@ Ambito verifica: GPU-001 NVIDIA: CI GitHub 38918374871, 38918650589, 38918759116
 6. `MAIN-MANUAL-001` [complete] Utente: avvio sequenziale di main.py dal checkout main pulito, prima Python poi controllo pip, output conforme; commit 3f08cbad9ec06f814031bd1cbcbdc25553bd82ae verificato il 16 ottobre 2026.
 7. `MIG-003` [complete] DIAG-001 implementata, verificata e integrata via PR #22; DIAG-MANUAL-001 superato sul commit b379d2d8a228f55101eb98a19bfb14e8fc7a4bcb (sequenza PY->DEP->DIAG). Prossimo componente soltanto dopo nuovo perimetro approvato.
 8. `MIG-004` [complete] HW-SCOPE-001 CPU/RAM implementata, verificata e integrata via PR #27; collaudo personale HW-MANUAL-001 positivo sul commit 59b26fd6b427e6756ce0285fee60590cb077ebf1 (PY->DEP->DIAG->HW). Prossima porzione richiede nuovo perimetro approvato.
-9. `MIG-005` [blocked] GPU-001 NVIDIA implementata, verificata da CI e integrata in main tramite PR #33; GPU-MANUAL-001 in attesa di test personale prima di qualunque altra migrazione.
+9. `MIG-005` [complete] GPU-SCOPE-001 NVIDIA implementata, verificata e integrata in main via PR #33; GPU-MANUAL-001 confermata positiva sul commit c344c71013cfa05da4f49f3204900f4bdc89b8ea con sequenza PY->DEP->DIAG->HW->NVIDIA. Il prossimo perimetro richiede nuova approvazione.
 
 ## Componenti (ordine locale, ID stabili)
 

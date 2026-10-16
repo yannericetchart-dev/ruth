@@ -10,10 +10,10 @@ Sviluppo: **active**; codice: **complete**; maturita: experimental; verifica: pa
 
 Flag: in_scope. Blocchi: nessuno registrato.
 
-Ambito verifica: GPU-001 NVIDIA: CI GitHub 38918374871, 38918650589, 38918759116, 38918867451 success (92 test sintetici, 258 mappe); promozioni PR #30 NVIDIA, #31 GPU, #32 hardware e #33 main. Driver, CUDA, AMD/Intel e compatibilita' inferenza non verificati. GPU-MANUAL-001 ancora pendente.
+Ambito verifica: GPU-001 NVIDIA: CI runs 38918374871, 38918650589, 38918759116, 38918867451 success (92 test sintetici e 258 mappe); PR #30-#33 integrate. GPU-MANUAL-001 passato il 16 ottobre 2026 su c344c71013cfa05da4f49f3204900f4bdc89b8ea: cinque passaggi PY->DEP->DIAG->HW->NVIDIA, stato NVIDIA available e riepilogo positivo. Non certifica CUDA, driver, backend o inferenza; dati host esclusi.
 
 ## Attivita locali
 
-1. `NVIDIA-001` [complete] Provider NVIDIA read-only via nvidia-smi, fixture sintetiche verificate in CI e integrato in main tramite PR #33.
+1. `NVIDIA-001` [complete] Provider NVIDIA read-only via nvidia-smi verificato con fixture sintetiche in CI, integrato in main tramite PR #33 e collaudato personalmente nel quinto passaggio GPU-MANUAL-001.
 
 Propagare impatti e blocchi al [padre](../ROADMAP.md) e proseguire fino alla radice.

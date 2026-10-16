@@ -41,3 +41,12 @@ main, senza dati host su Git.
 - `main.py`: PY->DEP->DIAG->HW CPU/RAM->NVIDIA.
 - Stato tecnico: verificato e integrato; GPU-MANUAL-001 ancora
   in attesa di conferma personale post-sincronizzazione.
+
+## GPU-MANUAL-001 completata (16 ottobre 2026)
+
+L'utente ha provato personalmente sul commit `c344c71013cfa05da4f49f3204900f4bdc89b8ea`
+l'avvio `main.py` completo e confermato la quinta fase NVIDIA
+con stato `available` e riepilogo positivo. Il blocco di collaudo
+GPU-001 e' chiuso; le note precedenti di stato pending sono storiche.
+Nessun modello, misura di VRAM o inventario reale viene pubblicato
+su Git (DATA-001); driver, CUDA e inferenza non sono certificati.

@@ -247,3 +247,16 @@ GPU-MANUAL-001 richiesta solo dopo main, secondo MIG-FLOW-002.
 - Stato tecnico complete/passed/merged; collaudo personale
   GPU-MANUAL-001 **pending** (MIG-FLOW-002). Annotazioni precedenti
   della candidatura non ancora integrata sono storiche.
+
+## GPU-MANUAL-001 completata (16 ottobre 2026)
+
+- L'utente ha sincronizzato in fast-forward il clone pulito main
+  alla revisione `c344c71013cfa05da4f49f3204900f4bdc89b8ea`, confermata da `git rev-parse HEAD`.
+- Esecuzione personale `.venv/bin/python main.py` riuscita con
+  tutti e cinque i passaggi in ordine PY -> DEP -> DIAG -> HW -> NVIDIA.
+  Provider NVIDIA con stato `available`, riepilogo positivo.
+- Stato GPU-001: implementation complete, verification passed,
+  integration merged e manual acceptance passed. Le note precedenti
+  sulla verifica manuale pendente restano storiche.
+- Non sono versionati inventari, modelli, misure di memoria o log
+  host (DATA-001). Prossima migrazione solo previo scope approvato.
