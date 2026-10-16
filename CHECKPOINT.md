@@ -1,6 +1,6 @@
 # Ruth: checkpoint di progetto
 
-Revisione documentale: 6 (indice main).
+Revisione documentale: 7 (indice main).
 Attivita': `MIG-001` (prima porzione: `PY-001`).
 Fase corrente: **3 - migrazione incrementale per componente**.
 
@@ -34,30 +34,38 @@ Il passaggio 2 e' completato: scaffold dei domini, corsie, metadati di stato,
 mappe ricorsive e controllo di coerenza. Ambito della verifica: struttura e
 propagazione dei riepiloghi, non esecuzione applicativa o nativa.
 
-Prima porzione Python implementata e verificata nel branch
-`environment/python/work/inspect-venv`, commit
-`80218739327666b0250c3715ba9cfb6fe1f114d5`:
-[PR #2 pronta per la revisione finale](https://github.com/yannericetchart-dev/ruth/pull/2).
-Destinazione immediata: `environment/python/main`, poi `environment/main`,
-infine `main`. Tutti i branch padri conservano ancora lo scaffold.
+Prima porzione Python integrata in `environment/python/main` tramite
+[PR #2 integrata](https://github.com/yannericetchart-dev/ruth/pull/2), merge
+`8c76080df5ba34e354f484c92adf7e132b594c2d`.
+Stato aggiornato del componente e relative mappe al commit
+`b80520ad903ff18f93398725ea95cd91f51da5d8`.
+La revisione di codice esaminata e' `80218739327666b0250c3715ba9cfb6fe1f114d5`.
+environment/main e main conservano ancora lo scaffold applicativo.
 
 Revisione tecnica PY-REV-001 completata: corretto un caso in cui una
 dichiarazione malformata ripetuta veniva ignorata; verificati gli ingressi
 pubblici reali e l'ambito obbligatorio delle verifiche nelle mappe.
-Nessun problema bloccante residuo nell'ambito della porzione. La PR non e'
-piu in bozza e nessun merge e' stato eseguito.
+Nessun problema bloccante residuo nell'ambito della porzione.
 
-Prossimo passaggio: prima promozione a environment/python/main. Consultare
-il [checkpoint immutabile](https://github.com/yannericetchart-dev/ruth/blob/80218739327666b0250c3715ba9cfb6fe1f114d5/environment/python/CHECKPOINT.md)
-prima dell'integrazione; aggiornare lo stato dopo ogni promozione.
+PY-PROMOTE-001 completata: il merge conserva la storia e produce lo stesso
+albero della revisione che ha superato i test. Le evidenze restano locali.
+Il campo integration del nodo Python resta not_merged rispetto al suo padre
+environment/main: la prima promozione al branch canonico e' invece completata.
+
+Prossimo passaggio: preparare e verificare la promozione da
+environment/python/main a environment/main. La promozione a main resta
+successiva. Consultare il
+[checkpoint immutabile](https://github.com/yannericetchart-dev/ruth/blob/b80520ad903ff18f93398725ea95cd91f51da5d8/environment/python/CHECKPOINT.md)
+e aggiornare lo stato dopo ogni promozione.
 Ambito verificato: test sintetici dell'isolamento Python e API comuni;
 nessuna certificazione del runtime nativo. I risultati restano locali.
 Le altre porzioni rimangono pianificate; Kaggle resta inattivo.
 
 ## Limiti correnti
 
-- In main non e' stato integrato codice applicativo. PY-001 e' confinata al
-  branch di lavoro e non deve essere descritta come disponibile in main.
+- In main non e' stato integrato codice applicativo. PY-001 e' disponibile
+  in environment/python/main e non deve essere descritta come disponibile
+  in environment/main o main.
 - Non avviare il passaggio 3 prima della verifica dei passaggi precedenti.
 - Nessuna misurazione nativa e' certificata da questo checkpoint.
 - Branch e commit delle attivita' successive saranno indicati nei checkpoint

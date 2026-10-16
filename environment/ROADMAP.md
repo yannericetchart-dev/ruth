@@ -6,13 +6,13 @@ Nodo responsabile: [ENV](NODE.yaml). Ripresa: [START_HERE](../START_HERE.md).
 
 Ispezionare Python e pianificare dipendenze senza installazioni implicite.
 
-Sviluppo: **active**; codice: **skeleton**; maturita: non assegnata; verifica: not_run; integrazione: merged.
+Sviluppo: **active**; codice: **skeleton**; maturita: non assegnata; verifica: not_run; integrazione: not_merged.
 
 Flag: in_scope. Blocchi: nessuno registrato.
 
 ## Attivita locali
 
-1. `ENV-001` [active] Prima porzione Python revisionata, pronta alla prima promozione nella PR #2. Il codice in main resta scaffold.
+1. `ENV-001` [active] Prima porzione Python integrata nel branch canonico environment/python/main; da promuovere a environment/main. Il codice in main resta scaffold.
 
 ## Componenti (ordine locale, ID stabili)
 

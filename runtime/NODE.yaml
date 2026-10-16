@@ -14,7 +14,7 @@
   "implementation": "skeleton",
   "maturity": null,
   "verification": "not_run",
-  "integration": "merged",
+  "integration": "not_merged",
   "flags": [
     "in_scope"
   ],
@@ -28,13 +28,13 @@
     "chat"
   ],
   "api": [
-    "inspect_environment(project_root: Path) -> PythonEnvironment [proposta; implementata nella PR #2, non integrata in main]"
+    "inspect_environment(project_root: Path) -> PythonEnvironment [proposta; implementata in environment/python/main, non integrata in main]"
   ],
   "tasks": [
     {
       "id": "CORE-001",
       "state": "active",
-      "description": "Contratto comune Python inoltrato nella PR #2 e revisionato; ancora da integrare."
+      "description": "API comune Python disponibile in environment/python/main; ancora da promuovere ai branch superiori."
     }
   ]
 }

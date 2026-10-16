@@ -14,7 +14,7 @@ Flag: in_scope. Blocchi: nessuno registrato.
 
 1. `SETUP-001` [complete] Configurazione e collaudo indipendente dei client.
 2. `STRUCT-001` [complete] Scaffold ricorsivo senza migrazione applicativa.
-3. `MIG-001` [active] Prima porzione Python revisionata (PY-REV-001); PR #2 pronta per la prima promozione. Codice ancora fuori da main.
+3. `MIG-001` [active] Prima porzione Python integrata in environment/python/main tramite PR #2 (PY-PROMOTE-001). Prossima promozione a environment/main; codice non presente in main.
 
 ## Componenti (ordine locale, ID stabili)
 

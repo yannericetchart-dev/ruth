@@ -15,14 +15,16 @@ macchina non sono candidati alla migrazione secondo DATA-001.
 - Ambito: ispezione in sola lettura dell'interprete e dell'isolamento della
   `.venv` del progetto. Nessuna installazione, download o importazione del
   lock CUDA specifico. Le versioni dei pacchetti sono una porzione successiva.
-- Stato: prima implementazione revisionata (PY-REV-001) nella
+- Stato: prima implementazione revisionata (PY-REV-001) e integrata tramite
   [PR #2](https://github.com/yannericetchart-dev/ruth/pull/2), branch
-  `environment/python/work/inspect-venv`, commit
-  `80218739327666b0250c3715ba9cfb6fe1f114d5`. Non integrata nei padri;
+  `environment/python/main`, con stato aggiornato al commit
+  `b80520ad903ff18f93398725ea95cd91f51da5d8`. Non promossa ai padri superiori;
   il codice di questo branch main resta lo scaffold.
 - Esito della revisione: corretto il caso delle dichiarazioni malformate
-  ripetute e verificata la catena reale delle API. Prima promozione pronta,
-  nessun merge ancora eseguito.
+  ripetute e verificata la catena reale delle API. Prima promozione
+  PY-PROMOTE-001 completata, merge `8c76080df5ba34e354f484c92adf7e132b594c2d`.
+  L'albero del merge coincide con la revisione verificata. Da promuovere a
+  environment/main e in seguito main.
 - Verifica prevista: fixture sintetiche per virtualenv attivo, errato,
   globale, con site-packages condivisi e configurazione illeggibile.
 

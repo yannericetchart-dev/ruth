@@ -1,14 +1,13 @@
 # Python: indice di lavoro in main
 
-PY-001 e' in revisione nella
-[PR #2](https://github.com/yannericetchart-dev/ruth/pull/2), destinata a
-environment/python/main. Il branch di lavoro e'
-environment/python/work/inspect-venv, commit
-`80218739327666b0250c3715ba9cfb6fe1f114d5`.
+PY-001 e' integrata in environment/python/main tramite
+[PR #2](https://github.com/yannericetchart-dev/ruth/pull/2), merge
+`8c76080df5ba34e354f484c92adf7e132b594c2d`. Stato del componente aggiornato
+al commit `b80520ad903ff18f93398725ea95cd91f51da5d8`.
 
 La sola ispezione Python e' implementata, testata e revisionata (PY-REV-001)
-in quella revisione. La PR non e' piu in bozza; il prossimo passaggio e' la
-prima promozione a environment/python/main. Nessun merge ancora eseguito.
+in quella revisione. PY-PROMOTE-001 completata; il prossimo passaggio e' la
+promozione a environment/main, dove il codice non e' ancora integrato.
 Questo branch main contiene lo scaffold, senza il codice della porzione.
 Vedere il
-[checkpoint della porzione](https://github.com/yannericetchart-dev/ruth/blob/80218739327666b0250c3715ba9cfb6fe1f114d5/environment/python/CHECKPOINT.md).
+[checkpoint della porzione](https://github.com/yannericetchart-dev/ruth/blob/b80520ad903ff18f93398725ea95cd91f51da5d8/environment/python/CHECKPOINT.md).

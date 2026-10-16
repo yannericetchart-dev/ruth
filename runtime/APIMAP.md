@@ -6,7 +6,7 @@ Nodo responsabile: [CORE](NODE.yaml). Ripresa: [START_HERE](../START_HERE.md).
 
 ## Contratto dichiarato
 
-- `inspect_environment(project_root: Path) -> PythonEnvironment [proposta; implementata nella PR #2, non integrata in main]`
+- `inspect_environment(project_root: Path) -> PythonEnvironment [proposta; implementata in environment/python/main, non integrata in main]`
 
 Dipendenze: [environment](../environment/APIMAP.md), [hardware](../hardware/APIMAP.md), [models](../models/APIMAP.md), [inference](../inference/APIMAP.md), [profiling](../profiling/APIMAP.md), [chat](../chat/APIMAP.md).
 

@@ -14,25 +14,30 @@
   "implementation": "skeleton",
   "maturity": null,
   "verification": "not_run",
-  "integration": "merged",
+  "integration": "not_merged",
   "flags": [
     "in_scope"
   ],
   "blocked_by": [],
   "depends_on": [],
   "api": [
-    "inspect(project_root) -> PythonEnvironment [proposta]"
+    "inspect(project_root) -> PythonEnvironment [proposta in main; implementata in environment/python/main]"
   ],
   "tasks": [
     {
       "id": "PY-001",
       "state": "active",
-      "description": "PY-001 revisionata nel branch di lavoro; prima promozione PR #2 pronta. Il codice in main resta scaffold."
+      "description": "PY-001 integrata in environment/python/main; da promuovere a environment/main e main. Il codice in main resta scaffold."
     },
     {
       "id": "PY-REV-001",
       "state": "complete",
-      "description": "Revisione tecnica completata con correzione del caso malformato ripetuto e verifica delle API reali; nessun merge eseguito."
+      "description": "Revisione tecnica completata con correzione del caso malformato ripetuto e verifica delle API reali."
+    },
+    {
+      "id": "PY-PROMOTE-001",
+      "state": "complete",
+      "description": "PR #2 integrata nel branch canonico environment/python/main; albero del merge identico alla revisione verificata. Da promuovere a environment/main."
     }
   ]
 }
