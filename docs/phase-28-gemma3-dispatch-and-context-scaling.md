@@ -1526,11 +1526,12 @@ ctx1024 artifact with an identical
 teacher-forced token sequence, subject
 to the strict existing compare gate.
 
-**Matrix progress: 13/16 native successes.**
-The remaining Phase28 native combinations
-are `mixed-on` BF16/F16 Flash ON at 1024,
-and `f32-off` / `mixed-on` at 2048.
-The next controlled step is the
+**Historical matrix progress at the time of
+this F32/F32 ctx1024 experiment: 13/16 native successes.**
+The subsequent `mixed-on` BF16/F16 Flash
+ON ctx1024 run has since succeeded and is
+documented below, advancing to **14/16**.
+The original next controlled step was the
 **read-only** `mixed-on` ctx1024 plan:
 
 ```bash
@@ -1538,17 +1539,160 @@ The next controlled step is the
   --candidate mixed-on --n-ctx 1024
 ```
 
-This should predict 768 prefill tokens,
+This plan predicted 768 prefill tokens,
 16 teacher-forced decode calls and
 **26 MiB** of mixed BF16/F16 logical KV.
-No inference is implied by the plan.
-Execute a single GPU test only with
-separate explicit `--execute
---allow-gpu-inference` flags and stop
-on unverified outcomes. Do not
-auto-escalate to ctx2048, alter
-the pinned native library or promote
-a configuration to production.
+The read-only plan did not allocate or run
+the model; the separately authorized
+native test is documented below.
+Do not auto-escalate to ctx2048,
+alter the pinned native library or
+promote a configuration to production.
+
+## Actual Phase 28 native result — BF16/F16, Flash ON, n_ctx=1024
+
+The user executed the read-only `mixed-on`
+ctx1024 plan (`status=read_only_plan`,
+no native execution) and then **separately
+authorized exactly one** teacher-forced
+CUDA evaluation:
+
+```bash
+.venv/bin/python -m ruth_runtime.gemma3_phase28 \
+  --candidate mixed-on --n-ctx 1024 \
+  --execute --allow-gpu-inference
+```
+
+**Observed status:** `native_long_context_inference_observed`,
+`inference_executed=true`,
+`full_gpu_offload_observed=true`,
+`offloaded_layers=27` / `total_layers=27`,
+`n_ctx_effective_native=1024`,
+K=BF16, V=F16, Flash ON,
+`decode_logits_requested_per_token=true`
+and `decode_logits_requested_count=16`.
+
+| Metric | F32/F32 Flash OFF ctx1024 | BF16/F16 Flash ON ctx1024 |
+|---|---:|---:|
+| Prefill tokens / chunks | 768 / 12 | **768 / 12** |
+| Decode teacher-forced calls | 16 | **16** |
+| Prefill median (ms) | 170.2965 | **160.6581** |
+| Prefill throughput (tokens/s) | 4,509.78 | **4,780.34** |
+| Median per-call decode (ms/token) | 13.4313 | **12.7386** |
+| Median 16-token decode round (ms) | 214.7660 | **204.0292** |
+| Decode throughput (tokens/s) | 74.50 | **78.42** |
+| Native and logical KV (MiB) | 52.0 | **26.0** |
+| NVML GPU process peak sampled (MiB) | 2,138 | **2,120** |
+
+Native `mixed-on` CUDA buffers:
+model `1907.39 MiB`,
+KV `4.0 MiB + 22.0 MiB = 26.0 MiB`,
+compute `64.28 MiB`;
+`CPU_Mapped` model `576.0 MiB` is
+not a separately measured CUDA VRAM
+allocation. Three prefill observations:
+`159.772191`, `160.658083`,
+`161.753122` ms. NVML's 2120 MiB
+GPU peak is a sampled observation and may
+miss short allocation peaks.
+
+Relative to F32/F32 Flash OFF at the
+**same 768-token Phase28 workload**,
+mixed-on showed about +6.0% prefill
+and +5.3% decode throughput, and exactly
+half the KV storage. This is **not a
+cache-dtype-only causal comparison**:
+K, V and Flash policy (and potentially
+native kernel dispatch) change. The
+18 MiB difference between GPU sampled
+peaks must not be interpreted as an
+exact allocation savings of 26 MiB.
+
+**Pinned provenance and matched tokens:**
+
+- GGUF SHA256:
+  `b144bde489651d3d292d7e47a59c6f811cdd96d184be582e5ad30ab338b9b6bf`.
+- Native wheel SHA256:
+  `ad5057352154d90f95a473d01d039c975f1987cd9b25f8ad7a83cf6c7e80ee74`.
+- Prompt token IDs SHA256:
+  `b3f6ab50b2d2f49739d85a35470c9d9ad5328753b0feecb075df4bf4491ddeec`,
+  identical to the observed ctx1024
+  F32/F32 run.
+- The 16 reported teacher-forced
+  decode IDs also match that run.
+- Local logits artifact, dtype `float32`,
+  shape `[2, 262144]` (last prefill
+  and last decode full-vocabulary vectors):
+  `.ruth-build/phase28/gemma-3-1b-it/ctx-1024_flash-on_k-BF16_v-F16_easavhiv.npz`.
+- Artifact SHA256:
+  `d93ec1476381685c029b5f50c0a5bca956eb0cb6670d3fdb6da1b18044f0ca58`.
+
+`nvtx_ranges_available=false`,
+`native_kernel_dispatch_verified=false`,
+`production_qualified=false` and
+`runtime_profile_published=false`.
+A full-token numeric quality gate has
+**not** been completed by this
+native inference alone. Only
+two positions' F32 logits were archived.
+
+### Matrix gate — 14/16 native cases
+
+At contexts 256, 512 and 1024,
+all four Phase28 candidates have now
+completed native GPU inference.
+**Only `f32-off` and `mixed-on`
+at `n_ctx=2048` remain untested.**
+
+The immediate next step is an
+**offline, same-context, identical-token**
+numeric comparison. The strongest
+controlled pair is prior BF16/BF16
+Flash ON against newly observed
+BF16/F16 Flash ON: fixed K=BF16,
+Flash ON, only V storage changes.
+The exact BF16/BF16 ctx1024
+baseline filename was **not confirmed**
+by this message, so do not invent it.
+
+On the user's local machine, discover
+the existing baseline by its exact
+Phase28 case prefix and ensure that
+there is **exactly one** matching file:
+
+```bash
+cd ~/Dev/ruth-model-profiling
+shopt -s nullglob
+baseline=(.ruth-build/phase28/gemma-3-1b-it/ctx-1024_flash-on_k-BF16_v-BF16_*.npz)
+if (( ${#baseline[@]} != 1 )); then
+  printf 'Expected exactly one BF16/BF16 ctx1024 baseline; found %d\\n' "${#baseline[@]}"
+else
+  .venv/bin/python -m ruth_runtime.gemma3_phase28_compare \
+    --baseline "${baseline[0]}" \
+    --candidate .ruth-build/phase28/gemma-3-1b-it/ctx-1024_flash-on_k-BF16_v-F16_easavhiv.npz
+fi
+```
+
+The CLI reads local artifacts and
+validates matching context length,
+exact prompt and decode arrays and
+logits shapes. No CUDA execution
+or production profile change is
+authorized by this command.
+The BF16/BF16 controlled comparison
+is still **pending** until its
+numeric JSON is supplied. An
+additional confounded F32/F32 OFF
+vs BF16/F16 ON compare can be made
+later, but cannot isolate a
+single cache dtype change.
+
+The next ctx2048 GPU experiment
+requires separate authorization
+and success of the existing
+native preflight. No automatic
+context escalation, download,
+fallback or promotion is approved.
 
 ## Promotion gate
 
