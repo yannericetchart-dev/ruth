@@ -2,7 +2,21 @@
 
 - GGUF-SCOPE-001 approvato il 16 ottobre 2026 su main `022928e56c5915dc4a9cb0850d62de24972ec190`.
 - Implementazione lettore e settima fase candidate sul work branch;
-  verifiche CI, promozioni e collaudo personale ancora da eseguire.
+  verifiche CI e promozioni completate; collaudo personale ancora da eseguire.
 - GGUF-MANUAL-001 planned post-merge; catalogo assente -> skip valido.
 - Nessuna operazione GGUF oltre la sola lettura dei 24 byte iniziali.
 - DATA-001 e REMOTE-001 invariati. Non pubblicare dati locali.
+
+## GGUF-001 integrata (16 ottobre 2026)
+
+- PR #41, #42, #43, #44 integrate sino al commit main `15b106082c4dee37622c61a8afefd248a57464a0`.
+- CI runs 38935705385, 38935861881, 38935943414, 38936032188
+  **success**: test intestazioni v2/v3 endian, errori e percorsi, ingresso
+  Ruth con settimo passaggio automatico, mappe coerenti.
+- Stato finale tecnico: implementation complete, verification passed
+  (solo fixture sintetiche), integration merged.
+- **GGUF-MANUAL-001 active/pending**: richiede conferma esplicita
+  dell'utente dopo esecuzione locale da main aggiornato, anche quando
+  il catalogo non e' configurato e la settima fase e' correttamente saltata.
+- Il solo header non certifica l'integrita' di un modello GGUF o
+  l'idoneita' all'inferenza. Nessun dato privato o binario in Git.
