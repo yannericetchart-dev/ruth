@@ -47,3 +47,9 @@ argomenti sul commit `3f08cbad9ec06f814031bd1cbcbdc25553bd82ae`.
 Python precede la verifica minima dei metadati `pip`; nessuna
 installazione o certificazione di compatibilita' runtime.
 MAIN-MANUAL-001 **complete**; i precedenti stati pending sono storici.
+
+## DIAG-001: lavoro in corso (16 ottobre 2026)
+
+DIAG-SCOPE-001 approvato dall'utente; nuovo diagnostico sui report PY e
+DEP con sequenza default dopo DEP, ma codice ancora candidato; CI e
+promozioni non completate. DIAG-MANUAL-001 ancora da eseguire.

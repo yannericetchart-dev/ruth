@@ -143,3 +143,15 @@ Non importare lock CUDA o dati host, non installare pacchetti (DATA-001).
   di Ruth e richiedera' l'approvazione del proprio perimetro,
   poi il collaudo personale (MIG-FLOW-001/002).
 - Nessun dato reale della macchina o log e' stato versionato (DATA-001).
+
+## DIAG-001: approvata diagnostica read-only (16 ottobre 2026)
+
+- Perimetro [DIAG-SCOPE-001](environment/diagnostics/MIGRATION_SCOPE.md)
+  autorizzato esplicitamente; interpretare report PY-001 e DEP-001 senza
+  nuove letture host o installazioni.
+- Componente `environment/diagnostics`, ingresso principale
+  `main.py` in sequenza PY -> DEP -> DIAG. La diagnostica puo'
+  spiegare Python anche con DEP saltata.
+- Stato iniziale: candidato remoto, test e integrazione main pendenti;
+  dopo merge servira' DIAG-MANUAL-001 (MIG-FLOW-002).
+- Inventario hardware e diagnostica CUDA nativa restano esclusi.

@@ -13,8 +13,8 @@
   "development": "active",
   "implementation": "partial",
   "maturity": "experimental",
-  "verification": "passed",
-  "integration": "merged",
+  "verification": "stale",
+  "integration": "partial",
   "flags": [
     "in_scope"
   ],
@@ -22,7 +22,7 @@
   "depends_on": [],
   "api": [
     "runtime.inspect_environment(project_root: Path) -> PythonEnvironment [integrata in main; ispezione Python sperimentale]",
-    "main(argv: Sequence[str] = ()) -> int [sequenza PY->DEP integrata in main; modalita mirate disponibili]"
+    "main(argv: Sequence[str] = ()) -> int [sequenza PY->DEP integrata in main; estensione DIAG candidata; modalita mirate disponibili]"
   ],
   "tasks": [
     {
@@ -54,7 +54,12 @@
       "id": "MAIN-MANUAL-001",
       "state": "complete",
       "description": "Utente: avvio sequenziale di main.py dal checkout main pulito, prima Python poi controllo pip, output conforme; commit 3f08cbad9ec06f814031bd1cbcbdc25553bd82ae verificato il 16 ottobre 2026."
+    },
+    {
+      "id": "MIG-003",
+      "state": "active",
+      "description": "DIAG-SCOPE-001 approvato il 16 ottobre 2026; diagnostica read-only e passaggio PY->DEP->DIAG implementati sul ramo candidato, CI e promozioni pendenti."
     }
   ],
-  "verification_scope": "MAIN-FLOW-001: CI GitHub run 38900998138 e 38901495978 superate per test Python/dipendenze, ordine e gate dell'ingresso; integrazione PR #17 in main. MAIN-MANUAL-001 superato su revisione 3f08cbad9ec06f814031bd1cbcbdc25553bd82ae (16 ottobre 2026), sequenza PY->DEP con pip, senza certificare runtime/hardware."
+  "verification_scope": "DIAG-001: test sintetici della traduzione di report Python/dipendenze e dell'ordine PY->DEP->DIAG ancora da eseguire in CI; nessun controllo native/CUDA, nessuna compatibilita' certificata."
 }
