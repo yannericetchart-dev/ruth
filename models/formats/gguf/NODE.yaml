@@ -10,25 +10,31 @@
     "parent": "models/formats/main",
     "status": "planned"
   },
-  "development": "inactive",
-  "implementation": "skeleton",
-  "maturity": null,
+  "development": "active",
+  "implementation": "complete",
+  "maturity": "experimental",
   "verification": "not_run",
-  "integration": "merged",
+  "integration": "not_merged",
   "flags": [
     "in_scope"
   ],
   "blocked_by": [],
   "depends_on": [],
   "api": [
-    "inspect(path) -> ModelMetadata [proposta]",
-    "verify(path) -> VerificationReport [proposta]"
+    "inspect_header(model_id: str, *, project_root: Path | None = None) -> GGUFHeader [solo id dal catalogo; candidata]",
+    "inspect_headers(*, project_root: Path | None = None) -> GGUFReport [soli GGUF dichiarati; candidata]",
+    "verify(path) -> VerificationReport [proposta non implementata]"
   ],
   "tasks": [
     {
       "id": "GGUF-001",
+      "state": "active",
+      "description": "Lettore bounded dei 24 byte iniziali per v2/v3, controllo magic, versioni, contatori, endian, errori/percorsi sicuri; candidato sul work branch, verifica e merge pendenti."
+    },
+    {
+      "id": "GGUF-MANUAL-001",
       "state": "planned",
-      "description": "Definire e verificare il contratto prima della migrazione."
+      "description": "Dopo merge in main serve esecuzione personale di main.py senza argomenti e conferma settima fase (skip valido quando catalogo assente)."
     }
   ]
 }
