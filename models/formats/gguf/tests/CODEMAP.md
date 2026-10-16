@@ -10,3 +10,4 @@ Contenuto riservato a: test e fixture sintetiche.
 
 - [__init__.py](__init__.py)
 - [test_header.py](test_header.py)
+- [test_metadata.py](test_metadata.py)

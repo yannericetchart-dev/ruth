@@ -9,7 +9,7 @@ from environment.runtime.contracts import DependencyPlan, PythonEnvironment
 from hardware import detect as detect_hardware
 from hardware.gpu import detect as detect_gpu
 from models.catalog import catalog as load_model_catalog
-from models.formats.gguf import inspect_headers
+from models.formats.gguf import inspect_headers, inspect_all_metadata
 from runtime import inspect_environment
 
 # Initial smoke check only. Ruth's full dependency set has not been approved.
@@ -127,8 +127,30 @@ def _check_gguf(root: Path) -> int:
     return 1 if report.status in ("partial", "invalid") else 0
 
 
+def _check_gguf_metadata(root: Path) -> int:
+    """Eighth step: bounded technical GGUF metadata, no weights/inference."""
+    print("Ruth: avvio controllo metadati GGUF dichiarati.")
+    report = inspect_all_metadata(project_root=root)
+    for row in report.models:
+        if row.status == "metadata_read":
+            arch = row.architecture or "unknown"
+            quant = str(row.file_type) if row.file_type is not None else "unknown"
+            context = str(row.context_length) if row.context_length is not None else "unknown"
+            print(f"Ruth: metadati GGUF {row.model_id}: architettura dichiarata {arch}; "
+                  f"tipo file dichiarato {quant}; contesto dichiarato {context}; "
+                  "compatibilita' non verificata.")
+        else:
+            print(f"Ruth: metadati GGUF {row.model_id}: stato {row.status}.")
+    for reason in report.errors:
+        print(f"Ruth: metadati GGUF: problema {reason}.")
+    print(f"Ruth: metadati GGUF: {report.status}; {report.count} modelli esaminati.")
+    if report.status in ("not_configured", "empty", "no_gguf"):
+        print("Ruth: nessun metadato GGUF da leggere; nessun download.")
+    return 1 if report.status in ("partial", "invalid") else 0
+
+
 def main(argv: Sequence[str] = ()) -> int:
-    """Run PY -> DEP -> DIAG -> HW -> NVIDIA -> CAT -> GGUF; targeted checks remain."""
+    """Run PY -> DEP -> DIAG -> HW -> NVIDIA -> CAT -> GGUF -> META."""
     args = list(argv)
     root = Path(__file__).resolve().parent
     if not args:
@@ -141,6 +163,7 @@ def main(argv: Sequence[str] = ()) -> int:
             _check_gpu()
             _check_catalog(root)
             _check_gguf(root)
+            _check_gguf_metadata(root)
             print("Ruth: sequenza controlli terminata con problemi.")
             return 1
         print("Ruth: dipendenze minime da controllare: pip (non elenco completo di Ruth).")
@@ -150,7 +173,8 @@ def main(argv: Sequence[str] = ()) -> int:
         _check_gpu()
         catalog_code = _check_catalog(root)
         gguf_code = _check_gguf(root)
-        final_code = max(code, catalog_code, gguf_code)
+        metadata_code = _check_gguf_metadata(root)
+        final_code = max(code, catalog_code, gguf_code, metadata_code)
         if final_code == 0:
             print("Ruth: sequenza controlli completata; compatibilita' runtime non verificata.")
         else:
@@ -161,9 +185,11 @@ def main(argv: Sequence[str] = ()) -> int:
         return _check_catalog(root)
     if args == ["gguf"]:
         return _check_gguf(root)
+    if args == ["gguf-metadata"]:
+        return _check_gguf_metadata(root)
 
     if args[0] != "dependencies" or len(args) < 2:
-        print("Ruth: uso: python main.py [catalog | gguf | dependencies PACCHETTO [PACCHETTO==VERSIONE ...]]")
+        print("Ruth: uso: python main.py [catalog | gguf | gguf-metadata | dependencies PACCHETTO [PACCHETTO==VERSIONE ...]]")
         return 2
     return _check_dependencies(args[1:], root)[0]
 

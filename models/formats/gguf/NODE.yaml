@@ -11,10 +11,10 @@
     "status": "present"
   },
   "development": "active",
-  "implementation": "complete",
+  "implementation": "partial",
   "maturity": "experimental",
   "verification": "passed",
-  "integration": "merged",
+  "integration": "partial",
   "flags": [
     "in_scope"
   ],
@@ -23,6 +23,8 @@
   "api": [
     "inspect_header(model_id: str, *, project_root: Path | None = None) -> GGUFHeader [solo id da catalogo, integrata in main]",
     "inspect_headers(*, project_root: Path | None = None) -> GGUFReport [soli GGUF dichiarati, integrata in main]",
+    "inspect_metadata(model_id: str, *, project_root: Path | None = None) -> GGUFMetadata [candidate, catalog only]",
+    "inspect_all_metadata(*, project_root: Path | None = None) -> GGUFMetadataReport [candidate, metadata only]",
     "verify(path) -> VerificationReport [proposta non implementata]"
   ],
   "tasks": [
@@ -35,7 +37,17 @@
       "id": "GGUF-MANUAL-001",
       "state": "complete",
       "description": "User explicitly confirmed successful seven-step Ruth run on main ab81696dc93bc5d71a208cbcdc9a6f714b462fa9; GGUF catalog not_configured is valid; real GGUF file not exercised."
+    },
+    {
+      "id": "GGUF-META-001",
+      "state": "active",
+      "description": "Approved bounded metadata: architecture, file_type, context_length for catalogued GGUF; candidate implementation and synthetic tests, CI/promotions pending."
+    },
+    {
+      "id": "GGUF-META-MANUAL-001",
+      "state": "planned",
+      "description": "Personal Ruth default eight-step run and explicit positive acceptance after META merged to main."
     }
   ],
-  "verification_scope": "GGUF-001: CI success runs 38935705385, 38935861881, 38935943414, 38936032188; PR #41 gguf/main, #42 formats/main, #43 models/main, #44 main (15b106082c4dee37622c61a8afefd248a57464a0). Bounded 24-byte GGUF v2/v3 header, catalog-bound; synthetic tests and recursive maps passed. GGUF-MANUAL-001 accepted on ab81696dc93bc5d71a208cbcdc9a6f714b462fa9 (catalog not configured; no real GGUF read); no model payload or inference."
+  "verification_scope": "GGUF-001: CI success runs 38935705385, 38935861881, 38935943414, 38936032188; PR #41 gguf/main, #42 formats/main, #43 models/main, #44 main (15b106082c4dee37622c61a8afefd248a57464a0). Bounded 24-byte GGUF v2/v3 header, catalog-bound; synthetic tests and recursive maps passed. GGUF-MANUAL-001 accepted on ab81696dc93bc5d71a208cbcdc9a6f714b462fa9 (catalog not configured; no real GGUF read); no model payload or inference. GGUF-META-001 new scope approved, candidate code; metadata CI not yet verified; existing GGUF header CI passed."
 }
