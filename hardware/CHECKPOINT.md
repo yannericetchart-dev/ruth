@@ -22,3 +22,10 @@ personalmente dall'utente** (16 ottobre 2026).
   Nessun numero o inventario reale della macchina salvato in Git (DATA-001).
 - Componenti GPU o successivi soltanto dopo un nuovo perimetro approvato
   (MIG-FLOW-001); il vecchio checkout locale resta preservato (REMOTE-001).
+
+## GPU-SCOPE-001: candidatura NVIDIA (16 ottobre 2026)
+
+Perimetro NVIDIA approvato, runtime GPU vendor-neutral candidato
+senza modificare il rilevamento CPU/RAM integrato; CI e promozioni
+ancora pendenti, AMD/Intel inattive. GPU-MANUAL-001 prevista dopo
+main, senza dati host su Git.
