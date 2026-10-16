@@ -824,6 +824,78 @@ reader still deliberately reports
 on this basis. The broader Phase28 candidate/context matrix and
 numerical-quality assessments remain separate gates.
 
+## Actual Phase 28 native result — F32/F32, Flash OFF, n_ctx=256
+
+The user executed one explicitly authorized Gemma 3 1B IT BF16
+GPU-inference experiment:
+
+```bash
+.venv/bin/python -m ruth_runtime.gemma3_phase28 \
+  --candidate f32-off --n-ctx 256 \
+  --execute --allow-gpu-inference
+```
+
+**Observed report:**
+`status=native_long_context_inference_observed`,
+`inference_executed=true`,
+`full_gpu_offload_observed=true`,
+`offloaded_layers=27`, `total_layers=27`,
+`n_ctx_effective_native=256`,
+`type_k=F32`, `type_v=F32`, Flash OFF and
+`decode_logits_requested_per_token=true` with
+`decode_logits_requested_count=16`.
+
+| Observed metric | Value | Scope |
+|---|---:|---|
+| Prefill tokens | 128 | Two batches of 64 |
+| Decode calls | 16 | Teacher-forced, logits on every call |
+| Prefill median | **30.9847 ms** | Three timed repetitions |
+| Prefill rate | **4,131.07 tokens/s** | 128 tokens / prefill median |
+| Median individual decode latency | **12.592 ms/token** | Across all per-token calls |
+| Median full decode round | **202.3512 ms** | Three 16-token rounds |
+| Decode rate | **79.07 tokens/s** | 16 tokens / round median |
+| CUDA model buffer | **1,907.39 MiB** | Native log |
+| CUDA K/V buffers | **2 + 11 = 13 MiB** | Native log; matches logical KV plan |
+| CUDA compute buffer | **64.28 MiB** | Native log |
+| CPU_Mapped model buffer | **576 MiB** | Not an independently measured GPU allocation |
+| Sampled GPU process peak | **2,100 MiB** | NVML sampling, not guaranteed instantaneous maximum |
+
+The three prefill timing observations were
+`34.569430`, `30.984712` and `30.944168` ms.
+The selected pinned GGUF SHA256 was
+`b144bde489651d3d292d7e47a59c6f811cdd96d184be582e5ad30ab338b9b6bf`
+and pinned native wheel SHA256
+`ad5057352154d90f95a473d01d039c975f1987cd9b25f8ad7a83cf6c7e80ee74`.
+The native logits artifact has dtype `float32`,
+shape `[2, 262144]`, local relative path
+`.ruth-build/phase28/gemma-3-1b-it/ctx-256_flash-off_k-F32_v-F32_hxddceoy.npz`
+and SHA256
+`93e993e1e1b9d72024044481727602486a2c8b03392a62ff8177fb71dcf2464e`.
+
+**Evidence boundary:** `nvtx_ranges_available=false`,
+`native_kernel_dispatch_verified=false`,
+`production_qualified=false`, and
+`runtime_profile_published=false`. This verifies
+the requested native KV types and actual CUDA
+teacher-forced inference, not the precise GPU kernel
+instruction path or all-position numerical quality.
+F32 *KV storage* is not an all-F32 computational
+reference or mathematically exact ground truth.
+The report contains two logits snapshots, not all
+128 prefill or 16 decode positions.
+
+**Next controlled comparison:** `mixed-on`, K=BF16/V=F16,
+Flash ON, `n_ctx=256`, must run separately with
+explicit `--execute --allow-gpu-inference`; do not
+infer a result in advance. Numerical comparisons
+must use `gemma3_phase28_compare` with a previously
+verified same-context artifact and the corresponding
+token-sequence equality check. Mixed-on vs BF16-on
+isolates V-cache dtype for this fixed experimental
+workload, subject to the actual backend dispatch.
+No silent context increase, retry, promotion, or
+change to the pinned native stack.
+
 ## Promotion gate
 
 Phase 28 produces *diagnostic* context, timing, memory and CUDA-kernel
