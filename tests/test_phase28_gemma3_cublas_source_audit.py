@@ -130,7 +130,7 @@ class TestCublasPinnedSourceAudit(unittest.TestCase):
         out=audit_cublas_patterns(cu,conv)
         self.assertTrue(out["all_pinned_source_patterns_recognized"])
         self.assertEqual(
-            len(out["recognized_source_control_flow_patterns"]),10)
+            len(out["recognized_source_control_flow_patterns"]),11)
         self.assertTrue(all(
             out["recognized_source_control_flow_patterns"].values()))
         self.assertFalse(
