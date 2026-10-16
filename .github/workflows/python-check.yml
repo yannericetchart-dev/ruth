@@ -1,7 +1,7 @@
 name: Verify Ruth Python and dependencies
 on:
   pull_request:
-    branches: [main, environment/main, environment/dependencies/main, environment/diagnostics/main, hardware/main, hardware/cpu/main]
+    branches: [main, environment/main, environment/dependencies/main, environment/diagnostics/main, hardware/main, hardware/cpu/main, hardware/gpu/main, hardware/gpu/nvidia/main]
   push:
     branches: [main, environment/main, environment/dependencies/main]
 jobs:
@@ -28,6 +28,8 @@ jobs:
         run: python3 -m unittest discover -s hardware/cpu/tests -v
       - name: Hardware inventory tests
         run: python3 -m unittest discover -s hardware/tests -v
+      - name: NVIDIA GPU provider tests
+        run: python3 -m unittest discover -s hardware/gpu/nvidia/tests -v
       - name: Root tests and entrypoint
         run: python3 -m unittest discover -s tests -v
       - name: Check generated maps

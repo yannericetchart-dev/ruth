@@ -8,6 +8,7 @@ from unittest.mock import patch
 import main
 from environment.runtime.contracts import DependencyPlan, PackageState, PythonEnvironment
 from hardware import DeviceInfo, ResourceReport, HardwareReport
+from hardware.gpu import GPUDevice, GPUReport
 
 
 def python_report(root: str, good: bool, reasons: tuple[str, ...]) -> PythonEnvironment:
@@ -30,6 +31,12 @@ def hw_report():
                           ResourceReport(4096, "available"), "available")
 
 
+def gpu_report(status="available"):
+    if status == "available":
+        return GPUReport((GPUDevice("NVIDIA", "synthetic", 2048, "available"),), status)
+    return GPUReport((), status)
+
+
 class EntrypointTests(unittest.TestCase):
     def test_ok_runs_python_then_dependencies_then_diagnostics(self):
         py = python_report("synthetic", True, ())
@@ -38,6 +45,7 @@ class EntrypointTests(unittest.TestCase):
             patch("main.inspect_environment", return_value=py) as inspect,
             patch("main.plan_dependencies", return_value=dep_report(py)) as plan,
             patch("main.detect_hardware", return_value=hw_report()) as hw,
+            patch("main.detect_gpu", return_value=gpu_report()) as gpu,
             redirect_stdout(out),
         ):
             result = main.main()
@@ -52,7 +60,10 @@ class EntrypointTests(unittest.TestCase):
         self.assertIn("diagnostica: ok_unverified", printed)
         self.assertLess(printed.index("avvio diagnostica ambiente"), printed.index("avvio inventario hardware"))
         hw.assert_called_once_with()
+        gpu.assert_called_once_with()
         self.assertIn("RAM fisica totale (byte): 4096", printed)
+        self.assertLess(printed.index("avvio inventario hardware"), printed.index("avvio inventario GPU NVIDIA"))
+        self.assertIn("GPU NVIDIA: 1 rilevate; stato available", printed)
         self.assertIn("sequenza controlli completata", printed)
 
     def test_invalid_python_still_diagnosed_but_packages_skipped(self):
@@ -62,6 +73,7 @@ class EntrypointTests(unittest.TestCase):
             patch("main.inspect_environment", return_value=py),
             patch("main.plan_dependencies") as plan,
             patch("main.detect_hardware", return_value=hw_report()) as hw,
+            patch("main.detect_gpu", return_value=gpu_report()) as gpu,
             redirect_stdout(out),
         ):
             result = main.main()
@@ -73,8 +85,10 @@ class EntrypointTests(unittest.TestCase):
                         text.index("avvio diagnostica ambiente"))
         self.assertIn("venv_configuration_missing", text)
         self.assertIn("venv_prefix_mismatch", text)
+        self.assertLess(text.index("avvio inventario hardware"), text.index("avvio inventario GPU NVIDIA"))
         self.assertLess(text.index("avvio diagnostica ambiente"), text.index("avvio inventario hardware"))
         hw.assert_called_once_with()
+        gpu.assert_called_once_with()
 
     def test_missing_dependency_explained(self):
         py = python_report("synthetic", True, ())
@@ -83,6 +97,7 @@ class EntrypointTests(unittest.TestCase):
             patch("main.inspect_environment", return_value=py),
             patch("main.plan_dependencies", return_value=dep_report(py, "missing")),
             patch("main.detect_hardware", return_value=hw_report()) as hw,
+            patch("main.detect_gpu", return_value=gpu_report()) as gpu,
             redirect_stdout(out),
         ):
             result = main.main()
@@ -91,6 +106,7 @@ class EntrypointTests(unittest.TestCase):
         self.assertIn("package_missing", out.getvalue())
         self.assertIn("sequenza controlli terminata con problemi", out.getvalue())
         hw.assert_called_once_with()
+        gpu.assert_called_once_with()
 
     def test_failed_metadata_lookup_explained(self):
         py = python_report("synthetic", True, ())
@@ -99,12 +115,41 @@ class EntrypointTests(unittest.TestCase):
             patch("main.inspect_environment", return_value=py),
             patch("main.plan_dependencies", return_value=dep_report(py, "inspection_failed")),
             patch("main.detect_hardware", return_value=hw_report()) as hw,
+            patch("main.detect_gpu", return_value=gpu_report()) as gpu,
             redirect_stdout(out),
         ):
             result = main.main()
         self.assertEqual(result, 1)
         self.assertIn("diagnostica: inspection_incomplete", out.getvalue())
         hw.assert_called_once_with()
+        gpu.assert_called_once_with()
+
+    def test_missing_nvidia_is_not_failure_of_other_steps(self):
+        py = python_report("synthetic", True, ())
+        out = StringIO()
+        with (
+            patch("main.inspect_environment", return_value=py),
+            patch("main.plan_dependencies", return_value=dep_report(py)),
+            patch("main.detect_hardware", return_value=hw_report()),
+            patch("main.detect_gpu", return_value=gpu_report("unavailable")),
+            redirect_stdout(out),
+        ):
+            code = main.main()
+        self.assertEqual(code, 0)
+        self.assertIn("GPU NVIDIA: 0 rilevate; stato unavailable", out.getvalue())
+        self.assertIn("sequenza controlli completata", out.getvalue())
+
+    def test_targeted_dependencies_do_not_invoke_gpu(self):
+        py = python_report("synthetic", True, ())
+        out = StringIO()
+        with (
+            patch("main.plan_dependencies", return_value=dep_report(py)),
+            patch("main.detect_gpu") as gpu,
+            redirect_stdout(out),
+        ):
+            code = main.main(("dependencies", "pip"))
+        self.assertEqual(code, 0)
+        gpu.assert_not_called()
 
 
 if __name__ == "__main__":

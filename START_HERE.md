@@ -76,3 +76,9 @@ PR #27 integrata in main. HW-MANUAL-001 superato personalmente
 sulla revisione `59b26fd6b427e6756ce0285fee60590cb077ebf1` il 16 ottobre 2026.
 Prossima migrazione soltanto dopo nuovo perimetro approvato;
 consultare CHECKPOINT.md.
+
+## GPU-SCOPE-001 approvato
+
+Il 16 ottobre 2026 e' stato approvato solo il provider NVIDIA con
+interrogazione read-only a `nvidia-smi`. AMD/Intel non autorizzati;
+lo stato di verifica, integrazione e collaudo e' in CHECKPOINT.md.

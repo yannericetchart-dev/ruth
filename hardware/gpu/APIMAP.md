@@ -6,7 +6,7 @@ Nodo responsabile: [GPU](NODE.yaml). Ripresa: [START_HERE](../../START_HERE.md).
 
 ## Contratto dichiarato
 
-- `detect() -> Sequence[DeviceInfo] [proposta]`
+- `detect() -> GPUReport [solo NVIDIA, candidata read-only; AMD/Intel inattive]`
 
 Dipendenze: nessuna.
 
