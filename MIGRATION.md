@@ -206,3 +206,18 @@ Stato candidatura: implementato, non ancora testato o integrato.
 - Implementazione e verifica automatica completate; collaudo personale
   HW-MANUAL-001 **pending** sulla revisione main dopo sync sicura.
 - Annotazioni storiche di candidato non integrato restano storiche.
+
+## HW-MANUAL-001 concluso (16 ottobre 2026)
+
+- L'utente ha confermato l'aggiornamento fast-forward della copia
+  pulita di main fino al commit `59b26fd6b427e6756ce0285fee60590cb077ebf1`, verificato
+  mediante `git rev-parse HEAD`.
+- `.venv/bin/python main.py` ha eseguito positivamente
+  PY -> DEP -> DIAG -> HW; rilevamento CPU e RAM stato available
+  e riepilogo terminale conclusivo positivo.
+- Stato HW-001/CPU-001: implementation complete, verification passed,
+  integration merged, manual acceptance passed. Le note precedenti
+  sul collaudo in attesa sono storiche, non lo stato corrente.
+- Nessun valore o log reale di host in Git (DATA-001).
+  I provider GPU e altri componenti richiedono nuovo perimetro
+  funzionale approvato prima dell'implementazione.
