@@ -1662,15 +1662,17 @@ there is **exactly one** matching file:
 
 ```bash
 cd ~/Dev/ruth-model-profiling
-shopt -s nullglob
-baseline=(.ruth-build/phase28/gemma-3-1b-it/ctx-1024_flash-on_k-BF16_v-BF16_*.npz)
-if (( ${#baseline[@]} != 1 )); then
-  printf 'Expected exactly one BF16/BF16 ctx1024 baseline; found %d\\n' "${#baseline[@]}"
-else
+(
+  shopt -s nullglob
+  baseline=(.ruth-build/phase28/gemma-3-1b-it/ctx-1024_flash-on_k-BF16_v-BF16_*.npz)
+  if (( ${#baseline[@]} != 1 )); then
+    printf 'Expected exactly one BF16/BF16 ctx1024 baseline; found %d\n' "${#baseline[@]}"
+    exit 1
+  fi
   .venv/bin/python -m ruth_runtime.gemma3_phase28_compare \
     --baseline "${baseline[0]}" \
     --candidate .ruth-build/phase28/gemma-3-1b-it/ctx-1024_flash-on_k-BF16_v-F16_easavhiv.npz
-fi
+)
 ```
 
 The CLI reads local artifacts and
