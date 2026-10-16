@@ -10,11 +10,11 @@ Sviluppo: **active**; codice: **partial**; maturita: experimental; verifica: pas
 
 Flag: in_scope. Blocchi: nessuno registrato.
 
-Ambito verifica: CAT-001: CI GitHub 38928909391, 38929028829, 38929118836 success (116 test sintetici inclusi 21 catalogo e 20 CLI, 264 mappe). PR #36 models/catalog/main, #37 models/main e #38 main. Manifest locale read-only, file solo dichiarati, niente download, lettura GGUF, inferenza o dati reali Git. CAT-MANUAL-001 ancora da eseguire.
+Ambito verifica: CAT-001: CI GitHub 38928909391, 38929028829, 38929118836 success (116 test sintetici inclusi 21 catalogo e 20 CLI, 264 mappe). PR #36 models/catalog/main, #37 models/main e #38 main. Manifest locale read-only, file solo dichiarati, niente download, lettura GGUF, inferenza o dati reali Git. CAT-MANUAL-001 confermato positivo sul commit 90e57f106fb664b0257775260044125ea85228e2.
 
 ## Attivita locali
 
-1. `MODEL-001` [active] Catalogo locale CAT-001 verificato e integrato in main tramite PR #38; altri componenti models restano skeleton; collaudo CAT-MANUAL-001 pendente.
+1. `MODEL-001` [active] Catalogo locale CAT-001 verificato, integrato in main tramite PR #38 e accettato personalmente (CAT-MANUAL-001); altri componenti Models restano skeleton e richiedono nuova approvazione.
 
 ## Componenti (ordine locale, ID stabili)
 
