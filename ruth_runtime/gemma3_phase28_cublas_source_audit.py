@@ -132,7 +132,11 @@ def inspect_pinned_cublas_source(
     *, root: Path=PROJECT_ROOT, source_dir: Path | None=None,
 ) -> dict:
     root=Path(root).resolve(strict=True)
-    expected=(root / SOURCE_RELATIVE_PATH).resolve()
+    approved=root / SOURCE_RELATIVE_PATH
+    # Reject source and parent symlinks before resolving the path:
+    # resolve() itself would hide a symlinked parent component.
+    symlinked=approved.is_symlink() or approved.parent.is_symlink()
+    expected=approved.resolve()
     source=(Path(source_dir).resolve() if source_dir is not None else expected)
     result={
         "status":"pinned_cublas_source_unverified",
@@ -146,7 +150,7 @@ def inspect_pinned_cublas_source(
         "gpu_inference_executed":False,
     }
     # Reuse Ruth's own approved source pathname and exact revision checks.
-    if source != expected or expected.is_symlink():
+    if source != expected or symlinked:
         result["reason"]="source_path_not_approved_or_symlinked"
         return result
     state,parent_commit,child_commit=inspect_checkout(
