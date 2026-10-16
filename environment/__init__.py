@@ -1,4 +1,4 @@
 """Public environment subsystem API."""
-from .runtime import PythonEnvironment, inspect
+from .runtime import DependencyPlan, PackageState, PythonEnvironment, inspect, plan
 
-__all__ = ['PythonEnvironment', 'inspect']
+__all__ = ['DependencyPlan', 'PackageState', 'PythonEnvironment', 'inspect', 'plan']
