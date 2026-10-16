@@ -7,7 +7,7 @@ Nodo responsabile: [ROOT](NODE.yaml). Ripresa: [START_HERE](START_HERE.md).
 ## Contratto dichiarato
 
 - `runtime.inspect_environment(project_root: Path) -> PythonEnvironment [integrata in main; ispezione Python sperimentale]`
-- `main(argv: Sequence[str] = ()) -> int [sequenza PY->DEP integrata in main; estensione DIAG candidata; modalita mirate disponibili]`
+- `main(argv: Sequence[str] = ()) -> int [sequenza PY->DEP->DIAG integrata in main; modalita mirate disponibili]`
 
 Dipendenze: nessuna.
 
