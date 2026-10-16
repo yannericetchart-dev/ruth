@@ -168,6 +168,22 @@ class TestCublasPinnedSourceAudit(unittest.TestCase):
             self.assertFalse(result["source_control_flow_patterns_verified"])
             self.assertFalse(result["conversion_elimination_safe_verified"])
 
+    def test_symlinked_approved_parent_fails_before_git_probe(self):
+        with TemporaryDirectory() as tmp:
+            root=Path(tmp)
+            target=root/"elsewhere"
+            target.mkdir()
+            (root/".ruth-src").symlink_to(target, target_is_directory=True)
+            with patch(
+                "ruth_runtime.gemma3_phase28_cublas_source_audit.inspect_checkout"
+            ) as inspect:
+                result=inspect_pinned_cublas_source(root=root)
+            self.assertEqual(result["status"],
+                             "pinned_cublas_source_unverified")
+            self.assertEqual(result["reason"],
+                             "source_path_not_approved_or_symlinked")
+            inspect.assert_not_called()
+
     def test_approved_pinned_checkout_pattern_scope_only(self):
         cu,conv=synthetic_sources()
         with TemporaryDirectory() as tmp:
