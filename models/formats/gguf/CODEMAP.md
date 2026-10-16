@@ -10,6 +10,14 @@ Branch: `models/formats/gguf/main` (planned); padre Git previsto: `models/format
 
 La presenza dello scaffold non implica una implementazione runtime.
 
+## Cartelle
+
+- [runtime](runtime/CODEMAP.md)
+- [tests](tests/CODEMAP.md)
+
 ## File
 
+- [CHECKPOINT.md](CHECKPOINT.md)
+- [MIGRATION_SCOPE.md](MIGRATION_SCOPE.md)
 - [NODE.yaml](NODE.yaml)
+- [__init__.py](__init__.py)

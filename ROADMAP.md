@@ -10,7 +10,7 @@ Sviluppo: **active**; codice: **partial**; maturita: experimental; verifica: pas
 
 Flag: in_scope. Blocchi: nessuno registrato.
 
-Ambito verifica: CAT-001: CI GitHub 38928909391, 38929028829, 38929118836 success (116 test sintetici inclusi 21 catalogo e 20 CLI, 264 mappe). PR #36 models/catalog/main, #37 models/main e #38 main. Manifest locale read-only, file solo dichiarati, niente download, lettura GGUF, inferenza o dati reali Git. CAT-MANUAL-001 confermato positivo sul commit 90e57f106fb664b0257775260044125ea85228e2.
+Ambito verifica: CAT-001: CI GitHub 38928909391, 38929028829, 38929118836 success (116 test sintetici inclusi 21 catalogo e 20 CLI, 264 mappe). PR #36 models/catalog/main, #37 models/main e #38 main. Manifest locale read-only, file solo dichiarati, niente download, lettura GGUF, inferenza o dati reali Git. CAT-MANUAL-001 confermato positivo sul commit 90e57f106fb664b0257775260044125ea85228e2. GGUF-001 approvato e candidato, test/CI e promozioni ancora pendenti.
 
 ## Attivita locali
 
@@ -24,6 +24,7 @@ Ambito verifica: CAT-001: CI GitHub 38928909391, 38929028829, 38929118836 succes
 8. `MIG-004` [complete] HW-SCOPE-001 CPU/RAM implementata, verificata e integrata via PR #27; collaudo personale HW-MANUAL-001 positivo sul commit 59b26fd6b427e6756ce0285fee60590cb077ebf1 (PY->DEP->DIAG->HW). Prossima porzione richiede nuovo perimetro approvato.
 9. `MIG-005` [complete] GPU-SCOPE-001 NVIDIA implementata, verificata e integrata in main via PR #33; GPU-MANUAL-001 confermata positiva sul commit c344c71013cfa05da4f49f3204900f4bdc89b8ea con sequenza PY->DEP->DIAG->HW->NVIDIA. Il prossimo perimetro richiede nuova approvazione.
 10. `MIG-006` [complete] CAT-SCOPE-001: catalogo locale read-only implementato, verificato e integrato in main (PR #38); CAT-MANUAL-001 superato personalmente sul commit 90e57f106fb664b0257775260044125ea85228e2. Prossimo perimetro da approvare.
+11. `MIG-007` [active] GGUF-SCOPE-001 approvato il 16 ottobre 2026: lettura bounded intestazioni di soli file GGUF dichiarati, settima fase Ruth; candidato remoto in sviluppo/verifica, non integrato in main.
 
 ## Componenti (ordine locale, ID stabili)
 
