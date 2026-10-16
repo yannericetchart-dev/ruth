@@ -120,3 +120,10 @@ Con catalogo assente il settimo controllo e' stato correttamente
 `not_configured`; non e' stata eseguita una lettura di GGUF reale.
 Nuova migrazione solo dopo perimetro esplicito approvato.
 Nessun download, metadato esteso, peso tensor o inferenza autorizzato.
+
+## GGUF-META-SCOPE-001 approvato (16 ottobre 2026)
+
+L'utente ha approvato una lettura read-only, bounded, dei metadati
+tecnici GGUF dichiarati in CAT, come ottava fase dopo GGUF.
+Il lavoro e' candidato e non ancora integrato: consultare CHECKPOINT.md.
+Nessun download, lettura pesi o inferenza autorizzato.

@@ -330,3 +330,14 @@ GPU-MANUAL-001 richiesta solo dopo main, secondo MIG-FLOW-002.
 - GGUF-001 completa, CI superata, integrata e accettata; note di
   attesa precedenti mantenute come storia, non come stato corrente.
 - Nessun nuovo componente approvato. DATA-001 e REMOTE-001 invariati.
+
+## GGUF-META-SCOPE-001: approvato (16 ottobre 2026)
+
+- Lettura tecnica bounded di coppie GGUF metadata per sole dichiarazioni
+  CAT: architecture, file_type numerico e context_length opzionale.
+- API per id e catalogo, nuovo ottavo passo di Ruth e comando mirato.
+- Nessuna lettura di payload tensor o uso modello; solo fixture
+  sintetiche in CI. Candidato remoto in verifica, non ancora main.
+- Promozioni gguf -> formats -> models -> main approvate senza
+  nuovi semafori intermedi. Collaudo manuale post-merge obbligatorio.
+- Scope: [GGUF-META-SCOPE-001](models/formats/gguf/METADATA_SCOPE.md).

@@ -34,3 +34,12 @@
 - GGUF-MANUAL-001 complete; le note pending precedenti sono storiche.
   Prossimo componente solo dopo nuovo scope esplicitamente approvato;
   nessun dato macchina o modello incluso in Git (DATA-001).
+
+## GGUF-META-001 candidata (16 ottobre 2026)
+
+- Perimetro GGUF-META-SCOPE-001 approvato; nuova API bounded,
+  ottava fase Ruth, fixture sintetiche e documentazione in sviluppo.
+- Implementazione candidata, verifiche e promozioni pendenti;
+  nessuna modifica all'accettazione GGUF-MANUAL-001 precedente.
+- GGUF-META-MANUAL-001 prevista solo dopo merge in main.
+  Download, tensor payload, inferenza e dati locali restano esclusi.
