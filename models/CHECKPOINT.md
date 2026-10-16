@@ -27,3 +27,11 @@
   la creazione di un manifest per il collaudo.
 - Prossima migrazione Models non autorizzata: attendere descrizione
   funzionale e nuova approvazione. DATA-001 e REMOTE-001 invariati.
+
+## GGUF-SCOPE-001 avviato (16 ottobre 2026)
+
+- Dopo CAT-MANUAL-001 e PR #40, perimetro GGUF header-only approvato.
+- Lettore in `models/formats/gguf` e settimo passaggio root candidati;
+  nessuna integrazione GGUF in main finche' non si concludono promozioni.
+- Le restanti porzioni Models (GGUF payload, acquisizione, source Hugging Face)
+  rimangono inattive; GGUF-MANUAL-001 dopo merge.

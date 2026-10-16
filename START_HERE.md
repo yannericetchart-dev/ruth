@@ -108,3 +108,10 @@ superate; **CAT-MANUAL-001 e' stata superata personalmente**
 il 16 ottobre 2026 sul commit `90e57f106fb664b0257775260044125ea85228e2`.
 Il prossimo dominio richiede un nuovo perimetro funzionale esplicito,
 ancora non approvato (MIG-FLOW-001).
+
+## GGUF-SCOPE-001 approvato (16 ottobre 2026)
+
+L'utente ha approvato GGUF-001, sola lettura dell'intestazione dei file
+GGUF esplicitamente dichiarati in CAT, come settima fase Ruth. Il candidato
+remoto non e' ancora integrato: consultare CHECKPOINT.md. Nessun download,
+metadato esteso, peso tensor o inferenza autorizzato.

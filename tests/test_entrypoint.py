@@ -10,6 +10,7 @@ from environment.runtime.contracts import DependencyPlan, PackageState, PythonEn
 from hardware import DeviceInfo, ResourceReport, HardwareReport
 from hardware.gpu import GPUDevice, GPUReport
 from models.catalog import ModelCatalog, ModelRecord
+from models.formats.gguf import GGUFReport, GGUFHeader
 
 
 def python_report(root: str, good: bool, reasons: tuple[str, ...]) -> PythonEnvironment:
@@ -45,6 +46,11 @@ def model_report(status="not_configured"):
 
 
 class EntrypointTests(unittest.TestCase):
+    def setUp(self):
+        self.gguf_patcher = patch("main.inspect_headers", return_value=GGUFReport("not_configured", ()))
+        self.gguf_mock = self.gguf_patcher.start()
+        self.addCleanup(self.gguf_patcher.stop)
+
     def test_ok_runs_python_then_dependencies_then_diagnostics(self):
         py = python_report("synthetic", True, ())
         out = StringIO()
@@ -70,11 +76,14 @@ class EntrypointTests(unittest.TestCase):
         hw.assert_called_once_with()
         gpu.assert_called_once_with()
         cat.assert_called_once_with(project_root=Path(main.__file__).resolve().parent)
+        self.gguf_mock.assert_called_once_with(project_root=Path(main.__file__).resolve().parent)
         self.assertIn("RAM fisica totale (byte): 4096", printed)
         self.assertLess(printed.index("avvio inventario hardware"), printed.index("avvio inventario GPU NVIDIA"))
         self.assertIn("GPU NVIDIA: 1 rilevate; stato available", printed)
         self.assertLess(printed.index("avvio inventario GPU NVIDIA"), printed.index("avvio controllo catalogo modelli locale"))
         self.assertIn("catalogo modelli: not_configured", printed)
+        self.assertLess(printed.index("avvio controllo catalogo modelli locale"), printed.index("avvio controllo intestazioni GGUF dichiarate"))
+        self.assertIn("controllo GGUF: not_configured", printed)
         self.assertIn("sequenza controlli completata", printed)
 
     def test_invalid_python_still_diagnosed_but_packages_skipped(self):
@@ -216,7 +225,29 @@ class EntrypointTests(unittest.TestCase):
         cat.assert_called_once_with(project_root=Path(main.__file__).resolve().parent)
         gpu.assert_not_called()
         python.assert_not_called()
+        self.gguf_mock.assert_not_called()
 
+
+class GGUFEntrypointTests(unittest.TestCase):
+    def test_targeted_gguf_is_header_only(self):
+        header = GGUFHeader("synthetic", "header_read", 3, 2, 1, "little")
+        with patch("main.inspect_headers", return_value=GGUFReport("inspected", (header,))) as inspect, patch("main.inspect_environment") as py:
+            out = StringIO()
+            with redirect_stdout(out):
+                status = main.main(("gguf",))
+        self.assertEqual(status, 0)
+        self.assertIn("versione 3", out.getvalue())
+        inspect.assert_called_once_with(project_root=Path(main.__file__).resolve().parent)
+        py.assert_not_called()
+
+    def test_invalid_gguf_is_reported_and_failed(self):
+        record = GGUFHeader("synthetic", "invalid_magic")
+        with patch("main.inspect_headers", return_value=GGUFReport("partial", (record,))):
+            out = StringIO()
+            with redirect_stdout(out):
+                code = main.main(("gguf",))
+        self.assertEqual(code, 1)
+        self.assertIn("stato invalid_magic", out.getvalue())
 
 
 if __name__ == "__main__":

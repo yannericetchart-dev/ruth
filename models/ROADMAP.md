@@ -15,13 +15,14 @@ Ambito verifica: CAT-001: CI GitHub 38928909391, 38929028829, 38929118836 succes
 ## Attivita locali
 
 1. `MODEL-001` [active] Catalogo locale CAT-001 verificato, integrato in main tramite PR #38 e accettato personalmente (CAT-MANUAL-001); altri componenti Models restano skeleton e richiedono nuova approvazione.
+2. `MODEL-002` [active] GGUF-001 lettura intestazione da catalogo in sviluppo; no metadata/tensor reading, download o inferenza. Collaudo personale GGUF-MANUAL-001 richiesto post-merge.
 
 ## Componenti (ordine locale, ID stabili)
 
 1. [CAT: Catalogo](catalog/ROADMAP.md) — active; complete; passed.
 2. [ACQ: Acquisizione](acquisition/ROADMAP.md) — inactive; skeleton; not_run.
 3. [SOURCE: Sorgenti](sources/ROADMAP.md) — inactive; skeleton; not_run.
-4. [FORMAT: Formati](formats/ROADMAP.md) — inactive; skeleton; not_run.
+4. [FORMAT: Formati](formats/ROADMAP.md) — active; partial; not_run.
 5. [GGUFTOOL: Ispezione GGUF](tools/gguf/ROADMAP.md) — inactive; skeleton; not_run.
 
 Propagare impatti e blocchi al [padre](../ROADMAP.md) e proseguire fino alla radice.
