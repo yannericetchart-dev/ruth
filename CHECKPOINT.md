@@ -1,6 +1,6 @@
 # Ruth: checkpoint di progetto
 
-Revisione documentale: 1.
+Revisione documentale: 2.
 Attivita': `SETUP-001`.
 Fase corrente: **1 - configurazione della continuita' fra client**.
 
@@ -10,6 +10,11 @@ Fase corrente: **1 - configurazione della continuita' fra client**.
 - Registrati il vincolo DATA-001 e l'esclusione di Kaggle dallo sviluppo.
 - Preparati istruzioni Codex, istruzioni da applicare al Progetto ChatGPT
   e procedura di verifica.
+- Pubblicati i documenti comuni nel branch main.
+- Verificato con un nuovo processo diagnostico Codex che le istruzioni di
+  progetto entrino nel contesto iniziale, inclusi CONT-001 e DATA-001.
+  Questa verifica riguarda il caricamento, non la risposta di un modello.
+- Verificata l'esclusione Git dei percorsi convenzionali per artefatti locali.
 
 ## Non ancora verificato
 
