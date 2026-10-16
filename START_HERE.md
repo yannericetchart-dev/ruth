@@ -5,7 +5,10 @@ Branch di ingresso: `main`. Protocollo: `CONT-001`, revisione 1.
 
 Questo indice e' comune a ChatGPT e Codex. Leggerlo nuovamente da GitHub
 all'inizio di ogni attivita', fissando la revisione letta. Le copie locali e
-le fonti caricate possono essere precedenti; confrontarle prima di operare.
+le fonti caricate possono essere precedenti: non usarle come fonte di
+modifiche pubblicate. In REMOTE-001 lo sviluppo versionato e' svolto tramite
+GitHub e la sincronizzazione del checkout locale avviene solo dopo il merge
+in main. Il clone principale non va modificato durante lo sviluppo.
 L'indice non implica che il codice dei branch di sviluppo sia gia' in main.
 
 ## Letture di ripresa
@@ -34,5 +37,7 @@ macchina rimangono locali secondo DATA-001. Non sono fonti pubbliche di stato.
 
 Prima di sviluppare, indicare obiettivo e prossimo passo dal checkpoint,
 decisioni rilevanti, revisione consultata e eventuali divergenze locali.
+Per il lavoro corrente applicare REMOTE-001, che sostituisce SYNC-001:
+nessun blocco di ripresa dovuto al mancato allineamento del clone locale.
 Se manca una fonte o un collaudo non e' stato svolto, dichiararlo. Non
 dedurre il completamento di una fase dalla sola presenza dei documenti.

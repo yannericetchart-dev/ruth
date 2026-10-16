@@ -1,6 +1,6 @@
 # Ruth: checkpoint di progetto
 
-Revisione documentale: 9 (indice main).
+Revisione documentale: 10 (indice main; protocollo REMOTE-001).
 Attivita': `MIG-001` (prima porzione: `PY-001`).
 Fase corrente: **3 - migrazione incrementale per componente**.
 
@@ -56,8 +56,9 @@ Passaggio corrente: revisione funzionale del perimetro
 [PY-SCOPE-001](environment/python/MIGRATION_SCOPE.md) da parte dell'utente.
 Semaforo verde su questa descrizione: **concesso dall'utente il 16 ottobre 2026**. Il codice del punto d'ingresso e' candidato in PR #3; le suite nuove e le promozioni fino a main non sono ancora completate.
 
-Dopo la sincronizzazione locale richiesta da SYNC-001, completare autonomamente le promozioni da
-environment/python/main a environment/main e quindi main, con test,
+Secondo REMOTE-001, completare direttamente su GitHub le promozioni da
+environment/python/main a environment/main e quindi main, con test
+in snapshot isolati e pubblicazione remota delle correzioni,
 revisioni e aggiornamenti delle mappe, senza ulteriori conferme intermedie.
 Fermarsi per dubbi o domande che richiedono una decisione dell'utente,
 secondo MIG-FLOW-001. Consultare il
@@ -77,22 +78,29 @@ nessuna certificazione del runtime nativo. I risultati restano locali.
 Le altre porzioni rimangono pianificate; Kaggle resta inattivo.
 
 
-## Stato operativo aggiuntivo (16 ottobre 2026)
+## Protocollo operativo corrente (16 ottobre 2026)
 
-- SYNC-001 precisata: in assenza di accesso al clone, fornire la procedura
-  all'utente prima di riprendere e concludere il lavoro; la sincronizzazione
-  locale richiede riscontro. Modalita' Chat + GitHub, senza Work.
-- `local_sync: pending_no_access` per questa sessione ChatGPT.
-  Commit target: risolvere nuovamente `heads/main` al momento della ripresa
-  e prima dell'aggiornamento locale; non usare SHA obsoleti.
-- PY-SCOPE-001: verde dell'utente ricevuto il 16 ottobre 2026;
-  PY-001 ha un candidato in PR #3 `environment/work/PY-001-entrypoint`
-  con ingresso Ruth implementato; i nuovi test non risultano eseguiti e
-  PR #3 non e' ancora integrata nei branch padri.
-- La ripresa di PY-001 resta sospesa alla sincronizzazione locale e al suo
-  riscontro. Dopo quel controllo, completare automaticamente il perimetro
-  gia' approvato senza nuova approvazione; PY-MANUAL-001 resta in attesa
-  del collaudo personale post-integrazione. Conservare i dati reali locali.
+- REMOTE-001 accettata e prevalente su SYNC-001 (storica e superseded):
+  ChatGPT e Codex pubblicano il codice versionato direttamente su GitHub;
+  il clone principale locale non si modifica durante lo sviluppo.
+- Test e generatori locali sono ammessi soltanto su copie di snapshot GitHub
+  in aree temporanee esterne o in `.local/verification/` ignorata;
+  verificare sempre la revisione remota candidata. Nessuna scrittura
+  ai file di lavoro del clone principale durante il ciclo remoto.
+- Le modifiche locali preesistenti viste su
+  `environment/python/work/entrypoint` sono fuori dal perimetro corrente,
+  non vengono importate, pubblicate o cancellate. Il loro stato non blocca
+  la prosecuzione remota di PY-001, gia' approvata.
+- PR #3: candidato PY-001 per l'ingresso Ruth; test nuovi, mappe e promozioni
+  fino a main ancora da completare. Non dichiarare PY-001 integrata.
+- `local_sync: pending_final_merge`. Dopo il merge completo verificare
+  l'allineamento del checkout reale o fornire istruzioni di sync sicura;
+  se il checkout e' sporco o su altro branch, conservarlo e segnalare
+  `blocked_divergence`, senza scarti automatici.
+- PY-MANUAL-001: collaudo personale dopo la sync post-merge ancora in
+  attesa; non iniziare la migrazione seguente senza esito positivo confermato.
+- La regola va verificata su una nuova sessione Codex; l'AGENTS.md locale
+  potrebbe non contenere ancora questa revisione finche non avviene la sync.
 
 ## Limiti correnti
 
