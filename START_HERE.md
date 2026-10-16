@@ -67,3 +67,10 @@ Consultare CHECKPOINT.md per il prossimo perimetro da approvare.
 Perimetro iniziale hardware CPU/RAM read-only autorizzato il
 16 ottobre 2026; lo stato verificato, le promozioni e il successivo
 collaudo personale HW-MANUAL-001 sono nel CHECKPOINT.md.
+
+## HW-001 integrata tecnicamente (16 ottobre 2026)
+
+Inventario CPU/RAM tramite `hardware.detect()` e quarto passaggio del
+flusso `main.py`, dopo PY->DEP->DIAG. Verifiche sintetiche CI superate,
+PR #27 integrata in main. HW-MANUAL-001 personale ancora da effettuare:
+consultare CHECKPOINT.md, non partire con un'altra migrazione.

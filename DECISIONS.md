@@ -226,3 +226,7 @@ Ogni sostituzione deve collegare entrambe le decisioni e aggiornare le mappe.
 - Verifica: CI sintetica, mappe e promozioni fino a main; collaudo personale
   HW-MANUAL-001 necessario prima del successivo componente.
 - Vincoli: MIG-FLOW-001/002, MAIN-FLOW-001, REMOTE-001, DATA-001.
+
+- Applicazione HW-SCOPE-001 (16 ottobre 2026): integrata in main
+  tramite PR #27 dopo CI sintetica superata; HW-MANUAL-001 e' ancora
+  in attesa. La presenza GPU non e' stata verificata o autorizzata.
