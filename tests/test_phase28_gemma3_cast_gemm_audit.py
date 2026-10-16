@@ -227,9 +227,50 @@ class TestCastGemmAudit(unittest.TestCase):
             self.assertEqual(first["gpu_gap_ns"],-50)
             self.assertIsNone(first["cast_stream_id"])
             self.assertEqual(first["cast_graph_id"],2)
+            peers=first["same_node_ids_across_replays"]
+            self.assertEqual(peers["node_pair_replay_count_observed"],68)
+            self.assertEqual(
+                peers["node_pair_replays_missing_or_ambiguous"],0)
+            self.assertEqual(peers["negative_gap_count"],1)
+            self.assertEqual(peers["positive_gap_count"],67)
+            self.assertEqual(peers["min_gpu_gap_ns"],-50)
+            self.assertEqual(peers["median_gpu_gap_ns"],50)
+            self.assertEqual(peers["max_gpu_gap_ns"],50)
+            self.assertEqual(
+                peers["stream_id_unavailable_replay_count"],68)
+            self.assertFalse(peers["producer_consumer_dependency_verified"])
             self.assertFalse(
                 report["producer_consumer_buffer_dependency_verified"])
             self.assertFalse(report["production_qualified"])
+
+    def test_persistent_negative_gap_across_all_graph_replays_remains_unverified(self):
+        with TemporaryDirectory() as tmp:
+            root=Path(tmp)
+            dest=root/".ruth-build/phase28"
+            dest.mkdir(parents=True)
+            fp=dest/"node.sqlite"
+            make_trace(fp)
+            with sqlite3.connect(fp) as db:
+                db.execute(
+                    "UPDATE CUPTI_ACTIVITY_KIND_KERNEL "
+                    "SET start=start+100,end=end+100 "
+                    "WHERE graphId=2 AND graphNodeId=2000")
+            out=audit_cast_gemm(
+                fp,candidate="bf16-on",n_ctx=2048,root=root,
+                explain_order=True)
+            self.assertTrue(out["per_range_attribution_verified"])
+            self.assertFalse(out["gpu_timeline_candidate_pairing_verified"])
+            self.assertEqual(
+                out["gpu_order_incompatible_prefill_range_count"],68)
+            self.assertEqual(len(out["gpu_order_incompatible_prefill_ranges"]),4)
+            first=out["gpu_order_incompatible_prefill_ranges"][0][
+                "first_failed_ordinal_pairs"][0]
+            same=first["same_node_ids_across_replays"]
+            self.assertEqual(same["negative_gap_count"],68)
+            self.assertEqual(same["positive_gap_count"],0)
+            self.assertEqual(same["median_gpu_gap_ns"],-50)
+            self.assertFalse(
+                out["producer_consumer_buffer_dependency_verified"])
 
     def test_missing_direct_cast_fails_closed(self):
         with TemporaryDirectory() as tmp:
