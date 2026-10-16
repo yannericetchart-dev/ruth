@@ -296,3 +296,14 @@ Ogni sostituzione deve collegare entrambe le decisioni e aggiornare le mappe.
 - Verifica: fixture sintetiche, CI, mappe e PR fino a main; successivo
   GGUF-MANUAL-001 personale obbligatorio secondo MIG-FLOW-002.
 - Vincoli: MIG-FLOW-001/002, REMOTE-001, DATA-001 e MAIN-FLOW-001.
+
+### Applicazione GGUF-SCOPE-001 (16 ottobre 2026)
+
+- Implementazione e verifica CI integrate in main tramite PR #41 (leaf),
+  #42 (formats), #43 (Models), #44 (root), merge `15b106082c4dee37622c61a8afefd248a57464a0`.
+- CI success in tutti e quattro i passaggi (runs 38935705385,
+  38935861881, 38935943414, 38936032188), compresi test GGUF
+  sintetici, test di ingresso e verifica mappe.
+- GGUF-MANUAL-001 ancora pending fino a prova personale dell'utente
+  dalla revisione main sincronizzata; nessun componente successivo e'
+  automaticamente autorizzato.

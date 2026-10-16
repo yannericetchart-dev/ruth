@@ -307,3 +307,14 @@ GPU-MANUAL-001 richiesta solo dopo main, secondo MIG-FLOW-002.
 - Approvazione utente acquisita, lavoro remoto candidato; test e promozioni
   pendenti. Dopo main obbligatorio GGUF-MANUAL-001 personale.
 - Perimetro: [GGUF-SCOPE-001](models/formats/gguf/MIGRATION_SCOPE.md).
+
+## GGUF-001: integrazione in main (16 ottobre 2026)
+
+- Autorizzazione GGUF-SCOPE-001 rispettata: solo primi 24 byte dei
+  file GGUF espressamente dichiarati da CAT, senza payload o installazioni.
+- Promozioni PR #41, #42, #43 e #44 fino a main `15b106082c4dee37622c61a8afefd248a57464a0`;
+  CI sintetiche e mappe verificate con successo in tutti i passaggi.
+- GGUF-MANUAL-001 non ancora svolto; prossimo passo esecuzione personale
+  di `main.py` senza argomenti sul checkout principale sincronizzato.
+- Le note di candidato non verificato/non integrato sono storiche e
+  sostituite dalla presente registrazione. DATA-001 e REMOTE-001 invariati.

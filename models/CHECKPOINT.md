@@ -35,3 +35,15 @@
   nessuna integrazione GGUF in main finche' non si concludono promozioni.
 - Le restanti porzioni Models (GGUF payload, acquisizione, source Hugging Face)
   rimangono inattive; GGUF-MANUAL-001 dopo merge.
+
+## GGUF-001 verificata e integrata (16 ottobre 2026)
+
+- Reader e orchestrazione approvati (GGUF-SCOPE-001), test sintetici e
+  CI passati nei quattro livelli; PR #41-#44 integrate fino a main
+  al commit `15b106082c4dee37622c61a8afefd248a57464a0`.
+- Il dominio Models resta partial: lettura di intestazione GGUF completata
+  soltanto per il perimetro autorizzato, resto skeleton/inattivo.
+- GGUF-MANUAL-001 pending; il collaudo personale avverra' dal flusso
+  completo di Ruth dopo sincronizzazione sicura del checkout.
+  Nessuna migrazione successiva prima della conferma.
+- Dati macchina/manifest e pesi del modello rimangono esclusi da Git.
