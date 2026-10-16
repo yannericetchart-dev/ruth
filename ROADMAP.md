@@ -14,12 +14,12 @@ Flag: in_scope. Blocchi: nessuno registrato.
 
 1. `SETUP-001` [complete] Configurazione e collaudo indipendente dei client.
 2. `STRUCT-001` [complete] Scaffold ricorsivo senza migrazione applicativa.
-3. `MIG-001` [planned] Migrazione iniziale: sola ispezione Python; poi hardware, modelli, inferenza, profiling e chat.
+3. `MIG-001` [active] Prima porzione Python in revisione nella PR #2; poi migrazione incrementale dei domini.
 
 ## Componenti (ordine locale, ID stabili)
 
 1. [CORE: Contratti e orchestrazione](runtime/ROADMAP.md) — inactive; skeleton; not_run.
-2. [ENV: Ambiente](environment/ROADMAP.md) — inactive; skeleton; not_run.
+2. [ENV: Ambiente](environment/ROADMAP.md) — active; skeleton; not_run.
 3. [HW: Hardware](hardware/ROADMAP.md) — inactive; skeleton; not_run.
 4. [MODEL: Modelli](models/ROADMAP.md) — inactive; skeleton; not_run.
 5. [INF: Inferenza](inference/ROADMAP.md) — inactive; skeleton; not_run.

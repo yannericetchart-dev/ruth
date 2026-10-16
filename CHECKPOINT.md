@@ -1,6 +1,6 @@
 # Ruth: checkpoint di progetto
 
-Revisione documentale: 4.
+Revisione documentale: 5 (indice main).
 Attivita': `MIG-001` (prima porzione: `PY-001`).
 Fase corrente: **3 - migrazione incrementale per componente**.
 
@@ -34,13 +34,23 @@ Il passaggio 2 e' completato: scaffold dei domini, corsie, metadati di stato,
 mappe ricorsive e controllo di coerenza. Ambito della verifica: struttura e
 propagazione dei riepiloghi, non esecuzione applicativa o nativa.
 
-Avviare la sola porzione Python descritta in MIGRATION.md su un branch di
-componente. Aggiornare checkpoint del componente e tutti gli antenati.
+Prima porzione Python implementata e verificata nel branch
+`environment/python/work/inspect-venv`, commit
+`2f4cfa7c0cec9bddbbfea22ba2dc94e6c82e57ec`:
+[PR #2 in bozza](https://github.com/yannericetchart-dev/ruth/pull/2).
+Destinazione immediata: `environment/python/main`, poi `environment/main`,
+infine `main`. Tutti i branch padri conservano ancora lo scaffold.
+
+Prima di proseguire, esaminare la porzione in revisione e il suo
+[checkpoint immutabile](https://github.com/yannericetchart-dev/ruth/blob/2f4cfa7c0cec9bddbbfea22ba2dc94e6c82e57ec/environment/python/CHECKPOINT.md).
+Ambito verificato: test sintetici dell'isolamento Python e API comuni;
+nessuna certificazione del runtime nativo. I risultati restano locali.
 Le altre porzioni rimangono pianificate; Kaggle resta inattivo.
 
 ## Limiti correnti
 
-- Nessun codice applicativo e' stato migrato nella nuova struttura.
+- In main non e' stato integrato codice applicativo. PY-001 e' confinata al
+  branch di lavoro e non deve essere descritta come disponibile in main.
 - Non avviare il passaggio 3 prima della verifica dei passaggi precedenti.
 - Nessuna misurazione nativa e' certificata da questo checkpoint.
 - Branch e commit delle attivita' successive saranno indicati nei checkpoint

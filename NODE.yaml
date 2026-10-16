@@ -36,8 +36,8 @@
     },
     {
       "id": "MIG-001",
-      "state": "planned",
-      "description": "Migrazione iniziale: sola ispezione Python; poi hardware, modelli, inferenza, profiling e chat."
+      "state": "active",
+      "description": "Prima porzione Python in revisione nella PR #2; poi migrazione incrementale dei domini."
     }
   ]
 }

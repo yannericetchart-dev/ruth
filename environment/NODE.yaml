@@ -8,9 +8,9 @@
   "branch": {
     "name": "environment/main",
     "parent": "main",
-    "status": "planned"
+    "status": "present"
   },
-  "development": "inactive",
+  "development": "active",
   "implementation": "skeleton",
   "maturity": null,
   "verification": "not_run",
@@ -27,8 +27,8 @@
   "tasks": [
     {
       "id": "ENV-001",
-      "state": "planned",
-      "description": "Definire e verificare il contratto prima della migrazione."
+      "state": "active",
+      "description": "PY-001 implementata nel branch di lavoro; revisione PR #2 prima della promozione. Il codice in questo branch resta scaffold."
     }
   ]
 }
