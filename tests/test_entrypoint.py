@@ -9,6 +9,7 @@ import main
 from environment.runtime.contracts import DependencyPlan, PackageState, PythonEnvironment
 from hardware import DeviceInfo, ResourceReport, HardwareReport
 from hardware.gpu import GPUDevice, GPUReport
+from models.catalog import ModelCatalog, ModelRecord
 
 
 def python_report(root: str, good: bool, reasons: tuple[str, ...]) -> PythonEnvironment:
@@ -37,6 +38,12 @@ def gpu_report(status="available"):
     return GPUReport((), status)
 
 
+def model_report(status="not_configured"):
+    entries = (ModelRecord("synthetic", "gguf", "synthetic.gguf", "missing"),) if status == "partial" else ()
+    errors = ("invalid_schema",) if status == "invalid" else ()
+    return ModelCatalog(status, entries, errors)
+
+
 class EntrypointTests(unittest.TestCase):
     def test_ok_runs_python_then_dependencies_then_diagnostics(self):
         py = python_report("synthetic", True, ())
@@ -46,6 +53,7 @@ class EntrypointTests(unittest.TestCase):
             patch("main.plan_dependencies", return_value=dep_report(py)) as plan,
             patch("main.detect_hardware", return_value=hw_report()) as hw,
             patch("main.detect_gpu", return_value=gpu_report()) as gpu,
+            patch("main.load_model_catalog", return_value=model_report()) as cat,
             redirect_stdout(out),
         ):
             result = main.main()
@@ -61,9 +69,12 @@ class EntrypointTests(unittest.TestCase):
         self.assertLess(printed.index("avvio diagnostica ambiente"), printed.index("avvio inventario hardware"))
         hw.assert_called_once_with()
         gpu.assert_called_once_with()
+        cat.assert_called_once_with(project_root=Path(main.__file__).resolve().parent)
         self.assertIn("RAM fisica totale (byte): 4096", printed)
         self.assertLess(printed.index("avvio inventario hardware"), printed.index("avvio inventario GPU NVIDIA"))
         self.assertIn("GPU NVIDIA: 1 rilevate; stato available", printed)
+        self.assertLess(printed.index("avvio inventario GPU NVIDIA"), printed.index("avvio controllo catalogo modelli locale"))
+        self.assertIn("catalogo modelli: not_configured", printed)
         self.assertIn("sequenza controlli completata", printed)
 
     def test_invalid_python_still_diagnosed_but_packages_skipped(self):
@@ -74,6 +85,7 @@ class EntrypointTests(unittest.TestCase):
             patch("main.plan_dependencies") as plan,
             patch("main.detect_hardware", return_value=hw_report()) as hw,
             patch("main.detect_gpu", return_value=gpu_report()) as gpu,
+            patch("main.load_model_catalog", return_value=model_report()) as cat,
             redirect_stdout(out),
         ):
             result = main.main()
@@ -85,10 +97,12 @@ class EntrypointTests(unittest.TestCase):
                         text.index("avvio diagnostica ambiente"))
         self.assertIn("venv_configuration_missing", text)
         self.assertIn("venv_prefix_mismatch", text)
+        self.assertIn("catalogo modelli: not_configured", text)
         self.assertLess(text.index("avvio inventario hardware"), text.index("avvio inventario GPU NVIDIA"))
         self.assertLess(text.index("avvio diagnostica ambiente"), text.index("avvio inventario hardware"))
         hw.assert_called_once_with()
         gpu.assert_called_once_with()
+        cat.assert_called_once_with(project_root=Path(main.__file__).resolve().parent)
 
     def test_missing_dependency_explained(self):
         py = python_report("synthetic", True, ())
@@ -98,6 +112,7 @@ class EntrypointTests(unittest.TestCase):
             patch("main.plan_dependencies", return_value=dep_report(py, "missing")),
             patch("main.detect_hardware", return_value=hw_report()) as hw,
             patch("main.detect_gpu", return_value=gpu_report()) as gpu,
+            patch("main.load_model_catalog", return_value=model_report()) as cat,
             redirect_stdout(out),
         ):
             result = main.main()
@@ -107,6 +122,7 @@ class EntrypointTests(unittest.TestCase):
         self.assertIn("sequenza controlli terminata con problemi", out.getvalue())
         hw.assert_called_once_with()
         gpu.assert_called_once_with()
+        cat.assert_called_once_with(project_root=Path(main.__file__).resolve().parent)
 
     def test_failed_metadata_lookup_explained(self):
         py = python_report("synthetic", True, ())
@@ -116,6 +132,7 @@ class EntrypointTests(unittest.TestCase):
             patch("main.plan_dependencies", return_value=dep_report(py, "inspection_failed")),
             patch("main.detect_hardware", return_value=hw_report()) as hw,
             patch("main.detect_gpu", return_value=gpu_report()) as gpu,
+            patch("main.load_model_catalog", return_value=model_report()) as cat,
             redirect_stdout(out),
         ):
             result = main.main()
@@ -123,6 +140,7 @@ class EntrypointTests(unittest.TestCase):
         self.assertIn("diagnostica: inspection_incomplete", out.getvalue())
         hw.assert_called_once_with()
         gpu.assert_called_once_with()
+        cat.assert_called_once_with(project_root=Path(main.__file__).resolve().parent)
 
     def test_missing_nvidia_is_not_failure_of_other_steps(self):
         py = python_report("synthetic", True, ())
@@ -132,6 +150,7 @@ class EntrypointTests(unittest.TestCase):
             patch("main.plan_dependencies", return_value=dep_report(py)),
             patch("main.detect_hardware", return_value=hw_report()),
             patch("main.detect_gpu", return_value=gpu_report("unavailable")),
+            patch("main.load_model_catalog", return_value=model_report()) as cat,
             redirect_stdout(out),
         ):
             code = main.main()
@@ -150,6 +169,54 @@ class EntrypointTests(unittest.TestCase):
             code = main.main(("dependencies", "pip"))
         self.assertEqual(code, 0)
         gpu.assert_not_called()
+
+
+    def test_invalid_catalog_only_fails_last_step(self):
+        py = python_report("synthetic", True, ())
+        out = StringIO()
+        with (
+            patch("main.inspect_environment", return_value=py),
+            patch("main.plan_dependencies", return_value=dep_report(py)),
+            patch("main.detect_hardware", return_value=hw_report()),
+            patch("main.detect_gpu", return_value=gpu_report()),
+            patch("main.load_model_catalog", return_value=model_report("invalid")),
+            redirect_stdout(out),
+        ):
+            code = main.main()
+        self.assertEqual(code, 1)
+        self.assertIn("catalogo: problema invalid_schema", out.getvalue())
+        self.assertIn("sequenza controlli terminata con problemi", out.getvalue())
+
+    def test_missing_catalog_model_is_reported_and_nonzero(self):
+        py = python_report("synthetic", True, ())
+        out = StringIO()
+        with (
+            patch("main.inspect_environment", return_value=py),
+            patch("main.plan_dependencies", return_value=dep_report(py)),
+            patch("main.detect_hardware", return_value=hw_report()),
+            patch("main.detect_gpu", return_value=gpu_report()),
+            patch("main.load_model_catalog", return_value=model_report("partial")),
+            redirect_stdout(out),
+        ):
+            code = main.main()
+        self.assertEqual(code, 1)
+        self.assertIn("modello synthetic", out.getvalue())
+        self.assertIn("stato missing", out.getvalue())
+
+    def test_targeted_catalog_checks_only_catalog(self):
+        out = StringIO()
+        with (
+            patch("main.load_model_catalog", return_value=model_report()) as cat,
+            patch("main.detect_gpu") as gpu,
+            patch("main.inspect_environment") as python,
+            redirect_stdout(out),
+        ):
+            code = main.main(("catalog",))
+        self.assertEqual(code, 0)
+        cat.assert_called_once_with(project_root=Path(main.__file__).resolve().parent)
+        gpu.assert_not_called()
+        python.assert_not_called()
+
 
 
 if __name__ == "__main__":

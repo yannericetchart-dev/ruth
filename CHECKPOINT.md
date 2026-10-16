@@ -82,3 +82,16 @@ dopo ogni integrazione in main (MIG-FLOW-002).
 CONT-001, DATA-001, MIG-FLOW-001/002, REMOTE-001, MAIN-FLOW-001,
 HW-SCOPE-001, GPU-SCOPE-001, PLAN-001, SCOPE-001, DEP-ORDER-001
 e DIAG-SCOPE-001. SYNC-001 resta storica/superseded.
+
+## CAT-001: scope approvato, lavoro candidato (16 ottobre 2026)
+
+- CAT-SCOPE-001 approvato esplicitamente: catalogo dichiarativo da
+  `.local/models/catalog.json` opzionale, verifiche sintattiche e
+  di disponibilita' senza file discovery, download o GGUF binary.
+- Candidato read-only `models/catalog`, parent `models`, sesto
+  passaggio `main.py` (PY->DEP->DIAG->HW->NVIDIA->CAT) e sottocomando
+  mirato `catalog`. Fixture locali temporanee per test.
+- Stato: candidate implemented; verification not_run;
+  integration not_merged; CAT-MANUAL-001 planned.
+- DATA-001: nessun contenuto di manifest, percorsi o dati reali in Git.
+  REMOTE-001: nessun checkout principale modificato.
