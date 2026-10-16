@@ -1,85 +1,83 @@
 # Ruth: checkpoint di progetto
 
-Revisione documentale: 20 (indice main), CONT-001 revisione 1.
+Revisione documentale: 21 (indice main), protocollo CONT-001 rev 1.
 Fase 3: migrazione incrementale per componente.
-Stato corrente: **PY-001, DEP-001, DIAG-001 e flusso sequenziale
-main.py integrati, verificati e accettati personalmente dall'utente**.
+Stato attuale: **HW-001/CPU-001 tecnicamente integrate e verificate;
+collaudo personale HW-MANUAL-001 ancora da svolgere**.
 
-## Completato e accettato
+## Componenti gia' accettati
 
-- PY-001: ispezione read-only Python/.venv; PY-MANUAL-001 accettata
-  sul commit `ef4654af8ab106ef194af254d9f3884e5cabb6b0`.
-- DEP-001: verifica in sola lettura dei metadati dei pacchetti espliciti
-  e versioni esatte, collaudo DEP-MANUAL-001 accettato sul commit
+- PY-001: ambiente Python/.venv in sola lettura, collaudo personale
+  positivo sulla revisione `ef4654af8ab106ef194af254d9f3884e5cabb6b0`.
+- DEP-001: metadati di pacchetti Python dichiarati e confronto delle
+  sole versioni esatte; collaudo personale positivo su
   `e197cc86829acf52e326a712331cc7ff6cfef6b5`.
-- MAIN-FLOW-001: ingresso Ruth senza argomenti esegue in sequenza le
-  funzioni integrate, collaudo MAIN-MANUAL-001 accettato sul commit
+- MAIN-FLOW-001: ingresso automatico sequenziale, accettato sul commit
   `3f08cbad9ec06f814031bd1cbcbdc25553bd82ae`.
-- DIAG-SCOPE-001 approvato il 16 ottobre 2026: diagnostica read-only
-  dei report gia' prodotti da Python e dipendenze, spiegazioni e
-  suggerimenti senza modifiche host e senza controlli CUDA/GPU.
-- DIAG-001 integrata attraverso PR #20 in environment/diagnostics/main
-  (`ec7eba74bc71e62ea8562fa51d62295f5f3c01b8`), PR #21 in
-  environment/main (`69ae0821cc0043bd76254bc46dff12b40d0d7b30`),
-  PR #22 in main (`dfdb41e981f32ee233320f77998aadab55ce4d7b`).
-- Test GitHub Actions 38908192677, 38908269925 e 38908370200:
-  **success** (14 test PY, 12 DEP, 13 DIAG, 15 root/CLI, mappe).
-- **DIAG-MANUAL-001 complete**: il 16 ottobre 2026 l'utente ha
-  verificato dopo sincronizzazione non distruttiva che HEAD era
-  `b379d2d8a228f55101eb98a19bfb14e8fc7a4bcb` e ha eseguito personalmente
-  `.venv/bin/python main.py` senza argomenti. L'esito confermato
-  mostra Python conforme, controllo minimo `pip` presente ma non
-  certificato, avvio diagnostica, stato `ok_unverified` e riepilogo
-  finale positivo, nell'ordine PY -> DEP -> DIAG.
+- DIAG-001: diagnostica read-only dei report Python/dipendenze,
+  collaudo personale positivo sul commit
+  `b379d2d8a228f55101eb98a19bfb14e8fc7a4bcb`.
+  Le precedenti accettazioni rimangono valide.
+
+## HW-001: integrazione completata
+
+- HW-SCOPE-001 approvato esplicitamente dall'utente il 16 ottobre 2026:
+  CPU (architettura, numero logico) e RAM fisica totale, con valori
+  `unknown` dove non disponibili. GPU vendor rinviati a un perimetro
+  separato. Contratti frozen `DeviceInfo`, `HardwareReport`,
+  `ResourceReport`.
+- Provider CPU stdlib: `platform.machine()` e `os.cpu_count()`;
+  RAM totale (byte) tramite `os.sysconf()` quando supportato.
+  Non e' memoria libera, utilizzabile dal processo o quota cgroup.
+- Punto d'ingresso `main.py` senza argomenti ora esegue
+  **PY -> DEP -> DIAG -> HW**. HW e' indipendente dalla conformita'
+  Python, pertanto viene presentato anche se PY/DEP falliscono.
+  Il controllo di pacchetti predefinito rimane limitato a `pip`
+  e non e' la lista completa delle dipendenze di Ruth.
+- Promozioni: PR #25 in hardware/cpu/main
+  (merge `bf8c72e4566c22b768b36b770c66bbd0f770dbaa`);
+  PR #26 in hardware/main
+  (merge `d2ea16b14b89cefacea574f1e209fecec29f7f01`);
+  PR #27 in main
+  (merge `35a6ac79a1b1287090c1a3d1dc9208d4129a15ec`).
+- CI GitHub Actions runs 38913317440, 38913438829, 38913533057:
+  **success**, 74 test sintetici (14 PY, 12 DEP, 13 DIAG,
+  8 CPU, 12 HW/RAM, 15 root/CLI), 249 mappe coerenti.
+- Stato: implementation complete; verification passed (fixture
+  sintetiche); integration merged. **HW-MANUAL-001 active**:
+  l'utente non ha ancora collaudato la funzione nuova su main.
 
 ## Limiti e dati
 
-- Il controllo predefinito delle dipendenze riguarda solo `pip`,
-  non l'inventario completo dei requisiti di Ruth.
-- `present_unverified` e `ok_unverified` non certificano
-  compatibilita' runtime, installabilita', sicurezza, GPU, CUDA o
-  funzionamento dell'inferenza.
-- Nessuna installazione, riparazione o modifica automatica dell'host.
-- DATA-001: log, dati reali di host, credenziali, versioni locali e
-  risultati benchmark non sono pubblicati su Git.
-  Kaggle resta inattivo.
+- Nessuna GPU NVIDIA/AMD/Intel rilevata da HW-SCOPE-001; la loro presenza
+  o compatibilita' CUDA/ROCm/SYCL, il backend, le prestazioni e
+  l'inferenza non sono certificati.
+- Nessuna installazione, riparazione, benchmark o modifica dell'host.
+  I dati hardware osservati sono solo transitori e locali.
+- DATA-001: non pubblicare inventari, log, dettagli reali macchina,
+  dati privati, credenziali o versioni locali. Kaggle inattivo.
 
-## Sincronizzazione REMOTE-001
+## Sincronizzazione e accettazione
 
-- `local_sync: verified_on_tested_revision` per la copia pulita
-  `ruth-main` sulla revisione `b379d2d8a228f55101eb98a19bfb14e8fc7a4bcb`.
-- Dopo la presente chiusura documentale, la nuova revisione GitHub
-  deve essere applicata alla copia pulita con un fast-forward sicuro
-  (`local_sync: pending_docs_fast_forward`); il precedente test
-  resta valido, poiche' la chiusura modifica solo documentazione.
-- Il clone storico con modifiche locali preesistenti resta preservato
-  e non sincronizzato automaticamente
-  (`legacy_checkout: blocked_divergence`).
+- REMOTE-001: sviluppo e promozioni effettuati esclusivamente su GitHub.
+  `local_sync: pending_no_access` per la copia pulita `ruth-main`
+  rispetto alla revisione hardware definitiva.
+- Il vecchio checkout con modifiche Codex rimane intatto
+  (`legacy_checkout: blocked_divergence`). Non forzare sincronizzazioni.
+- Dopo merge documentale, chiedere verifica `git status --short --branch`,
+  branch `main`, fast-forward `git fetch origin && git merge --ff-only
+  origin/main`, SHA con `git rev-parse HEAD`, poi avvio personale
+  `.venv/bin/python main.py`.
+- Atteso quarto passaggio `Ruth: avvio inventario hardware (CPU e RAM).`,
+  linee di riepilogo CPU e RAM e stato `available`, `partial`
+  o `unknown`; successo dei passaggi PY/DEP/DIAG precedenti deve
+  continuare ad apparire.
+- HW-MANUAL-001 resta da confermare esplicitamente con SHA e risultato
+  della sequenza, secondo MIG-FLOW-002. **Non iniziare GPU-001 o un'altra
+  migrazione** finche' HW-MANUAL-001 non sia accettata.
 
-## Prossima azione
+## Decisioni vigenti
 
-DIAG-001 e MIG-003 **complete**; nessun blocco da collaudo residuo.
-Prima di iniziare una nuova porzione, proporre scopo, ingressi,
-risultati, controlli, effetti, limiti, ingresso `main.py` e test,
-quindi attendere un **nuovo semaforo verde** (MIG-FLOW-001).
-La migrazione hardware e gli altri domini restano non avviati.
-Ogni nuova operazione approvata dovra' entrare nel flusso sequenziale
-MAIN-FLOW-001 e richiedera' collaudo utente MIG-FLOW-002.
-
-## Decisioni attive
-
-CONT-001, MIG-FLOW-001/002, REMOTE-001, DATA-001, PLAN-001,
-SCOPE-001, MAIN-FLOW-001, DEP-ORDER-001 e DIAG-SCOPE-001.
-SYNC-001 resta storica e superseded.
-
-## HW-001: perimetro approvato, candidato in verifica (16 ottobre 2026)
-
-HW-SCOPE-001 approvato dall'utente: CPU (architettura e processori
-logici), RAM fisica totale disponibile tramite API portabili, contratti
-HardwareReport e ResourceReport. Provider GPU NVIDIA/AMD/Intel esclusi.
-Code path `hardware/cpu`, `hardware/runtime` e quarta fase `main.py`.
-Stato implementazione candidatura: complete; verification not_run;
-integration not_merged; HW-MANUAL-001 planned.
-Questa candidatura non misura memoria utilizzabile, benchmark, risorse GPU
-o compatibilita' nativa. CI e promozioni ancora da compiere; local_sync
-della nuova porzione pendente, clone storico intatto (REMOTE-001).
+CONT-001, PLAN-001, MIG-FLOW-001/002, REMOTE-001, DATA-001,
+SCOPE-001, MAIN-FLOW-001, DEP-ORDER-001, DIAG-SCOPE-001,
+HW-SCOPE-001. SYNC-001 e' storica/superseded.

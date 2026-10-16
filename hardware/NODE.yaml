@@ -13,22 +13,22 @@
   "development": "active",
   "implementation": "complete",
   "maturity": "experimental",
-  "verification": "not_run",
-  "integration": "not_merged",
+  "verification": "passed",
+  "integration": "merged",
   "flags": [
     "in_scope"
   ],
   "blocked_by": [],
   "depends_on": [],
   "api": [
-    "detect() -> HardwareReport [CPU e RAM, candidata read-only]",
-    "resources(device: DeviceInfo | str = 'system') -> ResourceReport [RAM totale fisica, candidata read-only]"
+    "detect() -> HardwareReport [CPU e RAM, integrata in main, sola lettura]",
+    "resources(device: DeviceInfo | str = 'system') -> ResourceReport [RAM totale fisica, integrata in main, sola lettura]"
   ],
   "tasks": [
     {
       "id": "HW-001",
-      "state": "active",
-      "description": "Contratti HardwareReport/ResourceReport/DeviceInfo e inventario fisico RAM portabile, codice candidato e test sintetici/CI pendenti."
+      "state": "complete",
+      "description": "Contratti e rilevamento read-only CPU/RAM implementati, verificati in CI e integrati in main tramite PR #27."
     },
     {
       "id": "HW-SCOPE-001",
@@ -37,9 +37,19 @@
     },
     {
       "id": "HW-MANUAL-001",
-      "state": "planned",
-      "description": "Dopo promozione main, utente avvia Ruth dal checkout pulito, verifica sequenza PY->DEP->DIAG->HW e SHA provato."
+      "state": "active",
+      "description": "Dopo aggiornamento fast-forward della copia pulita, l'utente deve avviare main.py senza argomenti e confermare sequenza PY->DEP->DIAG->HW e SHA reale."
+    },
+    {
+      "id": "HW-PROMOTE-001",
+      "state": "complete",
+      "description": "PR #26 promossa da hardware/cpu/main in hardware/main; merge d2ea16b14b89cefacea574f1e209fecec29f7f01."
+    },
+    {
+      "id": "HW-PROMOTE-002",
+      "state": "complete",
+      "description": "PR #27 promossa in main; merge 35a6ac79a1b1287090c1a3d1dc9208d4129a15ec."
     }
   ],
-  "verification_scope": "HW-001/CPU-001: inventario read-only solo CPU e RAM con API stdlib, valori unknown dove non disponibili, test sintetici da eseguire in CI; GPU/vendor/backend esclusi. HW-MANUAL-001 ancora da svolgere dopo merge."
+  "verification_scope": "HW-001/CPU-001: GitHub CI runs 38913317440, 38913438829, 38913533057 success; 14 PY, 12 DEP, 13 DIAG, 8 CPU, 12 HW/RAM, 15 root/CLI; 249 mappe coerenti. PR #25 foglia, #26 hardware/main, #27 main. Test solo sintetici, HW-MANUAL-001 in attesa. GPU, CUDA, backend e installazioni esclusi."
 }

@@ -168,7 +168,7 @@ passaggio all'orchestrazione automatica (MIG-FLOW-002), aggiornando i test
 di ordine, blocchi, esito e il checkpoint. Se un prerequisito fallisce,
 non eseguire operazioni dipendenti: indicare che sono state saltate e perche'.
 Non inventare requisiti di pacchetti, configurazioni, dati o effetti non
-approvati. Stato attuale: PY-001, DEP-001 e DIAG-001, in quest'ordine; DEP esegue
+approvati. Stato attuale: PY-001, DEP-001, DIAG-001 e HW-001 (CPU/RAM), in quest'ordine; DEP esegue
 solo verifica minima di `pip`, **non** elenco completo delle dipendenze Ruth;
 nessuna installazione o modifica dell'host (DATA-001).
 

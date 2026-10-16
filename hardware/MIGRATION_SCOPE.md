@@ -41,5 +41,9 @@ Promozione remota: `hardware/cpu/work/HW-001` ->
 Poi sincronizzazione sicura e collaudo personale `HW-MANUAL-001`
 (MIG-FLOW-002). La migrazione GPU e' separata.
 
-Stato corrente: codice candidato implementato; verifica remota e
-integrazione ancora pendenti.
+Stato tecnico conclusivo (16 ottobre 2026): implementato, testato con
+fixture sintetiche e integrato in main (PR #25, #26, #27);
+merge root `35a6ac79a1b1287090c1a3d1dc9208d4129a15ec`.
+GitHub Actions runs 38913317440, 38913438829 e 38913533057:
+success, 74 test e 249 mappe coerenti.
+**HW-MANUAL-001 ancora in attesa** di test personale e SHA verificato.

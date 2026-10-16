@@ -192,3 +192,17 @@ Destinazione `hardware/cpu` e `hardware/runtime`, integrazione sequenziale
 in `main.py`, test sintetici e promozioni foglia fino a main.
 Perimetro [hardware/MIGRATION_SCOPE.md](hardware/MIGRATION_SCOPE.md).
 Stato candidatura: implementato, non ancora testato o integrato.
+
+## HW-001: implementazione hardware integrata (16 ottobre 2026)
+
+- Perimetro HW-SCOPE-001 approvato: CPU logiche/architettura e RAM
+  fisica totale (byte) quando osservabile; GPU esclusa.
+- PR #25 in hardware/cpu/main, merge `bf8c72e4566c22b768b36b770c66bbd0f770dbaa`;
+  PR #26 in hardware/main, merge `d2ea16b14b89cefacea574f1e209fecec29f7f01`;
+  PR #27 in main, merge `35a6ac79a1b1287090c1a3d1dc9208d4129a15ec`.
+- CI GitHub 38913317440, 38913438829, 38913533057: success,
+  74 test sintetici e 249 mappe. Punto di ingresso Ruth:
+  PY -> DEP -> DIAG -> HW. Osservazioni hardware non salvate in Git.
+- Implementazione e verifica automatica completate; collaudo personale
+  HW-MANUAL-001 **pending** sulla revisione main dopo sync sicura.
+- Annotazioni storiche di candidato non integrato restano storiche.

@@ -13,16 +13,18 @@
   "development": "active",
   "implementation": "partial",
   "maturity": "experimental",
-  "verification": "stale",
-  "integration": "partial",
+  "verification": "passed",
+  "integration": "merged",
   "flags": [
     "in_scope"
   ],
-  "blocked_by": [],
+  "blocked_by": [
+    "HW-MANUAL-001"
+  ],
   "depends_on": [],
   "api": [
     "runtime.inspect_environment(project_root: Path) -> PythonEnvironment [integrata in main; ispezione Python sperimentale]",
-    "main(argv: Sequence[str] = ()) -> int [sequenza PY->DEP->DIAG integrata in main; HW-001 candidato; modalita mirate disponibili]"
+    "main(argv: Sequence[str] = ()) -> int [sequenza PY->DEP->DIAG->HW integrata in main; modalita mirate disponibili]"
   ],
   "tasks": [
     {
@@ -62,9 +64,9 @@
     },
     {
       "id": "MIG-004",
-      "state": "active",
-      "description": "HW-SCOPE-001 approvato; inventario CPU/RAM e quarto passaggio automatico HW candidati, test e promozioni in corso; GPU fuori ambito."
+      "state": "blocked",
+      "description": "HW-SCOPE-001: CPU/RAM implementati, testati e integrati in main via PR #27; collaudo personale HW-MANUAL-001 ancora in attesa prima di una nuova porzione."
     }
   ],
-  "verification_scope": "HW-001/CPU-001: inventario read-only solo CPU e RAM con API stdlib, valori unknown dove non disponibili, test sintetici da eseguire in CI; GPU/vendor/backend esclusi. HW-MANUAL-001 ancora da svolgere dopo merge."
+  "verification_scope": "HW-001/CPU-001: GitHub CI runs 38913317440, 38913438829, 38913533057 success; 14 PY, 12 DEP, 13 DIAG, 8 CPU, 12 HW/RAM, 15 root/CLI; 249 mappe coerenti. PR #25 foglia, #26 hardware/main, #27 main. Test solo sintetici, HW-MANUAL-001 in attesa. GPU, CUDA, backend e installazioni esclusi."
 }
