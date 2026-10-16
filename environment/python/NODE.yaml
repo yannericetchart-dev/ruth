@@ -47,7 +47,7 @@
     {
       "id": "PY-MANUAL-001",
       "state": "active",
-      "description": "In attesa di sincronizzazione locale sicura e collaudo personale di python3 main.py sulla revisione main; conferma esplicita necessaria prima di migrazione successiva."
+      "description": "Esecuzione personale di Ruth con esito conforme segnalata il 16 ottobre 2026; manca lo SHA del checkout verificato per chiudere l'accettazione della revisione (MIG-FLOW-002)."
     },
     {
       "id": "PY-PROMOTE-002",

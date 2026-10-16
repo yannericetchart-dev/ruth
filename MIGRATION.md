@@ -53,3 +53,11 @@ proposte possono cambiare con decisione registrata e aggiornamento dei padri.
 - Integrazione principale: PR #8, merge main ce1b0bb47b4ae4ad0da40f3f83c964b66015680f.
 - Test su GitHub superati: run 38885972247 e 38886317198 (Python sintetico, API, ingresso ufficiale, mappe). Nessun collaudo macchina nativa.
 - `local_sync: blocked_divergence` per il checkout principale osservato su branch di lavoro con modifiche; non sovrascrivere nulla. Il collaudo personale PY-MANUAL-001 e' in attesa della sincronizzazione sicura e della conferma positiva.
+
+## PY-MANUAL-001: esecuzione locale comunicata (16 ottobre 2026)
+
+L'utente ha riportato un'esecuzione positiva dall'ingresso `python3 main.py` con
+virtualenv isolato. Non sono pubblicati dati di macchina o log (DATA-001).
+Il commit HEAD del checkout provato non e' ancora stato comunicato; la
+registrazione dell'accettazione sulla revisione rimane in verifica.
+Il vecchio checkout locale con modifiche e' conservato senza interventi.

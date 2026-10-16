@@ -11,9 +11,12 @@ Python, test ingresso, mappe. Perimetro PY-SCOPE-001 approvato il
 16 ottobre 2026. Nessuna installazione, verifica GPU o benchmark.
 
 Stato: implementazione tecnica della porzione completa; sottosistema
-environment nel suo insieme parziale/experimental. PY-MANUAL-001
-ancora in attesa. Il checkout locale principale con modifiche
+environment nel suo insieme parziale/experimental. Esecuzione
+personale di Ruth positiva comunicata dall'utente il 16 ottobre 2026,
+ma SHA locale della revisione provata ancora non confermato; PY-MANUAL-001
+rimane active. Il checkout locale principale con modifiche
 preesistenti non puo' essere sincronizzato automaticamente;
-`local_sync: blocked_divergence`. Dopo sincronizzazione sicura
-e collaudo personale positivo, si puo' presentare il prossimo
-perimetro funzionale. DATA-001 e REMOTE-001 rimangono vigenti.
+`local_sync: blocked_divergence` per il vecchio checkout. La copia
+separata usata nel collaudo non implica sincronizzazione del vecchio clone.
+Dopo conferma dello SHA testato e accettazione PY-MANUAL-001 si puo'
+presentare il prossimo perimetro funzionale. DATA-001 e REMOTE-001 rimangono vigenti.

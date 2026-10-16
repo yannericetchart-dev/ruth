@@ -1,9 +1,9 @@
 # Ruth: checkpoint di progetto
 
-Revisione documentale: 11 (indice main). Protocollo CONT-001 rev 1.
+Revisione documentale: 12 (indice main). Protocollo CONT-001 rev 1.
 Fase: **3 - migrazione incrementale per componente**.
 Attivita': MIG-001 / prima porzione PY-001.
-Stato attuale: **integrazione tecnica completata; accettazione manuale in attesa**.
+Stato attuale: **integrazione tecnica completata; esecuzione locale positiva comunicata dall'utente, SHA locale da verificare prima della chiusura PY-MANUAL-001**.
 
 ## Passaggi completati
 
@@ -26,20 +26,22 @@ coerenza delle mappe e assenza di modifiche generate ai file tracciati.
 Non sono certificati pacchetti, GPU, backend nativi o benchmark. Le evidenze
 reali restano escluse da Git secondo DATA-001.
 
-## Prossima azione — collaudo PY-MANUAL-001
+## Prossima azione — verificare revisione del collaudo PY-MANUAL-001
 
 - `local_sync: blocked_divergence`: l'ultimo checkout personale osservato
   era sul branch environment/python/work/entrypoint, con modifiche tracciate
   e file non tracciati. Non pulire, resettare, nascondere o sovrascrivere tali file.
-- Per verificare il main integrato senza toccare il checkout sporco, predisporre
-  una copia pulita separata del repository, o altra sincronizzazione sicura
-  concordata. Verificare lo SHA di main dopo l'ultimo aggiornamento documentale.
-- Eseguire personalmente `python3 main.py` dalla radice del checkout pulito:
-  all'avvio mostra `Ruth: avvio controllo ambiente Python.`; senza la .venv
-  del progetto puo' terminare con stato non conforme e motivi descrittivi.
-  Per l'accettazione positiva verificare una .venv isolata corretta, Python >= 3.10.
-- Attendere esplicita conferma positiva dell'utente sulla revisione main
-  realmente provata prima di autorizzare la migrazione successiva (MIG-FLOW-002).
+- L'utente ha seguito la procedura di collaudo e ha trasmesso il 16 ottobre 2026
+  un esito conforme di `python3 main.py`, con un virtualenv isolato, sulla
+  copia locale di lavoro. L'output non contiene lo SHA Git del checkout
+  provato. Il vecchio checkout con modifiche resta preservato; non dedurre
+  da questo test che il suo branch sia stato sincronizzato.
+- Il collaudo personale della funzione ha avuto esito positivo secondo
+  il riscontro dell'utente. Resta da associare tale esito allo SHA del
+  checkout testato mediante `git rev-parse HEAD` (commit integrato precedente
+  alla revisione documentale corrente: `ef4654af8ab106ef194af254d9f3884e5cabb6b0`).
+- Finche' la revisione provata non e' confermata, PY-MANUAL-001 resta
+  `active` e la migrazione successiva rimane bloccata secondo MIG-FLOW-002.
 - Il prossimo componente non e' stato iniziato; Kaggle resta inattivo.
 
 ## Decisioni attive

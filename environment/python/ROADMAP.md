@@ -18,7 +18,7 @@ Ambito verifica: PY-001: GitHub Actions run 38885972247 e run 38886317198 conclu
 2. `PY-REV-001` [complete] Revisione tecnica completata con correzione del caso malformato ripetuto e verifica delle API reali.
 3. `PY-PROMOTE-001` [complete] Prima promozione nella foglia environment/python/main tramite PR #2, preservata nella storia.
 4. `PY-SCOPE-001` [complete] Semaforo verde esplicito dell'utente del 16 ottobre 2026, incluso ingresso Ruth.
-5. `PY-MANUAL-001` [active] In attesa di sincronizzazione locale sicura e collaudo personale di python3 main.py sulla revisione main; conferma esplicita necessaria prima di migrazione successiva.
+5. `PY-MANUAL-001` [active] Esecuzione personale di Ruth con esito conforme segnalata il 16 ottobre 2026; manca lo SHA del checkout verificato per chiudere l'accettazione della revisione (MIG-FLOW-002).
 6. `PY-PROMOTE-002` [complete] Promozione in environment/main completata con PR #3, merge fd61723874052053f38446ee82eca954870804e1.
 7. `PY-PROMOTE-003` [complete] Promozione in main completata con PR #8, merge ce1b0bb47b4ae4ad0da40f3f83c964b66015680f.
 
