@@ -78,6 +78,16 @@ class TestPhase28AuxNodeAudit(unittest.TestCase):
         self.assertEqual(node["with_same_original_node_id"],0)
         self.assertEqual(
             node["original_node_ids_found_among_graph_node_events"],1)
+        lineage=out["kernel_node_original_id_mapping"]
+        self.assertEqual(lineage["distinct_kernel_node_ids_checked"],2)
+        self.assertEqual(lineage["no_original_node_candidate"],1)
+        self.assertEqual(lineage["exactly_one_original_node_candidate"],1)
+        self.assertEqual(lineage["multiple_original_node_candidates"],0)
+        self.assertEqual(lineage["unique_original_node_found_in_events"],1)
+        self.assertFalse(
+            lineage["kernel_id_to_original_id_mapping_complete_unambiguous"])
+        self.assertTrue(
+            lineage["mapping_is_clone_lineage_not_dag_or_buffer_dependency"])
         kernels=out["kernel_graph_node_id_coverage"]
         self.assertEqual(kernels["distinct_nonzero_kernel_graph_node_ids"],2)
         self.assertEqual(
@@ -95,6 +105,54 @@ class TestPhase28AuxNodeAudit(unittest.TestCase):
         self.assertFalse(out["kernel_operand_buffer_identity_verified"])
         self.assertFalse(out["cast_to_gemm_producer_consumer_verified"])
         self.assertFalse(out["production_qualified"])
+
+    def test_conflicting_original_ids_are_counted_as_ambiguous(self):
+        with TemporaryDirectory() as tmp:
+            root=Path(tmp)
+            folder=root/".ruth-build/phase28"
+            folder.mkdir(parents=True)
+            fp=folder/"capture.sqlite"
+            fixture(fp)
+            with sqlite3.connect(fp) as db:
+                # Kernel node 12 now names two different candidate origins:
+                # node 11 and node 13, both in node-event metadata.
+                db.execute(
+                    "INSERT INTO CUDA_GRAPH_NODE_EVENTS "
+                    "VALUES(12,13,25,30,1)")
+            out=inspect_aux_node_ids(
+                fp,candidate="bf16-on",n_ctx=2048,root=root)
+            lineage=out["kernel_node_original_id_mapping"]
+            self.assertEqual(lineage["distinct_kernel_node_ids_checked"],2)
+            self.assertEqual(lineage["no_original_node_candidate"],1)
+            self.assertEqual(lineage["exactly_one_original_node_candidate"],0)
+            self.assertEqual(lineage["multiple_original_node_candidates"],1)
+            self.assertEqual(lineage["unique_original_node_found_in_events"],0)
+            self.assertFalse(
+                lineage["kernel_id_to_original_id_mapping_complete_unambiguous"])
+            self.assertFalse(out["cast_to_gemm_producer_consumer_verified"])
+
+    def test_unique_cloned_kernel_nodes_are_lineage_not_dataflow(self):
+        with TemporaryDirectory() as tmp:
+            root=Path(tmp)
+            folder=root/".ruth-build/phase28"
+            folder.mkdir(parents=True)
+            fp=folder/"capture.sqlite"
+            fixture(fp)
+            with sqlite3.connect(fp) as db:
+                # Node 11 acquires a distinct, resolvable parent 13.
+                db.execute(
+                    "UPDATE CUDA_GRAPH_NODE_EVENTS "
+                    "SET originalGraphNodeId=13 WHERE graphNodeId=11")
+            out=inspect_aux_node_ids(
+                fp,candidate="bf16-on",n_ctx=2048,root=root)
+            lineage=out["kernel_node_original_id_mapping"]
+            self.assertEqual(lineage["exactly_one_original_node_candidate"],2)
+            self.assertEqual(lineage["unique_original_node_found_in_events"],2)
+            self.assertTrue(
+                lineage["kernel_id_to_original_id_mapping_complete_unambiguous"])
+            self.assertFalse(out["explicit_graph_dependency_edges_verified"])
+            self.assertFalse(out["cast_to_gemm_producer_consumer_verified"])
+            self.assertFalse(out["kernel_operand_buffer_identity_verified"])
 
     def test_without_memcpy_still_counts_graph_creation(self):
         out=self.inspect(with_memcpy=False)
