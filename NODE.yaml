@@ -13,7 +13,7 @@
   "development": "active",
   "implementation": "partial",
   "maturity": "experimental",
-  "verification": "stale",
+  "verification": "passed",
   "integration": "partial",
   "flags": [
     "in_scope"
@@ -42,8 +42,8 @@
     {
       "id": "MIG-002",
       "state": "active",
-      "description": "DEP-SCOPE-001 approvato; sviluppo remoto della verifica dipendenze generiche e CLI, test e promozioni in corso."
+      "description": "DEP-SCOPE-001 approvato; codice testato e integrato in environment/main con PR #13, promozione a main ancora pendente."
     }
   ],
-  "verification_scope": "DEP-001: validazione di nomi/versioni, report dei metadati tramite lookup sintetico e controllo del blocco Python; test su CI da eseguire. PY-001 gia' verificato separatamente."
+  "verification_scope": "DEP-001: GitHub Actions 38895348468 (14 Python, 12 dipendenze, 13 root/CLI, 237 mappe), e 38895479549 (promozione padre): success su fixture sintetiche; nessuna verifica nativa, sicurezza o installabilita' certificata. DEP-MANUAL-001 ancora da svolgere dopo main."
 }
