@@ -6,7 +6,7 @@ Nodo responsabile: [GGUF](NODE.yaml). Ripresa: [START_HERE](../../../START_HERE.
 
 Scopo: Lettura strutturale del formato, separata dagli strumenti CLI.
 
-Branch: `models/formats/gguf/main` (planned); padre Git previsto: `models/formats/main`.
+Branch: `models/formats/gguf/main` (present); padre Git previsto: `models/formats/main`.
 
 La presenza dello scaffold non implica una implementazione runtime.
 
@@ -18,6 +18,7 @@ La presenza dello scaffold non implica una implementazione runtime.
 ## File
 
 - [CHECKPOINT.md](CHECKPOINT.md)
+- [METADATA_SCOPE.md](METADATA_SCOPE.md)
 - [MIGRATION_SCOPE.md](MIGRATION_SCOPE.md)
 - [NODE.yaml](NODE.yaml)
 - [__init__.py](__init__.py)

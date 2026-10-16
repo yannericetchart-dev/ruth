@@ -296,3 +296,41 @@ Ogni sostituzione deve collegare entrambe le decisioni e aggiornare le mappe.
 - Verifica: fixture sintetiche, CI, mappe e PR fino a main; successivo
   GGUF-MANUAL-001 personale obbligatorio secondo MIG-FLOW-002.
 - Vincoli: MIG-FLOW-001/002, REMOTE-001, DATA-001 e MAIN-FLOW-001.
+
+### Applicazione GGUF-SCOPE-001 (16 ottobre 2026)
+
+- Implementazione e verifica CI integrate in main tramite PR #41 (leaf),
+  #42 (formats), #43 (Models), #44 (root), merge `15b106082c4dee37622c61a8afefd248a57464a0`.
+- CI success in tutti e quattro i passaggi (runs 38935705385,
+  38935861881, 38935943414, 38936032188), compresi test GGUF
+  sintetici, test di ingresso e verifica mappe.
+- GGUF-MANUAL-001 ancora pending fino a prova personale dell'utente
+  dalla revisione main sincronizzata; nessun componente successivo e'
+  automaticamente autorizzato.
+
+### GGUF-MANUAL-001: collaudo positivo (16 ottobre 2026)
+
+- Stato: complete/passed, conferma esplicita dell'utente.
+- Revisione eseguita personalmente con Ruth senza argomenti:
+  `ab81696dc93bc5d71a208cbcdc9a6f714b462fa9` (main).
+- Sette controlli in sequenza, catalogo/GGUF `not_configured`,
+  completamento regolare. Nessun file GGUF reale ispezionato:
+  il collaudo non certifica integrita' o capacita' di inferenza.
+- Il perimetro GGUF-SCOPE-001 resta invariato. Nessuna nuova
+  migrazione autorizzata implicitamente; applicare MIG-FLOW-001/002.
+
+## GGUF-META-SCOPE-001: metadati tecnici selezionati
+
+- Stato: accepted; approvazione esplicita il 16 ottobre 2026.
+- Ingressi: solo modelli GGUF presenti nel catalogo CAT-001.
+- Uscite: API `inspect_metadata` e `inspect_all_metadata`, report
+  immutabili e campi opzionali dichiarati architecture, file_type
+  e context_length; nessuna compatibilita' inferenza certificata.
+- Limiti bounded a metadati, stringhe, numero di voci, array e
+  profondita'; codici portabili su errori e dati malformati.
+- Ottavo step automatico dopo GGUF, sottocomando `gguf-metadata`;
+  catalogo assente = skip valido. Nessuna scrittura/download/rete.
+- Esclusi pesi, tensor payload, backend, CUDA, Hugging Face e
+  inferenza. Migrazione GitHub-first con CI e maps, poi collaudo
+  personale GGUF-META-MANUAL-001 obbligatorio (MIG-FLOW-002).
+- Nessuna porzione successiva approvata implicitamente.

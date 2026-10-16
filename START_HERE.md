@@ -112,6 +112,18 @@ ancora non approvato (MIG-FLOW-001).
 ## GGUF-SCOPE-001 approvato (16 ottobre 2026)
 
 L'utente ha approvato GGUF-001, sola lettura dell'intestazione dei file
-GGUF esplicitamente dichiarati in CAT, come settima fase Ruth. Il candidato
-remoto non e' ancora integrato: consultare CHECKPOINT.md. Nessun download,
-metadato esteso, peso tensor o inferenza autorizzato.
+GGUF dichiarati in CAT, come settima fase Ruth. Le PR #41-#44 hanno
+integrato il codice in main, commit `15b106082c4dee37622c61a8afefd248a57464a0`, dopo CI positiva.
+**GGUF-MANUAL-001 superato personalmente il 16 ottobre 2026**
+sul commit `ab81696dc93bc5d71a208cbcdc9a6f714b462fa9`.
+Con catalogo assente il settimo controllo e' stato correttamente
+`not_configured`; non e' stata eseguita una lettura di GGUF reale.
+Nuova migrazione solo dopo perimetro esplicito approvato.
+Nessun download, metadato esteso, peso tensor o inferenza autorizzato.
+
+## GGUF-META-SCOPE-001 approvato (16 ottobre 2026)
+
+L'utente ha approvato una lettura read-only, bounded, dei metadati
+tecnici GGUF dichiarati in CAT, come ottava fase dopo GGUF.
+Il lavoro e' candidato e non ancora integrato: consultare CHECKPOINT.md.
+Nessun download, lettura pesi o inferenza autorizzato.

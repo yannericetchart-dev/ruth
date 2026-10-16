@@ -35,3 +35,35 @@
   nessuna integrazione GGUF in main finche' non si concludono promozioni.
 - Le restanti porzioni Models (GGUF payload, acquisizione, source Hugging Face)
   rimangono inattive; GGUF-MANUAL-001 dopo merge.
+
+## GGUF-001 verificata e integrata (16 ottobre 2026)
+
+- Reader e orchestrazione approvati (GGUF-SCOPE-001), test sintetici e
+  CI passati nei quattro livelli; PR #41-#44 integrate fino a main
+  al commit `15b106082c4dee37622c61a8afefd248a57464a0`.
+- Il dominio Models resta partial: lettura di intestazione GGUF completata
+  soltanto per il perimetro autorizzato, resto skeleton/inattivo.
+- GGUF-MANUAL-001 pending; il collaudo personale avverra' dal flusso
+  completo di Ruth dopo sincronizzazione sicura del checkout.
+  Nessuna migrazione successiva prima della conferma.
+- Dati macchina/manifest e pesi del modello rimangono esclusi da Git.
+
+## GGUF-MANUAL-001: accettazione (16 ottobre 2026)
+
+- Conferma positiva esplicita dell'utente dopo esecuzione personale
+  dell'ingresso Ruth senza argomenti sul main `ab81696dc93bc5d71a208cbcdc9a6f714b462fa9`.
+- Le sette fasi si sono concluse regolarmente; GGUF e catalogo
+  non configurati costituiscono skip valido, non lettura di GGUF reale.
+- Stato del perimetro GGUF-001: complete, verification passed
+  (fixture sintetiche), integration merged, manual acceptance passed.
+  Le precedenti voci pendenti o candidate sono storiche.
+- Nessuna nuova migrazione autorizzata; dati reali esclusi (DATA-001).
+
+## GGUF-META-001 candidata (16 ottobre 2026)
+
+- Perimetro GGUF-META-SCOPE-001 approvato; nuova API bounded,
+  ottava fase Ruth, fixture sintetiche e documentazione in sviluppo.
+- Implementazione candidata, verifiche e promozioni pendenti;
+  nessuna modifica all'accettazione GGUF-MANUAL-001 precedente.
+- GGUF-META-MANUAL-001 prevista solo dopo merge in main.
+  Download, tensor payload, inferenza e dati locali restano esclusi.

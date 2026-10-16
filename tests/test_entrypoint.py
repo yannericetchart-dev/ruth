@@ -10,7 +10,7 @@ from environment.runtime.contracts import DependencyPlan, PackageState, PythonEn
 from hardware import DeviceInfo, ResourceReport, HardwareReport
 from hardware.gpu import GPUDevice, GPUReport
 from models.catalog import ModelCatalog, ModelRecord
-from models.formats.gguf import GGUFReport, GGUFHeader
+from models.formats.gguf import GGUFReport, GGUFHeader, GGUFMetadata, GGUFMetadataReport
 
 
 def python_report(root: str, good: bool, reasons: tuple[str, ...]) -> PythonEnvironment:
@@ -50,6 +50,9 @@ class EntrypointTests(unittest.TestCase):
         self.gguf_patcher = patch("main.inspect_headers", return_value=GGUFReport("not_configured", ()))
         self.gguf_mock = self.gguf_patcher.start()
         self.addCleanup(self.gguf_patcher.stop)
+        self.meta_patcher = patch("main.inspect_all_metadata", return_value=GGUFMetadataReport("not_configured", ()))
+        self.meta_mock = self.meta_patcher.start()
+        self.addCleanup(self.meta_patcher.stop)
 
     def test_ok_runs_python_then_dependencies_then_diagnostics(self):
         py = python_report("synthetic", True, ())
@@ -77,6 +80,7 @@ class EntrypointTests(unittest.TestCase):
         gpu.assert_called_once_with()
         cat.assert_called_once_with(project_root=Path(main.__file__).resolve().parent)
         self.gguf_mock.assert_called_once_with(project_root=Path(main.__file__).resolve().parent)
+        self.meta_mock.assert_called_once_with(project_root=Path(main.__file__).resolve().parent)
         self.assertIn("RAM fisica totale (byte): 4096", printed)
         self.assertLess(printed.index("avvio inventario hardware"), printed.index("avvio inventario GPU NVIDIA"))
         self.assertIn("GPU NVIDIA: 1 rilevate; stato available", printed)
@@ -84,6 +88,8 @@ class EntrypointTests(unittest.TestCase):
         self.assertIn("catalogo modelli: not_configured", printed)
         self.assertLess(printed.index("avvio controllo catalogo modelli locale"), printed.index("avvio controllo intestazioni GGUF dichiarate"))
         self.assertIn("controllo GGUF: not_configured", printed)
+        self.assertLess(printed.index("avvio controllo intestazioni GGUF dichiarate"), printed.index("avvio controllo metadati GGUF dichiarati"))
+        self.assertIn("metadati GGUF: not_configured", printed)
         self.assertIn("sequenza controlli completata", printed)
 
     def test_invalid_python_still_diagnosed_but_packages_skipped(self):
@@ -226,6 +232,7 @@ class EntrypointTests(unittest.TestCase):
         gpu.assert_not_called()
         python.assert_not_called()
         self.gguf_mock.assert_not_called()
+        self.meta_mock.assert_not_called()
 
 
 class GGUFEntrypointTests(unittest.TestCase):
@@ -248,6 +255,29 @@ class GGUFEntrypointTests(unittest.TestCase):
                 code = main.main(("gguf",))
         self.assertEqual(code, 1)
         self.assertIn("stato invalid_magic", out.getvalue())
+
+
+class MetadataEntrypointTests(unittest.TestCase):
+    def test_targeted_metadata_only(self):
+        row = GGUFMetadata("synthetic", "metadata_read", "llama", 15, 4096)
+        with patch("main.inspect_all_metadata", return_value=GGUFMetadataReport("inspected", (row,))) as inspect, patch("main.inspect_environment") as py:
+            out = StringIO()
+            with redirect_stdout(out):
+                result = main.main(("gguf-metadata",))
+        self.assertEqual(result, 0)
+        self.assertIn("architettura dichiarata llama", out.getvalue())
+        self.assertIn("contesto dichiarato 4096", out.getvalue())
+        inspect.assert_called_once_with(project_root=Path(main.__file__).resolve().parent)
+        py.assert_not_called()
+
+    def test_targeted_malformed_metadata_nonzero(self):
+        row = GGUFMetadata("synthetic", "truncated_metadata")
+        with patch("main.inspect_all_metadata", return_value=GGUFMetadataReport("partial", (row,))):
+            out = StringIO()
+            with redirect_stdout(out):
+                status = main.main(("gguf-metadata",))
+        self.assertEqual(status, 1)
+        self.assertIn("stato truncated_metadata", out.getvalue())
 
 
 if __name__ == "__main__":

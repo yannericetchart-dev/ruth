@@ -1,9 +1,9 @@
 # Ruth: checkpoint di progetto
 
-Revisione documentale: 26 (indice main); CONT-001 revisione 1.
+Revisione documentale: 28 (indice main); CONT-001 revisione 1.
 Fase 3: migrazione incrementale per componente.
-Stato: **CAT-001 implementata, verificata e integrata in main;
-collaudo personale CAT-MANUAL-001 superato il 16 ottobre 2026**.
+Stato: **GGUF-001 implementata, verificata con CI, integrata in main
+e accettata personalmente (GGUF-MANUAL-001 complete)**. CAT-MANUAL-001 complete.
 PY, DEP, DIAG, HW/CPU e GPU NVIDIA restano accettate personalmente.
 L'ingresso senza argomenti di Ruth esegue tutte le funzioni integrate.
 
@@ -71,7 +71,9 @@ L'ingresso senza argomenti di Ruth esegue tutte le funzioni integrate.
 ## Prossima azione
 
 MIG-006/CAT-001 e' completata e accettata personalmente sul commit
-`90e57f106fb664b0257775260044125ea85228e2`. Non vi sono nuovi componenti approvati.
+`90e57f106fb664b0257775260044125ea85228e2`. GGUF-SCOPE-001 e'
+stato approvato, verificato, integrato e accettato personalmente sul commit
+`ab81696dc93bc5d71a208cbcdc9a6f714b462fa9`. Nessuna porzione successiva e' gia' autorizzata.
 La prossima migrazione richiede **prima** un perimetro funzionale esplicito
 (scopo, API, ingressi, effetti, controlli, limiti, test e passaggio
 automatico `main.py`) con nuovo semaforo verde dell'utente
@@ -155,3 +157,76 @@ e DIAG-SCOPE-001. SYNC-001 resta storica/superseded.
   implementazione candidata, verifiche/CI e promozioni ancora pendenti.
 - Nessun download, metadata payload, tensor, inferenza, CUDA o modifiche host.
   Nessun dato reale in Git (DATA-001).
+
+## GGUF-001 integrata tecnicamente (16 ottobre 2026)
+
+- GGUF-SCOPE-001 approvato esplicitamente dopo CAT-MANUAL-001.
+- Lettura bounded di 24 byte dall'intestazione GGUF, solo per i modelli
+  dichiarati e validati nel manifest CAT; report immutabili, versioni
+  2/3 e byte order di v3, gestione codici errore. Non si controllano
+  metadati completi, pesi o compatibilita' per inferenza.
+- Sequenza ufficiale Ruth `main.py` senza argomenti:
+  PY -> DEP (solo pip) -> DIAG -> HW CPU/RAM -> NVIDIA -> CAT -> GGUF.
+  Catalogo assente, vuoto o senza GGUF: skip valido; il controllo GGUF
+  e' read-only e non sostituisce nessuna fase precedente.
+- Promozioni e CI superate: PR #41 `models/formats/gguf/main`
+  (merge `f783a4521f785e69374516b02c3079e99f678c78`);
+  PR #42 `models/formats/main` (`f1730969b7b024f2cdf528d64ee7e87dca566a66`);
+  PR #43 `models/main` (`4c2ece369738092af546eae0aa2967db59490008`);
+  PR #44 `main` (`15b106082c4dee37622c61a8afefd248a57464a0`).
+- CI runs 38935705385, 38935861881, 38935943414, 38936032188:
+  tutte **success**, incluse verifiche sintetiche della CLI e mappe;
+  nessuna prova su modelli reali in CI.
+- Stati: implementation complete, verification passed (CI sintetica),
+  integration merged. **GGUF-MANUAL-001 active/pending**:
+  l'utente deve sincronizzare in sicurezza il checkout pulito e avviare
+  `.venv/bin/python main.py` per confermare l'esito della settima fase.
+- `local_sync: pending_no_access` per la nuova revisione main; il clone
+  legacy divergente resta intatto. L'ultimo collaudo personale CAT
+  resta valido e non viene ripetuto per i documenti.
+- Nessun dato reale di host o manifest, log, modello o benchmark in Git.
+  GGUF metadata payload, Hugging Face, CUDA e inferenza non approvati.
+  Prossima porzione soltanto dopo GGUF-MANUAL-001 positivo e nuovo
+  perimetro esplicitamente approvato (MIG-FLOW-001/002).
+
+## Chiusura GGUF-MANUAL-001 (16 ottobre 2026)
+
+- L'utente ha comunicato il fast-forward fino a main `ab81696dc93bc5d71a208cbcdc9a6f714b462fa9`,
+  il controllo del commit HEAD e l'esecuzione personale di
+  `.venv/bin/python main.py` senza argomenti; ha poi confermato
+  esplicitamente **esito positivo**.
+- Ordine verificato: PY -> DEP (pip minimo) -> DIAG -> HW CPU/RAM ->
+  NVIDIA -> CAT -> GGUF; completamento regolare.
+  Catalogo e GGUF `not_configured` sono stati validi.
+- Accettazione limitata al caso di catalogo assente: non dimostra
+  l'ispezione di un file GGUF reale, la verifica dei pesi,
+  la compatibilita' con CUDA o la disponibilita' di inferenza.
+- Stati: implementation complete; verification passed (CI sintetica);
+  integration merged (PR #44); **GGUF-MANUAL-001 passed/complete**.
+  Le precedenti note pending sono storiche e sostituite da questa voce.
+- `local_sync: verified_on_tested_revision` per `ab81696dc93bc5d71a208cbcdc9a6f714b462fa9`
+  comunicato dall'utente; `local_sync: pending_docs_fast_forward`
+  per questa successiva modifica di sola documentazione.
+  Il checkout legacy resta intatto.
+- DATA-001: esclusi dal Git inventari reali, log, output grezzi,
+  manifest e modelli; registrati solo esito e commit.
+- Nessuna successiva migrazione e' approvata. Occorre nuovo perimetro
+  e semaforo verde (MIG-FLOW-001).
+
+## GGUF-META-SCOPE-001 approvato (16 ottobre 2026)
+
+- Autorizzazione esplicita dell'utente al perimetro di sola lettura dei
+  metadati tecnici GGUF; base main `044f0504b8e023689c0b78bc981440fbc06aee12`, dopo
+  GGUF-MANUAL-001 positivo. Dettaglio in
+  `models/formats/gguf/METADATA_SCOPE.md`.
+- Attivita MIG-008: candidato in sviluppo su
+  `models/formats/gguf/work/GGUF-META-001`; non e' ancora
+  verificato ne' integrato in main.
+- Nuove API dichiarative architettura / file_type / context_length,
+  con valori assenti sconosciuti e parsing bounded di strutture KV.
+- Ottava fase default PY -> DEP -> DIAG -> HW -> NVIDIA ->
+  CAT -> GGUF -> GGUF metadata; catalogo assente non blocca.
+- Nessuna lettura tensor, nessun download, installazione,
+  compatibilita' inferenza, dato locale Git o nuova migrazione.
+- Prossimo passo: test sintetici, mappe, CI e promozioni fino
+  a main; poi collaudo personale GGUF-META-MANUAL-001.

@@ -34,3 +34,19 @@
 
 Stato iniziale: candidate implemented; verification not_run; integration
 not_merged. Non confondere tale stato con disponibilita' gia' in main.
+
+## Stato integrato (16 ottobre 2026)
+
+- Implementato, test sintetici/CI superati su quattro PR e integrato
+  in main tramite PR #44, commit `15b106082c4dee37622c61a8afefd248a57464a0`.
+- GGUF-MANUAL-001 ancora pendente; il prossimo perimetro non e' stato
+  approvato. Lo stato iniziale di candidatura sopra e' storico.
+
+## Accettazione manuale (16 ottobre 2026)
+
+- GGUF-MANUAL-001 completato con conferma esplicita positiva
+  dell'utente sul commit `ab81696dc93bc5d71a208cbcdc9a6f714b462fa9`.
+- Settima fase di Ruth corretta con catalogo non configurato:
+  `not_configured` e completamento regolare. Nessuna prova
+  manuale su un GGUF reale; test delle intestazioni solo sintetici.
+- La prossima migrazione richiede un nuovo perimetro autorizzato.

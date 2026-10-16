@@ -8,26 +8,33 @@
   "branch": {
     "name": "models/formats/main",
     "parent": "models/main",
-    "status": "planned"
+    "status": "present"
   },
   "development": "active",
   "implementation": "partial",
   "maturity": "experimental",
-  "verification": "not_run",
-  "integration": "not_merged",
+  "verification": "passed",
+  "integration": "merged",
   "flags": [
     "in_scope"
   ],
   "blocked_by": [],
   "depends_on": [],
   "api": [
-    "inspect_headers(*, project_root: Path | None = None) -> GGUFReport [GGUF-001 candidata, non integrata]"
+    "inspect_headers(*, project_root: Path | None = None) -> GGUFReport [GGUF-001 verificata e integrata]",
+    "inspect_all_metadata(*, project_root: Path | None = None) -> GGUFMetadataReport [metadata bounded candidata]"
   ],
   "tasks": [
     {
       "id": "FORMAT-001",
+      "state": "complete",
+      "description": "Contratto formato minimo delegato al lettore GGUF header-only, verificato in CI e integrato in main via PR #44; formati completi futuri fuori perimetro."
+    },
+    {
+      "id": "FORMAT-META-001",
       "state": "active",
-      "description": "Contratto minimo dei formati: delega alla lettura di intestazioni GGUF dichiarate, senza esame dei contenuti; verifiche/integrazione pendenti."
+      "description": "GGUF metadata reader candidate delegated by formats; CI and main integration pending."
     }
-  ]
+  ],
+  "verification_scope": "GGUF-001: CI success runs 38935705385, 38935861881, 38935943414, 38936032188; PR #41 gguf/main, #42 formats/main, #43 models/main, #44 main (15b106082c4dee37622c61a8afefd248a57464a0). Bounded 24-byte GGUF v2/v3 header, catalog-bound; synthetic tests and recursive maps passed. GGUF-MANUAL-001 accepted on ab81696dc93bc5d71a208cbcdc9a6f714b462fa9 (catalog not configured; no real GGUF read); no model payload or inference."
 }
