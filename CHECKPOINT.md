@@ -212,3 +212,21 @@ e DIAG-SCOPE-001. SYNC-001 resta storica/superseded.
   manifest e modelli; registrati solo esito e commit.
 - Nessuna successiva migrazione e' approvata. Occorre nuovo perimetro
   e semaforo verde (MIG-FLOW-001).
+
+## GGUF-META-SCOPE-001 approvato (16 ottobre 2026)
+
+- Autorizzazione esplicita dell'utente al perimetro di sola lettura dei
+  metadati tecnici GGUF; base main `044f0504b8e023689c0b78bc981440fbc06aee12`, dopo
+  GGUF-MANUAL-001 positivo. Dettaglio in
+  `models/formats/gguf/METADATA_SCOPE.md`.
+- Attivita MIG-008: candidato in sviluppo su
+  `models/formats/gguf/work/GGUF-META-001`; non e' ancora
+  verificato ne' integrato in main.
+- Nuove API dichiarative architettura / file_type / context_length,
+  con valori assenti sconosciuti e parsing bounded di strutture KV.
+- Ottava fase default PY -> DEP -> DIAG -> HW -> NVIDIA ->
+  CAT -> GGUF -> GGUF metadata; catalogo assente non blocca.
+- Nessuna lettura tensor, nessun download, installazione,
+  compatibilita' inferenza, dato locale Git o nuova migrazione.
+- Prossimo passo: test sintetici, mappe, CI e promozioni fino
+  a main; poi collaudo personale GGUF-META-MANUAL-001.
