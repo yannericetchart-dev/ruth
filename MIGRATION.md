@@ -117,3 +117,14 @@ Non importare lock CUDA o dati host, non installare pacchetti (DATA-001).
   l'elenco completo delle dipendenze non e' ancora definito.
 - Nuovo codice in verifica; collaudo manuale dell'avvio default dopo merge,
   prima di una nuova migrazione. Nessun dato host pubblicato.
+
+## MAIN-FLOW-001 integrata tecnicamente (16 ottobre 2026)
+
+- `main.py` senza argomenti esegue ora Python poi dipendenze (solo controllo
+  minimo `pip`), con blocco motivato dei passaggi dipendenti se Python
+  non conforme e riepilogo; sottocomandi specifici ancora disponibili.
+- PR #17 merge `e605a02bdd72441fd4e79d36a943109ee3ba5c57`; GitHub CI `38900998138` superata.
+- DEP-MANUAL-001 gia' complete sul commit `e197cc86829acf52e326a712331cc7ff6cfef6b5`.
+- Nuova verifica personale dell'avvio *sequenziale* MAIN-MANUAL-001
+  ancora pendente, da effettuare dopo sincronizzazione sicura di main.
+- Non migrare ulteriori funzioni finche' non arriva conferma positiva.

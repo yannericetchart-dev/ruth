@@ -58,3 +58,11 @@ Esito limitato alla presenza di metadati (non compatibilita' runtime).
 La nuova richiesta MAIN-FLOW-001 prevede l'esecuzione automatica PY-001
 poi DEP-001 nel comando default `main.py`; la relativa implementazione e
 il nuovo collaudo sono separati dal test mirato gia' accettato.
+
+## MAIN-FLOW-001 in main (16 ottobre 2026)
+
+Integrata via PR #17 l'esecuzione automatica `main.py`: Python prima,
+quindi controllo minimale `pip`. I comandi espliciti di DEP-001
+restano disponibili, e la loro accettazione manuale e' gia' completa.
+Per la nuova sequenza il collaudo manuale MAIN-MANUAL-001 e' ancora
+pendente e distinto da DEP-MANUAL-001.

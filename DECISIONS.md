@@ -181,3 +181,7 @@ Ogni sostituzione deve collegare entrambe le decisioni e aggiornare le mappe.
   da parte dell'utente dopo il merge in main.
 - Ambito: root/orchestrazione, applicabile a ChatGPT e Codex;
   precisa MIG-FLOW-002; compatibile con MIG-FLOW-001, REMOTE-001 e DATA-001.
+
+- Stato applicativo MAIN-FLOW-001 (16 ottobre 2026): codice e verifiche
+  automatiche integrate in main tramite PR #17; resta il collaudo personale
+  MAIN-MANUAL-001. Questo non revoca l'accettazione DEP-MANUAL-001.
