@@ -10,7 +10,7 @@ Sviluppo: **active**; codice: **partial**; maturita: experimental; verifica: pas
 
 Flag: in_scope. Blocchi: nessuno registrato.
 
-Ambito verifica: DEP-001: GitHub Actions 38895348468, 38895479549, 38895836703 e 38895924627, success: 14 test Python, 12 dipendenze, 13 CLI/root e 237 mappe. Test sintetici e metadati soltanto; non verifica installabilita', lock, GPU o backend. DEP-MANUAL-001 in attesa.
+Ambito verifica: DEP-001: collaudo manuale positivo sul commit e197cc86829acf52e326a712331cc7ff6cfef6b5 (16 ottobre 2026); controlli sintetici CI precedenti superati. MAIN-FLOW-001: sequenza predefinita PY->DEP candidata in PR, nuovi test da eseguire; test hardware, lock e compatibilita' runtime esclusi.
 
 ## Attivita locali
 
