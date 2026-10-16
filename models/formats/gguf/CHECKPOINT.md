@@ -20,3 +20,17 @@
   il catalogo non e' configurato e la settima fase e' correttamente saltata.
 - Il solo header non certifica l'integrita' di un modello GGUF o
   l'idoneita' all'inferenza. Nessun dato privato o binario in Git.
+
+## Chiusura GGUF-MANUAL-001 (16 ottobre 2026)
+
+- Conferma esplicita positiva dell'utente dopo avvio locale ufficiale
+  con `.venv/bin/python main.py` sul commit
+  `ab81696dc93bc5d71a208cbcdc9a6f714b462fa9`.
+- Settima fase GGUF `not_configured` nel flusso di sette controlli:
+  stato previsto con catalogo assente. Non e' stata verificata
+  la lettura di un file GGUF reale.
+- GGUF-001: implementation complete, verification passed (test sintetici),
+  integration merged, **manual acceptance passed**.
+- GGUF-MANUAL-001 complete; le note pending precedenti sono storiche.
+  Prossimo componente solo dopo nuovo scope esplicitamente approvato;
+  nessun dato macchina o modello incluso in Git (DATA-001).
