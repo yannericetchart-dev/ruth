@@ -104,3 +104,17 @@
   ancora da verificare. GGUF-INDEX-MANUAL-001 dopo merge main.
 - GGUF-META-MANUAL-001 resta accettata: stato storico precedente
   non deve essere invertito. MIG-FLOW-001/002 e DATA-001 vigenti.
+
+## GGUF-INDEX-001 verificata e integrata (16 ottobre 2026)
+
+- Indice tensori GGUF catalog-bound bounded, nona fase Ruth,
+  promosso con PR #53-#56 sino al main `1d51cfeed2bec83119ebf56ff0cb3840089484cf`.
+- CI runs 38945221302, 38945375637, 38945463381,
+  38945568401 success; verifica sintetica e mappe confermate.
+- Stato tecnico: implementation complete, verification passed
+  (fixture sintetiche), integration merged.
+- **GGUF-INDEX-MANUAL-001 active/pending**, dopo sync main:
+  richiesta conferma esplicita dell'utente. Il solo indice non
+  certifica modello, payload, quantizzazione o inferenza.
+- Non aggiungere real host data a Git (DATA-001); perimetro
+  successivo ancora non autorizzato. Note candidate storiche.

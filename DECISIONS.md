@@ -377,3 +377,16 @@ Ogni sostituzione deve collegare entrambe le decisioni e aggiornare le mappe.
   mappe e PR lungo tutti gli antenati. Collaudo personale
   GGUF-INDEX-MANUAL-001 post-merge (MIG-FLOW-002).
 - DATA-001, REMOTE-001, MAIN-FLOW-001 restano vigenti.
+
+### GGUF-INDEX-001: integrazione verificata (16 ottobre 2026)
+
+- Approvazione GGUF-INDEX-SCOPE-001 immutata. PR #53-#56 integrate
+  fino a main `1d51cfeed2bec83119ebf56ff0cb3840089484cf`; CI success runs 38945221302, 38945375637,
+  38945463381, 38945568401; test sintetici e mappe superati.
+- Il validator controlla solo struttura dei descriptor e offset,
+  non legge tensor data e non stima ingombri quantizzati senza
+  regole sufficienti: `size_unverified` e' risultato non confermato.
+- GGUF-INDEX-MANUAL-001 **pending**; il collaudo dell'utente richiede
+  Ruth senza argomenti dalla nuova revisione main.
+- Prossimo perimetro non autorizzato prima di conferma positiva
+  del test personale (MIG-FLOW-002).
