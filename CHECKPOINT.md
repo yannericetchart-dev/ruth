@@ -57,3 +57,15 @@ Kaggle resta inattivo.
 
 CONT-001, MIG-FLOW-001, MIG-FLOW-002, REMOTE-001, DATA-001,
 PLAN-001 e SCOPE-001. SYNC-001 resta storica e superseded.
+
+## DEP-001: seconda migrazione avviata (16 ottobre 2026)
+
+- DEP-SCOPE-001 approvato dall'utente, compresa la CLI `main.py dependencies`,
+  DEP-001 prima della migrazione hardware, diagnostica DIAG-001 separata.
+- Codice candidato nel branch `environment/dependencies/work/DEP-001`, senza
+  integrazione a `main` e senza verifica conclusiva: non dichiararlo finito.
+- Stato: implementation complete (ambito approvato), verification not_run,
+  integration not_merged, manual acceptance pending.
+- Prossimo passo: test automatici, mappe, PR verso branch foglia e padri
+  e ingresso reale nel main, quindi sync locale e collaudo personale.
+- REMOTE-001: nessuna modifica al checkout locale; dati reali esclusi.

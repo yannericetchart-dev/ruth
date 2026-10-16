@@ -8,26 +8,36 @@
   "branch": {
     "name": "environment/dependencies/main",
     "parent": "environment/main",
-    "status": "planned"
+    "status": "present"
   },
-  "development": "inactive",
-  "implementation": "skeleton",
-  "maturity": null,
+  "development": "active",
+  "implementation": "complete",
+  "maturity": "experimental",
   "verification": "not_run",
-  "integration": "merged",
+  "integration": "not_merged",
   "flags": [
     "in_scope"
   ],
   "blocked_by": [],
   "depends_on": [],
   "api": [
-    "plan(requirements) -> DependencyPlan [proposta]"
+    "plan(requirements: Iterable[str], python_report: PythonEnvironment, *, version_lookup=metadata.version) -> DependencyPlan [candidata; sola lettura]"
   ],
   "tasks": [
     {
       "id": "DEP-001",
+      "state": "active",
+      "description": "Implementata ispezione dei metadati di pacchetti espliciti, versioni esatte e gate .venv; test e promozione ancora in corso."
+    },
+    {
+      "id": "DEP-SCOPE-001",
+      "state": "complete",
+      "description": "Perimetro funzionale e sequenza dipendenze prima di hardware approvati dall'utente il 16 ottobre 2026."
+    },
+    {
+      "id": "DEP-MANUAL-001",
       "state": "planned",
-      "description": "Definire e verificare il contratto prima della migrazione."
+      "description": "Dopo integrazione main: eseguire personalmente .venv/bin/python main.py dependencies pip e confermare esito con commit Git."
     }
   ]
 }

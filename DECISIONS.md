@@ -151,3 +151,14 @@ Ogni sostituzione deve collegare entrambe le decisioni e aggiornare le mappe.
 - Verifica richiesta: collaudo indipendente di ripresa su ChatGPT e Codex,
   conferma che l'area di test e' ignorata e il checkout principale rimane
   invariato, verifica della promozione su GitHub e sincronizzazione finale.
+
+## DEP-ORDER-001: dipendenze generiche prima dell'hardware
+
+- Stato: accepted.
+- Approvazione: semaforo verde dell'utente su DEP-SCOPE-001 il 16 ottobre 2026.
+- Decisione: dopo PY-001 migrare solo la verifica read-only delle dipendenze
+  Python generiche, con output dall'ingresso Ruth; poi diagnostica e hardware
+  in porzioni successive soggette a perimetro approvato.
+- Motivo: seguire il checkpoint e MIGRATION.md correnti, riallineando
+  ARCHITECTURE.md. La diagnostica DIAG-001 non e' approvata in DEP-001.
+- Vincoli: MIG-FLOW-001/002, REMOTE-001, DATA-001 e Kaggle inattivo.
