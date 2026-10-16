@@ -127,6 +127,8 @@ L'utente ha approvato una lettura read-only, bounded, dei metadati
 tecnici GGUF dichiarati in CAT, come ottava fase dopo GGUF.
 Le PR #47, #48, #49 e #50 hanno integrato il componente in main
 (commit `a630c83f6c62a229e18fe5e64f0863c19de16018`), con CI e test sintetici superati.
-**GGUF-META-MANUAL-001 resta da collaudare personalmente**
-tramite l'ottavo passaggio di Ruth. Consultare CHECKPOINT.md.
+**GGUF-META-MANUAL-001 superato personalmente il 16 ottobre 2026**
+con il flusso completo di Ruth sul commit `d318fd793da514f21ee2e8475304d1a6c883ee94`.
+Catalogo e metadati GGUF `not_configured`: stato valido; nessun
+file GGUF reale provato. Consultare CHECKPOINT.md.
 Nessun download, lettura pesi o inferenza autorizzato.

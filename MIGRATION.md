@@ -352,3 +352,14 @@ GPU-MANUAL-001 richiesta solo dopo main, secondo MIG-FLOW-002.
 - GGUF-META-MANUAL-001 ancora pendente: necessita esecuzione
   personale positiva e conferma esplicita sul main sincronizzato.
 - Gli stati precedenti di candidato sono annotazioni storiche.
+
+## Chiusura GGUF-META-MANUAL-001 (16 ottobre 2026)
+
+- Esito positivo confermato esplicitamente dall'utente dopo avvio
+  personale di Ruth dal main `d318fd793da514f21ee2e8475304d1a6c883ee94`.
+- Sequenza completa di otto controlli; catalogo e GGUF/META
+  `not_configured` sono skip validi, senza download o inferenza.
+- GGUF-META-001: implementazione completa, CI sintetica superata,
+  PR #50 integrata e collaudo personale passato.
+- Le voci anteriori di manual pending restano storiche.
+  Prossima migrazione solo previo nuovo scope e approvazione.
