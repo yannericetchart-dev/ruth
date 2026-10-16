@@ -9,7 +9,7 @@ from environment.runtime.contracts import DependencyPlan, PythonEnvironment
 from hardware import detect as detect_hardware
 from hardware.gpu import detect as detect_gpu
 from models.catalog import catalog as load_model_catalog
-from models.formats.gguf import inspect_headers, inspect_all_metadata
+from models.formats.gguf import inspect_headers, inspect_all_metadata, inspect_all_tensor_indexes
 from runtime import inspect_environment
 
 # Initial smoke check only. Ruth's full dependency set has not been approved.
@@ -149,8 +149,27 @@ def _check_gguf_metadata(root: Path) -> int:
     return 1 if report.status in ("partial", "invalid") else 0
 
 
+def _check_gguf_index(root: Path) -> int:
+    """Ninth check: bounded GGUF tensor descriptors; never inspect weights."""
+    print("Ruth: avvio controllo indici tensori GGUF dichiarati.")
+    report = inspect_all_tensor_indexes(project_root=root)
+    for row in report.models:
+        if row.status == "index_checked":
+            print(f"Ruth: indice GGUF {row.model_id}: {row.tensor_count} descrittori coerenti; "
+                  "pesi e compatibilita' non verificati.")
+        else:
+            print(f"Ruth: indice GGUF {row.model_id}: stato {row.status}; "
+                  f"{row.tensor_count} descrittori; {row.size_unverified} dimensioni tipo non verificate.")
+    for reason in report.errors:
+        print(f"Ruth: indice GGUF: problema {reason}.")
+    print(f"Ruth: indici GGUF: {report.status}; {report.count} modelli esaminati.")
+    if report.status in ("not_configured", "empty", "no_gguf"):
+        print("Ruth: nessun indice GGUF da verificare; nessun download.")
+    return 1 if report.status in ("partial", "invalid") else 0
+
+
 def main(argv: Sequence[str] = ()) -> int:
-    """Run PY -> DEP -> DIAG -> HW -> NVIDIA -> CAT -> GGUF -> META."""
+    """Run PY -> DEP -> DIAG -> HW -> NVIDIA -> CAT -> GGUF -> META -> INDEX."""
     args = list(argv)
     root = Path(__file__).resolve().parent
     if not args:
@@ -164,6 +183,7 @@ def main(argv: Sequence[str] = ()) -> int:
             _check_catalog(root)
             _check_gguf(root)
             _check_gguf_metadata(root)
+            _check_gguf_index(root)
             print("Ruth: sequenza controlli terminata con problemi.")
             return 1
         print("Ruth: dipendenze minime da controllare: pip (non elenco completo di Ruth).")
@@ -174,7 +194,8 @@ def main(argv: Sequence[str] = ()) -> int:
         catalog_code = _check_catalog(root)
         gguf_code = _check_gguf(root)
         metadata_code = _check_gguf_metadata(root)
-        final_code = max(code, catalog_code, gguf_code, metadata_code)
+        index_code = _check_gguf_index(root)
+        final_code = max(code, catalog_code, gguf_code, metadata_code, index_code)
         if final_code == 0:
             print("Ruth: sequenza controlli completata; compatibilita' runtime non verificata.")
         else:
@@ -187,9 +208,11 @@ def main(argv: Sequence[str] = ()) -> int:
         return _check_gguf(root)
     if args == ["gguf-metadata"]:
         return _check_gguf_metadata(root)
+    if args == ["gguf-index"]:
+        return _check_gguf_index(root)
 
     if args[0] != "dependencies" or len(args) < 2:
-        print("Ruth: uso: python main.py [catalog | gguf | gguf-metadata | dependencies PACCHETTO [PACCHETTO==VERSIONE ...]]")
+        print("Ruth: uso: python main.py [catalog | gguf | gguf-metadata | gguf-index | dependencies PACCHETTO [PACCHETTO==VERSIONE ...]]")
         return 2
     return _check_dependencies(args[1:], root)[0]
 
