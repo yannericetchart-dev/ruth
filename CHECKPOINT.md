@@ -54,10 +54,9 @@ environment/main: la prima promozione al branch canonico e' invece completata.
 
 Passaggio corrente: revisione funzionale del perimetro
 [PY-SCOPE-001](environment/python/MIGRATION_SCOPE.md) da parte dell'utente.
-Semaforo verde su questa descrizione: **in attesa**. Non eseguire le
-promozioni restanti prima del verde.
+Semaforo verde su questa descrizione: **concesso dall'utente il 16 ottobre 2026**. Il codice del punto d'ingresso e' candidato in PR #3; le suite nuove e le promozioni fino a main non sono ancora completate.
 
-Dopo il verde, completare autonomamente le promozioni da
+Dopo la sincronizzazione locale richiesta da SYNC-001, completare autonomamente le promozioni da
 environment/python/main a environment/main e quindi main, con test,
 revisioni e aggiornamenti delle mappe, senza ulteriori conferme intermedie.
 Fermarsi per dubbi o domande che richiedono una decisione dell'utente,
@@ -67,7 +66,7 @@ e aggiornare lo stato dopo ogni promozione.
 
 MIG-FLOW-002 aggiunta: per PY-001 il percorso finale in main deve eseguire
 l'ispezione dal punto d'ingresso di Ruth con messaggi a terminale relativi
-alla funzione e al suo esito. Tale collegamento non e' ancora implementato.
+alla funzione e al suo esito. Il collegamento e' implementato nella PR #3, ma non verificato o integrato in main.
 Dopo l'integrazione fornire comando ed esiti attesi all'utente, che avviera
 Ruth localmente di persona. PY-MANUAL-001: pianificata, nessuna conferma
 positiva registrata. Non iniziare la migrazione successiva finche l'utente
@@ -77,12 +76,30 @@ Ambito verificato: test sintetici dell'isolamento Python e API comuni;
 nessuna certificazione del runtime nativo. I risultati restano locali.
 Le altre porzioni rimangono pianificate; Kaggle resta inattivo.
 
+
+## Stato operativo aggiuntivo (16 ottobre 2026)
+
+- SYNC-001 precisata: in assenza di accesso al clone, fornire la procedura
+  all'utente prima di riprendere e concludere il lavoro; la sincronizzazione
+  locale richiede riscontro. Modalita' Chat + GitHub, senza Work.
+- `local_sync: pending_no_access` per questa sessione ChatGPT.
+  Commit target: risolvere nuovamente `heads/main` al momento della ripresa
+  e prima dell'aggiornamento locale; non usare SHA obsoleti.
+- PY-SCOPE-001: verde dell'utente ricevuto il 16 ottobre 2026;
+  PY-001 ha un candidato in PR #3 `environment/work/PY-001-entrypoint`
+  con ingresso Ruth implementato; i nuovi test non risultano eseguiti e
+  PR #3 non e' ancora integrata nei branch padri.
+- La ripresa di PY-001 resta sospesa alla sincronizzazione locale e al suo
+  riscontro. Dopo quel controllo, completare automaticamente il perimetro
+  gia' approvato senza nuova approvazione; PY-MANUAL-001 resta in attesa
+  del collaudo personale post-integrazione. Conservare i dati reali locali.
+
 ## Limiti correnti
 
 - In main non e' stato integrato codice applicativo. PY-001 e' disponibile
   in environment/python/main e non deve essere descritta come disponibile
   in environment/main o main.
-- Non avviare il passaggio 3 prima della verifica dei passaggi precedenti.
+- Non iniziare la migrazione successiva finche PY-001 non e' integrata, sincronizzata localmente e collaudata personalmente secondo MIG-FLOW-002.
 - Nessuna misurazione nativa e' certificata da questo checkpoint.
 - Branch e commit delle attivita' successive saranno indicati nei checkpoint
   relativi; i riferimenti di revisione sono Git, non copie di dati di host.
