@@ -2090,21 +2090,120 @@ cannot isolate cache V precision:
   --candidate .ruth-build/phase28/gemma-3-1b-it/ctx-2048_flash-on_k-BF16_v-F16_i3bqojc7.npz
 ```
 
-Both numeric comparisons remain
-**pending**, and no KL, JS, RMS or
-Top-1 comparison has been invented.
-They are read-only and run without
-GPU inference. The logits snapshots
-cover only **two** positions (last
-prefill and last decode), not
-all intermediate model states.
-Deciding on a production KV policy
-also requires repeatability,
-quality and long-sequence benchmarks
-and retaining the current
-full-offload/no-fallback constraints.
-No native CUDA source or pinned
-model modifications were made.
+The **secondary** F32/F32 Flash OFF→
+BF16/F16 Flash ON numeric comparison has
+since been executed successfully and is
+recorded in the next section. The
+**controlled** BF16/BF16 Flash ON→
+BF16/F16 Flash ON comparison remains
+**pending**. These offline checks do
+not execute GPU inference. Existing
+logits artifacts sample only the last
+prefill and last decode rows and cannot
+prove all-token equivalence.
+Production KV selection additionally
+requires repeatability, quality and
+long-sequence benchmarks under
+the existing full-GPU/no-CPU-fallback
+constraints. No pinned native source
+or model modifications resulted.
+
+## Actual Phase28 secondary numerical comparison — F32/F32 OFF vs BF16/F16 ON, ctx2048
+
+The user ran the approved **offline** Phase28
+comparison between the two ctx2048
+teacher-forced logits artifacts, after
+both native candidate/context experiments
+had already completed.
+
+```bash
+.venv/bin/python -m ruth_runtime.gemma3_phase28_compare \
+  --baseline .ruth-build/phase28/gemma-3-1b-it/ctx-2048_flash-off_k-F32_v-F32_r7anfs8n.npz \
+  --candidate .ruth-build/phase28/gemma-3-1b-it/ctx-2048_flash-on_k-BF16_v-F16_i3bqojc7.npz
+```
+
+The comparator reported
+`status=full_logits_numeric_comparison`,
+`same_teacher_forced_tokens=true`,
+`n_ctx=2048`,
+`vocabulary=262144`,
+`top1_match_fraction=1.0`,
+`native_kernel_dispatch_verified=false`,
+`reference_precision_is_ground_truth=false`
+and `production_qualified=false`.
+
+### Exact artifact fingerprints
+
+- Baseline F32/F32 Flash OFF:
+  `.ruth-build/phase28/gemma-3-1b-it/ctx-2048_flash-off_k-F32_v-F32_r7anfs8n.npz`.
+  Artifact SHA256:
+  `18401161b8460630ffb3f7744d76c9c099057239f7a681089ec46edf9e5988b2`.
+- Candidate BF16/F16 Flash ON:
+  `.ruth-build/phase28/gemma-3-1b-it/ctx-2048_flash-on_k-BF16_v-F16_i3bqojc7.npz`.
+  Artifact SHA256:
+  `1f1b8042bdfc6b9692075d4103379658348a534007b2c43e1b4726388be3b729`.
+
+### Observed numerical metrics
+
+| Metric | Recorded value |
+|---|---:|
+| Jensen–Shannon mean, nats | 1.1349666532452353e-06 |
+| KL baseline→candidate mean, nats | 4.57677785983072e-06 |
+| KL candidate→baseline mean, nats | 4.5041035604490765e-06 |
+| RMS absolute logits difference | 0.024601896382933176 |
+| Mean absolute logits difference | 0.01982544480736692 |
+| Maximum absolute logits difference | 0.11537361145019531 |
+| Top-1 agreement | 2/2 sampled positions |
+
+| Sampled position | KL baseline→candidate, nats | Max absolute logits difference | Top-1 equal |
+|---|---:|---:|---|
+| Last prefill, index 0 | 8.564434508579536e-06 | 0.11483359336853027 | true |
+| Last decode, index 1 | 5.891212110819042e-07 | 0.11537361145019531 | true |
+
+For this sampled pair, prefill KL
+is about 14.54 times the decode KL.
+This does **not** imply the same
+behavior at intermediate logits
+positions or across arbitrary
+generation tasks. Although Top-1
+agrees for 2/2 sampled rows and
+KL/JS divergence is small, raw
+logits are **not identical**.
+
+**Interpretation gate:** this is
+a **confounded** cross-mode contrast:
+K precision (F32→BF16), V precision
+(F32→F16) and Flash policy
+(OFF→ON) all change simultaneously,
+so the observed numerical distance
+does not isolate any single variable.
+The F32/F32 cache is not FP32 model
+ground truth; `reference_precision_is_ground_truth=false`
+is explicit. Softmax divergence
+and full-vocabulary logits differences
+describe these **two** positions
+only, not full-token fidelity.
+
+**Current Phase28 status:** 16/16
+native GPU experiments have been
+completed. The ctx2048 secondary
+numeric check is complete.
+The **single controlled ctx2048
+BF16/BF16 Flash ON vs BF16/F16 Flash
+ON offline comparison remains pending**
+to finish the planned four-context
+V-precision numerical series.
+
+The existing ctx2048 controlled
+comparison command, shown in the
+previous section, should be run
+with the existing BF16/BF16 Flash
+ON baseline artifact found by a
+unique-match glob. No new native
+inference is needed. Do not
+promote a production cache policy
+or claim verified native dispatch
+from this comparison.
 
 ## Promotion gate
 
