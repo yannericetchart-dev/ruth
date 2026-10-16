@@ -12,6 +12,7 @@ from collections import Counter, defaultdict
 import json
 from pathlib import Path
 import sqlite3
+from statistics import median
 
 from .dependencies import PROJECT_ROOT
 from .gemma3_phase28_attribution import MARKERS
@@ -225,6 +226,51 @@ def audit_cast_gemm(
         per_prefill=[]
         failed_prefill_ranges=0
         order_diagnostics=[]
+
+        def peer_replay_gaps(cast_node, gemm_node, graph_id):
+            """Compare the same *observed* node IDs across graph replays.
+
+            Returns data about ordinally selected nodes, not CUDA Graph
+            dependency edges or operand-buffer identities.
+            """
+            gaps=[]
+            missing=0
+            same_stream=0
+            stream_undetermined=0
+            for ri in range_graph:
+                if nvtx[ri][3] != "prefill":
+                    continue
+                group=events.get(ri,{})
+                casts=[
+                    v for v in group.get("F32_TO_BF16",())
+                    if v[2] == cast_node and v[4] == graph_id]
+                gemms=[
+                    v for v in group.get("BF16_GEMM",())
+                    if v[2] == gemm_node and v[4] == graph_id]
+                if len(casts) != 1 or len(gemms) != 1:
+                    missing+=1
+                    continue
+                c,g=casts[0],gemms[0]
+                gaps.append(g[0]-c[1])
+                if c[3] is None or g[3] is None:
+                    stream_undetermined+=1
+                elif c[3] == g[3]:
+                    same_stream+=1
+            return {
+                "scope":"same_graph_node_id_pair_across_nvtx_replays",
+                "node_pair_replay_count_observed":len(gaps),
+                "node_pair_replays_missing_or_ambiguous":missing,
+                "negative_gap_count":sum(g<0 for g in gaps),
+                "zero_gap_count":sum(g==0 for g in gaps),
+                "positive_gap_count":sum(g>0 for g in gaps),
+                "min_gpu_gap_ns":min(gaps) if gaps else None,
+                "median_gpu_gap_ns":median(gaps) if gaps else None,
+                "max_gpu_gap_ns":max(gaps) if gaps else None,
+                "same_stream_id_replay_count":same_stream,
+                "stream_id_unavailable_replay_count":stream_undetermined,
+                "producer_consumer_dependency_verified":False,
+            }
+
         for i,(start,end,tid,phase) in enumerate(nvtx):
             mode="graph_node" if i in range_graph else "direct"
             st=stats[(phase,mode)]
@@ -259,6 +305,29 @@ def audit_cast_gemm(
                         # for the candidate ordinal pairs.
                         first_gpu_start=min(
                             (e[0] for e in conv+gemm),default=0)
+                        pair_reports=[]
+                        for pos in failing[:8]:
+                            c,g=conv[pos],gemm[pos]
+                            pair_reports.append({
+                                "ordinal_index_zero_based":pos,
+                                "gpu_cast_end_offset_ns":
+                                    c[1]-first_gpu_start,
+                                "gpu_gemm_start_offset_ns":
+                                    g[0]-first_gpu_start,
+                                "gpu_gap_ns":g[0]-c[1],
+                                "cast_graph_node_id":c[2],
+                                "gemm_graph_node_id":g[2],
+                                "cast_stream_id":c[3],
+                                "gemm_stream_id":g[3],
+                                "cast_graph_id":c[4],
+                                "gemm_graph_id":g[4],
+                                "same_node_ids_across_replays":
+                                    peer_replay_gaps(c[2],g[2],c[4])
+                                    if (mode=="graph_node" and
+                                        c[4] == g[4] and
+                                        c[2] is not None and
+                                        g[2] is not None) else None,
+                            })
                         order_diagnostics.append({
                             "nvtx_range_index_zero_based":i,
                             "phase":phase,"path":mode,
@@ -267,20 +336,7 @@ def audit_cast_gemm(
                             "total_casts":len(conv),
                             "total_gemms":len(gemm),
                             "num_failed_ordinal_pairs":len(failing),
-                            "first_failed_ordinal_pairs":[{
-                                "ordinal_index_zero_based":pos,
-                                "gpu_cast_end_offset_ns":
-                                    conv[pos][1]-first_gpu_start,
-                                "gpu_gemm_start_offset_ns":
-                                    gemm[pos][0]-first_gpu_start,
-                                "gpu_gap_ns":gemm[pos][0]-conv[pos][1],
-                                "cast_graph_node_id":conv[pos][2],
-                                "gemm_graph_node_id":gemm[pos][2],
-                                "cast_stream_id":conv[pos][3],
-                                "gemm_stream_id":gemm[pos][3],
-                                "cast_graph_id":conv[pos][4],
-                                "gemm_graph_id":gemm[pos][4],
-                            } for pos in failing[:8]],
+                            "first_failed_ordinal_pairs":pair_reports,
                         })
                 st["gpu_order_compatible_ranges"]+=int(compatible)
                 st["gpu_order_incompatible_ranges"]+=int(not compatible)
