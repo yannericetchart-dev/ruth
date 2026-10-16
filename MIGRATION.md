@@ -221,3 +221,12 @@ Stato candidatura: implementato, non ancora testato o integrato.
 - Nessun valore o log reale di host in Git (DATA-001).
   I provider GPU e altri componenti richiedono nuovo perimetro
   funzionale approvato prima dell'implementazione.
+
+## GPU-SCOPE-001: prima porzione GPU NVIDIA (16 ottobre 2026)
+
+Perimetro [GPU-SCOPE-001](hardware/gpu/MIGRATION_SCOPE.md) approvato.
+Branch foglia `hardware/gpu/nvidia/work/GPU-001`; provider nvidia-smi
+read-only con modello e VRAM, senza driver/CUDA/inferenza, AMD/Intel non
+migrati. Punto di ingresso `main.py` con sequenza PY -> DEP -> DIAG ->
+HW -> NVIDIA. CI e promozioni ancora pendenti. Accettazione personale
+GPU-MANUAL-001 richiesta solo dopo main, secondo MIG-FLOW-002.

@@ -7,6 +7,7 @@ from environment import plan as plan_dependencies
 from environment.diagnostics import inspect as inspect_diagnostics
 from environment.runtime.contracts import DependencyPlan, PythonEnvironment
 from hardware import detect as detect_hardware
+from hardware.gpu import detect as detect_gpu
 from runtime import inspect_environment
 
 # Initial smoke check only. Ruth's full dependency set has not been approved.
@@ -74,8 +75,21 @@ def _check_hardware() -> None:
     print(f"Ruth: inventario hardware: {report.status} (GPU e compatibilita' inferenza non verificate).")
 
 
+
+def _check_gpu() -> None:
+    """Fifth independent step: installed NVIDIA inventory, no CUDA testing."""
+    print("Ruth: avvio inventario GPU NVIDIA.")
+    report = detect_gpu()
+    for index, gpu in enumerate(report.devices, 1):
+        model = gpu.model or "unknown"
+        vram = str(gpu.total_vram_bytes) if gpu.total_vram_bytes is not None else "unknown"
+        print(f"Ruth: GPU NVIDIA {index}: modello {model}; VRAM totale (byte) {vram}; stato {gpu.status}.")
+    print(f"Ruth: GPU NVIDIA: {report.count} rilevate; stato {report.status}.")
+    print("Ruth: disponibilita' CUDA e compatibilita' inferenza non verificate.")
+
+
 def main(argv: Sequence[str] = ()) -> int:
-    """Run PY -> DEP -> DIAG -> HW; keep targeted dependency checks."""
+    """Run PY -> DEP -> DIAG -> HW -> NVIDIA; targeted checks remain."""
     args = list(argv)
     root = Path(__file__).resolve().parent
     if not args:
@@ -85,12 +99,14 @@ def main(argv: Sequence[str] = ()) -> int:
             print("Ruth: controllo dipendenze saltato: ambiente Python non conforme.")
             _diagnose(python, None)
             _check_hardware()
+            _check_gpu()
             print("Ruth: sequenza controlli terminata con problemi.")
             return 1
         print("Ruth: dipendenze minime da controllare: pip (non elenco completo di Ruth).")
         code, dep = _check_dependencies(DEFAULT_CHECK_PACKAGES, root)
         _diagnose(python, dep)
         _check_hardware()
+        _check_gpu()
         if code == 0:
             print("Ruth: sequenza controlli completata; compatibilita' runtime non verificata.")
         else:
