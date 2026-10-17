@@ -193,3 +193,33 @@ per GGUF del catalogo. Undicesimo passaggio Ruth KBLOCKS dopo
 BLOCKS. Scope: `models/formats/gguf/KBLOCK_SCOPE.md`.
 Codice candidato sul ramo remoto; CI/promozioni in attesa.
 GGUF-KBLOCK-MANUAL-001 richiesta dopo main; nessun peso letto.
+
+## GGUF-KBLOCK-001 integrata tecnicamente (17 ottobre 2026)
+
+Le PR #65 GGUF, #66 Formats, #67 Models e #68 main hanno
+integrato l'undicesima fase `KBLOCKS` in Ruth.
+Commit applicativo `a803e15e872d71a96b7b2de37b13a8964d37d168`, test sintetici e mappe
+CI superati. Il validatore legge solo descrittori dei sei
+tipi K-quant supportati e non i byte dei tensori.
+**GGUF-KBLOCK-MANUAL-001 pending** dopo merge documentale:
+prova personale di Ruth e fixture sintetiche prima di
+qualunque nuova migrazione. Le note candidate sono storiche.
+
+## MIG-FLOW-002 revisione 2 e GGUF-KBLOCK-MANUAL-001 (17 ottobre 2026)
+
+L'utente dispone che, se incolla un log di collaudo personale completo,
+positivo e riferito alla revisione main verificata, esso costituisca
+accettazione sufficiente: non chiedere un secondo consenso. Completare
+autonomamente checkpoint, mappe, PR/CI/merge e proporre lo scope successivo,
+senza scriverne il codice prima del nuovo verde (MIG-FLOW-001).
+Questo prevale sulle istruzioni storiche di conferma separata.
+
+Prova MIG-011: flusso Ruth 11 fasi e 9 test sintetici K-block
+superati (`OK`) sul commit `233efc358f56a66d2abf796fa8e20a476aa788cf`.
+GGUF-KBLOCK-MANUAL-001 e MIG-011 complete dopo la chiusura
+documentale. Catalogo `not_configured` valido; nessun GGUF reale
+verificato. Leggere l'ultimo CHECKPOINT per lo SHA di chiusura.
+
+## MIG-012 (17 ottobre 2026)
+
+GGUF-FIXTURE-SCOPE-001 approvata: collaudo sintetico CAT->GGUF->META->INDEX->BLOCKS->KBLOCKS, dodicesimo passaggio FIXTURE. Stato candidato, non ancora collaudato dall'utente. Nessun modello reale o peso letto. Consultare CHECKPOINT.md.

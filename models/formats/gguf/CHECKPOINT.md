@@ -172,3 +172,40 @@
   accettate; nessun payload dei tensori letto.
 - GGUF-KBLOCK-MANUAL-001 richiede prova personale default
   e fixture sintetica locale dopo merge in main; DATA-001 vigente.
+
+## GGUF-KBLOCK-001 integrata, collaudo pending (17 ottobre 2026)
+
+- Supporto bounded dei sei tipi K-quant con superblocchi 256,
+  nessuna lettura pesi; main `a803e15e872d71a96b7b2de37b13a8964d37d168` dopo PR #65-#68.
+- CI runs 39025028855, 39025109274, 39025159357,
+  39025210189 success: fixture sintetiche e mappe.
+- Stato tecnico: implementation complete; verification passed;
+  integration merged. **GGUF-KBLOCK-MANUAL-001 active/pending**.
+- Test manuale richiesto: Ruth default 11 passi e suite
+  test_kblocks.py con fixture sintetiche locale, poi
+  conferma esplicita. Vecchie 10 fasi restano accettate.
+  DATA-001 e MIG-FLOW-002 invariati.
+
+## GGUF-KBLOCK-MANUAL-001 accettata (17 ottobre 2026)
+
+- L'utente ha incollato la prova del default Ruth a undici fasi
+  concluso regolarmente sul commit main verificato `233efc358f56a66d2abf796fa8e20a476aa788cf`.
+- Suite `test_kblocks.py` eseguita personalmente: **9 test, OK**.
+  CAT/GGUF/META/INDEX/BLOCKS/KBLOCKS `not_configured`
+  sono skip validi; nessun GGUF reale verificato.
+- Con MIG-FLOW-002 revisione 2 la prova positiva dell'utente
+  equivale ad accettazione: nessuna conferma ulteriore richiesta.
+  GGUF-KBLOCK-MANUAL-001 **complete**; MIG-011 **complete**.
+- Stato: codice complete, CI passed, main merged e
+  accettazione personale passed. Migrazione seguente
+  soggetta a nuovo scope esplicitamente approvato (MIG-FLOW-001).
+- DATA-001: soltanto SHA, stato e numero test in Git;
+  nessun dato host, percorso, log, benchmark o modello reale.
+  Le note precedenti pending sono storiche.
+
+## MIG-012 / GGUF-FIXTURE-001 approvata (17 ottobre 2026)
+
+- Approvazione esplicita utente. Base main `518ef0d2bdeeafe281a52cde192438fb96eb3f40`, branch `models/formats/gguf/work/GGUF-FIXTURE-001`.
+- Scope: tre file GGUF sintetici in directory temporanea, verifica CAT/GGUF/META/INDEX/BLOCKS/KBLOCKS, dodicesimo passaggio Ruth FIXTURE.
+- Stati: implementation candidate, verification pending, integration pending, personal acceptance pending.
+- Nessun dato di host o modello reale pubblicato; solo fixture generate a runtime. Prossima verifica: CI, mappe, PR e promozione; poi collaudo personale GGUF-FIXTURE-MANUAL-001.

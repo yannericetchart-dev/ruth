@@ -84,16 +84,26 @@ soddisfano questo requisito. Includere questo percorso nella descrizione
 funzionale sottoposta all'utente prima del verde.
 
 Dopo l'integrazione in main fornire all'utente il comando di avvio e i
-messaggi/esiti attesi. L'utente deve avviare Ruth localmente di persona e
-confermare esplicitamente l'esito positivo. Registrare nel checkpoint la
-revisione di main provata e lo stato del collaudo; log e risultati reali
-rimangono locali secondo DATA-001. I test automatici e le esecuzioni
-dell'agente non sostituiscono questa conferma, ne' il silenzio la implica.
+messaggi/esiti attesi. L'utente avvia Ruth localmente di persona.
+**MIG-FLOW-002 revisione 2 (17 ottobre 2026):** quando l'utente incolla
+l'output del collaudo che dimostra il successo, questo costituisce gia'
+accettazione personale sufficiente: **non chiedere un secondo "si"**.
+Verificare il commit provato contro il ref commit main pubblicato e che
+l'output mostri il completamento dell'intero flusso, gli esiti previsti e
+i test mirati previsti nel perimetro (per esempio unittest con "OK"),
+senza failure. Se i dati sono incompleti, ambigui, falliti o incongrui,
+non segnare accepted: chiedere solo la prova necessaria o lavorare alla
+correzione. Non trattare il silenzio o le sole CI come collaudo personale.
 
-Non iniziare la migrazione successiva prima della conferma positiva
-dell'utente. Distinguere integrazione tecnica completata da accettazione
-manuale ancora in attesa. Se il collaudo fallisce, restare sulla porzione
-corrente, correggerla e sottoporla nuovamente al collaudo dell'utente.
+Dopo esito personale positivo, procedere **nello stesso turno**
+autonomamente con documentazione di chiusura, NODE/mappe, PR/CI/merge
+in main; distinguere prove manuali, CI sintetiche e integrazione.
+Registrare solo SHA provato, esito sintetico e numero di test,
+mai output grezzi, path reali, dati dell'host o log (DATA-001).
+**Subito dopo la chiusura verificata, proporre il perimetro dettagliato
+della migrazione seguente, senza implementarlo prima del nuovo verde**
+(MIG-FLOW-001). Non fermarsi per conferme ridondanti.
+Se il collaudo fallisce, restare sulla porzione corrente e correggerla.
 
 
 ## Sviluppo remoto e sincronizzazione finale (REMOTE-001)
@@ -302,3 +312,23 @@ Le annotazioni precedenti di candidato sono storiche.
 MIG-010 e il gate manuale sono complete. Le note anteriori
 che indicano `GGUF-BLOCK-MANUAL-001 pending` restano storiche e
 non rappresentano la fase corrente.
+
+## GGUF-KBLOCK-001: stato tecnico corrente (17 ottobre 2026)
+
+GGUF-KBLOCK-SCOPE-001 e' implementato, verificato con fixture
+sintetiche e integrato tramite PR #65-#68, main `a803e15e872d71a96b7b2de37b13a8964d37d168`.
+MAIN-FLOW-001 ora include undici fasi, KBLOCKS dopo BLOCKS.
+GGUF-KBLOCK-MANUAL-001 resta **pending**: esecuzione personale
+del default Ruth e test locali sintetici dopo merge main,
+seguiti da conferma esplicita dell'utente (MIG-FLOW-002).
+Le precedenti note di codice candidato sono storiche.
+Non avviare MIG-012 prima della conferma e nuovo scope approvato.
+REMOTE-001 e DATA-001 restano vigenti.
+
+## MIG-FLOW-002 revisione 2: prova positiva equivale ad accettazione
+
+La comunicazione dell'utente del 17 ottobre 2026 sostituisce l'obbligo
+precedente di richiedere un "si" dopo un log personale positivo.
+D'ora in avanti, seguire la verifica evidenze, la chiusura GitHub e la
+proposta dello scope successivo descritti sopra. MIG-FLOW-001 resta
+invariata: serve approvazione specifica prima di qualunque nuovo codice.

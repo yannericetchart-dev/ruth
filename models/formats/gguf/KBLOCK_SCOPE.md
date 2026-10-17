@@ -55,3 +55,32 @@ MIG-011, estensione descriptor-only di GGUF-BLOCK-001.
 
 Stato iniziale: approvato; codice candidato, verifica e
 integrazione in main ancora pendenti.
+
+## Stato tecnico integrato (17 ottobre 2026)
+
+- Implementazione verificata con fixture sintetiche e CI,
+  promossa lungo PR #65 GGUF, #66 Formats, #67 Models,
+  #68 main `a803e15e872d71a96b7b2de37b13a8964d37d168`.
+- Stato: implementation complete, CI verification passed,
+  integration merged. **GGUF-KBLOCK-MANUAL-001 pending**,
+  richiesta esecuzione personale del default Ruth piu'
+  fixture sintetiche locali postmerge, accettazione esplicita.
+- Nessuna lettura di pesi, dequantizzazione o modello reale
+  convalidato; le note candidate precedenti sono storiche.
+
+## GGUF-KBLOCK-MANUAL-001 accettata (17 ottobre 2026)
+
+- L'utente ha incollato la prova del default Ruth a undici fasi
+  concluso regolarmente sul commit main verificato `233efc358f56a66d2abf796fa8e20a476aa788cf`.
+- Suite `test_kblocks.py` eseguita personalmente: **9 test, OK**.
+  CAT/GGUF/META/INDEX/BLOCKS/KBLOCKS `not_configured`
+  sono skip validi; nessun GGUF reale verificato.
+- Con MIG-FLOW-002 revisione 2 la prova positiva dell'utente
+  equivale ad accettazione: nessuna conferma ulteriore richiesta.
+  GGUF-KBLOCK-MANUAL-001 **complete**; MIG-011 **complete**.
+- Stato: codice complete, CI passed, main merged e
+  accettazione personale passed. Migrazione seguente
+  soggetta a nuovo scope esplicitamente approvato (MIG-FLOW-001).
+- DATA-001: soltanto SHA, stato e numero test in Git;
+  nessun dato host, percorso, log, benchmark o modello reale.
+  Le note precedenti pending sono storiche.
