@@ -9,6 +9,7 @@ Contenuto riservato a: test e fixture sintetiche.
 ## File
 
 - [__init__.py](__init__.py)
+- [test_blocks.py](test_blocks.py)
 - [test_header.py](test_header.py)
 - [test_index.py](test_index.py)
 - [test_metadata.py](test_metadata.py)

@@ -9,6 +9,7 @@ Contenuto riservato a: implementazioni eseguibili.
 ## File
 
 - [__init__.py](__init__.py)
+- [blocks.py](blocks.py)
 - [contracts.py](contracts.py)
 - [metadata.py](metadata.py)
 - [reader.py](reader.py)
