@@ -658,3 +658,28 @@ autorizzata implicitamente.
   `GGUF-STRUCT-STABILITY-MANUAL-001` **pending** dopo merge.
   Branch `models/formats/gguf/work/GGUF-STRUCT-STABILITY-001`.
   Local checkout non accessibile: `local_sync: pending_no_access`.
+
+## MIG-014 integrazione tecnica completata (17 ottobre 2026)
+
+- PR #84 (GGUF), #85 (Formats), #86 (Models), #87 (main) integrate con
+  GitHub CI **success** su ogni promozione (test sintetici, regressioni,
+  punto d'ingresso e mappe). Commit applicativo `1a77914e1e3ed9ee7cdbe7a57c2ddccffce7b616`.
+- Il controllo file stabile è in SUMMARY, **13 fasi Ruth invariate**.
+  Confronta attributi e identità osservabili prima e dopo la sequenza di
+  lettori già autorizzati; file cambiato -> `invalid` /
+  `STABILITY:changed_during_inspection`, file divenuto indisponibile ->
+  `invalid` / `STABILITY:unavailable`. Un file invariato mantiene i
+  risultati precedenti anche `size_unverified`.
+- Suite `test_stability.py`: **9 test sintetici** passati in CI;
+  simulati mutazione dimensionale, sostituzione stesso ingombro, cambi
+  timestamp, cancellazione, symlink, casi stabili validi e invalidi.
+- Stato: implementation **complete**, verification **passed (CI)**,
+  integration **merged**; **GGUF-STRUCT-STABILITY-MANUAL-001 pending**.
+  Prova personale post-merge: default Ruth 13 fasi e 9 test mirati `test_stability`
+  su commit main verificato. L'evidenza positiva equivale ad accettazione
+  senza doppia conferma (MIG-FLOW-002 rev.2).
+- Nessun peso o modello reale verificato, nessun hash payload; il confronto
+  non garantisce immutabilità atomica né integrità crittografica. Nessuna
+  lettura tensor_data, rete, download, CUDA, inferenza o benchmark.
+  DATA-001 e REMOTE-001 invariati; `local_sync: pending_no_access`.
+  Nessuna nuova migrazione approvata.
