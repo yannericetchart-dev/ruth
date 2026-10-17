@@ -25,5 +25,6 @@ La presenza dello scaffold non implica una implementazione runtime.
 - [METADATA_SCOPE.md](METADATA_SCOPE.md)
 - [MIGRATION_SCOPE.md](MIGRATION_SCOPE.md)
 - [NODE.yaml](NODE.yaml)
+- [STRUCT_STABILITY_SCOPE.md](STRUCT_STABILITY_SCOPE.md)
 - [STRUCT_SUMMARY_SCOPE.md](STRUCT_SUMMARY_SCOPE.md)
 - [__init__.py](__init__.py)
