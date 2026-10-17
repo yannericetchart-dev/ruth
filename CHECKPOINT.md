@@ -1,8 +1,9 @@
 # Ruth: checkpoint di progetto
 
-Revisione documentale: 46 (indice main); CONT-001 revisione 1.
+Revisione documentale: 47 (indice main); CONT-001 revisione 1.
 Fase 3: migrazione incrementale per componente.
-Stato: **MIG-014 GGUF-STRUCT-STABILITY-001 implementata, verificata in CI, integrata in main e collaudata personalmente (GGUF-STRUCT-STABILITY-MANUAL-001 complete)**.
+Stato: **MIG-015 GGUF-FIXTURE-SUMMARY-001 implementata, verificata in CI e integrata in main; GGUF-FIXTURE-SUMMARY-MANUAL-001 pending**.
+MIG-014 e GGUF-STRUCT-STABILITY-MANUAL-001 restano complete.
 MIG-013 e GGUF-STRUCT-SUMMARY-MANUAL-001 restano complete.
 MIG-012 e GGUF-FIXTURE-MANUAL-001 restano complete.
 GGUF-KBLOCK-MANUAL-001 e MIG-011 restano complete.
@@ -733,3 +734,27 @@ e DIAG-SCOPE-001. SYNC-001 resta storica/superseded.
   `GGUF-FIXTURE-SUMMARY-MANUAL-001` **pending** post-merge.
 - Nessun modello reale, payload, download, rete, benchmark, CUDA o inferenza;
   DATA-001, REMOTE-001, MIG-FLOW-001/002 vigenti; Kaggle inattivo.
+
+## MIG-015 integrazione tecnica completata (17 ottobre 2026)
+
+- PR #90 GGUF, #91 Formats, #92 Models, #93 main: integrate dopo GitHub
+  CI **success** in ogni promozione (test sintetici, regressione `test_pipeline`,
+  punto d'ingresso e mappe). Commit applicativo main `91ad6f4e927c0ed2dd96b147a44c074ccbc5bfe4`.
+- La dodicesima fase FIXTURE include ora il controllo SUMMARY sullo stesso
+  catalogo temporaneo di **3 GGUF sintetici**, richiedendo
+  `SUMMARY=structural_checked` e tre rapporti `structural_checked`.
+  Il report deve fallire se SUMMARY è anomala. La SUMMARY standard finale
+  resta la **tredicesima fase Ruth** sul catalogo locale opzionale, invariata.
+- Sette test mirati `test_fixture_summary` superati in CI; coperti
+  casi stabili, quantizzazioni note, tipo ignoto, magic non valida,
+  extent troncato, modifiche durante la lettura e failure guard.
+- Stato: implementazione **complete**, verification **passed (CI)**,
+  integrazione **merged**; collaudo personale
+  `GGUF-FIXTURE-SUMMARY-MANUAL-001` **pending**.
+  Dopo il merge del checkpoint: eseguire Ruth 13 fasi e la suite mirata
+  `python -m unittest models.formats.gguf.tests.test_fixture_summary -v`
+  (sette test). Evidenza positiva completa vale come accettazione senza
+  secondo consenso ai sensi di MIG-FLOW-002 rev.2.
+- Non verificati GGUF reali o pesi; nessuna lettura tensor_data, hash
+  payload, download, rete, CUDA o inferenza. DATA-001 e REMOTE-001 vigenti.
+  `local_sync: pending_no_access`. Nuova migrazione non autorizzata.
