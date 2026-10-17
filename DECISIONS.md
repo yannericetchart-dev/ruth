@@ -38,14 +38,21 @@ Ogni sostituzione deve collegare entrambe le decisioni e aggiornare le mappe.
 ## MIG-FLOW-002: esecuzione dall'ingresso e conferma manuale
 
 - Stato: accepted.
-- Decisione: ogni porzione integrata in main deve essere eseguita dal
-  punto d'ingresso ufficiale di Ruth e produrre messaggi a terminale relativi
-  alla funzione e al suo esito. Dopo l'integrazione l'utente avvia Ruth
-  localmente di persona; la migrazione successiva attende la sua conferma
-  esplicita dell'esito positivo.
-- Verifica: fornire comando ed esiti attesi e registrare nel checkpoint la
-  revisione provata e l'accettazione ancora in attesa oppure confermata.
-  Test automatici o esecuzioni dell'agente non sostituiscono il collaudo.
+- Decisione (revisione 2, 17 ottobre 2026): ogni porzione integrata in main
+  deve essere eseguita dall'ingresso ufficiale Ruth. Dopo l'integrazione,
+  l'utente avvia personalmente il flusso: un output di collaudo positivo
+  incollato dall'utente costituisce gia' la conferma personale sufficiente,
+  **senza chiedere un ulteriore "si"**. Questa interpretazione sostituisce
+  il precedente requisito di una seconda approvazione separata.
+- Verifica: confronto commit della prova con il ref main risolto su GitHub;
+  presenza dell'intera sequenza, riepilogo finale positivo e, quando inclusi
+  nel collaudo definito per lo scope, test mirati con esito "OK".
+  Nessun fallimento o contraddizione. Prova incompleta o non congrua:
+  non accettare e richiedere solo la parte mancante.
+  CI e azioni dell'agente non sostituiscono il collaudo personale.
+  Dopo la prova positiva, completare nello stesso turno checkpoint,
+  NODE, mappe, PR, CI, merge in main e proporre lo scope successivo
+  **senza scrivere nuovo codice prima della nuova approvazione**.
 - Dati: log e risultati reali restano locali secondo DATA-001; in Git si
   registra solo lo stato del processo senza dati specifici di macchina.
 - Estende: MIG-FLOW-001. Il verde iniziale autorizza il completamento fino
@@ -506,3 +513,18 @@ autorizzata implicitamente.
 - GGUF-KBLOCK-MANUAL-001 **pending**, test personale Ruth
   undici fasi e fixture sintetiche locale post-merge, poi
   accettazione esplicita richiesta. Nuovo scope non approvato.
+
+## MIG-FLOW-002-R2: accettazione automatica da evidenza positiva (17 ottobre 2026)
+
+- Stato: accepted, disposizione esplicita dell'utente.
+- La prova personale incollata con SHA main corrispondente, fasi concluse
+  e test prescritti superati vale come accettazione, senza secondo consenso.
+- Dopo verifica completare autonomamente la chiusura GitHub e proporre
+  lo scope della migrazione successiva; MIG-FLOW-001 continua a richiedere
+  approvazione esplicita **dello scope nuovo**, prima di modificare codice.
+- In caso di prova ambigua, errore o SHA incongruente non dichiarare
+  superato il collaudo. Non confondere skip valido `not_configured`
+  con verifica su GGUF reale. I risultati reali rimangono locali
+  (DATA-001); solo SHA, stato e conteggi generici possono essere registrati.
+- Sostituisce l'obbligo di doppia approvazione dopo log positivo
+  previsto dalla vecchia formulazione di MIG-FLOW-002.
