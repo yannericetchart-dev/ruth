@@ -18,7 +18,7 @@ Nodo responsabile: [GGUF](NODE.yaml). Ripresa: [START_HERE](../../../START_HERE.
 - `inspect_all_kblock_layouts(*, project_root: Path | None = None) -> GGUFKBlockReport [CI verified and integrated]`
 - `verify(path) -> VerificationReport [proposta non implementata]`
 - `run_fixture_pipeline() -> GGUFIndirectFixtureReport [MIG-012 verified and integrated]`
-- `inspect_structural_summaries(*, project_root: Path | None = None) -> GGUFStructuralReport [MIG-013 candidate]`
+- `inspect_structural_summaries(*, project_root: Path | None = None) -> GGUFStructuralReport [MIG-013 CI verified and integrated]`
 
 Dipendenze: nessuna.
 
