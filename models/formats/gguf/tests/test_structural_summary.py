@@ -46,13 +46,13 @@ class SummaryTests(unittest.TestCase):
     def test_scalar_standard_quant_and_kquant_all_verified(self):
         self.make()
         report = inspect_structural_summaries(project_root=self.root)
-        self.assertEqual((report.status, report.count), ("structural_checked", 3))
+        self.assertEqual((report.status, report.count), ("structural_checked", 4))
         self.assertEqual(tuple(x.status for x in report.models),
-                         ("structural_checked",) * 3)
-        self.assertEqual(tuple(x.tensor_count for x in report.models), (1, 1, 1))
-        self.assertEqual(tuple(x.size_unverified for x in report.models), (0, 0, 0))
+                         ("structural_checked",) * 4)
+        self.assertEqual(tuple(x.tensor_count for x in report.models), (1, 1, 3, 1))
+        self.assertEqual(tuple(x.size_unverified for x in report.models), (0, 0, 0, 0))
         self.assertEqual(tuple(x.model_id for x in report.models),
-                         ("scalar", "q4", "kquant"))
+                         ("scalar", "q4", "multi", "kquant"))
 
     def test_unknown_layout_not_misreported_as_verified(self):
         self.make()
