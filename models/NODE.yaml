@@ -36,7 +36,7 @@
   "tasks": [
     {
       "id": "MODEL-001",
-      "state": "active",
+      "state": "complete",
       "description": "Catalogo locale CAT-001 verificato, integrato in main tramite PR #38 e accettato personalmente (CAT-MANUAL-001); altri componenti Models restano skeleton e richiedono nuova approvazione."
     },
     {
