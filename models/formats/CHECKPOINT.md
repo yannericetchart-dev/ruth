@@ -369,3 +369,23 @@
 - MIG-015 non approvata: presentare perimetro funzionale distinto per
   autorizzazione ai sensi di MIG-FLOW-001. Le precedenti note `pending`
   sono cronologia storica, non stato corrente.
+
+## MIG-015 / GGUF-FIXTURE-SUMMARY-001 approvata (17 ottobre 2026)
+
+- Utente ha approvato esplicitamente la porzione MIG-015 dopo il collaudo MIG-014.
+  Commit base main `0cb12ad90e2ef7d1b3b3b77009f9cf476a3e5289`.
+- La fase FIXTURE legge anche SUMMARY sul catalogo *solo temporaneo* dei tre
+  GGUF sintetici. Richiesti: `SUMMARY=structural_checked`, tre modelli con
+  `structural_checked`, conteggi e ragioni esatti; esito anomalo ->
+  `failed` con motivazione portabile. Gli stati INDEX/BLOCKS parziali legacy
+  restano legittimi quando KBLOCKS verifica i formati noti.
+- Nuova suite mirata `test_fixture_summary` (sette test sintetici) con
+  formati sconosciuti, magic invalida, truncation, mutazioni e fallimenti
+  indotti di SUMMARY. Regressione `test_pipeline` allineata.
+- Ruth conserva **13 fasi**, la fase SUMMARY finale sul catalogo reale resta
+  separata dalla SUMMARY temporanea interna a FIXTURE.
+- Stato iniziale: scope **approved**, implementazione **candidate**,
+  verification **pending**, integration **pending**, manual gate
+  `GGUF-FIXTURE-SUMMARY-MANUAL-001` **pending** post-merge.
+- Nessun modello reale, payload, download, rete, benchmark, CUDA o inferenza;
+  DATA-001, REMOTE-001, MIG-FLOW-001/002 vigenti; Kaggle inattivo.
