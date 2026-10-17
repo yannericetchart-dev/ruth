@@ -47,6 +47,29 @@ autorizzate al parallelismo. Non avviare parallelismo non dichiarato.
 Verificare prerequisiti e assenza di cicli fra incarichi prima dell'avvio.
 La presenza di strumenti o percorsi non prova accesso locale o scrittura.
 
+## Successione e ref remoti (HANDOFF-001 / BRANCH-LIFECYCLE-001)
+
+Prima del cambio chat pubblicare ORCHESTRATOR_HANDOFF.md con approvazioni,
+responsabile, SHA, incarichi, branch/PR, prerequisiti, prove, blocchi e
+prossima azione. Al merge della consegna l'uscente cessa nuove scritture
+comuni. Il successore Work Cloud fuori dal progetto ricostruisce GitHub,
+riverifica strumenti/accessi/permessi/ambiente e assume esplicitamente
+la responsabilita tramite claim. Un solo orchestratore scrive sui documenti
+comuni; leggere la consegna prima di qualsiasi modifica. Nessuno scope nuovo
+e' autorizzato dal cambio; le approvazioni esistenti restano valide.
+
+main e' l'unico branch permanente. Creare solo rami necessari allo scope
+approvato, inclusi padri temporanei; rimuoverli quando non hanno utilizzatori
+o integrazioni pendenti. Prima di ogni rimozione riconfermare SHA, main,
+PR head/base, incarichi e dipendenze. Per storia non contenuta, prima
+creare/verificare tag d'archivio duraturi e aggiornare le fonti di migrazione.
+Non importare codice storico per giustificare una cancellazione.
+Aggiornare NODE e mappe solo dopo eliminazione verificata: niente present
+per ref rimossi. In assenza di strumenti autenticati per tag/delete-ref,
+registrare il blocco e non dichiarare completa la pulizia. Le istruzioni
+precedenti sulla permanenza dei branch storici sono superseded; la storia
+e' preservata secondo BRANCH_ARCHIVE.md e DECISIONS.md.
+
 ## Portabilita' DATA-001
 
 Versionare solo codice, documentazione di progetto, schemi, configurazioni

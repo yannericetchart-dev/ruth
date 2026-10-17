@@ -4,8 +4,9 @@ Protocollo operativo: CONT-001 revisione 2, ORCH-001 e MIG-FLOW-002 revisione 3.
 Vedere ORCHESTRATION.md per responsabilita, incarichi e parallelismo approvato.
 
 La struttura e le firme proposte sono una base di lavoro. Una funzione
-documentata come proposta non e' una funzione disponibile. I branch storici
-restano fonti della migrazione e non vengono riscritti.
+documentata come proposta non e' una funzione disponibile. La storia delle fonti non viene riscritta:
+BRANCH-LIFECYCLE-001 ne permette la conservazione tramite tag d'archivio
+verificati prima dell'eliminazione dei branch storici.
 
 ## Nodi e corsie
 
@@ -64,7 +65,7 @@ Per attivarlo servono decisione, aggiornamento del perimetro e nuova roadmap.
 La qualifica experimental puo descrivere il contratto o un flag di lavoro,
 ma non sostituisce il campo development.
 
-## Branch Git
+## Branch Git temporanei
 
 Il padre logico non e' un contenitore Git: ogni branch contiene un intero
 snapshot. Usare nomi foglia `environment/main`, `environment/python/main`,
@@ -76,10 +77,17 @@ Git non consente quel conflitto tra file e directory.
 
 Un ramo planned non viene creato solo perche compare nella mappa. AMD,
 Intel GPU, Kaggle e gli altri provider futuri restano inattivi. Si creano
-branch di sottosistema quando inizia il lavoro, conservando i branch storici.
+soltanto i branch di sottosistema e i padri temporanei necessari al lavoro
+approvato. Solo main e' permanente. Conservare la storia non integrata
+tramite tag d'archivio verificati prima di rimuovere i rami storici.
 Promuovere il codice dal figlio al padre con revisioni esplicite; ogni API
 pubblica del figlio deve soddisfare il contratto comune del padre. Il nome
-del branch da solo non impone nessuna compatibilita.
+del branch da solo non impone nessuna compatibilita o permanenza.
+branch.name/parent descrivono il percorso logico; branch.status descrive
+l'esistenza verificata. Un ref eliminato passa ad archived con prova nel
+checkpoint; i rami planned non vengono creati per riempire la mappa.
+I rami oggi presenti restano present finche' una cancellazione non sia
+verificata. temporary_branch non significa deleted.
 
 ## Ordine di migrazione e dipendenze
 

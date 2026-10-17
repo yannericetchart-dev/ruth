@@ -16,7 +16,8 @@
   "verification": "passed",
   "integration": "merged",
   "flags": [
-    "in_scope"
+    "in_scope",
+    "temporary_branch"
   ],
   "blocked_by": [],
   "depends_on": [],

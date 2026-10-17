@@ -1,6 +1,6 @@
 # Ruth: checkpoint di progetto
 
-Revisione documentale: 52 (indice main); CONT-001 revisione 2.
+Revisione documentale: 53 (indice main); CONT-001 revisione 2.
 Fase 3: migrazione incrementale per componente.
 Stato: **MIG-016 GGUF-MULTITENSOR-FIXTURE-001 implementata, verificata in CI e integrata in main; GGUF-MULTITENSOR-MANUAL-001 passed tramite collaudo delegato MIG-FLOW-002 rev.3; MIG-016 chiusa**.
 MIG-015 e GGUF-FIXTURE-SUMMARY-MANUAL-001 restano complete.
@@ -13,6 +13,41 @@ GGUF-INDEX-MANUAL-001 rimane complete.
 GGUF-MANUAL-001 e CAT-MANUAL-001 restano complete.
 PY, DEP, DIAG, HW/CPU e GPU NVIDIA restano accettate personalmente.
 L'ingresso senza argomenti di Ruth esegue tutte le funzioni integrate.
+
+## Successione dell'orchestratore e branch temporanei
+
+- ORCH-001 revisione 2, HANDOFF-001 e BRANCH-LIFECYCLE-001 approvate
+  dall'utente il 17 ottobre 2026; sole modifiche organizzative.
+- Consegna RUTH-HANDOFF-20261017-01 in ORCHESTRATOR_HANDOFF.md;
+  fonte main c1d3572627b0f544ae6ef54d05daca7ee2b62f62. Rilascio effettivo al merge
+  della PR della consegna, poi nessuna nuova scrittura comune dell'uscente.
+  Successore non creato e non ancora claimed; messaggio completo pronto
+  in SUCCESSOR_MESSAGE.md. Il successore deve riverificare le proprie
+  capacita e assumere esplicitamente il ruolo prima di altre scritture.
+- main unico branch permanente. I dodici branch di componente oggi
+  presenti sono temporanei e restano present: nessuno e' stato eliminato.
+- Audit remoto riconfermato: 97 branch alla base, 85 contenuti nella
+  storia di main e 11 non contenuti; zero PR/issue aperte e zero tag.
+  Snapshot e classificazione in BRANCH_AUDIT.md; i tag proposti in
+  BRANCH_ARCHIVE.md NON sono stati creati.
+- BRANCH-CLEANUP-001 blocked: connettore privo di create-tag/delete-ref,
+  CLI gh con autenticazione non valida. Cancellazioni 0, tag creati 0.
+  Il ramo necessario alla presente PR e' un ulteriore temporaneo:
+  rimane da eliminare dopo merge quando la mutazione sara' disponibile.
+- MODEL-001 resta active nei metadati Models: chiarire responsabile e
+  utilizzatori prima di cancellare branch usati dal nodo. Nessun nuovo
+  lavoro applicativo e' autorizzato da quello stato generico.
+- Approvazioni valide conservate; MIG-016 resta chiusa, MIG-017 non
+  approvata. Nessuna nuova migrazione, installazione, modifica dei
+  checkout storici o importazione di codice storico eseguita.
+- Prossima azione: successore verificato e claim, quindi rimuovere il
+  blocco delle mutazioni autenticate se disponibile nella nuova sessione;
+  riconfermare ogni ramo/PR/incarico, preservare la storia non integrata
+  e aggiornare metadati solo dopo rimozioni effettive. Non presumere
+  che la nuova sessione abbia strumenti o permessi ulteriori.
+- Testo UI aggiornato preparato in PROJECT_SETUP.md; impostazioni UI
+  non modificate. CI e integrazione di questa revisione sono verificabili
+  dalla PR di consegna; una proposta non e' un collaudo di ripresa eseguito.
 
 ## Protocollo corrente: CONT-001 rev.2 / ORCH-001 / MIG-FLOW-002 rev.3
 

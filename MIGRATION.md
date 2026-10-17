@@ -2,8 +2,24 @@
 
 Lo scaffold non incorpora il codice applicativo storico. Ogni porzione deve
 avere una fonte immutabile, una destinazione, test e una revisione separata.
-I vecchi branch vengono conservati. Le misure e gli artefatti specifici di
+La precedente permanenza dei vecchi branch e' sostituita da
+BRANCH-LIFECYCLE-001: prima di rimuovere storia non integrata, conservarla
+con tag remoti duraturi verificati. Le fonti operative sono SHA immutabili
+piu' tag realmente esistenti, non semplici nomi di branch. Le misure e gli artefatti specifici di
 macchina non sono candidati alla migrazione secondo DATA-001.
+
+## Riferimenti storici e archiviazione
+
+BRANCH_ARCHIVE.md mappa gli undici rami non contenuti verso tip verificati
+e nomi di tag proposti. Nessun tag e' ancora stato creato per mancanza di
+mutazioni autenticate: i branch originali restano necessari alla conservazione.
+La fonte PY-001 resta il commit 4ceea508025650ed64b33190834d0b5c85f69db2;
+il tag archive/2026-10-17/feat/gemma3-phase28-context-dispatch e' soltanto
+pianificato. La fonte conversazione e' identificata nel registro con il suo
+SHA. Aggiornare qui e nei checkpoint interessati i riferimenti al tag
+solo dopo verifica remota. Non importare codice storico in main per
+ottenere artificialmente ahead_by=0. Le note datate seguenti conservano
+la cronologia e non impongono la permanenza dei ref originali.
 
 ## Prima porzione prevista: MIG-001 / PY-001
 

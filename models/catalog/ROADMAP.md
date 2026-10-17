@@ -8,7 +8,7 @@ Unificare descrizioni e riferimenti dei modelli.
 
 Sviluppo: **active**; codice: **complete**; maturita: experimental; verifica: passed; integrazione: merged.
 
-Flag: in_scope. Blocchi: nessuno registrato.
+Flag: in_scope, temporary_branch. Blocchi: nessuno registrato.
 
 Ambito verifica: CAT-001: CI GitHub 38928909391, 38929028829, 38929118836 success (116 test sintetici inclusi 21 catalogo e 20 CLI, 264 mappe). PR #36 models/catalog/main, #37 models/main e #38 main. Manifest locale read-only, file solo dichiarati, niente download, lettura GGUF, inferenza o dati reali Git. CAT-MANUAL-001 confermato positivo sul commit 90e57f106fb664b0257775260044125ea85228e2.
 
