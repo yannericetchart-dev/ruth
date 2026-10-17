@@ -345,3 +345,74 @@ GGUF-FIXTURE-SCOPE-001 approvata: collaudo sintetico CAT->GGUF->META->INDEX->BLO
   `GGUF-STRUCT-STABILITY-MANUAL-001` **pending** dopo merge.
   Branch `models/formats/gguf/work/GGUF-STRUCT-STABILITY-001`.
   Local checkout non accessibile: `local_sync: pending_no_access`.
+
+## MIG-014 integrazione tecnica completata (17 ottobre 2026)
+
+- PR #84 (GGUF), #85 (Formats), #86 (Models), #87 (main) integrate con
+  GitHub CI **success** su ogni promozione (test sintetici, regressioni,
+  punto d'ingresso e mappe). Commit applicativo `1a77914e1e3ed9ee7cdbe7a57c2ddccffce7b616`.
+- Il controllo file stabile è in SUMMARY, **13 fasi Ruth invariate**.
+  Confronta attributi e identità osservabili prima e dopo la sequenza di
+  lettori già autorizzati; file cambiato -> `invalid` /
+  `STABILITY:changed_during_inspection`, file divenuto indisponibile ->
+  `invalid` / `STABILITY:unavailable`. Un file invariato mantiene i
+  risultati precedenti anche `size_unverified`.
+- Suite `test_stability.py`: **9 test sintetici** passati in CI;
+  simulati mutazione dimensionale, sostituzione stesso ingombro, cambi
+  timestamp, cancellazione, symlink, casi stabili validi e invalidi.
+- Stato: implementation **complete**, verification **passed (CI)**,
+  integration **merged**; **GGUF-STRUCT-STABILITY-MANUAL-001 pending**.
+  Prova personale post-merge: default Ruth 13 fasi e 9 test mirati `test_stability`
+  su commit main verificato. L'evidenza positiva equivale ad accettazione
+  senza doppia conferma (MIG-FLOW-002 rev.2).
+- Nessun peso o modello reale verificato, nessun hash payload; il confronto
+  non garantisce immutabilità atomica né integrità crittografica. Nessuna
+  lettura tensor_data, rete, download, CUDA, inferenza o benchmark.
+  DATA-001 e REMOTE-001 invariati; `local_sync: pending_no_access`.
+  Nessuna nuova migrazione approvata.
+
+## GGUF-STRUCT-STABILITY-MANUAL-001 accettata; MIG-014 chiusa (17 ottobre 2026)
+
+- Prova personale ricevuta sull'esatta revisione main `b1662aab99cbc97b6203dc41e7355521e702a2cd`,
+  verificata identica a GitHub heads/main prima della chiusura.
+- `main.py` senza argomenti: **13 fasi completate** in ordine senza errori;
+  fixture GGUF sintetiche: **passed**, tre file. SUMMARY:
+  `not_configured` / `CAT:not_configured` con catalogo opzionale assente,
+  skip valido; non e' stata effettuata ispezione di un GGUF reale.
+- `models.formats.gguf.tests.test_stability`: **9 test, OK**,
+  zero fallimenti, sui controlli sintetici di mutazione/stabilita'.
+- La prova positiva e' accettazione sufficiente in MIG-FLOW-002 rev.2,
+  **senza ulteriore consenso**. MIG-014: implementation **complete**,
+  verification **passed** (CI + collaudo personale), integration
+  **merged** (PR #84-#87), personal acceptance **passed**.
+- Non sono stati certificati pesi, hash, immutabilita' atomica, integrita',
+  modelli reali, CUDA, backend o inferenza: snapshot best-effort soltanto.
+- DATA-001: registrati solo SHA, stati e conteggi; nessun log grezzo,
+  inventario host, percorso personale, credenziale o benchmark in Git.
+- Revisione locale riferita dal collaudo utente: `local_sync: verified_on_tested_revision`.
+  Dopo il merge documentale e' necessario il fast-forward dei soli documenti:
+  `local_sync: pending_docs_fast_forward` sino a nuova prova; non si presume
+  verificato uno stato Git pulito del checkout personale.
+- MIG-015 non approvata: presentare perimetro funzionale distinto per
+  autorizzazione ai sensi di MIG-FLOW-001. Le precedenti note `pending`
+  sono cronologia storica, non stato corrente.
+
+## MIG-015 / GGUF-FIXTURE-SUMMARY-001 approvata (17 ottobre 2026)
+
+- Utente ha approvato esplicitamente la porzione MIG-015 dopo il collaudo MIG-014.
+  Commit base main `0cb12ad90e2ef7d1b3b3b77009f9cf476a3e5289`.
+- La fase FIXTURE legge anche SUMMARY sul catalogo *solo temporaneo* dei tre
+  GGUF sintetici. Richiesti: `SUMMARY=structural_checked`, tre modelli con
+  `structural_checked`, conteggi e ragioni esatti; esito anomalo ->
+  `failed` con motivazione portabile. Gli stati INDEX/BLOCKS parziali legacy
+  restano legittimi quando KBLOCKS verifica i formati noti.
+- Nuova suite mirata `test_fixture_summary` (sette test sintetici) con
+  formati sconosciuti, magic invalida, truncation, mutazioni e fallimenti
+  indotti di SUMMARY. Regressione `test_pipeline` allineata.
+- Ruth conserva **13 fasi**, la fase SUMMARY finale sul catalogo reale resta
+  separata dalla SUMMARY temporanea interna a FIXTURE.
+- Stato iniziale: scope **approved**, implementazione **candidate**,
+  verification **pending**, integration **pending**, manual gate
+  `GGUF-FIXTURE-SUMMARY-MANUAL-001` **pending** post-merge.
+- Nessun modello reale, payload, download, rete, benchmark, CUDA o inferenza;
+  DATA-001, REMOTE-001, MIG-FLOW-001/002 vigenti; Kaggle inattivo.
