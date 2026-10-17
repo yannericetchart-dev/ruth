@@ -184,3 +184,12 @@ e gli skip di GGUF, META, INDEX e BLOCKS sono validi;
 nessun file GGUF reale testato. MIG-010 complete; prossimo
 perimetro ancora da proporre e approvare (MIG-FLOW-001).
 Le precedenti note di manual pending sono storiche.
+
+## GGUF-KBLOCK-SCOPE-001 approvato (17 ottobre 2026)
+
+Autorizzata MIG-011: calcolo strutturale bounded degli ingombri
+dei sei tipi K-quant GGML Q2_K/Q3_K/Q4_K/Q5_K/Q6_K/Q8_K, soltanto
+per GGUF del catalogo. Undicesimo passaggio Ruth KBLOCKS dopo
+BLOCKS. Scope: `models/formats/gguf/KBLOCK_SCOPE.md`.
+Codice candidato sul ramo remoto; CI/promozioni in attesa.
+GGUF-KBLOCK-MANUAL-001 richiesta dopo main; nessun peso letto.

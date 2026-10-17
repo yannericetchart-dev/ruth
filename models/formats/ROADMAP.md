@@ -18,9 +18,10 @@ Ambito verifica: GGUF-001: CI success runs 38935705385, 38935861881, 38935943414
 2. `FORMAT-META-001` [complete] GGUF-META-001 delegated bounded metadata inspection CI verified and integrated via PR #50; remaining full format capabilities excluded.
 3. `FORMAT-INDEX-001` [complete] GGUF-INDEX-001 delegated bounded tensor-index reader CI verified and merged to main via PR #56; full tensor decoding excluded.
 4. `FORMAT-BLOCK-001` [complete] GGUF-BLOCK-001 five-type descriptor block layout verification passed CI, integrated via PR #62; no other quantized type support.
+5. `FORMAT-KBLOCK-001` [active] Delegated GGUF K-quant descriptor reader candidate, only IDs 10-15; CI/main pending.
 
 ## Componenti (ordine locale, ID stabili)
 
-1. [GGUF: GGUF](gguf/ROADMAP.md) — active; complete; passed.
+1. [GGUF: GGUF](gguf/ROADMAP.md) — active; partial; passed.
 
 Propagare impatti e blocchi al [padre](../ROADMAP.md) e proseguire fino alla radice.
