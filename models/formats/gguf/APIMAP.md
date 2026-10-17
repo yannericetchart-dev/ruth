@@ -12,8 +12,8 @@ Nodo responsabile: [GGUF](NODE.yaml). Ripresa: [START_HERE](../../../START_HERE.
 - `inspect_all_metadata(*, project_root: Path | None = None) -> GGUFMetadataReport [metadata only, CI verified and integrated]`
 - `inspect_tensor_index(model_id: str, *, project_root: Path | None = None) -> GGUFTensorIndex [catalog only, CI verified and integrated]`
 - `inspect_all_tensor_indexes(*, project_root: Path | None = None) -> GGUFTensorIndexReport [CI verified and integrated]`
-- `inspect_block_layout(model_id: str, *, project_root: Path | None = None) -> GGUFBlockLayout [candidate, CAT-only]`
-- `inspect_all_block_layouts(*, project_root: Path | None = None) -> GGUFBlockLayoutReport [candidate]`
+- `inspect_block_layout(model_id: str, *, project_root: Path | None = None) -> GGUFBlockLayout [CAT-only, CI verified and integrated]`
+- `inspect_all_block_layouts(*, project_root: Path | None = None) -> GGUFBlockLayoutReport [CI verified and integrated]`
 - `verify(path) -> VerificationReport [proposta non implementata]`
 
 Dipendenze: nessuna.
