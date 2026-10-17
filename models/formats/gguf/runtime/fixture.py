@@ -15,6 +15,7 @@ from .metadata import inspect_all_metadata
 from .tensor_index import inspect_all_tensor_indexes
 from .blocks import inspect_all_block_layouts
 from .kblocks import inspect_all_kblock_layouts
+from .structural_summary import inspect_structural_summaries
 
 
 @dataclass(frozen=True)
@@ -71,10 +72,12 @@ def run_fixture_pipeline() -> GGUFIndirectFixtureReport:
             index = inspect_all_tensor_indexes(project_root=root)
             blocks = inspect_all_block_layouts(project_root=root)
             kblocks = inspect_all_kblock_layouts(project_root=root)
+            summary = inspect_structural_summaries(project_root=root)
             stages = (
                 "CAT=" + cat.status, "GGUF=" + headers.status,
                 "META=" + metadata.status, "INDEX=" + index.status,
-                "BLOCKS=" + blocks.status, "KBLOCKS=" + kblocks.status
+                "BLOCKS=" + blocks.status, "KBLOCKS=" + kblocks.status,
+                "SUMMARY=" + summary.status
             )
             ok = (
                 cat.status == "ready" and cat.count == 3 and
@@ -90,7 +93,14 @@ def run_fixture_pipeline() -> GGUFIndirectFixtureReport:
                 ("layout_checked", "layout_checked", "size_unverified") and
                 kblocks.status == "inspected" and len(kblocks.models) == 3 and
                 all(x.status == "kblocks_checked" and x.size_unverified == 0
-                    for x in kblocks.models)
+                    for x in kblocks.models) and
+                summary.status == "structural_checked" and
+                tuple((x.model_id, x.status, x.tensor_count, x.size_unverified, x.reason)
+                      for x in summary.models) == (
+                          ("scalar", "structural_checked", 1, 0, ""),
+                          ("q4", "structural_checked", 1, 0, ""),
+                          ("kquant", "structural_checked", 1, 0, ""),
+                      )
             )
             return GGUFIndirectFixtureReport(
                 "passed" if ok else "failed", 3, stages,
