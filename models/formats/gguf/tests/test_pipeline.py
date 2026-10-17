@@ -30,7 +30,7 @@ class PipelineTests(unittest.TestCase):
             self.assertEqual(tuple(x.architecture for x in inspect_all_metadata(project_root=root).models),
                              ("llama", "llama", "llama", "llama"))
             self.assertEqual(tuple(x.size_unverified for x in inspect_all_tensor_indexes(project_root=root).models),
-                             (0, 1, 1, 1))
+                             (0, 1, 2, 1))
             self.assertEqual(tuple(x.size_unverified for x in inspect_all_block_layouts(project_root=root).models),
                              (0, 0, 1, 1))
             self.assertEqual(tuple(x.size_unverified for x in inspect_all_kblock_layouts(project_root=root).models),
