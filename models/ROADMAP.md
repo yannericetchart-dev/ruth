@@ -19,6 +19,7 @@ Ambito verifica: CAT-001: CI GitHub 38928909391, 38929028829, 38929118836 succes
 3. `MODEL-003` [complete] GGUF-META-001 catalog-only bounded metadata reader CI verified, integrated PR #50, and manually accepted GGUF-META-MANUAL-001 on d318fd793da514f21ee2e8475304d1a6c883ee94; no tensor, download or inference.
 4. `MODEL-004` [complete] GGUF-INDEX-001 bounded tensor index verified in CI and integrated via PR #56, personally accepted GGUF-INDEX-MANUAL-001 on 09045243e944514d40b9e58c6159b013efa2a196 (no real GGUF payload verified).
 5. `MODEL-005` [complete] GGUF-BLOCK-001 five GGML quantized block types implemented, CI verified and merged via PR #62; personal GGUF-BLOCK-MANUAL-001 acceptance on 2f42a9d7a631e8779613784b58f8ce1b92afff9c with catalog not configured. No tensor data read.
+6. `MODEL-006` [active] GGUF-KBLOCK-001 six K-quant superblock layout reader candidate; CI, promotions and personal test pending; no weights.
 
 ## Componenti (ordine locale, ID stabili)
 

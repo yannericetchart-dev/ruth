@@ -186,3 +186,13 @@
 - Scope GGUF-BLOCK-001 implementato, verificato con fixture in CI
   e integrato in main; **manual acceptance passed**.
   La prossima porzione richiede approvazione distinta.
+
+## GGUF-KBLOCK-001 candidata (17 ottobre 2026)
+
+- MIG-011 approvata; supporto descriptor-only Q2_K, Q3_K,
+  Q4_K, Q5_K, Q6_K, Q8_K (blocco 256) nella nuova KBLOCKS.
+- Codice candidato in branch remoto; CI, PR e mappe
+  non ancora completate. Le 10 fasi precedenti rimangono
+  accettate; nessun payload dei tensori letto.
+- GGUF-KBLOCK-MANUAL-001 richiede prova personale default
+  e fixture sintetica locale dopo merge in main; DATA-001 vigente.
