@@ -1,23 +1,23 @@
 # Ruth: consegna dell'orchestratore
 
 handoff_id: RUTH-HANDOFF-20261017-01
-state: released_on_merge
+state: claimed_on_claim_merge
 outgoing_owner: ORCH-20261017-A
-incoming_owner: unassigned
+incoming_owner: ORCH-20261017-B (effective_on_claim_merge)
 source_main_sha: c1d3572627b0f544ae6ef54d05daca7ee2b62f62
 publication_branch: work/ORCH-SUCCESSION-BRANCH-LIFECYCLE
 publication_pr: #104 (https://github.com/yannericetchart-dev/ruth/pull/104)
 prepared_snapshot_sha: 16cc38f374707639ec90b3ed066bcca066889f3e
 publication_sha: leggere il merge_commit_sha della PR indicata, non il blob SHA
-common_documents_writer_after_release: none_until_verified_claim
+common_documents_writer_after_release: ORCH-20261017-B (only_after_claim_merge)
 writes_frozen_after_publication_merge: true
 
 Questa consegna e' preparata dall'orchestratore uscente su autorizzazione
 dell'utente. Il rilascio diventa effettivo soltanto quando la PR e' merged
 in main. Fino ad allora sono permesse all'uscente solo le scritture
 necessarie a completare questo perimetro organizzativo; dopo il merge
-cessa nuove scritture comuni. Nessun successore e' gia' stato creato
-o ha assunto il ruolo. Usare HANDOFF-001 in ORCHESTRATION.md.
+cessa nuove scritture comuni. Alla pubblicazione della consegna nessun successore aveva assunto il ruolo;
+il claim successivo e' registrato sotto. Usare HANDOFF-001 in ORCHESTRATION.md.
 
 ## Perimetri approvati e stato
 
@@ -94,3 +94,52 @@ restano aperte e fatte proseguire dall'utente.
 Prossima azione: l'utente apre il successore con SUCCESSOR_MESSAGE.md;
 il successore verifica e assume il ruolo, poi riprende solo gli incarichi
 autorizzati e possibili. MIG-017 resta in attesa del nuovo OK.
+
+## Claim del successore — ORCH-20261017-B
+
+handoff_id: RUTH-HANDOFF-20261017-01
+claim_owner: ORCH-20261017-B
+previous_owner: ORCH-20261017-A
+handoff_read_sha: 5257b0f3eb9dfc83cbc3606611f1045a973ce900
+claim_branch: work/ORCH-20261017-B-claim
+claim_effective: only_after_claim_pr_merge
+
+Designazione esplicita dell'utente; ruolo Work Cloud fuori dal progetto.
+PR #104 verificata merged al commit della consegna letta; CI main
+39038429293 success. Uscente released e senza nuove scritture comuni.
+Consegna incoming_owner unassigned e zero PR aperte alla verifica iniziale.
+Prima del merge riconfermare main, owner, consegna e assenza di contese.
+Al merge di questo claim ORCH-20261017-B diventa unico titolare delle
+scritture comuni e dell'integrazione in main; prima resta solo candidato.
+
+Verifiche della nuova sessione: connessione GitHub autenticata come
+yannericetchart-dev; letture ref, file, alberi, PR, confronti commit e CI
+riuscite. Branch del claim creato tramite mutazione autenticata.
+Esecutore cloud distinto dalla macchina locale. Entrambe le risorse
+locali designate non sono accessibili dal filesystem della sessione:
+previous_clean_checkout: pending_no_access;
+validation_checkout: pending_no_access.
+HEAD, pulizia, ambiente e permessi effettivi locali non verificabili.
+Nessuna prova di scrittura, copia, ambiente o installazione creata.
+
+Audit live prima del claim: 98 branch, seconda pagina vuota; main piu'
+86 contained_candidate e 11 archive_required, confrontati con lo SHA letto.
+Zero PR aperte e zero tag remoti (git/matching-refs/tags/).
+Non certificata l'assenza di utilizzatori per singolo ramo.
+MODEL-001 resta active e richiede riconferma del responsabile/utilizzatori.
+BRANCH-CLEANUP-001: blocked_missing_authenticated_ref_mutations.
+Nessuna create-tag/delete-ref esposta; CLI gh non disponibile nella sessione.
+Cancellazioni 0, tag creati 0. Il branch claim aggiunge un temporaneo,
+pending_cleanup dopo merge. Nessun ref storico rimosso o codice importato.
+
+Protocolli e approvazioni invariati: CONT-001 rev.2, ORCH-001 rev.2,
+HANDOFF-001, BRANCH-LIFECYCLE-001, MIG-FLOW-001, MIG-FLOW-002 rev.3,
+REMOTE-001 e DATA-001. MIG-016 resta chiusa con prova delegated
+MIG-016-delegated-001 su dbdef7ab000d99d2e3dde68b0857840f0047d5fe:
+13 fasi, quattro fixture passed e 11 test OK; non prova personale utente.
+MIG-017 soltanto proposta, non implementata; nessun incarico applicativo
+o parallelismo avviato. UI-CONT-001 resta pending.
+Prossima azione autorizzata dopo claim: risolvere i blocchi di accesso e
+delle mutazioni; solo con capacita disponibili riprendere la pulizia,
+riverificando SHA, main, PR head/base, incarichi, utilizzatori e integrazioni
+per ogni ramo e preservando prima la storia non contenuta con tag verificati.
