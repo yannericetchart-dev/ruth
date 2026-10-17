@@ -2,23 +2,19 @@
 
 ## Stato corrente verificato — 17 ottobre 2026
 
-Responsabile: ORCH-20261017-B. Base riconfermata:
-7988da89891e03ce364b73ffb692db429b242bb4, PR #108 merged e CI success.
-Gli 11 heads, ref tags e oggetti annotati sotto sono stati nuovamente
-verificati da B: SHA oggetto e commit coincidono col registro.
-Conferma utente del 17 ottobre 2026: rilascio delle vecchie chat/processi.
-Per ciascuno degli 11 rami: users_release confirmed_by_user e scritture
-cessate; nessuna integrazione pendente confermata. BRANCH-DELETE-002 assegna
-la rimozione condizionata ai tip esatti, soltanto dopo PR/CI/merge.
-Gli archivi restano immutabili; tutti gli 11 branch originari sono ancora
-presenti. Cancellazioni cumulative gia' verificate: 2, soltanto documentali
-BRANCH-DELETE-001. BRANCH-CLEANUP-001 resta aperto fino a prove complete.
+Responsabile: ORCH-20261017-B. Base verificata:
+e7efb79a86e28209528ebcf4d85ca41f526b9b39, PR #109 merged, CI positiva.
+Tutti gli 11 branch originari della tabella sono ora archived/absent,
+eliminati dall'esecutore in BRANCH-DELETE-002 dopo verifica preventiva
+dei tag. B ha riconfermato main-only e i singoli ref tags/oggetti/commit.
+Gli 11 archivi annotati sotto esistono, sono immutabili e conservano la
+storia non contenuta in main. I nomi originari e i tip sono provenienza
+storica, non ref heads ancora presenti. Nessun codice storico importato.
+BRANCH-ARCHIVE-001 e BRANCH-DELETE-002 complete; BRANCH-CLEANUP-001 attende
+solo la verifica/rimozione del ramo documentale gestito da BRANCH-DELETE-003.
+Cancellazioni cumulative gia' verificate: 100 (2 + 98).
 
-Decisione vigente: BRANCH-LIFECYCLE-001. Gli 11 tag sotto sono ora fonti
-remote esistenti, durature e immutabili. I branch originali sono ancora
-presenti; nessuna rimozione e' implicita nella preservazione verificata.
-
-| Branch originario | Tip / commit dereferenziato | Tag annotato verificato | SHA oggetto tag | Esito |
+| Branch originario (archived/absent) | Tip / commit dereferenziato | Tag annotato verificato | SHA oggetto tag | Esito |
 | --- | --- | --- | --- | --- |
 | `environment/python/main` | `b80520ad903ff18f93398725ea95cd91f51da5d8` | `archive/2026-10-17/environment/python/main` | `e484b4f9af2ef89a2172fb3cbca684cdc9c4a5d5` | verified |
 | `environment/python/work/entrypoint` | `b80520ad903ff18f93398725ea95cd91f51da5d8` | `archive/2026-10-17/environment/python/work/entrypoint` | `d4526159d67220cdf6be6cc9278d87a5929265f2` | verified |
@@ -43,14 +39,11 @@ MIGRATION.md e checkpoint/scopi Python e DEP sono aggiornati a queste
 fonti verificate. Nessun codice storico o dato host importato in main.
 
 Per tutti gli 11 rami di questa tabella: archive verified;
-operational_references verified_since_pr_107;
+operational_references verified_since_pr_107; branch_status archived;
 users_release confirmed_by_user; writes_ceased confirmed_by_user;
-other_assignments none_published_found; integrations_release confirmed_by_user;
-deletion eligible_after_branch_delete_002_assignment_merge_and_ci.
-L'elenco esatto e i controlli immediati sono in BRANCH_DELETE_002.json e
-ORCHESTRATION.md. Non dichiarare un ramo eliminato prima della prova remota.
-Il precedente stato unconfirmed era valido prima della conferma utente;
-la sua cronologia e' conservata alla PR #108 e nelle sezioni storiche sotto.
+deletion deleted_verified (BRANCH-DELETE-002); ref_heads absent.
+Le istruzioni e gli stati planned/present nelle sezioni storiche sotto
+restano cronologia. Fonte corrente: tag e SHA della tabella verificata.
 
 ## Cronologia: registro e prerequisiti alla PR #106
 

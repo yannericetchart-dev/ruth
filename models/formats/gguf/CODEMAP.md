@@ -6,7 +6,7 @@ Nodo responsabile: [GGUF](NODE.yaml). Ripresa: [START_HERE](../../../START_HERE.
 
 Scopo: Lettura strutturale del formato, separata dagli strumenti CLI.
 
-Branch: `models/formats/gguf/main` (present); padre Git previsto: `models/formats/main`.
+Branch: `models/formats/gguf/main` (archived); padre Git previsto: `models/formats/main`.
 
 La presenza dello scaffold non implica una implementazione runtime.
 

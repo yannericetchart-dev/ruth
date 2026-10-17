@@ -6,7 +6,7 @@ Nodo responsabile: [DIAG](NODE.yaml). Ripresa: [START_HERE](../../START_HERE.md)
 
 Scopo: Spiegare problemi di ambiente senza alterarlo.
 
-Branch: `environment/diagnostics/main` (present); padre Git previsto: `environment/main`.
+Branch: `environment/diagnostics/main` (archived); padre Git previsto: `environment/main`.
 
 La presenza dello scaffold non implica una implementazione runtime.
 

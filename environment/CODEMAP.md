@@ -6,7 +6,7 @@ Nodo responsabile: [ENV](NODE.yaml). Ripresa: [START_HERE](../START_HERE.md).
 
 Scopo: Ispezionare Python e pianificare dipendenze senza installazioni implicite.
 
-Branch: `environment/main` (present); padre Git previsto: `main`.
+Branch: `environment/main` (archived); padre Git previsto: `main`.
 
 La presenza dello scaffold non implica una implementazione runtime.
 

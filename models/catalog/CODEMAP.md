@@ -6,7 +6,7 @@ Nodo responsabile: [CAT](NODE.yaml). Ripresa: [START_HERE](../../START_HERE.md).
 
 Scopo: Unificare descrizioni e riferimenti dei modelli.
 
-Branch: `models/catalog/main` (present); padre Git previsto: `models/main`.
+Branch: `models/catalog/main` (archived); padre Git previsto: `models/main`.
 
 La presenza dello scaffold non implica una implementazione runtime.
 

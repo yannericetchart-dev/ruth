@@ -6,7 +6,7 @@ Nodo responsabile: [FORMAT](NODE.yaml). Ripresa: [START_HERE](../../START_HERE.m
 
 Scopo: Contratto comune di lettura metadati e verifica.
 
-Branch: `models/formats/main` (present); padre Git previsto: `models/main`.
+Branch: `models/formats/main` (archived); padre Git previsto: `models/main`.
 
 La presenza dello scaffold non implica una implementazione runtime.
 

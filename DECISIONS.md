@@ -129,6 +129,22 @@ Ogni sostituzione deve collegare entrambe le decisioni e aggiornare le mappe.
 - BRANCH-CLEANUP-001 resta aperto fino a esiti e stati effettivi registrati.
   BRANCH-DELETE-001 resta complete; MIG-016 chiusa, MIG-017 non autorizzata.
 
+## BRANCH-LIFECYCLE-001: verifica bulk e coda documentale finale
+
+- Attuazione del perimetro approvato: BRANCH-DELETE-002 complete, 98 ref
+  rimossi dall'esecutore con condizione SHA; B riconferma main-only e 11
+  archivi annotati invariati alla revisione e7efb79a86e28209528ebcf4d85ca41f526b9b39.
+- I 12 NODE di componente passano ad archived e le viste sono aggiornate;
+  contratti, nomi logici e cronologia restano conservati.
+- Il solo ramo di registrazione finale e' assegnato a BRANCH-DELETE-003,
+  con rilascio al merge e SHA letterale nel corpo PR/prompt. Nessuna chiusura
+  complessiva prima della sua rimozione verificata.
+- La verifica post-merge e' registrata da B con commento strutturato
+  BRANCH-CLEANUP-001-FINAL nella stessa PR, richiamato dall'indice/checkpoint:
+  fonte dello stato finale successivo allo snapshot, senza creare altri ref.
+- Nessun nuovo perimetro funzionale, installazione o modifica ai checkout.
+  MIG-016 resta chiusa; MIG-017 non autorizzata.
+
 ## Disposizione precedente: permanenza dei branch storici (storica)
 
 - Stato: superseded da BRANCH-LIFECYCLE-001.

@@ -23,9 +23,9 @@ Fonti operative, con nome originario conservato:
 - Ogni altra fonte dei rami archiviati: tag, SHA tip e oggetto annotato
   esatti nella tabella corrente di BRANCH_ARCHIVE.md.
 
-I branch originali sono ancora presenti, ma la storia e' ora raggiungibile
-anche tramite i tag duraturi. Gli 11 rami storici restano bloccati su
-users_release unconfirmed: archivio verificato non equivale a ramo libero.
+Gli 11 branch originali sono archived/absent dopo BRANCH-DELETE-002;
+la storia resta raggiungibile tramite gli stessi tag annotati e SHA.
+Il rilascio utente e le cancellazioni sono verificati nel registro corrente.
 Nessun codice storico importato in main e nessuna storia riscritta.
 La precedente indicazione di tag soltanto pianificati, registrata alla
 PR #106 e conservata nella cronologia di BRANCH_ARCHIVE.md, e' sostituita.

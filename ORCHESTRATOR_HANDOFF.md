@@ -6,26 +6,29 @@ outgoing_owner: ORCH-20261017-A
 incoming_owner: ORCH-20261017-B
 source_main_sha: c1d3572627b0f544ae6ef54d05daca7ee2b62f62
 publication_branch: work/ORCH-SUCCESSION-BRANCH-LIFECYCLE
+publication_branch_status: archived (deleted by BRANCH-DELETE-002; historical provenance)
 publication_pr: #104 (https://github.com/yannericetchart-dev/ruth/pull/104)
 prepared_snapshot_sha: 16cc38f374707639ec90b3ed066bcca066889f3e
 publication_sha: leggere il merge_commit_sha della PR indicata, non il blob SHA
 common_documents_writer_after_release: ORCH-20261017-B
 writes_frozen_after_publication_merge: true
 
-## Stato corrente: rilascio utilizzatori e BRANCH-DELETE-002
+## Stato corrente: BRANCH-DELETE-002 complete e ultima registrazione
 
-B resta unico titolare; A released. BRANCH-DELETE-001 complete dalla PR #108,
-main letto 7988da89891e03ce364b73ffb692db429b242bb4. L'utente conferma il rilascio
-delle vecchie chat/processi al quesito esplicito: i 97 rami storici congelati
-sono users_release confirmed_by_user. B rilascia il proprio ramo documentale
-al merge della pubblicazione. Incarico BRANCH-DELETE-002, tabella e gate in
-ORCHESTRATION.md, BRANCH_AUDIT.md e BRANCH_DELETE_002.json.
-Nessun ramo nuovo creato; 98 target diversi da main, inclusi 11 archiviati.
-B cessa nuove scritture GitHub durante l'esecuzione, fino al resoconto.
-Tutti i branch rilasciati sono ancora presenti alla verifica; non dichiarare
-BRANCH-CLEANUP-001 completa prima delle prove e degli aggiornamenti effettivi.
-Main protetto e 11 tag immutabili. MIG-016 chiusa; MIG-017 non autorizzata.
-Le sezioni seguenti sono cronologia della consegna, non nuovi incarichi.
+B resta unico titolare; A released. Rilascio utenti acquisito e 98 ref
+eliminati dall'esecutore come da PR #109 (incluso il precedente ramo
+work/BRANCH-ARCHIVE-001-record). B ha verificato indipendentemente solo main
+allo SHA e7efb79a86e28209528ebcf4d85ca41f526b9b39 e tutti gli 11 archivi annotati invariati.
+I 12 branch di componente rimossi sono archived nei NODE e nelle mappe.
+Nessun ramo storico e' ancora presente; nomi, genitori logici e SHA restano
+provenienza/contratti, non ref esistenti. BRANCH-DELETE-001 e -002 complete.
+Per la sola pubblicazione finale si crea work/BRANCH-CLEANUP-001-final-record,
+gestito da BRANCH-DELETE-003: rilascio di B dopo merge/CI, SHA esatto nel corpo
+PR e prompt. Dopo la rimozione B pubblica il checkpoint strutturato
+BRANCH-CLEANUP-001-FINAL nella stessa PR; leggere quel commento e main live
+per la chiusura effettiva, che non e' anticipata da questo snapshot.
+B sospende nuove scritture fino al resoconto locale. MIG-016 chiusa;
+MIG-017 non autorizzata. Cronologia della consegna sotto preservata.
 
 Questa consegna e' preparata dall'orchestratore uscente su autorizzazione
 dell'utente. Il rilascio diventa effettivo soltanto quando la PR e' merged

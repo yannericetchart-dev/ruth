@@ -1,5 +1,19 @@
 # Environment: checkpoint DEP-001
 
+## Stato del ref remoto (17 ottobre 2026)
+
+Branch logico `environment/main`: **archived / ref remoto assente**.
+Tip prima della rimozione: `3e8d1c19e35914ee69b287eb1a01d15677212543`.
+Rimosso dall'esecutore in BRANCH-DELETE-002 (PR #109), verificato da B
+tramite inventari completi heads/branches main-only. Conservazione: storia contenuta in main alla revisione
+`e7efb79a86e28209528ebcf4d85ca41f526b9b39`.
+NODE aggiornato ad archived, flag archived_branch e viste rigenerate.
+Nomi e padri Git sotto restano provenienza e contratti logici, non ref presenti.
+Codice, API e collaudi applicativi conservano il loro ambito precedente.
+Per la coda documentale e lo stato finale leggere CHECKPOINT.md radice e
+il checkpoint BRANCH-CLEANUP-001-FINAL sulla PR della registrazione.
+
+
 ## Fonte operativa archiviata (17 ottobre 2026)
 
 Fonte PY-001/DEP-001: tag annotato remoto verificato
@@ -7,10 +21,10 @@ Fonte PY-001/DEP-001: tag annotato remoto verificato
 `4ceea508025650ed64b33190834d0b5c85f69db2`; branch originario
 `feat/gemma3-phase28-context-dispatch`. Prova del ref e oggetto tag in
 BRANCH_ARCHIVE.md; stessa provenienza, nessun codice nuovo importato.
-Il ramo storico Python `environment/python/main` resta presente al tip
+Il ramo storico Python `environment/python/main` e' archived/absent; tip storico
 `b80520ad903ff18f93398725ea95cd91f51da5d8`, ora preservato anche da
-`archive/2026-10-17/environment/python/main`. Nessun ramo eliminato;
-users_release resta unconfirmed. Le promozioni e prove sotto sono storiche.
+`archive/2026-10-17/environment/python/main`. Rilascio utente confermato e
+rimozione verificata in BRANCH-DELETE-002. Le promozioni e prove sotto sono storiche.
 
 
 - PY-001: integrata e accettata personalmente dall'utente

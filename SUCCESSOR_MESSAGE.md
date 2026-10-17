@@ -1,5 +1,12 @@
 # Messaggio completo per avviare l'orchestratore successore
 
+Nota di ripresa corrente: dopo lettura di main/START_HERE e della consegna,
+controllare l'ultimo checkpoint valido BRANCH-CLEANUP-001-FINAL nella PR di registrazione
+con head work/BRANCH-CLEANUP-001-final-record, insieme a main live e agli
+11 archivi. Gli stati pending del NODE sono snapshot della pubblicazione;
+solo un commento finale complete verificato sostituisce il gate residuo.
+
+
 Da inviare a una nuova chat Work Cloud fuori dal progetto Ruth.
 Le coordinate personali delle risorse locali vanno aggiunte privatamente;
 non inserirle nei documenti GitHub. Nessuna nuova migrazione e' autorizzata.

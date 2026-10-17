@@ -1,5 +1,19 @@
 # Formats: checkpoint GGUF-001
 
+## Stato del ref remoto (17 ottobre 2026)
+
+Branch logico `models/formats/main`: **archived / ref remoto assente**.
+Tip prima della rimozione: `f4218833623a45ad5574cf17ef993a455265141d`.
+Rimosso dall'esecutore in BRANCH-DELETE-002 (PR #109), verificato da B
+tramite inventari completi heads/branches main-only. Conservazione: storia contenuta in main alla revisione
+`e7efb79a86e28209528ebcf4d85ca41f526b9b39`.
+NODE aggiornato ad archived, flag archived_branch e viste rigenerate.
+Nomi e padri Git sotto restano provenienza e contratti logici, non ref presenti.
+Codice, API e collaudi applicativi conservano il loro ambito precedente.
+Per la coda documentale e lo stato finale leggere CHECKPOINT.md radice e
+il checkpoint BRANCH-CLEANUP-001-FINAL sulla PR della registrazione.
+
+
 - Contratto formato minimo delegato al lettore GGUF header-only.
 - Stato candidato: codice foglia in sviluppo/verifica, CI e promozioni pendenti.
 - Nessun parser completo, GGUF verification, acquisizione o inferenza autorizzati.

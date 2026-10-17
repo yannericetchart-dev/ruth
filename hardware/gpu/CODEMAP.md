@@ -6,7 +6,7 @@ Nodo responsabile: [GPU](NODE.yaml). Ripresa: [START_HERE](../../START_HERE.md).
 
 Scopo: Inventario GPU tramite provider vendor.
 
-Branch: `hardware/gpu/main` (present); padre Git previsto: `hardware/main`.
+Branch: `hardware/gpu/main` (archived); padre Git previsto: `hardware/main`.
 
 La presenza dello scaffold non implica una implementazione runtime.
 

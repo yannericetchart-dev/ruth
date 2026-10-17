@@ -6,7 +6,7 @@ Nodo responsabile: [NVIDIA](NODE.yaml). Ripresa: [START_HERE](../../../START_HER
 
 Scopo: Provider NVIDIA per inventario, senza certificare backend CUDA.
 
-Branch: `hardware/gpu/nvidia/main` (present); padre Git previsto: `hardware/gpu/main`.
+Branch: `hardware/gpu/nvidia/main` (archived); padre Git previsto: `hardware/gpu/main`.
 
 La presenza dello scaffold non implica una implementazione runtime.
 
