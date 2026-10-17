@@ -485,3 +485,30 @@ GPU-MANUAL-001 richiesta solo dopo main, secondo MIG-FLOW-002.
   sincronizzazione sicura e fixture sintetiche locali.
   Prossimo componente richiede nuovo scope approvato.
   Le annotazioni candidate precedenti sono storiche.
+
+## MIG-011: GGUF-KBLOCK-MANUAL-001 completata (17 ottobre 2026)
+
+- Prova comunicata dall'utente il 17 ottobre 2026 per main
+  `233efc358f56a66d2abf796fa8e20a476aa788cf`, risolto e confrontato al ref heads/main GitHub:
+  flusso normale `.venv/bin/python main.py` concluso senza errori
+  su undici fasi in ordine, inclusa KBLOCKS.
+- CAT, GGUF, META, INDEX, BLOCKS, KBLOCKS: `not_configured`
+  come skip validi con catalogo opzionale assente.
+- Suite mirata `test_kblocks.py`: **9 test superati, esito OK**,
+  senza failure; verifica manuale sintetica distinta dalla
+  verifica precedente CI e dall'uso di un GGUF reale.
+- Evidenza positiva sufficiente come accettazione personale ai sensi
+  della nuova MIG-FLOW-002 revisione 2; l'utente ha autorizzato
+  espressamente la chiusura automatica senza una seconda conferma.
+- Nessun GGUF reale, dato tensore, dequantizzazione, CUDA,
+  backend, download o inferenza collaudati. Nessun dato host,
+  path, output grezzo o log pubblicato (DATA-001).
+- Sei tipi K-quant restano verificati limitatamente a ingombri
+  di descrittori catalog-bound: non e' certificato un modello reale.
+- Stato tecnico complete/passed/merged via PR #65-#68; gate manual
+  complete e MIG-011 complete. Le voci pending precedenti
+  restano storiche.
+- MIG-FLOW-002-R2: esiti personali incollati completi e positivi
+  sul main provato sono accettazione sufficiente, senza secondo "si".
+  Dopo registrazione GitHub proporre lo scope MIG-012 per
+  autorizzazione specifica, **senza implementarlo**.

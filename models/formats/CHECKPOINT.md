@@ -174,3 +174,25 @@
   test_kblocks.py con fixture sintetiche locale, poi
   conferma esplicita. Vecchie 10 fasi restano accettate.
   DATA-001 e MIG-FLOW-002 invariati.
+
+## GGUF-KBLOCK-MANUAL-001: accettazione personale (17 ottobre 2026)
+
+- Prova comunicata dall'utente il 17 ottobre 2026 per main
+  `233efc358f56a66d2abf796fa8e20a476aa788cf`, risolto e confrontato al ref heads/main GitHub:
+  flusso normale `.venv/bin/python main.py` concluso senza errori
+  su undici fasi in ordine, inclusa KBLOCKS.
+- CAT, GGUF, META, INDEX, BLOCKS, KBLOCKS: `not_configured`
+  come skip validi con catalogo opzionale assente.
+- Suite mirata `test_kblocks.py`: **9 test superati, esito OK**,
+  senza failure; verifica manuale sintetica distinta dalla
+  verifica precedente CI e dall'uso di un GGUF reale.
+- Evidenza positiva sufficiente come accettazione personale ai sensi
+  della nuova MIG-FLOW-002 revisione 2; l'utente ha autorizzato
+  espressamente la chiusura automatica senza una seconda conferma.
+- Nessun GGUF reale, dato tensore, dequantizzazione, CUDA,
+  backend, download o inferenza collaudati. Nessun dato host,
+  path, output grezzo o log pubblicato (DATA-001).
+- GGUF-KBLOCK-001: implementato, CI verificata, integrato;
+  manual accepted. Le precedenti note pending sono storiche.
+  MIG-FLOW-002-R2 elimina il secondo via libera dopo prova positiva,
+  ma MIG-FLOW-001 richiede approvazione dello scope futuro.
