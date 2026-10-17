@@ -309,3 +309,25 @@
 - Le precedenti note candidate / manual pending sono **storiche**.
   MIG-014 non approvata: per ogni nuovo scope serve approvazione
   esplicita (MIG-FLOW-001).
+
+## MIG-014 / GGUF-STRUCT-STABILITY-001 approvata (17 ottobre 2026)
+
+- Utente ha approvato il perimetro proposto; commit base main
+  `5a0a912d47e5860c8dcb8fd0188b6b24913314b1`.
+- Estensione limitata alla fase SUMMARY già presente: osservazione dei
+  metadati del file GGUF dichiarato prima/dopo lettori bounded.
+  Identità (dispositivo/inode), dimensione, mode/link e timestamps ns;
+  se cambiano: `invalid` / `STABILITY:changed_during_inspection`;
+  se non verificabili o divenuti indisponibili: `invalid` /
+  `STABILITY:unavailable`. I report privi di differenze osservate
+  conservano lo stato originale, anche `size_unverified`.
+- Solo test sintetici per file stabile, sostituzioni, variazioni metadati,
+  rimozione e symlink. 13 fasi Ruth invariate; nessun payload letto.
+- Non è una garanzia atomica di immutabilità o hash/integrità crittografica.
+  Non copre modifiche non rilevate dai due snapshot. DATA-001 e
+  REMOTE-001 invariati, Kaggle inattivo.
+- Stato attuale: scope **approved**, implementazione **candidate**,
+  verifica **pending**, integrazione **pending**, collaudo personale
+  `GGUF-STRUCT-STABILITY-MANUAL-001` **pending** dopo merge.
+  Branch `models/formats/gguf/work/GGUF-STRUCT-STABILITY-001`.
+  Local checkout non accessibile: `local_sync: pending_no_access`.
