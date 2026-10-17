@@ -115,3 +115,13 @@
 - GGUF-INDEX-001 implemented, CI verified, merged;
   collaudo personale accepted. Le vecchie note di gate pending
   sono storiche. Nessun'altra porzione Models autorizzata.
+
+## GGUF-BLOCK-001 candidata (17 ottobre 2026)
+
+- MIG-010 approvata: verifica ingombro GGML Q4_0, Q4_1,
+  Q5_0, Q5_1, Q8_0 senza leggere tensor_data, decimo
+  controllo Ruth dopo INDEX. Reader/index invariato per
+  le nove fasi gia' integrate e accettate.
+- Scope nel GGUF/BLOCK_SCOPE.md, codice candidato remoto:
+  test/CI e promozioni ancora pendenti.
+  GGUF-BLOCK-MANUAL-001 dopo main; DATA-001 invariato.
