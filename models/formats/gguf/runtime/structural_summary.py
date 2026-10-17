@@ -8,10 +8,12 @@ unverified and must NEVER be advertised as structurally checked.
 from __future__ import annotations
 
 from dataclasses import dataclass
+import os
 from pathlib import Path
+import stat
 
 from models.catalog import ModelRecord, catalog
-from .reader import _root, _inspect as _inspect_header
+from .reader import _root, _safe_path, _inspect as _inspect_header
 from .metadata import _inspect as _inspect_metadata
 from .tensor_index import _inspect as _inspect_index
 from .blocks import _inspect as _inspect_blocks
@@ -42,11 +44,8 @@ class GGUFStructuralReport:
         return len(self.models)
 
 
-def _inspect(record: ModelRecord, root: Path) -> GGUFStructuralSummary:
+def _inspect_readers(record: ModelRecord, root: Path) -> GGUFStructuralSummary:
     """Reuse already bounded readers on one CAT-vetted record."""
-    if record.status != "present_unverified":
-        return GGUFStructuralSummary(record.id, "invalid", "CAT:missing")
-
     header = _inspect_header(record, root)
     if header.status != "header_read":
         return GGUFStructuralSummary(record.id, "invalid", "GGUF:" + header.status)
@@ -78,6 +77,45 @@ def _inspect(record: ModelRecord, root: Path) -> GGUFStructuralSummary:
 
     return GGUFStructuralSummary(record.id, "structural_checked", "",
                                  kblocks.tensor_count, 0)
+
+
+def _fingerprint(record: ModelRecord, root: Path) -> tuple[int, ...] | None:
+    """Observable filesystem identity/metadata, not a payload checksum.
+
+    Recheck each path component and never follow a terminal symlink. The
+    snapshots are necessarily non-atomic; an undetected change can still
+    occur between checks, so they do NOT certify file immutability.
+    """
+    path = _safe_path(root, record.reference)
+    if path is None:
+        return None
+    try:
+        info = os.stat(path, follow_symlinks=False)
+    except (OSError, ValueError):
+        return None
+    if not stat.S_ISREG(info.st_mode):
+        return None
+    return (info.st_dev, info.st_ino, info.st_mode, info.st_nlink,
+            info.st_size, info.st_mtime_ns, info.st_ctime_ns)
+
+
+def _inspect(record: ModelRecord, root: Path) -> GGUFStructuralSummary:
+    """Fail closed if an observable file change spans the reader sequence."""
+    if record.status != "present_unverified":
+        return GGUFStructuralSummary(record.id, "invalid", "CAT:missing")
+    before = _fingerprint(record, root)
+    if before is None:
+        return GGUFStructuralSummary(record.id, "invalid", "STABILITY:unavailable")
+
+    result = _inspect_readers(record, root)
+
+    after = _fingerprint(record, root)
+    if after is None:
+        return GGUFStructuralSummary(record.id, "invalid", "STABILITY:unavailable")
+    if before != after:
+        return GGUFStructuralSummary(record.id, "invalid",
+                                     "STABILITY:changed_during_inspection")
+    return result
 
 
 def inspect_structural_summaries(*, project_root: Path | None = None) -> GGUFStructuralReport:
