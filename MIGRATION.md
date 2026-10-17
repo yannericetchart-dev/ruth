@@ -459,3 +459,16 @@ GPU-MANUAL-001 richiesta solo dopo main, secondo MIG-FLOW-002.
   nessuna estensione del supporto ai tipi non previsti.
 - I riferimenti precedenti a manual pending sono storici.
   Nessuna migrazione ulteriore autorizzata implicitamente.
+
+## MIG-011: GGUF-KBLOCK-SCOPE-001 approvato (17 ottobre 2026)
+
+- Calcolo strutturale dell'ingombro per sei tipi K-quant GGML
+  da 256 elementi/blocco nei soli GGUF dichiarati in CAT.
+  Verifica bounded read-only di dimensioni/offset/overlap,
+  mai dei byte dei pesi.
+- API nuove catalog-bound e undicesimo passo KBLOCKS,
+  mirato `gguf-kblocks`. Scope in
+  [KBLOCK_SCOPE.md](models/formats/gguf/KBLOCK_SCOPE.md).
+- Candidato remoto; CI, mappe e PR in preparazione;
+  collaudo personale GGUF-KBLOCK-MANUAL-001 obbligatorio
+  dopo main. Nessuna migrazione futura pre-approvata.
