@@ -1,16 +1,41 @@
 # Ruth: consegna dell'orchestratore
 
 handoff_id: RUTH-HANDOFF-20261017-01
-state: claimed_on_claim_merge
+state: claimed
 outgoing_owner: ORCH-20261017-A
-incoming_owner: ORCH-20261017-B (effective_on_claim_merge)
+incoming_owner: ORCH-20261017-B
 source_main_sha: c1d3572627b0f544ae6ef54d05daca7ee2b62f62
 publication_branch: work/ORCH-SUCCESSION-BRANCH-LIFECYCLE
 publication_pr: #104 (https://github.com/yannericetchart-dev/ruth/pull/104)
 prepared_snapshot_sha: 16cc38f374707639ec90b3ed066bcca066889f3e
 publication_sha: leggere il merge_commit_sha della PR indicata, non il blob SHA
-common_documents_writer_after_release: ORCH-20261017-B (only_after_claim_merge)
+common_documents_writer_after_release: ORCH-20261017-B
 writes_frozen_after_publication_merge: true
+
+## Stato corrente dopo PR #105 e #106
+
+Claim B effettivo: PR #105 merged a 5b77b08693a808c359b294bf1ab40f4fba8f5137.
+B riprende su istruzione esplicita dell'utente nella chat Work Cloud designata;
+resta un solo titolare. A resta released, senza nuove scritture comuni.
+BRANCH-ARCHIVE-001: complete. L'esecutore locale assegnato dalla PR #106
+ha creato 11 tag annotati e si e' fermato prima delle cancellazioni.
+B ha verificato autonomamente tutti gli 11 ref heads e tags, gli oggetti
+tag annotati e la dereferenziazione al commit atteso: nessuna differenza.
+Capacita create-tag autenticata: provata dall'esecutore; delete-ref:
+NON TENTATA. B dispone della connessione per documenti/PR/merge, non
+attribuisce a se' le mutazioni o le verifiche locali dell'esecutore.
+Inventario live: 100 branch (pagine 100/0), main piu' 88 contenuti e
+11 non contenuti; zero PR/issue aperte, 11 tag. Branch eliminati: 0.
+HEAD locale riferita dall'esecutore: 5b77b08693a808c359b294bf1ab40f4fba8f5137,
+working tree pulito e invariato; nessuna sync o esecuzione applicativa.
+
+Incarico BRANCH-ARCHIVE-001 complete; MODEL-001 complete dalla PR #106.
+Gli 11 archivi e le fonti operative sono in BRANCH_ARCHIVE.md/MIGRATION.md.
+BRANCH_AUDIT.md rilascia solo due branch documentali di B con conferma
+nominativa del responsabile e gate di merge/CI. Tutti gli altri restano
+bloccati su users_release; nessuna cancellazione attestata.
+Le sezioni successive conservano la consegna e i controlli storici;
+le indicazioni pending del claim e tag non creati non sono stato attuale.
 
 Questa consegna e' preparata dall'orchestratore uscente su autorizzazione
 dell'utente. Il rilascio diventa effettivo soltanto quando la PR e' merged

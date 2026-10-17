@@ -1,5 +1,18 @@
 # DEP-SCOPE-001: verifica delle dipendenze Python generiche
 
+## Fonte operativa archiviata (17 ottobre 2026)
+
+Fonte PY-001/DEP-001: tag annotato remoto verificato
+`archive/2026-10-17/feat/gemma3-phase28-context-dispatch`, commit
+`4ceea508025650ed64b33190834d0b5c85f69db2`; branch originario
+`feat/gemma3-phase28-context-dispatch`. Prova del ref e oggetto tag in
+BRANCH_ARCHIVE.md; stessa provenienza, nessun codice nuovo importato.
+Il ramo storico Python `environment/python/main` resta presente al tip
+`b80520ad903ff18f93398725ea95cd91f51da5d8`, ora preservato anche da
+`archive/2026-10-17/environment/python/main`. Nessun ramo eliminato;
+users_release resta unconfirmed. Le promozioni e prove sotto sono storiche.
+
+
 Perimetro funzionale **approvato esplicitamente dall'utente il 16 ottobre 2026** (MIG-FLOW-001).
 Porzione DEP-001; fase 3. La revisione di origine e' main `6dfc34252501f9e708855588c69fbad7d39af73b`.
 Sorgente storica: `ruth_runtime/venv_packages.py` al commit `4ceea508025650ed64b33190834d0b5c85f69db2`; solo ispezione dei metadati, senza lock CUDA, requisiti compilazione e backend nativi.
