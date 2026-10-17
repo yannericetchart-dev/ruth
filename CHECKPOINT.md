@@ -19,7 +19,8 @@ L'ingresso senza argomenti di Ruth esegue tutte le funzioni integrate.
 - ORCH-001 revisione 2, HANDOFF-001 e BRANCH-LIFECYCLE-001 approvate
   dall'utente il 17 ottobre 2026; sole modifiche organizzative.
 - Consegna RUTH-HANDOFF-20261017-01 in ORCHESTRATOR_HANDOFF.md;
-  fonte main c1d3572627b0f544ae6ef54d05daca7ee2b62f62. Rilascio effettivo al merge
+  fonte main c1d3572627b0f544ae6ef54d05daca7ee2b62f62; PR #104.
+  Rilascio effettivo al merge
   della PR della consegna, poi nessuna nuova scrittura comune dell'uscente.
   Successore non creato e non ancora claimed; messaggio completo pronto
   in SUCCESSOR_MESSAGE.md. Il successore deve riverificare le proprie

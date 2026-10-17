@@ -6,7 +6,8 @@ outgoing_owner: ORCH-20261017-A
 incoming_owner: unassigned
 source_main_sha: c1d3572627b0f544ae6ef54d05daca7ee2b62f62
 publication_branch: work/ORCH-SUCCESSION-BRANCH-LIFECYCLE
-publication_pr: PUBLICATION_PR_PENDING
+publication_pr: #104 (https://github.com/yannericetchart-dev/ruth/pull/104)
+prepared_snapshot_sha: 16cc38f374707639ec90b3ed066bcca066889f3e
 publication_sha: leggere il merge_commit_sha della PR indicata, non il blob SHA
 common_documents_writer_after_release: none_until_verified_claim
 writes_frozen_after_publication_merge: true
