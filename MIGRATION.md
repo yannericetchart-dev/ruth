@@ -421,3 +421,15 @@ GPU-MANUAL-001 richiesta solo dopo main, secondo MIG-FLOW-002.
 - Candidate in branch remoto, test e mappe in preparazione,
   CI e promozioni ancora da verificare. Dopo il merge
   GGUF-BLOCK-MANUAL-001 personale obbligatorio.
+
+## GGUF-BLOCK-001: integrazione tecnica (17 ottobre 2026)
+
+- Scope approvato GGUF-BLOCK-SCOPE-001: calcolo bounded
+  degli ingombri di cinque tipi quantizzati GGML, soli
+  file GGUF dichiarati in CAT. Nessuna lettura di pesi.
+- CI, mappe e fixture superate attraverso PR #59, #60,
+  #61, #62 fino a main `5f896f1bbacaa8c802f66f2a40ee7663cfa40604`.
+- Decimo passo BLOCKS nel default Ruth, mirato `gguf-blocks`.
+  Nessun catalogo = skip valido.
+- GGUF-BLOCK-MANUAL-001 attiva/pending prima del
+  prossimo scope. Notazioni candidate precedenti storiche.

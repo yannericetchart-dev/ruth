@@ -10,7 +10,7 @@ Nodo responsabile: [MODEL](NODE.yaml). Ripresa: [START_HERE](../START_HERE.md).
 - `resolve(reference: str, *, project_root: Path | None = None) -> ModelRecord | None [CAT-001 verificata e integrata]`
 - `inspect_all_metadata(*, project_root: Path | None = None) -> GGUFMetadataReport [GGUF-META-001 CI verified and integrated]`
 - `inspect_all_tensor_indexes(*, project_root: Path | None = None) -> GGUFTensorIndexReport [GGUF-INDEX-001 CI verified and integrated]`
-- `inspect_all_block_layouts(*, project_root: Path | None = None) -> GGUFBlockLayoutReport [GGUF-BLOCK candidate]`
+- `inspect_all_block_layouts(*, project_root: Path | None = None) -> GGUFBlockLayoutReport [GGUF-BLOCK-001 CI verified and integrated]`
 - `acquire(request) -> AcquisitionResult [proposta]`
 - `verify(artifact) -> VerificationReport [proposta]`
 

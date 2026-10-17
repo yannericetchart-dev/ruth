@@ -125,3 +125,17 @@
 - Scope nel GGUF/BLOCK_SCOPE.md, codice candidato remoto:
   test/CI e promozioni ancora pendenti.
   GGUF-BLOCK-MANUAL-001 dopo main; DATA-001 invariato.
+
+## GGUF-BLOCK-001 verificata e integrata (17 ottobre 2026)
+
+- Cinque tipi GGML supportati senza accesso al tensor_data:
+  Q4_0/Q4_1/Q5_0/Q5_1/Q8_0. Report immutabili, decima
+  fase Ruth; unknown `size_unverified`.
+- CI runs 39022476943, 39022574327, 39022637716,
+  39022698747 success (fixture, regressioni e mappe).
+  PR #59-#62 promosse in main `5f896f1bbacaa8c802f66f2a40ee7663cfa40604`.
+- Stato tecnico: implementation complete, verification passed
+  (sintetica), integration merged. Manual
+  **GGUF-BLOCK-MANUAL-001 active/pending**.
+- L'accettazione personale delle nove fasi precedenti resta valida.
+  Nessun download, payload, inferenza o dato host in Git (DATA-001).
