@@ -1,8 +1,8 @@
 # Ruth: checkpoint di progetto
 
-Revisione documentale: 44 (indice main); CONT-001 revisione 1.
+Revisione documentale: 45 (indice main); CONT-001 revisione 1.
 Fase 3: migrazione incrementale per componente.
-Stato: **MIG-014 GGUF-STRUCT-STABILITY-001 implementata, verificata in CI e integrata in main; GGUF-STRUCT-STABILITY-MANUAL-001 pending**.
+Stato: **MIG-014 GGUF-STRUCT-STABILITY-001 implementata, verificata in CI, integrata in main e collaudata personalmente (GGUF-STRUCT-STABILITY-MANUAL-001 complete)**.
 MIG-013 e GGUF-STRUCT-SUMMARY-MANUAL-001 restano complete.
 MIG-012 e GGUF-FIXTURE-MANUAL-001 restano complete.
 GGUF-KBLOCK-MANUAL-001 e MIG-011 restano complete.
@@ -687,3 +687,29 @@ e DIAG-SCOPE-001. SYNC-001 resta storica/superseded.
   lettura tensor_data, rete, download, CUDA, inferenza o benchmark.
   DATA-001 e REMOTE-001 invariati; `local_sync: pending_no_access`.
   Nessuna nuova migrazione approvata.
+
+## GGUF-STRUCT-STABILITY-MANUAL-001 accettata; MIG-014 chiusa (17 ottobre 2026)
+
+- Prova personale ricevuta sull'esatta revisione main `b1662aab99cbc97b6203dc41e7355521e702a2cd`,
+  verificata identica a GitHub heads/main prima della chiusura.
+- `main.py` senza argomenti: **13 fasi completate** in ordine senza errori;
+  fixture GGUF sintetiche: **passed**, tre file. SUMMARY:
+  `not_configured` / `CAT:not_configured` con catalogo opzionale assente,
+  skip valido; non e' stata effettuata ispezione di un GGUF reale.
+- `models.formats.gguf.tests.test_stability`: **9 test, OK**,
+  zero fallimenti, sui controlli sintetici di mutazione/stabilita'.
+- La prova positiva e' accettazione sufficiente in MIG-FLOW-002 rev.2,
+  **senza ulteriore consenso**. MIG-014: implementation **complete**,
+  verification **passed** (CI + collaudo personale), integration
+  **merged** (PR #84-#87), personal acceptance **passed**.
+- Non sono stati certificati pesi, hash, immutabilita' atomica, integrita',
+  modelli reali, CUDA, backend o inferenza: snapshot best-effort soltanto.
+- DATA-001: registrati solo SHA, stati e conteggi; nessun log grezzo,
+  inventario host, percorso personale, credenziale o benchmark in Git.
+- Revisione locale riferita dal collaudo utente: `local_sync: verified_on_tested_revision`.
+  Dopo il merge documentale e' necessario il fast-forward dei soli documenti:
+  `local_sync: pending_docs_fast_forward` sino a nuova prova; non si presume
+  verificato uno stato Git pulito del checkout personale.
+- MIG-015 non approvata: presentare perimetro funzionale distinto per
+  autorizzazione ai sensi di MIG-FLOW-001. Le precedenti note `pending`
+  sono cronologia storica, non stato corrente.
