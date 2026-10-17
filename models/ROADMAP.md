@@ -22,6 +22,7 @@ Ambito verifica: CAT-001: CI GitHub 38928909391, 38929028829, 38929118836 succes
 6. `MODEL-006` [complete] GGUF-KBLOCK-001 CI verified and merged main via PR #68; user personal 11-stage Ruth and nine K-block fixture tests passed on 233efc358f56a66d2abf796fa8e20a476aa788cf; no real model verified.
 7. `MODEL-007` [complete] MIG-012: GGUF-FIXTURE-001 implemented, CI passed and integrated via PR #71-#74; personal 12-stage Ruth plus 4 synthetic tests OK on a3ced17b0e4bccaf8fe8e10db9c1f5b5c508bda3, accepted under MIG-FLOW-002-R2. No real GGUF tested; next scope requires approval.
 8. `MODEL-008` [complete] MIG-013: GGUF structural summary and 13th Ruth stage CI verified and integrated via PR #78-#81; personal test on main 49d3c451b0da86acc99ce33ec6c395f0c27e1ec7 passed (13 phases, 11 synthetic tests OK) per MIG-FLOW-002-R2. No real GGUF checked; MIG-014 requires separate approval.
+9. `MODEL-009` [active] MIG-014 approved: best-effort filesystem identity/metadata comparison around existing GGUF SUMMARY readers; 13 Ruth stages retained, candidate implementation, CI and integration pending, no tensor payload.
 
 ## Componenti (ordine locale, ID stabili)
 

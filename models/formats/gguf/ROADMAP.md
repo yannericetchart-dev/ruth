@@ -28,5 +28,6 @@ Ambito verifica: GGUF-001: CI success runs 38935705385, 38935861881, 38935943414
 12. `GGUF-FIXTURE-MANUAL-001` [complete] Personal 12-step Ruth run on verified main a3ced17b0e4bccaf8fe8e10db9c1f5b5c508bda3 and targeted test_pipeline suite (4 tests, OK), accepted on 17 October 2026 without second approval; synthetic-only fixture, no real GGUF.
 13. `GGUF-STRUCT-SUMMARY-001` [complete] MIG-013: GGUF structural summary and 13th Ruth stage CI verified and integrated via PR #78-#81; personal test on main 49d3c451b0da86acc99ce33ec6c395f0c27e1ec7 passed (13 phases, 11 synthetic tests OK) per MIG-FLOW-002-R2. No real GGUF checked; MIG-014 requires separate approval.
 14. `GGUF-STRUCT-SUMMARY-MANUAL-001` [complete] Personal Ruth 13-stage default on verified main 49d3c451b0da86acc99ce33ec6c395f0c27e1ec7 plus targeted structural_summary synthetic tests (11, OK); automatically accepted 17 October 2026 under MIG-FLOW-002 rev.2. Catalog not configured valid; no real GGUF, payload or inference validated.
+15. `GGUF-STRUCT-STABILITY-001` [active] MIG-014 approved: best-effort filesystem identity/metadata comparison around existing GGUF SUMMARY readers; 13 Ruth stages retained, candidate implementation, CI and integration pending, no tensor payload.
 
 Propagare impatti e blocchi al [padre](../ROADMAP.md) e proseguire fino alla radice.
