@@ -103,10 +103,15 @@ passaggio; fermarsi per dubbi o domande che richiedono una decisione.
 
 Ogni porzione deve inoltre essere eseguita dal punto d'ingresso ufficiale
 di Ruth in main con messaggi a terminale corrispondenti (MIG-FLOW-002).
-Dopo l'integrazione, l'utente esegue Ruth localmente di persona e conferma
-l'esito positivo prima della migrazione successiva. L'integrazione tecnica
-e il collaudo manuale sono due stati distinti; test automatici e silenzio non
-sostituiscono la conferma dell'utente.
+Dopo l'integrazione, l'utente esegue Ruth localmente di persona e
+incolla la prova: se SHA main, sequenza e test prescritti coincidono con
+gli esiti previsti, l'output stesso equivale ad accettazione positiva
+(MIG-FLOW-002 revisione 2); non chiedere un secondo "si".
+Chiudere checkpoint e mappe tramite PR/CI/merge e proporre lo scope
+seguente, ancora soggetto ad autorizzazione esplicita (MIG-FLOW-001).
+Se evidenze mancanti o errori, non accettare. L'integrazione tecnica
+e il collaudo manuale restano stati distinti; il silenzio e la sola CI
+non costituiscono accettazione.
 
 ## Punto d'ingresso completo e sequenziale (MAIN-FLOW-001)
 

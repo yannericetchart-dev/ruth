@@ -11,6 +11,7 @@ Contenuto riservato a: implementazioni eseguibili.
 - [__init__.py](__init__.py)
 - [blocks.py](blocks.py)
 - [contracts.py](contracts.py)
+- [fixture.py](fixture.py)
 - [kblocks.py](kblocks.py)
 - [metadata.py](metadata.py)
 - [reader.py](reader.py)

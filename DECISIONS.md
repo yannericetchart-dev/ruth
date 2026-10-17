@@ -38,14 +38,21 @@ Ogni sostituzione deve collegare entrambe le decisioni e aggiornare le mappe.
 ## MIG-FLOW-002: esecuzione dall'ingresso e conferma manuale
 
 - Stato: accepted.
-- Decisione: ogni porzione integrata in main deve essere eseguita dal
-  punto d'ingresso ufficiale di Ruth e produrre messaggi a terminale relativi
-  alla funzione e al suo esito. Dopo l'integrazione l'utente avvia Ruth
-  localmente di persona; la migrazione successiva attende la sua conferma
-  esplicita dell'esito positivo.
-- Verifica: fornire comando ed esiti attesi e registrare nel checkpoint la
-  revisione provata e l'accettazione ancora in attesa oppure confermata.
-  Test automatici o esecuzioni dell'agente non sostituiscono il collaudo.
+- Decisione (revisione 2, 17 ottobre 2026): ogni porzione integrata in main
+  deve essere eseguita dall'ingresso ufficiale Ruth. Dopo l'integrazione,
+  l'utente avvia personalmente il flusso: un output di collaudo positivo
+  incollato dall'utente costituisce gia' la conferma personale sufficiente,
+  **senza chiedere un ulteriore "si"**. Questa interpretazione sostituisce
+  il precedente requisito di una seconda approvazione separata.
+- Verifica: confronto commit della prova con il ref main risolto su GitHub;
+  presenza dell'intera sequenza, riepilogo finale positivo e, quando inclusi
+  nel collaudo definito per lo scope, test mirati con esito "OK".
+  Nessun fallimento o contraddizione. Prova incompleta o non congrua:
+  non accettare e richiedere solo la parte mancante.
+  CI e azioni dell'agente non sostituiscono il collaudo personale.
+  Dopo la prova positiva, completare nello stesso turno checkpoint,
+  NODE, mappe, PR, CI, merge in main e proporre lo scope successivo
+  **senza scrivere nuovo codice prima della nuova approvazione**.
 - Dati: log e risultati reali restano locali secondo DATA-001; in Git si
   registra solo lo stato del processo senza dati specifici di macchina.
 - Estende: MIG-FLOW-001. Il verde iniziale autorizza il completamento fino
@@ -490,3 +497,42 @@ autorizzata implicitamente.
 - Non leggere tensor payload o dequantizzare, no rete,
   download, CUDA, benchmark, installazioni, inferenza.
   DATA-001, REMOTE-001, MIG-FLOW-001/002 invariati.
+
+### GGUF-KBLOCK-001: integrazione verificata (17 ottobre 2026)
+
+- Approvazione GGUF-KBLOCK-SCOPE-001 invariata.
+- PR #65 leaf, #66 Formats, #67 Models, #68 main,
+  CI success runs 39025028855, 39025109274, 39025159357,
+  39025210189 (fixture, regressioni, mappe); root main
+  `a803e15e872d71a96b7b2de37b13a8964d37d168`.
+- Sei tipi GGML 10-15 con 256 elementi per blocco; byte
+  84/110/144/176/210/292 e prima dimensione divisibile per 256.
+  Solo descrittori, mai lettura/dequantizzazione pesi.
+- API INDEX e BLOCKS mantengono semantica precedente, tipi K
+  `size_unverified` prima della nuova fase KBLOCKS.
+- GGUF-KBLOCK-MANUAL-001 **pending**, test personale Ruth
+  undici fasi e fixture sintetiche locale post-merge, poi
+  accettazione esplicita richiesta. Nuovo scope non approvato.
+
+## MIG-FLOW-002-R2: accettazione automatica da evidenza positiva (17 ottobre 2026)
+
+- Stato: accepted, disposizione esplicita dell'utente.
+- La prova personale incollata con SHA main corrispondente, fasi concluse
+  e test prescritti superati vale come accettazione, senza secondo consenso.
+- Dopo verifica completare autonomamente la chiusura GitHub e proporre
+  lo scope della migrazione successiva; MIG-FLOW-001 continua a richiedere
+  approvazione esplicita **dello scope nuovo**, prima di modificare codice.
+- In caso di prova ambigua, errore o SHA incongruente non dichiarare
+  superato il collaudo. Non confondere skip valido `not_configured`
+  con verifica su GGUF reale. I risultati reali rimangono locali
+  (DATA-001); solo SHA, stato e conteggi generici possono essere registrati.
+- Sostituisce l'obbligo di doppia approvazione dopo log positivo
+  previsto dalla vecchia formulazione di MIG-FLOW-002.
+
+## GGUF-FIXTURE-SCOPE-001 (MIG-012)
+
+- Stato: accepted, 17 ottobre 2026, autorizzazione esplicita utente.
+- Tre fixture GGUF sintetiche temporanee v2/v3, tipi scalare, Q4_0 e Q4_K. CAT e lettori GGUF eseguiti sul catalogo isolato; il formato K resta non verificato nei precedenti INDEX/BLOCKS, ma viene verificato in KBLOCKS.
+- Dodicesima fase automatica FIXTURE dopo KBLOCKS, comando mirato gguf-fixture, test sintetici e promozione fino a main dopo CI.
+- Nessun modello reale, lettura tensor_data, download, CUDA o inferenza. DATA-001, REMOTE-001, MIG-FLOW-002-R2 vigenti.
+- Stato tecnico candidate; CI, merge e collaudo personale non ancora attestati.

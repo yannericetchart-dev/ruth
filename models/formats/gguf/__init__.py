@@ -7,8 +7,10 @@ from .runtime.blocks import GGUFBlockLayout, GGUFBlockLayoutReport, inspect_bloc
 
 from .runtime.kblocks import GGUFKBlockLayout, GGUFKBlockReport, inspect_kblock_layout, inspect_all_kblock_layouts
 
+from .runtime.fixture import GGUFIndirectFixtureReport, run_fixture_pipeline
+
 __all__ = ["GGUFHeader", "GGUFReport", "inspect_header", "inspect_headers",
            "GGUFMetadata", "GGUFMetadataReport", "inspect_metadata", "inspect_all_metadata",
            "GGUFTensorIndex", "GGUFTensorIndexReport", "inspect_tensor_index", "inspect_all_tensor_indexes",
            "GGUFBlockLayout", "GGUFBlockLayoutReport", "inspect_block_layout", "inspect_all_block_layouts",
-           "GGUFKBlockLayout", "GGUFKBlockReport", "inspect_kblock_layout", "inspect_all_kblock_layouts"]
+           "GGUFKBlockLayout", "GGUFKBlockReport", "inspect_kblock_layout", "inspect_all_kblock_layouts", "GGUFIndirectFixtureReport", "run_fixture_pipeline"]
