@@ -1,8 +1,8 @@
 # Ruth: checkpoint di progetto
 
-Revisione documentale: 50 (indice main); CONT-001 revisione 1.
+Revisione documentale: 51 (indice main); CONT-001 revisione 2.
 Fase 3: migrazione incrementale per componente.
-Stato: **MIG-016 GGUF-MULTITENSOR-FIXTURE-001 implementata, verificata in CI e integrata in main; GGUF-MULTITENSOR-MANUAL-001 pending**.
+Stato: **MIG-016 GGUF-MULTITENSOR-FIXTURE-001 implementata, verificata in CI e integrata in main; GGUF-MULTITENSOR-MANUAL-001 pending, collaudo delegato ammesso secondo MIG-FLOW-002 rev.3**.
 MIG-015 e GGUF-FIXTURE-SUMMARY-MANUAL-001 restano complete.
 MIG-014 e GGUF-STRUCT-STABILITY-MANUAL-001 restano complete.
 MIG-013 e GGUF-STRUCT-SUMMARY-MANUAL-001 restano complete.
@@ -13,6 +13,49 @@ GGUF-INDEX-MANUAL-001 rimane complete.
 GGUF-MANUAL-001 e CAT-MANUAL-001 restano complete.
 PY, DEP, DIAG, HW/CPU e GPU NVIDIA restano accettate personalmente.
 L'ingresso senza argomenti di Ruth esegue tutte le funzioni integrate.
+
+## Protocollo corrente: CONT-001 rev.2 / ORCH-001 / MIG-FLOW-002 rev.3
+
+- Approvazione esplicita dell'utente il 17 ottobre 2026.
+- Cambiamento solo documentale: ruoli, incarichi, parallelismo approvato,
+  prerequisiti, integrazioni seriali e collaudo delegato sufficiente alla
+  chiusura quando tutte le verifiche prescritte sono soddisfatte.
+- Responsabile unico dei documenti comuni e dell'integrazione in main:
+  orchestratore. Nessun incarico parallelo o nuovo perimetro funzionale
+  viene avviato con questa pubblicazione.
+- Sviluppo GitHub-first; DATA-001 invariata. Decisioni sostituite conservate
+  come storiche in DECISIONS.md; gli obblighi personali rev.2 nelle note
+  applicative datate non prevalgono sulla revisione 3.
+- Stato documentazione: testo implementato; verifica e integrazione sono
+  riferite alla PR GitHub associata alla revisione, da controllare prima
+  di dichiararle concluse. Nessuna esecuzione Ruth o test locali svolti.
+- Istruzioni UI: blocco aggiornato preparato in PROJECT_SETUP.md;
+  inserimento UI e collaudo indipendente della continuita' rev.2 pending.
+  La pubblicazione GitHub non cambia automaticamente la UI.
+- Copia pulita designata verificata in lettura: remoto canonico, main,
+  nessuna modifica tracciata o non tracciata, commit
+  31730f6d4f712adb0cad8715ae166567f3926e77, .venv presente.
+  Permessi OS di scrittura non disponibili su checkout, metadati Git e
+  .venv; percorso fuori dalle radici di scrittura autorizzate.
+  local_sync: pending_permissions. Non sono stati provati aggiornamenti.
+- Copia storica modificata preservata integralmente ed esclusa dalla sync.
+  Nessuna copia o ambiente nuovo creato; nessuna importazione automatica.
+- GGUF-MULTITENSOR-MANUAL-001 conserva l'ID storico del gate; puo' essere
+  soddisfatta con mode: delegated secondo la nuova revisione.
+  Stato: pending; valutazione umana aggiuntiva non prescritta nel suo
+  perimetro. Non attribuire un'esecuzione personale o delegata non svolta.
+- Prossima azione locale: rendere disponibile accesso in scrittura
+  autorizzato alla copia pulita e ai necessari output, poi verificare
+  ancora stato/permessi, fissare main post-merge, sync conservativa e
+  collaudo completo di MIG-016 (13 fasi e 11 test test_multitensor).
+  La delega non amplia da sola i permessi; nessuna nuova copia implicita.
+- MIG-017 non approvata. Dopo chiusura effettiva di MIG-016 proporre lo
+  scope successivo e attendere nuovo OK prima di implementarlo.
+
+## Cronologia applicativa
+
+Le registrazioni seguenti descrivono le revisioni e le prove dell'epoca.
+Lo stato corrente e il gate vigente sono quelli riportati sopra.
 
 ## Collaudi confermati
 

@@ -34,6 +34,7 @@ Ambito verifica: CAT-001: CI GitHub 38928909391, 38929028829, 38929118836 succes
 18. `MIG-014` [complete] MIG-014: GGUF SUMMARY stability guard implemented, CI verified and integrated via PR #84-#87; manual Ruth 13-stage + 9 synthetic tests OK on b1662aab99cbc97b6203dc41e7355521e702a2cd; accepted by MIG-FLOW-002-R2. No real GGUF/payload validated; new scope needs approval.
 19. `MIG-015` [complete] MIG-015: synthetic GGUF fixture chain includes SUMMARY, CI passed and merged via PR #90-#93; manual 13-step Ruth and seven targeted tests OK on 86d7aa5b2000e07ef55798cab3779bf53e3cbf72, accepted under MIG-FLOW-002-R2. No real GGUF verified; next scope requires approval.
 20. `MIG-016` [complete] MIG-016: four synthetic fixture GGUFs including mixed three-tensor scalar/Q4_0/Q4_K, 11 targeted tests and corrected regression checks; CI passed and merged via PR #96-#99 (main 4eb92225e3addbc8b7d58b15243557dae86e4479); personal GGUF-MULTITENSOR-MANUAL-001 pending; 13 Ruth stages unchanged.
+21. `ORCH-PROTOCOL-001` [complete] CONT-001 rev.2, ORCH-001 and MIG-FLOW-002 rev.3 documented after explicit user approval: user-driven ordinary branch chats, approved parallel tasks, unique owners and serial integrations, delegated local validation sufficient for closure. Protocol-only change; UI application and continuity checks pending, local sync pending_permissions, no local Ruth execution or new functional scope.
 
 ## Componenti (ordine locale, ID stabili)
 
