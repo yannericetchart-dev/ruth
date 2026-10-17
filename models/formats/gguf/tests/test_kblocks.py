@@ -5,7 +5,6 @@ from tempfile import TemporaryDirectory
 import json
 import struct
 import unittest
-from unittest.mock import patch
 
 from models.formats.gguf import (
     inspect_kblock_layout, inspect_all_kblock_layouts,
@@ -136,9 +135,7 @@ class KBlockTests(unittest.TestCase):
         self.declare()
         data = image([info("k", dims=(256,), kind=10)], data=b"m" * 84)
         self.write(data)
-        with patch("models.formats.gguf.runtime.tensor_index._inspect", wraps=None) as _unused:
-            # Confirm API result without exposing tensor bytes in its report.
-            row = self.inspect()
+        row = self.inspect()
         self.assertEqual(row.status, "kblocks_checked")
         self.assertNotIn("m" * 20, repr(row))
 
