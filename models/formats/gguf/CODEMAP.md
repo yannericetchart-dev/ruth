@@ -20,6 +20,7 @@ La presenza dello scaffold non implica una implementazione runtime.
 - [BLOCK_SCOPE.md](BLOCK_SCOPE.md)
 - [CHECKPOINT.md](CHECKPOINT.md)
 - [FIXTURE_SCOPE.md](FIXTURE_SCOPE.md)
+- [FIXTURE_SUMMARY_SCOPE.md](FIXTURE_SUMMARY_SCOPE.md)
 - [INDEX_SCOPE.md](INDEX_SCOPE.md)
 - [KBLOCK_SCOPE.md](KBLOCK_SCOPE.md)
 - [METADATA_SCOPE.md](METADATA_SCOPE.md)

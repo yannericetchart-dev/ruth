@@ -17,7 +17,8 @@ class PipelineTests(unittest.TestCase):
         self.assertEqual(result.fixtures, 3)
         self.assertEqual(result.stages, (
             "CAT=ready", "GGUF=inspected", "META=inspected",
-            "INDEX=partial", "BLOCKS=partial", "KBLOCKS=inspected"))
+            "INDEX=partial", "BLOCKS=partial", "KBLOCKS=inspected",
+            "SUMMARY=structural_checked"))
 
     def test_catalog_legacy_statuses_and_endianness(self):
         with TemporaryDirectory() as temp:
