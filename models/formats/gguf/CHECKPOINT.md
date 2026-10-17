@@ -243,3 +243,22 @@
 - Nessuna MIG-013 approvata: nuovo perimetro funzionale richiede verde
   esplicito ai sensi di MIG-FLOW-001. Le note storiche `pending`
   non descrivono lo stato attuale.
+
+## MIG-013 / GGUF-STRUCT-SUMMARY-SCOPE-001 approvata (17 ottobre 2026)
+
+- Approvazione esplicita dell'utente; base main `2a2ea80eee7b35c9c2d195e6c0de66ac57ee6550`.
+- Contratto read-only: riepilogo per soli GGUF dichiarati in CAT dei lettori
+  GGUF, META, INDEX, BLOCKS e KBLOCKS; stati `structural_checked`,
+  `size_unverified`, `invalid`, `not_configured` (skip valido).
+  L'esito INDEX/BLOCKS `size_unverified` puo' essere superato solo dalla
+  verifica completa degli ingombri operata da KBLOCKS; gli sconosciuti
+  rimangono `size_unverified`, errori strutturali diventano `invalid`.
+- Tredicesimo passaggio del default Ruth `SUMMARY`, dopo FIXTURE;
+  `gguf-summary` per ispezione mirata. Fixture sintetiche e test di regressione,
+  CI e promozioni GGUF -> Formats -> Models -> main richiesti.
+- Stato **implementazione candidata**, verifica **pending**, integrazione
+  **pending**, `GGUF-STRUCT-SUMMARY-MANUAL-001` **pending** dopo merge.
+  Collegamento locale: `local_sync: pending_no_access`.
+- Nessuna lettura di pesi, download, rete, checksum payload, inferenza, CUDA
+  o benchmark. DATA-001, REMOTE-001, MIG-FLOW-001/002 invariati.
+  Collaudo personale positivo sufficiente senza seconda conferma.
