@@ -1,9 +1,10 @@
 # Ruth: checkpoint di progetto
 
-Revisione documentale: 34 (indice main); CONT-001 revisione 1.
+Revisione documentale: 35 (indice main); CONT-001 revisione 1.
 Fase 3: migrazione incrementale per componente.
-Stato: **GGUF-BLOCK-001 implementata, verificata in CI, integrata in main
-e accettata personalmente (GGUF-BLOCK-MANUAL-001 complete)**.
+Stato: **GGUF-KBLOCK-001 implementata, verificata in CI, integrata in main;
+GGUF-KBLOCK-MANUAL-001 in attesa di collaudo personale**.
+GGUF-BLOCK-MANUAL-001 resta complete.
 GGUF-INDEX-MANUAL-001 rimane complete.
 GGUF-MANUAL-001 e CAT-MANUAL-001 restano complete.
 PY, DEP, DIAG, HW/CPU e GPU NVIDIA restano accettate personalmente.
@@ -463,3 +464,36 @@ e DIAG-SCOPE-001. SYNC-001 resta storica/superseded.
 - Nessun tensor_data letto, rete/download, CUDA, benchmark,
   inferenza, dato locale in Git (DATA-001). Checkout principale
   intatto (REMOTE-001). Prossimo scope ancora da autorizzare.
+
+## GGUF-KBLOCK-001: integrazione tecnica completata (17 ottobre 2026)
+
+- Scope GGUF-KBLOCK-SCOPE-001 approvato e implementato in
+  `models/formats/gguf/runtime/kblocks.py`, estensione
+  opt-in di `tensor_index.py`; sei GGML Q2_K/Q3_K/Q4_K/
+  Q5_K/Q6_K/Q8_K, blocchi 256:84/110/144/176/210/292.
+- Il parser e' CAT-only, bounded e read-only; controlla
+  divisibilita' prima dimensione, ingombri, allineamento,
+  bounds e sovrapposizione. INDEX/BLOCKS non cambiati;
+  tipi non previsti restano `size_unverified`.
+- MAIN-FLOW-001: undici passi PY -> DEP -> DIAG -> HW ->
+  NVIDIA -> CAT -> GGUF -> META -> INDEX -> BLOCKS -> KBLOCKS.
+  Comando mirato `main.py gguf-kblocks`; catalogo assente
+  o senza GGUF e' skip valido senza download.
+- Promozioni: PR #65 leaf GGUF, #66 Formats, #67 Models,
+  #68 main `a803e15e872d71a96b7b2de37b13a8964d37d168`. CI runs 39025028855,
+  39025109274, 39025159357, 39025210189: **success**,
+  fixture v2/v3/endian e regressioni, `tools/maps.py --check`.
+- Stato tecnico: implementation **complete**,
+  verification **passed** (solo fixture sintetiche),
+  integration **merged**. **GGUF-KBLOCK-MANUAL-001
+  active/pending**: avvio personale di Ruth dalla revisione
+  main aggiornata e suite fixture sintetiche locale;
+  accettazione esplicita ancora mancante.
+- `local_sync: pending_no_access` per il nuovo main.
+  Il checkout locale dell'utente non e' stato modificato.
+  GGUF reale e compatibilita' inferenza non verificati.
+- Nessun payload, modello reale, manifest, log, benchmark,
+  credenziale o inventario pubblicato (DATA-001). Kaggle
+  inattivo; no CUDA, backend, download, inferenza.
+  Prossima migrazione bloccata fino a collaudo personale
+  e separata approvazione di un nuovo scope.

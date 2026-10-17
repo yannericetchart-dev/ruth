@@ -55,3 +55,15 @@ MIG-011, estensione descriptor-only di GGUF-BLOCK-001.
 
 Stato iniziale: approvato; codice candidato, verifica e
 integrazione in main ancora pendenti.
+
+## Stato tecnico integrato (17 ottobre 2026)
+
+- Implementazione verificata con fixture sintetiche e CI,
+  promossa lungo PR #65 GGUF, #66 Formats, #67 Models,
+  #68 main `a803e15e872d71a96b7b2de37b13a8964d37d168`.
+- Stato: implementation complete, CI verification passed,
+  integration merged. **GGUF-KBLOCK-MANUAL-001 pending**,
+  richiesta esecuzione personale del default Ruth piu'
+  fixture sintetiche locali postmerge, accettazione esplicita.
+- Nessuna lettura di pesi, dequantizzazione o modello reale
+  convalidato; le note candidate precedenti sono storiche.

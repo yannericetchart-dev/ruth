@@ -302,3 +302,15 @@ Le annotazioni precedenti di candidato sono storiche.
 MIG-010 e il gate manuale sono complete. Le note anteriori
 che indicano `GGUF-BLOCK-MANUAL-001 pending` restano storiche e
 non rappresentano la fase corrente.
+
+## GGUF-KBLOCK-001: stato tecnico corrente (17 ottobre 2026)
+
+GGUF-KBLOCK-SCOPE-001 e' implementato, verificato con fixture
+sintetiche e integrato tramite PR #65-#68, main `a803e15e872d71a96b7b2de37b13a8964d37d168`.
+MAIN-FLOW-001 ora include undici fasi, KBLOCKS dopo BLOCKS.
+GGUF-KBLOCK-MANUAL-001 resta **pending**: esecuzione personale
+del default Ruth e test locali sintetici dopo merge main,
+seguiti da conferma esplicita dell'utente (MIG-FLOW-002).
+Le precedenti note di codice candidato sono storiche.
+Non avviare MIG-012 prima della conferma e nuovo scope approvato.
+REMOTE-001 e DATA-001 restano vigenti.

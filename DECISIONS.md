@@ -490,3 +490,19 @@ autorizzata implicitamente.
 - Non leggere tensor payload o dequantizzare, no rete,
   download, CUDA, benchmark, installazioni, inferenza.
   DATA-001, REMOTE-001, MIG-FLOW-001/002 invariati.
+
+### GGUF-KBLOCK-001: integrazione verificata (17 ottobre 2026)
+
+- Approvazione GGUF-KBLOCK-SCOPE-001 invariata.
+- PR #65 leaf, #66 Formats, #67 Models, #68 main,
+  CI success runs 39025028855, 39025109274, 39025159357,
+  39025210189 (fixture, regressioni, mappe); root main
+  `a803e15e872d71a96b7b2de37b13a8964d37d168`.
+- Sei tipi GGML 10-15 con 256 elementi per blocco; byte
+  84/110/144/176/210/292 e prima dimensione divisibile per 256.
+  Solo descrittori, mai lettura/dequantizzazione pesi.
+- API INDEX e BLOCKS mantengono semantica precedente, tipi K
+  `size_unverified` prima della nuova fase KBLOCKS.
+- GGUF-KBLOCK-MANUAL-001 **pending**, test personale Ruth
+  undici fasi e fixture sintetiche locale post-merge, poi
+  accettazione esplicita richiesta. Nuovo scope non approvato.

@@ -472,3 +472,16 @@ GPU-MANUAL-001 richiesta solo dopo main, secondo MIG-FLOW-002.
 - Candidato remoto; CI, mappe e PR in preparazione;
   collaudo personale GGUF-KBLOCK-MANUAL-001 obbligatorio
   dopo main. Nessuna migrazione futura pre-approvata.
+
+## GGUF-KBLOCK-001: integrazione tecnica completata (17 ottobre 2026)
+
+- GGUF-KBLOCK-SCOPE-001 approvato: sei tipi K-quant GGML
+  verificati come ingombri strutturali di descrittori in
+  file dichiarati in CAT, senza leggere tensori.
+- PR #65, #66, #67, #68, CI e mappe passed, main
+  `a803e15e872d71a96b7b2de37b13a8964d37d168`; undicesima fase KBLOCKS e sottocomando
+  mirato `gguf-kblocks` integrati.
+- GGUF-KBLOCK-MANUAL-001 pending: prova personale dopo
+  sincronizzazione sicura e fixture sintetiche locali.
+  Prossimo componente richiede nuovo scope approvato.
+  Le annotazioni candidate precedenti sono storiche.

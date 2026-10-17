@@ -193,3 +193,14 @@ per GGUF del catalogo. Undicesimo passaggio Ruth KBLOCKS dopo
 BLOCKS. Scope: `models/formats/gguf/KBLOCK_SCOPE.md`.
 Codice candidato sul ramo remoto; CI/promozioni in attesa.
 GGUF-KBLOCK-MANUAL-001 richiesta dopo main; nessun peso letto.
+
+## GGUF-KBLOCK-001 integrata tecnicamente (17 ottobre 2026)
+
+Le PR #65 GGUF, #66 Formats, #67 Models e #68 main hanno
+integrato l'undicesima fase `KBLOCKS` in Ruth.
+Commit applicativo `a803e15e872d71a96b7b2de37b13a8964d37d168`, test sintetici e mappe
+CI superati. Il validatore legge solo descrittori dei sei
+tipi K-quant supportati e non i byte dei tensori.
+**GGUF-KBLOCK-MANUAL-001 pending** dopo merge documentale:
+prova personale di Ruth e fixture sintetiche prima di
+qualunque nuova migrazione. Le note candidate sono storiche.
