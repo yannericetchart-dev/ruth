@@ -1,8 +1,8 @@
 # Ruth: checkpoint di progetto
 
-Revisione documentale: 51 (indice main); CONT-001 revisione 2.
+Revisione documentale: 52 (indice main); CONT-001 revisione 2.
 Fase 3: migrazione incrementale per componente.
-Stato: **MIG-016 GGUF-MULTITENSOR-FIXTURE-001 implementata, verificata in CI e integrata in main; GGUF-MULTITENSOR-MANUAL-001 pending, collaudo delegato ammesso secondo MIG-FLOW-002 rev.3**.
+Stato: **MIG-016 GGUF-MULTITENSOR-FIXTURE-001 implementata, verificata in CI e integrata in main; GGUF-MULTITENSOR-MANUAL-001 passed tramite collaudo delegato MIG-FLOW-002 rev.3; MIG-016 chiusa**.
 MIG-015 e GGUF-FIXTURE-SUMMARY-MANUAL-001 restano complete.
 MIG-014 e GGUF-STRUCT-STABILITY-MANUAL-001 restano complete.
 MIG-013 e GGUF-STRUCT-SUMMARY-MANUAL-001 restano complete.
@@ -32,29 +32,37 @@ L'ingresso senza argomenti di Ruth esegue tutte le funzioni integrate.
   regressioni sintetiche e controllo dell'assenza di modifiche generate.
   Albero integrato identico al candidato revisionato; solo dieci documenti
   e metadati di protocollo, nessun file applicativo/test/workflow modificato.
-  Nessuna esecuzione Ruth o test locali svolti. Questa registrazione
-  successiva e' soltanto documentale e non chiude il collaudo di MIG-016.
+  Durante quella pubblicazione non erano stati eseguiti Ruth o test locali.
+  Il collaudo delegato successivo e la chiusura MIG-016 sono registrati
+  separatamente sotto, senza attribuire la prova al commit della chiusura.
 - Istruzioni UI: blocco aggiornato preparato in PROJECT_SETUP.md;
   inserimento UI e collaudo indipendente della continuita' rev.2 pending.
   La pubblicazione GitHub non cambia automaticamente la UI.
-- Copia pulita designata verificata in lettura: remoto canonico, main,
+- Copia pulita precedente, non piu' destinazione del collaudo delegato:
+  stato storico mantenuto separato. Verificata in lettura: remoto canonico, main,
   nessuna modifica tracciata o non tracciata, commit
   31730f6d4f712adb0cad8715ae166567f3926e77, .venv presente.
   Permessi OS di scrittura non disponibili su checkout, metadati Git e
   .venv; percorso fuori dalle radici di scrittura autorizzate.
-  local_sync: pending_permissions. Non sono stati provati aggiornamenti.
+  previous_clean_checkout: pending_permissions. Non sono stati provati aggiornamenti.
 - Copia storica modificata preservata integralmente ed esclusa dalla sync.
-  Nessuna copia o ambiente nuovo creato; nessuna importazione automatica.
-- GGUF-MULTITENSOR-MANUAL-001 conserva l'ID storico del gate; puo' essere
-  soddisfatta con mode: delegated secondo la nuova revisione.
-  Stato: pending; valutazione umana aggiuntiva non prescritta nel suo
-  perimetro. Non attribuire un'esecuzione personale o delegata non svolta.
-- Prossima azione locale: rendere disponibile accesso in scrittura
-  autorizzato alla copia pulita e ai necessari output, poi verificare
-  ancora stato/permessi, fissare main post-merge, sync conservativa e
-  collaudo completo di MIG-016 (13 fasi e 11 test test_multitensor).
-  La delega non amplia da sola i permessi; nessuna nuova copia implicita.
-- MIG-017 non approvata. Dopo chiusura effettiva di MIG-016 proporre lo
+  Nessuna importazione automatica dalla copia storica. Una nuova destinazione
+  dedicata e' stata autorizzata separatamente e verificata come indicato sotto.
+- GGUF-MULTITENSOR-MANUAL-001 conserva l'ID storico del gate ed e'
+  soddisfatta con mode: delegated, status: passed. Evidenza
+  MIG-016-delegated-001 sul commit dbdef7ab000d99d2e3dde68b0857840f0047d5fe:
+  default Ruth 13 fasi, quattro fixture sintetiche passed e 11 test mirati OK.
+  Valutazione umana aggiuntiva non prescritta. Nessuna esecuzione personale
+  attribuita all'utente.
+- Nuova destinazione dedicata designata e autorizzata dall'utente:
+  validation_checkout: verified_on_tested_revision. Prove di accesso,
+  revisione, ambiente e pulizia superate. Nessun trasferimento da copie
+  o ambienti esistenti; nessuna installazione ulteriore.
+- Prossima azione locale: dopo merge dei soli documenti di chiusura,
+  sincronizzare conservativamente la nuova destinazione, verificando
+  il diff documentale senza attribuire un nuovo collaudo non eseguito.
+  Lo stato delle copie precedenti rimane distinto.
+- MIG-017 non approvata. Dopo chiusura verificata di MIG-016 proporre lo
   scope successivo e attendere nuovo OK prima di implementarlo.
 
 ## Cronologia applicativa
@@ -884,3 +892,43 @@ e DIAG-SCOPE-001. SYNC-001 resta storica/superseded.
 - Nessun GGUF reale/pesi, tensor_data, hash, dequantizzazione, rete,
   download, CUDA o inferenza. DATA-001/REMOTE-001 invariati, Kaggle inattivo.
   `local_sync: pending_no_access`; nessun perimetro MIG-017 approvato.
+
+## MIG-016 chiusa con collaudo delegato (17 ottobre 2026)
+
+- Evidenza portabile: MIG-016-delegated-001; mode: delegated; status: passed.
+  Commit main eseguito: dbdef7ab000d99d2e3dde68b0857840f0047d5fe, risolto via
+  heads/main e verificato prima del collaudo. Nessuna esecuzione personale
+  dell'utente viene attribuita a questa prova.
+- Destinazione: nuova copia locale dedicata designata dall'utente, creata
+  esclusivamente dal repository canonico; integrita' degli oggetti Git,
+  branch main, revisione e pulizia verificati. Prova minima di scrittura,
+  lettura e rimozione superata; ambiente venv dedicato e isolato disponibile
+  senza installazioni di sistema o pacchetti aggiuntivi.
+- Default Ruth: 13 fasi completate nell'ordine prescritto e riepilogo
+  finale positivo, exit code 0. FIXTURE: passed su quattro file sintetici,
+  SUMMARY=structural_checked. Catalogo opzionale e SUMMARY successiva
+  not_configured: skip previsto, non verifica di modelli reali.
+- Suite prescritta models.formats.gguf.tests.test_multitensor:
+  11 test, OK, nessun fallimento. La suite verifica anche i tre descrittori
+  del modello sintetico multi e i casi negativi previsti dallo scope.
+- MIG-FLOW-002 revisione 3: queste prove complete soddisfano il gate
+  GGUF-MULTITENSOR-MANUAL-001, mantenendone l'ID storico ma registrando
+  mode: delegated. Nessuna valutazione umana aggiuntiva era prescritta;
+  nessuna ripetizione personale o seconda conferma necessaria.
+- Stato MIG-016: implementation complete; verification passed (CI e
+  collaudo locale sintetico delegato); integration merged (PR #96-#99);
+  local validation passed; closure complete.
+- validation_checkout: verified_on_tested_revision. Dopo la pubblicazione
+  di questi soli documenti, pending_docs_fast_forward fino alla sync
+  conservativa della nuova destinazione; il collaudo dello SHA sopra
+  resta valido solo se il diff successivo e' esclusivamente documentale.
+- I checkout precedenti restano separati e invariati: copia pulita
+  precedente pending_permissions; copia storica modificata preservata
+  ed esclusa dalla sync. Non sono dichiarati sincronizzati.
+- DATA-001: output grezzi, cache e altre evidenze reali conservati solo
+  localmente in spazi autorizzati ed esclusi da Git. Pubblicati soltanto
+  SHA, ID, stati e conteggi. Nessun GGUF reale, peso o tensor_data,
+  hash payload, compatibilita' runtime, CUDA, download o inferenza verificati.
+- MIG-017 non approvata. Dopo questa chiusura presentare il prossimo
+  perimetro funzionale e attendere un nuovo OK prima di implementarlo.
+  Le note precedenti di collaudo pending sono cronologia storica.
