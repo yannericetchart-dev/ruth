@@ -223,3 +223,10 @@ verificato. Leggere l'ultimo CHECKPOINT per lo SHA di chiusura.
 ## MIG-012 (17 ottobre 2026)
 
 GGUF-FIXTURE-SCOPE-001 approvata: collaudo sintetico CAT->GGUF->META->INDEX->BLOCKS->KBLOCKS, dodicesimo passaggio FIXTURE. Stato candidato, non ancora collaudato dall'utente. Nessun modello reale o peso letto. Consultare CHECKPOINT.md.
+
+## MIG-012 integrazione tecnica verificata (17 ottobre 2026)
+
+- PR #71 (GGUF), #72 (Formats), #73 (Models) e #74 (main) integrate, commit applicativo main `b057957b5d96b3c09ecde0b6c28ffc0e977c6942`.
+- CI per tutte e quattro le promozioni success, inclusi test sintetici, punto d'ingresso e mappe. Dodicesima fase Ruth FIXTURE, dopo KBLOCKS, e comando mirato `gguf-fixture`.
+- Stato: implementation complete, verification passed (fixture e CI), integration merged. **GGUF-FIXTURE-MANUAL-001 pending**: richiede collaudo personale del default Ruth e test mirati dopo aggiornamento del checkout personale.
+- Non sono stati testati modelli reali o letti pesi. Nessun download, rete, CUDA, backend o inferenza. Nuovo perimetro bloccato fino a collaudo personale e nuova approvazione (MIG-FLOW-001/002). DATA-001 e REMOTE-001 invariati.
