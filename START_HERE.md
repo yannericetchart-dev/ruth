@@ -147,3 +147,11 @@ integrato la nona fase Ruth, INDEX, sul commit `1d51cfeed2bec83119ebf56ff0cb3840
 sintetica e mappe verificate. Solo indici descrittori, mai tensor_data.
 **GGUF-INDEX-MANUAL-001 resta in attesa di collaudo personale**.
 Nessuna migrazione successiva e' autorizzata.
+
+## GGUF-INDEX-MANUAL-001 superato personalmente (17 ottobre 2026)
+
+L'utente ha confermato positivo il collaudo del flusso completo Ruth
+a nove fasi sul main `09045243e944514d40b9e58c6159b013efa2a196`. Catalogo e INDEX
+`not_configured`: risultato previsto. Nessun GGUF reale o payload
+di tensori verificato manualmente. MIG-009 complete. I precedenti
+stati pending sono storici; prossimo scope ancora da approvare.

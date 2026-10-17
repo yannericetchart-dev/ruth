@@ -390,3 +390,23 @@ Ogni sostituzione deve collegare entrambe le decisioni e aggiornare le mappe.
   Ruth senza argomenti dalla nuova revisione main.
 - Prossimo perimetro non autorizzato prima di conferma positiva
   del test personale (MIG-FLOW-002).
+
+### GGUF-INDEX-MANUAL-001: accettazione personale (17 ottobre 2026)
+
+- GGUF-INDEX-MANUAL-001: **complete/passed**, accettazione esplicita
+  dell'utente il 17 ottobre 2026 dopo esecuzione personale del flusso
+  ordinario `.venv/bin/python main.py` sul commit `09045243e944514d40b9e58c6159b013efa2a196`,
+  identico a main verificato su GitHub.
+- Nove fasi in ordine PY -> DEP -> DIAG -> HW -> NVIDIA -> CAT ->
+  GGUF -> META -> INDEX; riepilogo finale di completamento regolare.
+- Catalogo e letture GGUF/META/INDEX `not_configured` sono skip validi
+  e non bloccanti. Nessun file GGUF reale ispezionato personalmente;
+  non risultano validati contenuti dei tensori, pesi o compatibilita'
+  con CUDA/backend/inferenza.
+- La prova manuale completa il gate MIG-FLOW-002 per MIG-009;
+  una nuova migrazione richiede uno scope separato e approvazione
+  esplicita (MIG-FLOW-001). Nessun nuovo componente avviato.
+- DATA-001 e REMOTE-001 invariati: in Git solo esito e commit;
+  niente path, nomi modelli, output grezzi, inventari, log o benchmark.
+GGUF-INDEX-SCOPE-001 resta invariato; nessuna migrazione successiva
+autorizzata implicitamente.
