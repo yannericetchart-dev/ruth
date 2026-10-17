@@ -426,3 +426,31 @@
 - Non verificati GGUF reali o pesi; nessuna lettura tensor_data, hash
   payload, download, rete, CUDA o inferenza. DATA-001 e REMOTE-001 vigenti.
   `local_sync: pending_no_access`. Nuova migrazione non autorizzata.
+
+## GGUF-FIXTURE-SUMMARY-MANUAL-001 accettata; MIG-015 chiusa (17 ottobre 2026)
+
+- Utente ha fornito prova personale sul commit main `86d7aa5b2000e07ef55798cab3779bf53e3cbf72`,
+  identico al ref GitHub `heads/main` verificato prima della chiusura.
+- Ruth `main.py` senza argomenti: **13 fasi completate** in ordine, senza
+  anomalie; collaudo FIXTURE: **passed** su tre GGUF sintetici,
+  `SUMMARY=structural_checked`; INDEX e BLOCKS `partial` previsti per
+  quantizzazione legittima, KBLOCKS `inspected`.
+- SUMMARY successiva sul catalogo locale personale opzionale:
+  `not_configured` / `CAT:not_configured`; skip valido, non collaudo reale.
+- Suite mirata `test_fixture_summary`: **7 test, OK**, nessun fallimento;
+  comprende casi sintetici struttura valida, tipo sconosciuto, magic errata,
+  intervallo troncato, mutazione osservabile e guard di fallimento SUMMARY.
+- MIG-FLOW-002 revisione 2: prova positiva = accettazione personale senza
+  nuovo consenso. MIG-015: implementation **complete**, verification
+  **passed** (CI e test sintetici personali), integration **merged**
+  (PR #90-#93), manual acceptance **passed**.
+- Nessun GGUF reale, peso, tensor_data o compatibilita' runtime testati;
+  nessun download, rete, CUDA o inferenza. DATA-001: nessun log o inventario
+  di host, percorso privato, credenziale o benchmark scritto su Git.
+- Checkout locale: `local_sync: verified_on_tested_revision` limitatamente
+  allo SHA del collaudo fornito; dopo merge dei documenti di chiusura
+  `local_sync: pending_docs_fast_forward`. Stato del checkout pulito non
+  dimostrato dall'output incollato.
+- Le note precedenti `manual pending` sono storiche, non stato corrente;
+  MIG-016 **non approvata**. Nuova porzione solo dopo approvazione esplicita
+  del perimetro proposto, secondo MIG-FLOW-001.
