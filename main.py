@@ -9,7 +9,7 @@ from environment.runtime.contracts import DependencyPlan, PythonEnvironment
 from hardware import detect as detect_hardware
 from hardware.gpu import detect as detect_gpu
 from models.catalog import catalog as load_model_catalog
-from models.formats.gguf import inspect_headers, inspect_all_metadata, inspect_all_tensor_indexes, inspect_all_block_layouts, inspect_all_kblock_layouts, run_fixture_pipeline
+from models.formats.gguf import inspect_headers, inspect_all_metadata, inspect_all_tensor_indexes, inspect_all_block_layouts, inspect_all_kblock_layouts, run_fixture_pipeline, inspect_structural_summaries
 from runtime import inspect_environment
 
 # Initial smoke check only. Ruth's full dependency set has not been approved.
@@ -219,8 +219,22 @@ def _check_fixture() -> int:
     return 0
 
 
+def _check_gguf_summary(root: Path) -> int:
+    """Thirteenth step: read-only combined GGUF structural verdicts from CAT."""
+    print("Ruth: avvio riepilogo strutturale GGUF dichiarati.")
+    report = inspect_structural_summaries(project_root=root)
+    for model in report.models:
+        print(f"Ruth: struttura GGUF {model.model_id}: {model.status}; "
+              f"{model.tensor_count} descrittori; {model.size_unverified} ingombri non verificati" +
+              (f"; motivo {model.reason}." if model.reason else "."))
+    print(f"Ruth: riepilogo GGUF: {report.status}; {report.count} modelli esaminati" +
+          (f"; motivo {report.reason}." if report.reason else "."))
+    print("Ruth: nessuna verifica dei pesi, integrita' o compatibilita' inferenza.")
+    return 1 if report.status in ("invalid", "size_unverified") else 0
+
+
 def main(argv: Sequence[str] = ()) -> int:
-    """Run PY -> DEP -> DIAG -> HW -> NVIDIA -> CAT -> GGUF -> META -> INDEX -> BLOCKS -> KBLOCKS -> FIXTURE."""
+    """Run PY -> DEP -> DIAG -> HW -> NVIDIA -> CAT -> GGUF -> META -> INDEX -> BLOCKS -> KBLOCKS -> FIXTURE -> SUMMARY."""
     args = list(argv)
     root = Path(__file__).resolve().parent
     if not args:
@@ -238,6 +252,7 @@ def main(argv: Sequence[str] = ()) -> int:
             _check_gguf_blocks(root)
             _check_gguf_kblocks(root)
             _check_fixture()
+            _check_gguf_summary(root)
             print("Ruth: sequenza controlli terminata con problemi.")
             return 1
         print("Ruth: dipendenze minime da controllare: pip (non elenco completo di Ruth).")
@@ -252,7 +267,8 @@ def main(argv: Sequence[str] = ()) -> int:
         block_code = _check_gguf_blocks(root)
         kblock_code = _check_gguf_kblocks(root)
         fixture_code = _check_fixture()
-        final_code = max(code, catalog_code, gguf_code, metadata_code, index_code, block_code, kblock_code, fixture_code)
+        summary_code = _check_gguf_summary(root)
+        final_code = max(code, catalog_code, gguf_code, metadata_code, index_code, block_code, kblock_code, fixture_code, summary_code)
         if final_code == 0:
             print("Ruth: sequenza controlli completata; compatibilita' runtime non verificata.")
         else:
@@ -273,9 +289,11 @@ def main(argv: Sequence[str] = ()) -> int:
         return _check_gguf_kblocks(root)
     if args == ["gguf-fixture"]:
         return _check_fixture()
+    if args == ["gguf-summary"]:
+        return _check_gguf_summary(root)
 
     if args[0] != "dependencies" or len(args) < 2:
-        print("Ruth: uso: python main.py [catalog | gguf | gguf-metadata | gguf-index | gguf-blocks | gguf-kblocks | gguf-fixture | dependencies PACCHETTO [PACCHETTO==VERSIONE ...]]")
+        print("Ruth: uso: python main.py [catalog | gguf | gguf-metadata | gguf-index | gguf-blocks | gguf-kblocks | gguf-fixture | gguf-summary | dependencies PACCHETTO [PACCHETTO==VERSIONE ...]]")
         return 2
     return _check_dependencies(args[1:], root)[0]
 
