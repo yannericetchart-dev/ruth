@@ -1,8 +1,8 @@
 # Ruth: checkpoint di progetto
 
-Revisione documentale: 41 (indice main); CONT-001 revisione 1.
+Revisione documentale: 42 (indice main); CONT-001 revisione 1.
 Fase 3: migrazione incrementale per componente.
-Stato: **MIG-013 GGUF-STRUCT-SUMMARY-001 implementata, verificata in CI e integrata in main; GGUF-STRUCT-SUMMARY-MANUAL-001 pending**.
+Stato: **MIG-013 GGUF-STRUCT-SUMMARY-001 implementata, verificata in CI, integrata in main e collaudata personalmente (GGUF-STRUCT-SUMMARY-MANUAL-001 complete)**.
 MIG-012 e GGUF-FIXTURE-MANUAL-001 restano complete.
 GGUF-KBLOCK-MANUAL-001 e MIG-011 restano complete.
 GGUF-BLOCK-MANUAL-001 resta complete.
@@ -614,3 +614,28 @@ e DIAG-SCOPE-001. SYNC-001 resta storica/superseded.
 - Non sono stati verificati GGUF reali, pesi, integrita' del payload,
   CUDA, runtime o inferenza. DATA-001/REMOTE-001 invariati;
   `local_sync: pending_no_access`. MIG-014 non approvata.
+
+## GGUF-STRUCT-SUMMARY-MANUAL-001 accettata; MIG-013 chiusa (17 ottobre 2026)
+
+- Commit main dell'esecuzione personale `49d3c451b0da86acc99ce33ec6c395f0c27e1ec7`, corrispondente al
+  ref GitHub heads/main verificato prima della chiusura.
+- Default Ruth: **13 controlli completati** in ordine, inclusi FIXTURE e
+  SUMMARY, senza errori. Fixture sintetiche: **passed**, tre file.
+- SUMMARY: `not_configured` con `CAT:not_configured` e catalogo personale
+  opzionale assente; skip valido, non equivale alla verifica di GGUF reali.
+- Suite mirata `test_structural_summary`: **11 test, OK**. Inclusi casi
+  sintetici di formati supportati e sconosciuti e input strutturali errati.
+- Prova positiva sufficiente come accettazione personale (MIG-FLOW-002
+  revisione 2): non occorre una seconda conferma. MIG-013: implementation
+  **complete**, verification **passed** (CI + collaudo sintetico personale),
+  integration **merged** (PR #78-#81), manual acceptance **passed**.
+- Nessun GGUF reale, pesi o integrita' payload verificati; nessuna
+  dequantizzazione, installazione, download, CUDA, backend o inferenza.
+- DATA-001: pubblicati soltanto SHA, esiti e numero test, non log,
+  inventari host, percorsi, credenziali, risultati benchmark o dati reali.
+- Checkout locale: `local_sync: verified_on_tested_revision` dalla prova
+  personale sul commit indicato; dopo la PR documentale di chiusura,
+  `local_sync: pending_docs_fast_forward` finche' non vi e' nuova prova.
+- Le precedenti note candidate / manual pending sono **storiche**.
+  MIG-014 non approvata: per ogni nuovo scope serve approvazione
+  esplicita (MIG-FLOW-001).
