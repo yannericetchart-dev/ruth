@@ -1,197 +1,187 @@
 # Ruth: audit e stato della pulizia dei branch
 
-## Stato corrente — 17 ottobre 2026
+## BRANCH-DELETE-001: chiusura verificata (17 ottobre 2026)
 
-Responsabile unico: ORCH-20261017-B, ripresa esplicitamente richiesta dall'utente.
-Chat organizzative: "Ruth - Work Cloud Orchestrator" e
-"Ruth - Work Local Orchestrator"; il nome non trasferisce titolarita.
-Base verificata: 38f066ff81cec8430e4399f2c0144c07c2d2c22d. PR #106 merged con CI main
-39055668218 success. MIG-016 resta chiusa; MIG-017 non autorizzata.
-BRANCH-ARCHIVE-001: complete. L'esecutore locale assegnato dalla PR #106
-ha creato 11 tag annotati e si e' fermato prima delle cancellazioni.
-B ha verificato autonomamente tutti gli 11 ref heads e tags, gli oggetti
-tag annotati e la dereferenziazione al commit atteso: nessuna differenza.
-Capacita create-tag autenticata: provata dall'esecutore; delete-ref:
-NON TENTATA. B dispone della connessione per documenti/PR/merge, non
-attribuisce a se' le mutazioni o le verifiche locali dell'esecutore.
-Inventario live: 100 branch (pagine 100/0), main piu' 88 contenuti e
-11 non contenuti; zero PR/issue aperte, 11 tag. Branch eliminati: 0.
-HEAD locale riferita dall'esecutore: 5b77b08693a808c359b294bf1ab40f4fba8f5137,
-working tree pulito e invariato; nessuna sync o esecuzione applicativa.
+Responsabile comune e integrazioni: ORCH-20261017-B.
+Assegnazione: PR #107 merged a 66f126c41165a012453acb1a2fd2add812d67105;
+CI PR 39056771775 e CI main 39056855340 success.
+Esecutore: chat locale 01a14a37-aa01-70a2-b9cf-6702224b121f,
+"Ruth - Work Local Orchestrator"; resoconto inoltrato dall'utente.
+Evidenza portabile: BRANCH-DELETE-001-result-001.
+Stato dell'incarico: complete; risultato: passed; esecuzione delegata.
 
-Snapshot precedente all'aggiunta del ramo della presente pubblicazione:
-100 branch; la pubblicazione aggiunge un temporaneo, quindi attendersi
-101 prima di nuove mutazioni e riconfermare l'inventario finale live.
-Il confronto e' stato ricalcolato per tutti i 92 tip distinti da main.
-61 NODE/checkpoint e gli altri documenti applicabili letti alla base:
-MODEL-001 complete, Models partial; unico incarico attivo trovato
-BRANCH-ARCHIVE-001, ora concluso dopo resoconto e verifica remota.
-Nessun nuovo incarico applicativo o integrazione storica avviato.
+| Branch originario | SHA riconfermato prima della mutazione | Stato del ref remoto | Esito |
+| --- | --- | --- | --- |
+| `work/BRANCH-ARCHIVE-001-prerequisites` | `0b1ca5c3785e70eb24f503ac53ef3e3af9298e72` | archived / absent | deleted_verified |
+| `work/ORCH-20261017-B-claim` | `1149ed1556e2961034a5b3d0d23ea464ac1f436e` | archived / absent | deleted_verified |
 
-users_release resta unconfirmed per 97 branch diversi da main:
-gli 11 storici non contenuti e 86 candidati contenuti. Per ciascuno
-BRANCH_AUDIT.md registra SHA, utilizzatori/scritture non confermati,
-incarichi concorrenti non individuati e integrazioni non attestate come libere.
-Nessuna PR aperta e MODEL-001 complete non sono un rilascio degli utilizzatori.
-Servono conferme attribuite ai precedenti responsabili/utilizzatori, con
-cessazione delle scritture e assenza di dipendenze dal ref per ogni ramo.
-Non e' richiesto un nuovo verde funzionale; non inventare conferme assenti.
-Il produttore di questa conferma e' il precedente responsabile/utilizzatore,
-con messaggio inoltrato dall'utente; B ne registra l'esito. Non dipende
-dalla cancellazione: nessuna attesa circolare. Esecutore locale conferma
-solo le proprie attivita, non quelle di altre chat.
+### Resoconto attribuito all'esecutore
 
-## Elenco eliminabile e incarico
+Prima di ciascuna mutazione: rilascio e incarico confermati, integrazioni
+concluse, tip atteso contenuto in main, PR aperte paginate senza
+corrispondenze head/base e nessuna nuova issue.
+Strumento effettivo riferito: GitHub GraphQL updateRefs, una richiesta per
+ramo; beforeOid uguale allo SHA della riga, afterOid pari a
+0000000000000000000000000000000000000000, force=false.
+Entrambe le richieste sono state accettate. Per la seconda, la lettura
+immediata era ambigua: l'esecutore si e' fermato e ha riconciliato soltanto
+in lettura. REST e GraphQL hanno poi confermato entrambi i ref assenti.
+Nessuna cancellazione ripetuta. L'ambiguita iniziale resta nella cronologia;
+non viene omessa o registrata come seconda mutazione.
+Cancellazioni effettive verificate: 2. Main prima/dopo invariato:
+66f126c41165a012453acb1a2fd2add812d67105. Inventario riferito:
+101 (50/50/1/0) -> 99 (50/49/0). Nessuna modifica a checkout o metadati
+locali, documenti, configurazioni o ambienti; nessuna sync o esecuzione Ruth.
+Capacita di cancellazione autenticata e condizionata allo SHA: provata
+dall'esecutore con queste due operazioni, non una capacita mutativa di B.
 
-### BRANCH-DELETE-001: rilascio limitato a due rami documentali
+### Verifica indipendente dell'orchestratore
 
-Esecutore: chat Codex locale 01a14a37-aa01-70a2-b9cf-6702224b121f,
-"Ruth - Work Local Orchestrator"; solo ref remoti assegnati, nessun
-branch applicativo o documento comune assegnato. Padre main;
-responsabile integrazioni e documenti: B. Nessun parallelismo.
+B ha risolto nuovamente object.sha di main e verificato PR #107 merged
+con le CI sopra. Inventario GitHub paginato 99/0: entrambi i nomi assenti;
+matching-refs individuale per ciascun nome: lista vuota. Nessuna PR o issue
+aperta. Tutti gli 11 ref heads storici, ref tags e oggetti annotati riletti:
+SHA oggetto e commit dereferenziato coincidono col registro BRANCH_ARCHIVE.md.
+work/BRANCH-ARCHIVE-001-record presente al tip
+12e2087f5040209c01a969248121ddd052f88dec prima della presente pubblicazione.
+B verifica lo stato remoto via REST; i controlli pre-mutazione e la
+riconciliazione GraphQL restano attribuiti all'esecutore. B non ripete
+mutazioni e non attribuisce a se' accesso o verifiche locali dell'esecutore.
 
-| Branch rilasciato | SHA atteso | Evidenza integrazione |
-| --- | --- | --- |
-| `work/BRANCH-ARCHIVE-001-prerequisites` | `0b1ca5c3785e70eb24f503ac53ef3e3af9298e72` | PR #106 merged |
-| `work/ORCH-20261017-B-claim` | `1149ed1556e2961034a5b3d0d23ea464ac1f436e` | PR #105 merged |
+### Perimetro residuo
 
-B e' il responsabile dei due rami e ne attesta individualmente il rilascio:
-users_release confirmed_by_owner; nuove scritture cessate; nessun altro
-utilizzatore assegnato a questi ref; integrazioni #105 e #106 concluse;
-incarichi correnti e letture di audit usano commit/main/PR, non questi ref.
-Gli SHA sono contenuti nella storia di main, verificati con ahead_by=0.
-La prova del tag non e' necessaria per questi due rami gia' contenuti.
-Il rilascio non e' dedotto soltanto dall'assenza di PR.
+Si chiude solo BRANCH-DELETE-001. BRANCH-ARCHIVE-001 resta complete;
+BRANCH-CLEANUP-001 resta aperto e blocked_users_confirmation.
+Per 97 rami preesistenti diversi da main users_release e cessazione delle
+scritture restano unconfirmed: 86 contenuti e 11 storici archiviati.
+MODEL-001 complete e zero PR non ne dimostrano il rilascio.
+Il ramo documentale work/BRANCH-ARCHIVE-001-record e' riutilizzato da B
+per questa registrazione: nessun nuovo branch creato; dopo merge resta
+pending_cleanup, senza nuovo elenco di cancellazione o incarico locale.
+Main e' l'unico permanente. Nessuna nuova cancellazione assegnata.
+MIG-016 resta chiusa; MIG-017 e altre funzioni non autorizzate.
 
-Gate di esecuzione: merge della presente pubblicazione, CI PR e main
-positive, lettura del merge_commit_sha reale della PR e risoluzione di
-heads/main. Prima di OGNI delete riconfermare SHA esatto, main, PR
-aperte head/base, incarico B e assenza di nuovi utilizzatori/integrazioni.
-Se main o l'incarico cambiano, fermarsi per riesame; non adottare un nuovo
-SHA in silenzio. Se il tip del ramo cambia, fermarsi senza cancellarlo.
-Mutazione solo con condizione sullo SHA atteso, anche in caso di racing
-writer; mai force generico o DELETE senza condizione. Se la capacita
-manca o il lease fallisce, lasciare il ramo e riportare il blocco.
-Protezione assoluta refs/heads/main e refs/tags/*; nessun altro ramo
-incluso per prefisso o classificazione. Verificare poi ref assente, main
-invariato e tutti gli 11 archivi intatti. Fermarsi sul primo errore.
-Un ref gia' assente e' absent_before_attempt, non una cancellazione eseguita.
+## Inventario corrente alla base verificata
 
-Nessuna modifica/sync di checkout, nuova copia, installazione, ambiente,
-esecuzione Ruth o test applicativo. Nessuna modifica documentale da parte
-dell'esecutore. Resoconto portabile con controlli per ramo, SHA, condizione
-usata, esito effettivo, main prima/dopo e verifica archivi; log restano locali.
-B registra gli esiti e aggiorna gli stati effettivi solo dopo prova remota.
-Il nuovo ramo work/BRANCH-ARCHIVE-001-record e' utilizzato da B fino al merge,
-poi pending_cleanup: NON e' incluso nell'elenco di questo incarico.
+Main di confronto: 66f126c41165a012453acb1a2fd2add812d67105.
+99 ref heads presenti: main, 87 contenuti e 11 non contenuti, questi ultimi
+preservati dagli archivi verificati. Confrontati 91 tip distinti da main.
+I due ref eliminati sono registrati archived/absent nella tabella degli
+esiti sopra e non compaiono nell'inventario dei presenti. Nessun NODE di
+componente li rappresenta: gli stati present dei componenti restano corretti.
+Il ramo documentale e' riutilizzato; il suo SHA cambiera per la registrazione.
+Questo snapshot non attribuisce a main il futuro SHA del merge documentale.
 
-## Inventario e gate individuali alla base verificata
+| Branch presente | SHA alla base verificata | Storia | Utilizzatori / scritture | Stato operativo |
+| --- | --- | --- | --- | --- |
+| `ci/python-isolation` | `7d1c668bf68a62829946ab787613801305249a6f` | contained_candidate | unconfirmed / unconfirmed | blocked_users_confirmation |
+| `docs/CAT-001-final-checkpoint` | `bbc6de5bbcf40f9b9052685b814f0f545a7d0ada` | contained_candidate | unconfirmed / unconfirmed | blocked_users_confirmation |
+| `docs/CAT-MANUAL-001-complete` | `863cf14cdf999c22e2cf1375cc161cb2acb1413c` | contained_candidate | unconfirmed / unconfirmed | blocked_users_confirmation |
+| `docs/DEP-001-final-checkpoint` | `3e1e023fcbc1087930d0b6b823d1dcc795d24dde` | contained_candidate | unconfirmed / unconfirmed | blocked_users_confirmation |
+| `docs/DIAG-001-final` | `5343b4e01d0a99badc3f79fd03861a4b5c9b064a` | contained_candidate | unconfirmed / unconfirmed | blocked_users_confirmation |
+| `docs/DIAG-MANUAL-001-complete` | `515bea063dba65436354fee3bf125b01d6ffb2cb` | contained_candidate | unconfirmed / unconfirmed | blocked_users_confirmation |
+| `docs/GGUF-001-final-checkpoint` | `b3e27ed715931c015af8a38470b4ea8beee84996` | contained_candidate | unconfirmed / unconfirmed | blocked_users_confirmation |
+| `docs/GGUF-BLOCK-001-final-checkpoint` | `091515bd20dea3de8e1e8e2f381cd588625dc2fc` | contained_candidate | unconfirmed / unconfirmed | blocked_users_confirmation |
+| `docs/GGUF-BLOCK-MANUAL-001-complete` | `774de775be7c1498fb000aecd8b2fff843a41d06` | contained_candidate | unconfirmed / unconfirmed | blocked_users_confirmation |
+| `docs/GGUF-FIXTURE-001-integrated` | `fe973443ac8bc89d2d9d0521e2f0bde3aeaf067f` | contained_candidate | unconfirmed / unconfirmed | blocked_users_confirmation |
+| `docs/GGUF-FIXTURE-MANUAL-001-closure` | `503bf0e42d473625a955bd4583e25e740b5672b4` | contained_candidate | unconfirmed / unconfirmed | blocked_users_confirmation |
+| `docs/GGUF-INDEX-001-final-checkpoint` | `751b2ed90dff7aafa0d502e6203ac81e0ca71883` | contained_candidate | unconfirmed / unconfirmed | blocked_users_confirmation |
+| `docs/GGUF-INDEX-MANUAL-001-complete` | `97e0710ac348cf047ff39ddfbdd23bb1dfeb893e` | contained_candidate | unconfirmed / unconfirmed | blocked_users_confirmation |
+| `docs/GGUF-KBLOCK-001-final-checkpoint` | `0e85f312e1853f245c99a69ec4db2d9c9f87b0f4` | contained_candidate | unconfirmed / unconfirmed | blocked_users_confirmation |
+| `docs/GGUF-KBLOCK-MANUAL-001-and-MIG-FLOW-002-r2` | `4b12f5f81afdc60d30e2e0427cb31ac61c6fd482` | contained_candidate | unconfirmed / unconfirmed | blocked_users_confirmation |
+| `docs/GGUF-MANUAL-001-complete` | `045a170a859a63e187fa5f291c46731e46a04a06` | contained_candidate | unconfirmed / unconfirmed | blocked_users_confirmation |
+| `docs/GGUF-META-001-final-checkpoint` | `e381a91df19dcf94120c0f8b4a7ae629677797ff` | contained_candidate | unconfirmed / unconfirmed | blocked_users_confirmation |
+| `docs/GGUF-META-MANUAL-001-complete` | `88bca19509cbae97dab9833f1f6776f2e72c2ae3` | contained_candidate | unconfirmed / unconfirmed | blocked_users_confirmation |
+| `docs/GGUF-STRUCT-STABILITY-001-integrated` | `fe56de41cef7193354a0edac7463f7f29e5ede36` | contained_candidate | unconfirmed / unconfirmed | blocked_users_confirmation |
+| `docs/GGUF-STRUCT-SUMMARY-001-integrated` | `5c1b2fb259d4496b04af2309d1e2c8889eda71d5` | contained_candidate | unconfirmed / unconfirmed | blocked_users_confirmation |
+| `docs/GGUF-STRUCT-SUMMARY-MANUAL-001-closure` | `cc7403486a24d669865cbcdb108605a3b6a84e06` | contained_candidate | unconfirmed / unconfirmed | blocked_users_confirmation |
+| `docs/GPU-001-final-checkpoint` | `25fe46f59be1a3f0d8f3ea3c52ad77ce6daa1083` | contained_candidate | unconfirmed / unconfirmed | blocked_users_confirmation |
+| `docs/GPU-MANUAL-001-complete` | `31384aed606ba620b0b428037590f2765f8cd797` | contained_candidate | unconfirmed / unconfirmed | blocked_users_confirmation |
+| `docs/HW-001-final-checkpoint` | `1779f7db5f1bdd525796a744c09255b865021d5c` | contained_candidate | unconfirmed / unconfirmed | blocked_users_confirmation |
+| `docs/HW-MANUAL-001-complete` | `33f6e75cf16595718328d357873e2d67fef443c9` | contained_candidate | unconfirmed / unconfirmed | blocked_users_confirmation |
+| `docs/MAIN-FLOW-001-final` | `dcc0908f7fa89d753da80c0d37c858dd8c98903a` | contained_candidate | unconfirmed / unconfirmed | blocked_users_confirmation |
+| `docs/MAIN-MANUAL-001-complete` | `0282c78bf3de8bf55d4c0344b75aea712a20f143` | contained_candidate | unconfirmed / unconfirmed | blocked_users_confirmation |
+| `docs/MIG-012-checkpoint-header` | `198ddc38c4b8771051660fe5283899dae5414d05` | contained_candidate | unconfirmed / unconfirmed | blocked_users_confirmation |
+| `docs/MIG-014-manual-closure` | `624efbe451d31ee84a8ef09284b64fe0591f5e0a` | contained_candidate | unconfirmed / unconfirmed | blocked_users_confirmation |
+| `docs/MIG-015-integrated` | `53a888e06c98eac2925c7e35b9d8667cf09110d5` | contained_candidate | unconfirmed / unconfirmed | blocked_users_confirmation |
+| `docs/MIG-015-manual-closure` | `48c45fb4e198e2d4ba4ae0ef6726a80e450c9cad` | contained_candidate | unconfirmed / unconfirmed | blocked_users_confirmation |
+| `docs/MIG-016-integrated` | `8db9dfae31fa19c795ddd24a5bfcf8adafa49e97` | contained_candidate | unconfirmed / unconfirmed | blocked_users_confirmation |
+| `docs/PY-001-final-checkpoint` | `9a9235c9f0ea8a0c2168fe0261175f23c1ac48ee` | contained_candidate | unconfirmed / unconfirmed | blocked_users_confirmation |
+| `docs/PY-MANUAL-001-confirmed` | `72f133aad595dcec9e92ff82e90622f6f8f80a48` | contained_candidate | unconfirmed / unconfirmed | blocked_users_confirmation |
+| `docs/PY-MANUAL-001-positive-run` | `b16b3843b323587b516aff77740ae4440826e809` | contained_candidate | unconfirmed / unconfirmed | blocked_users_confirmation |
+| `docs/REMOTE-001` | `a4e342f60c48af794cf9dfc179c8d27fda7a3517` | contained_candidate | unconfirmed / unconfirmed | blocked_users_confirmation |
+| `docs/SYNC-001-pre-resume-gate` | `1eb0c5101d0017739cff3b06666579b7531a7f04` | contained_candidate | unconfirmed / unconfirmed | blocked_users_confirmation |
+| `docs/SYNC-001` | `667dafbdc9862598ab5dca298667c50e96627a82` | contained_candidate | unconfirmed / unconfirmed | blocked_users_confirmation |
+| `environment/dependencies/main` | `b2bc0095407edf766c2563bbedc2e69889b074ce` | contained_candidate | unconfirmed / unconfirmed | blocked_users_confirmation |
+| `environment/dependencies/work/DEP-001` | `ea708c7471584e5972863a657b4b402d5339d0fe` | contained_candidate | unconfirmed / unconfirmed | blocked_users_confirmation |
+| `environment/diagnostics/main` | `3e8d1c19e35914ee69b287eb1a01d15677212543` | contained_candidate | unconfirmed / unconfirmed | blocked_users_confirmation |
+| `environment/diagnostics/work/DIAG-001` | `17a1cb65c98be40d8508b16f8ae69f0aa7fef3a3` | contained_candidate | unconfirmed / unconfirmed | blocked_users_confirmation |
+| `environment/main` | `3e8d1c19e35914ee69b287eb1a01d15677212543` | contained_candidate | unconfirmed / unconfirmed | blocked_users_confirmation |
+| `environment/python/main` | `b80520ad903ff18f93398725ea95cd91f51da5d8` | archive_verified | unconfirmed / unconfirmed | blocked_users_confirmation |
+| `environment/python/work/entrypoint` | `b80520ad903ff18f93398725ea95cd91f51da5d8` | archive_verified | unconfirmed / unconfirmed | blocked_users_confirmation |
+| `environment/python/work/inspect-venv` | `80218739327666b0250c3715ba9cfb6fe1f114d5` | archive_verified | unconfirmed / unconfirmed | blocked_users_confirmation |
+| `environment/work/DEP-001-promotion` | `26a287f03bc83e4b025d94c548eaf3b086cd0012` | contained_candidate | unconfirmed / unconfirmed | blocked_users_confirmation |
+| `environment/work/PY-001-entrypoint` | `5fc816407f5c8873fd2ed39baa9d5293a9810c73` | contained_candidate | unconfirmed / unconfirmed | blocked_users_confirmation |
+| `feat/gemma3-flash-kv-policy` | `dc6039be1f17e09c6ff407dbee1ee6783eecb853` | archive_verified | unconfirmed / unconfirmed | blocked_users_confirmation |
+| `feat/gemma3-kv-matrix-18` | `d0ffdea9711bebd18da9b1e7866d3f9cd8c2f09a` | archive_verified | unconfirmed / unconfirmed | blocked_users_confirmation |
+| `feat/gemma3-kv-precision-plans` | `5080cf0c74ed1b92c0cb4530895c9911e3e189b7` | archive_verified | unconfirmed / unconfirmed | blocked_users_confirmation |
+| `feat/gemma3-native-context-probes` | `9ed7b187126dce38a3609c1e9e62bd6a17b786bd` | archive_verified | unconfirmed / unconfirmed | blocked_users_confirmation |
+| `feat/gemma3-phase27-numeric-benchmark` | `c09432b09f5f65e8f8428835d4347311d86ae6af` | archive_verified | unconfirmed / unconfirmed | blocked_users_confirmation |
+| `feat/gemma3-phase28-context-dispatch` | `4ceea508025650ed64b33190834d0b5c85f69db2` | archive_verified | unconfirmed / unconfirmed | blocked_users_confirmation |
+| `feature/minimal-chat` | `954f408ece2d7595bcb67447fa277acb9eaffc73` | archive_verified | unconfirmed / unconfirmed | blocked_users_confirmation |
+| `hardware/cpu/main` | `ae492a1be3b12c0ffd6f9987d0d959aceb4a9ad4` | contained_candidate | unconfirmed / unconfirmed | blocked_users_confirmation |
+| `hardware/cpu/work/HW-001` | `6959fbd39a4d71665efd39110310b4df9927bd7c` | contained_candidate | unconfirmed / unconfirmed | blocked_users_confirmation |
+| `hardware/gpu/main` | `60e137a422403efa7d8d4005240abf317ce87e24` | contained_candidate | unconfirmed / unconfirmed | blocked_users_confirmation |
+| `hardware/gpu/nvidia/main` | `60e137a422403efa7d8d4005240abf317ce87e24` | contained_candidate | unconfirmed / unconfirmed | blocked_users_confirmation |
+| `hardware/gpu/nvidia/work/GPU-001` | `b355ed53bd182d8ebb2b981911885bc58719e2e6` | contained_candidate | unconfirmed / unconfirmed | blocked_users_confirmation |
+| `hardware/main` | `60e137a422403efa7d8d4005240abf317ce87e24` | contained_candidate | unconfirmed / unconfirmed | blocked_users_confirmation |
+| `main` | `66f126c41165a012453acb1a2fd2add812d67105` | permanent | B / common_writer | never_delete |
+| `model-profiling` | `52b67662dff9409864dfd5da62059a1dfd4532cb` | archive_verified | unconfirmed / unconfirmed | blocked_users_confirmation |
+| `models/catalog/main` | `90e57f106fb664b0257775260044125ea85228e2` | contained_candidate | unconfirmed / unconfirmed | blocked_users_confirmation |
+| `models/catalog/work/CAT-001` | `1d3f4cb1a25c706d3097a1a4455cd59150c47847` | contained_candidate | unconfirmed / unconfirmed | blocked_users_confirmation |
+| `models/formats/gguf/main` | `da9eba7392395ed05e81296aa4c595dc61d7b35e` | contained_candidate | unconfirmed / unconfirmed | blocked_users_confirmation |
+| `models/formats/gguf/work/GGUF-001` | `088cb7c4ac4d335d5b58d1beb47cd03218bdde7a` | contained_candidate | unconfirmed / unconfirmed | blocked_users_confirmation |
+| `models/formats/gguf/work/GGUF-BLOCK-001` | `a4913c38d96aba8b879c70ee4db383abc8037d23` | contained_candidate | unconfirmed / unconfirmed | blocked_users_confirmation |
+| `models/formats/gguf/work/GGUF-FIXTURE-001` | `c298582935e4abd800f0cd293219e1c0489cd2b1` | contained_candidate | unconfirmed / unconfirmed | blocked_users_confirmation |
+| `models/formats/gguf/work/GGUF-FIXTURE-SUMMARY-001` | `26e41fef60a0ea87cbeb655794bf7dfa6bcc0da3` | contained_candidate | unconfirmed / unconfirmed | blocked_users_confirmation |
+| `models/formats/gguf/work/GGUF-INDEX-001` | `469f5b4807059199ed855fafbeabb8e8e4654c49` | contained_candidate | unconfirmed / unconfirmed | blocked_users_confirmation |
+| `models/formats/gguf/work/GGUF-KBLOCK-001` | `61f00a4b347d229aaa64a77c9bd93fc6600af45d` | contained_candidate | unconfirmed / unconfirmed | blocked_users_confirmation |
+| `models/formats/gguf/work/GGUF-META-001` | `a7e663fd3789ff25495d6be42f8f28115e8f9b37` | contained_candidate | unconfirmed / unconfirmed | blocked_users_confirmation |
+| `models/formats/gguf/work/GGUF-MULTITENSOR-FIXTURE-001` | `477e12b225593f8370241b8b45c5816c9b9846d0` | contained_candidate | unconfirmed / unconfirmed | blocked_users_confirmation |
+| `models/formats/gguf/work/GGUF-STRUCT-STABILITY-001` | `0e3e8e4fe714ec57978c83921fb294c971728429` | contained_candidate | unconfirmed / unconfirmed | blocked_users_confirmation |
+| `models/formats/gguf/work/GGUF-STRUCT-SUMMARY-001` | `f6052d99c51c3f2c17b745babf741bc68d256c0d` | contained_candidate | unconfirmed / unconfirmed | blocked_users_confirmation |
+| `models/formats/main` | `f4218833623a45ad5574cf17ef993a455265141d` | contained_candidate | unconfirmed / unconfirmed | blocked_users_confirmation |
+| `models/formats/work/GGUF-FIXTURE-001` | `3d6a49b96a70a9258820e4878e7c6cbd8787eec0` | contained_candidate | unconfirmed / unconfirmed | blocked_users_confirmation |
+| `models/formats/work/GGUF-FIXTURE-SUMMARY-001` | `294361d0968d853c167ef8dbc222d82fa7a32438` | contained_candidate | unconfirmed / unconfirmed | blocked_users_confirmation |
+| `models/formats/work/GGUF-MULTITENSOR-FIXTURE-001` | `da9eba7392395ed05e81296aa4c595dc61d7b35e` | contained_candidate | unconfirmed / unconfirmed | blocked_users_confirmation |
+| `models/formats/work/GGUF-STRUCT-STABILITY-001` | `01a0e11e4cae56f87a0738b97d95282d88ed371b` | contained_candidate | unconfirmed / unconfirmed | blocked_users_confirmation |
+| `models/formats/work/GGUF-STRUCT-SUMMARY-001` | `77bbf827dc1f92ead4257126ad4dc3750a575d24` | contained_candidate | unconfirmed / unconfirmed | blocked_users_confirmation |
+| `models/main` | `d3a2826522654806ae60e9caae71382d9ab74ed2` | contained_candidate | unconfirmed / unconfirmed | blocked_users_confirmation |
+| `models/work/GGUF-FIXTURE-001` | `96b561245ddd1dec6bccd24175c1fdfc2b2612e6` | contained_candidate | unconfirmed / unconfirmed | blocked_users_confirmation |
+| `models/work/GGUF-FIXTURE-SUMMARY-001` | `388564de883873f6a583b93f17b5863b88fecba7` | contained_candidate | unconfirmed / unconfirmed | blocked_users_confirmation |
+| `models/work/GGUF-MULTITENSOR-FIXTURE-001` | `f4218833623a45ad5574cf17ef993a455265141d` | contained_candidate | unconfirmed / unconfirmed | blocked_users_confirmation |
+| `models/work/GGUF-STRUCT-STABILITY-001` | `f280fb9528c78f2cf750bc5e4cf14305cf13bd8e` | contained_candidate | unconfirmed / unconfirmed | blocked_users_confirmation |
+| `models/work/GGUF-STRUCT-SUMMARY-001` | `53bcf601a13cc3f4d5c624d69229358aa5fc57ae` | contained_candidate | unconfirmed / unconfirmed | blocked_users_confirmation |
+| `runtime/work/MAIN-FLOW-001` | `f624b09b53e4fd80d075a29bd45a2834773672df` | contained_candidate | unconfirmed / unconfirmed | blocked_users_confirmation |
+| `work/BRANCH-ARCHIVE-001-record` | `12e2087f5040209c01a969248121ddd052f88dec` | contained_candidate | B / documentation_recording | in_use_for_this_publication_then_pending_cleanup |
+| `work/CONT-001-R2-ORCH-001` | `2afbfee834e2c11d4a71c6f8edffd938357a4212` | contained_candidate | unconfirmed / unconfirmed | blocked_users_confirmation |
+| `work/CONT-001-R2-close` | `ff3f0fb131e0e575dd7b527c93d709bd949a323e` | contained_candidate | unconfirmed / unconfirmed | blocked_users_confirmation |
+| `work/GGUF-FIXTURE-001` | `97b44491c7502d1123a3e856b57c85f30401ae58` | contained_candidate | unconfirmed / unconfirmed | blocked_users_confirmation |
+| `work/GGUF-FIXTURE-SUMMARY-001` | `0266a44aea496205dd55f648faf56b693656416d` | contained_candidate | unconfirmed / unconfirmed | blocked_users_confirmation |
+| `work/GGUF-MULTITENSOR-FIXTURE-001` | `d3a2826522654806ae60e9caae71382d9ab74ed2` | contained_candidate | unconfirmed / unconfirmed | blocked_users_confirmation |
+| `work/GGUF-STRUCT-STABILITY-001` | `b62e6fabaa2ffbb9bea06da6c976426321d8deb8` | contained_candidate | unconfirmed / unconfirmed | blocked_users_confirmation |
+| `work/GGUF-STRUCT-SUMMARY-001` | `c36957af18eac4d96ee77f937eb61a3930594af1` | contained_candidate | unconfirmed / unconfirmed | blocked_users_confirmation |
+| `work/MIG-016-delegated-close` | `a5f10c5ebf3824ed48beb3e3c249bc59d1d59204` | contained_candidate | unconfirmed / unconfirmed | blocked_users_confirmation |
+| `work/ORCH-SUCCESSION-BRANCH-LIFECYCLE` | `8b39fb478d7b6f63fa7c271b059098a1a0b514f4` | contained_candidate | unconfirmed / unconfirmed | blocked_users_confirmation |
 
-I campi none_published_found non certificano assenza di utilizzatori.
-Tutti i branch risultano ancora presenti. Nessun NODE passa ad archived.
+## Rilascio precedente consumato e cronologia
 
-| Branch | SHA | Storia | users_release / scritture | Incarichi e integrazioni | Gate |
-| --- | --- | --- | --- | --- | --- |
-| `ci/python-isolation` | `7d1c668bf68a62829946ab787613801305249a6f` | contained_candidate | unconfirmed / unconfirmed | none_published_found / release_unconfirmed | blocked_users_confirmation |
-| `docs/CAT-001-final-checkpoint` | `bbc6de5bbcf40f9b9052685b814f0f545a7d0ada` | contained_candidate | unconfirmed / unconfirmed | none_published_found / release_unconfirmed | blocked_users_confirmation |
-| `docs/CAT-MANUAL-001-complete` | `863cf14cdf999c22e2cf1375cc161cb2acb1413c` | contained_candidate | unconfirmed / unconfirmed | none_published_found / release_unconfirmed | blocked_users_confirmation |
-| `docs/DEP-001-final-checkpoint` | `3e1e023fcbc1087930d0b6b823d1dcc795d24dde` | contained_candidate | unconfirmed / unconfirmed | none_published_found / release_unconfirmed | blocked_users_confirmation |
-| `docs/DIAG-001-final` | `5343b4e01d0a99badc3f79fd03861a4b5c9b064a` | contained_candidate | unconfirmed / unconfirmed | none_published_found / release_unconfirmed | blocked_users_confirmation |
-| `docs/DIAG-MANUAL-001-complete` | `515bea063dba65436354fee3bf125b01d6ffb2cb` | contained_candidate | unconfirmed / unconfirmed | none_published_found / release_unconfirmed | blocked_users_confirmation |
-| `docs/GGUF-001-final-checkpoint` | `b3e27ed715931c015af8a38470b4ea8beee84996` | contained_candidate | unconfirmed / unconfirmed | none_published_found / release_unconfirmed | blocked_users_confirmation |
-| `docs/GGUF-BLOCK-001-final-checkpoint` | `091515bd20dea3de8e1e8e2f381cd588625dc2fc` | contained_candidate | unconfirmed / unconfirmed | none_published_found / release_unconfirmed | blocked_users_confirmation |
-| `docs/GGUF-BLOCK-MANUAL-001-complete` | `774de775be7c1498fb000aecd8b2fff843a41d06` | contained_candidate | unconfirmed / unconfirmed | none_published_found / release_unconfirmed | blocked_users_confirmation |
-| `docs/GGUF-FIXTURE-001-integrated` | `fe973443ac8bc89d2d9d0521e2f0bde3aeaf067f` | contained_candidate | unconfirmed / unconfirmed | none_published_found / release_unconfirmed | blocked_users_confirmation |
-| `docs/GGUF-FIXTURE-MANUAL-001-closure` | `503bf0e42d473625a955bd4583e25e740b5672b4` | contained_candidate | unconfirmed / unconfirmed | none_published_found / release_unconfirmed | blocked_users_confirmation |
-| `docs/GGUF-INDEX-001-final-checkpoint` | `751b2ed90dff7aafa0d502e6203ac81e0ca71883` | contained_candidate | unconfirmed / unconfirmed | none_published_found / release_unconfirmed | blocked_users_confirmation |
-| `docs/GGUF-INDEX-MANUAL-001-complete` | `97e0710ac348cf047ff39ddfbdd23bb1dfeb893e` | contained_candidate | unconfirmed / unconfirmed | none_published_found / release_unconfirmed | blocked_users_confirmation |
-| `docs/GGUF-KBLOCK-001-final-checkpoint` | `0e85f312e1853f245c99a69ec4db2d9c9f87b0f4` | contained_candidate | unconfirmed / unconfirmed | none_published_found / release_unconfirmed | blocked_users_confirmation |
-| `docs/GGUF-KBLOCK-MANUAL-001-and-MIG-FLOW-002-r2` | `4b12f5f81afdc60d30e2e0427cb31ac61c6fd482` | contained_candidate | unconfirmed / unconfirmed | none_published_found / release_unconfirmed | blocked_users_confirmation |
-| `docs/GGUF-MANUAL-001-complete` | `045a170a859a63e187fa5f291c46731e46a04a06` | contained_candidate | unconfirmed / unconfirmed | none_published_found / release_unconfirmed | blocked_users_confirmation |
-| `docs/GGUF-META-001-final-checkpoint` | `e381a91df19dcf94120c0f8b4a7ae629677797ff` | contained_candidate | unconfirmed / unconfirmed | none_published_found / release_unconfirmed | blocked_users_confirmation |
-| `docs/GGUF-META-MANUAL-001-complete` | `88bca19509cbae97dab9833f1f6776f2e72c2ae3` | contained_candidate | unconfirmed / unconfirmed | none_published_found / release_unconfirmed | blocked_users_confirmation |
-| `docs/GGUF-STRUCT-STABILITY-001-integrated` | `fe56de41cef7193354a0edac7463f7f29e5ede36` | contained_candidate | unconfirmed / unconfirmed | none_published_found / release_unconfirmed | blocked_users_confirmation |
-| `docs/GGUF-STRUCT-SUMMARY-001-integrated` | `5c1b2fb259d4496b04af2309d1e2c8889eda71d5` | contained_candidate | unconfirmed / unconfirmed | none_published_found / release_unconfirmed | blocked_users_confirmation |
-| `docs/GGUF-STRUCT-SUMMARY-MANUAL-001-closure` | `cc7403486a24d669865cbcdb108605a3b6a84e06` | contained_candidate | unconfirmed / unconfirmed | none_published_found / release_unconfirmed | blocked_users_confirmation |
-| `docs/GPU-001-final-checkpoint` | `25fe46f59be1a3f0d8f3ea3c52ad77ce6daa1083` | contained_candidate | unconfirmed / unconfirmed | none_published_found / release_unconfirmed | blocked_users_confirmation |
-| `docs/GPU-MANUAL-001-complete` | `31384aed606ba620b0b428037590f2765f8cd797` | contained_candidate | unconfirmed / unconfirmed | none_published_found / release_unconfirmed | blocked_users_confirmation |
-| `docs/HW-001-final-checkpoint` | `1779f7db5f1bdd525796a744c09255b865021d5c` | contained_candidate | unconfirmed / unconfirmed | none_published_found / release_unconfirmed | blocked_users_confirmation |
-| `docs/HW-MANUAL-001-complete` | `33f6e75cf16595718328d357873e2d67fef443c9` | contained_candidate | unconfirmed / unconfirmed | none_published_found / release_unconfirmed | blocked_users_confirmation |
-| `docs/MAIN-FLOW-001-final` | `dcc0908f7fa89d753da80c0d37c858dd8c98903a` | contained_candidate | unconfirmed / unconfirmed | none_published_found / release_unconfirmed | blocked_users_confirmation |
-| `docs/MAIN-MANUAL-001-complete` | `0282c78bf3de8bf55d4c0344b75aea712a20f143` | contained_candidate | unconfirmed / unconfirmed | none_published_found / release_unconfirmed | blocked_users_confirmation |
-| `docs/MIG-012-checkpoint-header` | `198ddc38c4b8771051660fe5283899dae5414d05` | contained_candidate | unconfirmed / unconfirmed | none_published_found / release_unconfirmed | blocked_users_confirmation |
-| `docs/MIG-014-manual-closure` | `624efbe451d31ee84a8ef09284b64fe0591f5e0a` | contained_candidate | unconfirmed / unconfirmed | none_published_found / release_unconfirmed | blocked_users_confirmation |
-| `docs/MIG-015-integrated` | `53a888e06c98eac2925c7e35b9d8667cf09110d5` | contained_candidate | unconfirmed / unconfirmed | none_published_found / release_unconfirmed | blocked_users_confirmation |
-| `docs/MIG-015-manual-closure` | `48c45fb4e198e2d4ba4ae0ef6726a80e450c9cad` | contained_candidate | unconfirmed / unconfirmed | none_published_found / release_unconfirmed | blocked_users_confirmation |
-| `docs/MIG-016-integrated` | `8db9dfae31fa19c795ddd24a5bfcf8adafa49e97` | contained_candidate | unconfirmed / unconfirmed | none_published_found / release_unconfirmed | blocked_users_confirmation |
-| `docs/PY-001-final-checkpoint` | `9a9235c9f0ea8a0c2168fe0261175f23c1ac48ee` | contained_candidate | unconfirmed / unconfirmed | none_published_found / release_unconfirmed | blocked_users_confirmation |
-| `docs/PY-MANUAL-001-confirmed` | `72f133aad595dcec9e92ff82e90622f6f8f80a48` | contained_candidate | unconfirmed / unconfirmed | none_published_found / release_unconfirmed | blocked_users_confirmation |
-| `docs/PY-MANUAL-001-positive-run` | `b16b3843b323587b516aff77740ae4440826e809` | contained_candidate | unconfirmed / unconfirmed | none_published_found / release_unconfirmed | blocked_users_confirmation |
-| `docs/REMOTE-001` | `a4e342f60c48af794cf9dfc179c8d27fda7a3517` | contained_candidate | unconfirmed / unconfirmed | none_published_found / release_unconfirmed | blocked_users_confirmation |
-| `docs/SYNC-001-pre-resume-gate` | `1eb0c5101d0017739cff3b06666579b7531a7f04` | contained_candidate | unconfirmed / unconfirmed | none_published_found / release_unconfirmed | blocked_users_confirmation |
-| `docs/SYNC-001` | `667dafbdc9862598ab5dca298667c50e96627a82` | contained_candidate | unconfirmed / unconfirmed | none_published_found / release_unconfirmed | blocked_users_confirmation |
-| `environment/dependencies/main` | `b2bc0095407edf766c2563bbedc2e69889b074ce` | contained_candidate | unconfirmed / unconfirmed | none_published_found / release_unconfirmed | blocked_users_confirmation |
-| `environment/dependencies/work/DEP-001` | `ea708c7471584e5972863a657b4b402d5339d0fe` | contained_candidate | unconfirmed / unconfirmed | none_published_found / release_unconfirmed | blocked_users_confirmation |
-| `environment/diagnostics/main` | `3e8d1c19e35914ee69b287eb1a01d15677212543` | contained_candidate | unconfirmed / unconfirmed | none_published_found / release_unconfirmed | blocked_users_confirmation |
-| `environment/diagnostics/work/DIAG-001` | `17a1cb65c98be40d8508b16f8ae69f0aa7fef3a3` | contained_candidate | unconfirmed / unconfirmed | none_published_found / release_unconfirmed | blocked_users_confirmation |
-| `environment/main` | `3e8d1c19e35914ee69b287eb1a01d15677212543` | contained_candidate | unconfirmed / unconfirmed | none_published_found / release_unconfirmed | blocked_users_confirmation |
-| `environment/python/main` | `b80520ad903ff18f93398725ea95cd91f51da5d8` | archive_verified | unconfirmed / unconfirmed | none_published_found / release_unconfirmed | blocked_users_confirmation |
-| `environment/python/work/entrypoint` | `b80520ad903ff18f93398725ea95cd91f51da5d8` | archive_verified | unconfirmed / unconfirmed | none_published_found / release_unconfirmed | blocked_users_confirmation |
-| `environment/python/work/inspect-venv` | `80218739327666b0250c3715ba9cfb6fe1f114d5` | archive_verified | unconfirmed / unconfirmed | none_published_found / release_unconfirmed | blocked_users_confirmation |
-| `environment/work/DEP-001-promotion` | `26a287f03bc83e4b025d94c548eaf3b086cd0012` | contained_candidate | unconfirmed / unconfirmed | none_published_found / release_unconfirmed | blocked_users_confirmation |
-| `environment/work/PY-001-entrypoint` | `5fc816407f5c8873fd2ed39baa9d5293a9810c73` | contained_candidate | unconfirmed / unconfirmed | none_published_found / release_unconfirmed | blocked_users_confirmation |
-| `feat/gemma3-flash-kv-policy` | `dc6039be1f17e09c6ff407dbee1ee6783eecb853` | archive_verified | unconfirmed / unconfirmed | none_published_found / release_unconfirmed | blocked_users_confirmation |
-| `feat/gemma3-kv-matrix-18` | `d0ffdea9711bebd18da9b1e7866d3f9cd8c2f09a` | archive_verified | unconfirmed / unconfirmed | none_published_found / release_unconfirmed | blocked_users_confirmation |
-| `feat/gemma3-kv-precision-plans` | `5080cf0c74ed1b92c0cb4530895c9911e3e189b7` | archive_verified | unconfirmed / unconfirmed | none_published_found / release_unconfirmed | blocked_users_confirmation |
-| `feat/gemma3-native-context-probes` | `9ed7b187126dce38a3609c1e9e62bd6a17b786bd` | archive_verified | unconfirmed / unconfirmed | none_published_found / release_unconfirmed | blocked_users_confirmation |
-| `feat/gemma3-phase27-numeric-benchmark` | `c09432b09f5f65e8f8428835d4347311d86ae6af` | archive_verified | unconfirmed / unconfirmed | none_published_found / release_unconfirmed | blocked_users_confirmation |
-| `feat/gemma3-phase28-context-dispatch` | `4ceea508025650ed64b33190834d0b5c85f69db2` | archive_verified | unconfirmed / unconfirmed | none_published_found / release_unconfirmed | blocked_users_confirmation |
-| `feature/minimal-chat` | `954f408ece2d7595bcb67447fa277acb9eaffc73` | archive_verified | unconfirmed / unconfirmed | none_published_found / release_unconfirmed | blocked_users_confirmation |
-| `hardware/cpu/main` | `ae492a1be3b12c0ffd6f9987d0d959aceb4a9ad4` | contained_candidate | unconfirmed / unconfirmed | none_published_found / release_unconfirmed | blocked_users_confirmation |
-| `hardware/cpu/work/HW-001` | `6959fbd39a4d71665efd39110310b4df9927bd7c` | contained_candidate | unconfirmed / unconfirmed | none_published_found / release_unconfirmed | blocked_users_confirmation |
-| `hardware/gpu/main` | `60e137a422403efa7d8d4005240abf317ce87e24` | contained_candidate | unconfirmed / unconfirmed | none_published_found / release_unconfirmed | blocked_users_confirmation |
-| `hardware/gpu/nvidia/main` | `60e137a422403efa7d8d4005240abf317ce87e24` | contained_candidate | unconfirmed / unconfirmed | none_published_found / release_unconfirmed | blocked_users_confirmation |
-| `hardware/gpu/nvidia/work/GPU-001` | `b355ed53bd182d8ebb2b981911885bc58719e2e6` | contained_candidate | unconfirmed / unconfirmed | none_published_found / release_unconfirmed | blocked_users_confirmation |
-| `hardware/main` | `60e137a422403efa7d8d4005240abf317ce87e24` | contained_candidate | unconfirmed / unconfirmed | none_published_found / release_unconfirmed | blocked_users_confirmation |
-| `main` | `38f066ff81cec8430e4399f2c0144c07c2d2c22d` | permanent | permanent_protected | B common writer | never_delete |
-| `model-profiling` | `52b67662dff9409864dfd5da62059a1dfd4532cb` | archive_verified | unconfirmed / unconfirmed | none_published_found / release_unconfirmed | blocked_users_confirmation |
-| `models/catalog/main` | `90e57f106fb664b0257775260044125ea85228e2` | contained_candidate | unconfirmed / unconfirmed | none_published_found / release_unconfirmed | blocked_users_confirmation |
-| `models/catalog/work/CAT-001` | `1d3f4cb1a25c706d3097a1a4455cd59150c47847` | contained_candidate | unconfirmed / unconfirmed | none_published_found / release_unconfirmed | blocked_users_confirmation |
-| `models/formats/gguf/main` | `da9eba7392395ed05e81296aa4c595dc61d7b35e` | contained_candidate | unconfirmed / unconfirmed | none_published_found / release_unconfirmed | blocked_users_confirmation |
-| `models/formats/gguf/work/GGUF-001` | `088cb7c4ac4d335d5b58d1beb47cd03218bdde7a` | contained_candidate | unconfirmed / unconfirmed | none_published_found / release_unconfirmed | blocked_users_confirmation |
-| `models/formats/gguf/work/GGUF-BLOCK-001` | `a4913c38d96aba8b879c70ee4db383abc8037d23` | contained_candidate | unconfirmed / unconfirmed | none_published_found / release_unconfirmed | blocked_users_confirmation |
-| `models/formats/gguf/work/GGUF-FIXTURE-001` | `c298582935e4abd800f0cd293219e1c0489cd2b1` | contained_candidate | unconfirmed / unconfirmed | none_published_found / release_unconfirmed | blocked_users_confirmation |
-| `models/formats/gguf/work/GGUF-FIXTURE-SUMMARY-001` | `26e41fef60a0ea87cbeb655794bf7dfa6bcc0da3` | contained_candidate | unconfirmed / unconfirmed | none_published_found / release_unconfirmed | blocked_users_confirmation |
-| `models/formats/gguf/work/GGUF-INDEX-001` | `469f5b4807059199ed855fafbeabb8e8e4654c49` | contained_candidate | unconfirmed / unconfirmed | none_published_found / release_unconfirmed | blocked_users_confirmation |
-| `models/formats/gguf/work/GGUF-KBLOCK-001` | `61f00a4b347d229aaa64a77c9bd93fc6600af45d` | contained_candidate | unconfirmed / unconfirmed | none_published_found / release_unconfirmed | blocked_users_confirmation |
-| `models/formats/gguf/work/GGUF-META-001` | `a7e663fd3789ff25495d6be42f8f28115e8f9b37` | contained_candidate | unconfirmed / unconfirmed | none_published_found / release_unconfirmed | blocked_users_confirmation |
-| `models/formats/gguf/work/GGUF-MULTITENSOR-FIXTURE-001` | `477e12b225593f8370241b8b45c5816c9b9846d0` | contained_candidate | unconfirmed / unconfirmed | none_published_found / release_unconfirmed | blocked_users_confirmation |
-| `models/formats/gguf/work/GGUF-STRUCT-STABILITY-001` | `0e3e8e4fe714ec57978c83921fb294c971728429` | contained_candidate | unconfirmed / unconfirmed | none_published_found / release_unconfirmed | blocked_users_confirmation |
-| `models/formats/gguf/work/GGUF-STRUCT-SUMMARY-001` | `f6052d99c51c3f2c17b745babf741bc68d256c0d` | contained_candidate | unconfirmed / unconfirmed | none_published_found / release_unconfirmed | blocked_users_confirmation |
-| `models/formats/main` | `f4218833623a45ad5574cf17ef993a455265141d` | contained_candidate | unconfirmed / unconfirmed | none_published_found / release_unconfirmed | blocked_users_confirmation |
-| `models/formats/work/GGUF-FIXTURE-001` | `3d6a49b96a70a9258820e4878e7c6cbd8787eec0` | contained_candidate | unconfirmed / unconfirmed | none_published_found / release_unconfirmed | blocked_users_confirmation |
-| `models/formats/work/GGUF-FIXTURE-SUMMARY-001` | `294361d0968d853c167ef8dbc222d82fa7a32438` | contained_candidate | unconfirmed / unconfirmed | none_published_found / release_unconfirmed | blocked_users_confirmation |
-| `models/formats/work/GGUF-MULTITENSOR-FIXTURE-001` | `da9eba7392395ed05e81296aa4c595dc61d7b35e` | contained_candidate | unconfirmed / unconfirmed | none_published_found / release_unconfirmed | blocked_users_confirmation |
-| `models/formats/work/GGUF-STRUCT-STABILITY-001` | `01a0e11e4cae56f87a0738b97d95282d88ed371b` | contained_candidate | unconfirmed / unconfirmed | none_published_found / release_unconfirmed | blocked_users_confirmation |
-| `models/formats/work/GGUF-STRUCT-SUMMARY-001` | `77bbf827dc1f92ead4257126ad4dc3750a575d24` | contained_candidate | unconfirmed / unconfirmed | none_published_found / release_unconfirmed | blocked_users_confirmation |
-| `models/main` | `d3a2826522654806ae60e9caae71382d9ab74ed2` | contained_candidate | unconfirmed / unconfirmed | none_published_found / release_unconfirmed | blocked_users_confirmation |
-| `models/work/GGUF-FIXTURE-001` | `96b561245ddd1dec6bccd24175c1fdfc2b2612e6` | contained_candidate | unconfirmed / unconfirmed | none_published_found / release_unconfirmed | blocked_users_confirmation |
-| `models/work/GGUF-FIXTURE-SUMMARY-001` | `388564de883873f6a583b93f17b5863b88fecba7` | contained_candidate | unconfirmed / unconfirmed | none_published_found / release_unconfirmed | blocked_users_confirmation |
-| `models/work/GGUF-MULTITENSOR-FIXTURE-001` | `f4218833623a45ad5574cf17ef993a455265141d` | contained_candidate | unconfirmed / unconfirmed | none_published_found / release_unconfirmed | blocked_users_confirmation |
-| `models/work/GGUF-STRUCT-STABILITY-001` | `f280fb9528c78f2cf750bc5e4cf14305cf13bd8e` | contained_candidate | unconfirmed / unconfirmed | none_published_found / release_unconfirmed | blocked_users_confirmation |
-| `models/work/GGUF-STRUCT-SUMMARY-001` | `53bcf601a13cc3f4d5c624d69229358aa5fc57ae` | contained_candidate | unconfirmed / unconfirmed | none_published_found / release_unconfirmed | blocked_users_confirmation |
-| `runtime/work/MAIN-FLOW-001` | `f624b09b53e4fd80d075a29bd45a2834773672df` | contained_candidate | unconfirmed / unconfirmed | none_published_found / release_unconfirmed | blocked_users_confirmation |
-| `work/BRANCH-ARCHIVE-001-prerequisites` | `0b1ca5c3785e70eb24f503ac53ef3e3af9298e72` | contained_candidate | confirmed_by_owner / ceased | B; complete; no pending users | eligible_after_publication_merge |
-| `work/CONT-001-R2-ORCH-001` | `2afbfee834e2c11d4a71c6f8edffd938357a4212` | contained_candidate | unconfirmed / unconfirmed | none_published_found / release_unconfirmed | blocked_users_confirmation |
-| `work/CONT-001-R2-close` | `ff3f0fb131e0e575dd7b527c93d709bd949a323e` | contained_candidate | unconfirmed / unconfirmed | none_published_found / release_unconfirmed | blocked_users_confirmation |
-| `work/GGUF-FIXTURE-001` | `97b44491c7502d1123a3e856b57c85f30401ae58` | contained_candidate | unconfirmed / unconfirmed | none_published_found / release_unconfirmed | blocked_users_confirmation |
-| `work/GGUF-FIXTURE-SUMMARY-001` | `0266a44aea496205dd55f648faf56b693656416d` | contained_candidate | unconfirmed / unconfirmed | none_published_found / release_unconfirmed | blocked_users_confirmation |
-| `work/GGUF-MULTITENSOR-FIXTURE-001` | `d3a2826522654806ae60e9caae71382d9ab74ed2` | contained_candidate | unconfirmed / unconfirmed | none_published_found / release_unconfirmed | blocked_users_confirmation |
-| `work/GGUF-STRUCT-STABILITY-001` | `b62e6fabaa2ffbb9bea06da6c976426321d8deb8` | contained_candidate | unconfirmed / unconfirmed | none_published_found / release_unconfirmed | blocked_users_confirmation |
-| `work/GGUF-STRUCT-SUMMARY-001` | `c36957af18eac4d96ee77f937eb61a3930594af1` | contained_candidate | unconfirmed / unconfirmed | none_published_found / release_unconfirmed | blocked_users_confirmation |
-| `work/MIG-016-delegated-close` | `a5f10c5ebf3824ed48beb3e3c249bc59d1d59204` | contained_candidate | unconfirmed / unconfirmed | none_published_found / release_unconfirmed | blocked_users_confirmation |
-| `work/ORCH-20261017-B-claim` | `1149ed1556e2961034a5b3d0d23ea464ac1f436e` | contained_candidate | confirmed_by_owner / ceased | B; complete; no pending users | eligible_after_publication_merge |
-| `work/ORCH-SUCCESSION-BRANCH-LIFECYCLE` | `8b39fb478d7b6f63fa7c271b059098a1a0b514f4` | contained_candidate | unconfirmed / unconfirmed | none_published_found / release_unconfirmed | blocked_users_confirmation |
+L'assegnazione e i due SHA erano pubblicati dalla PR #107:
+[BRANCH_AUDIT.md allo SHA dell'assegnazione](https://github.com/yannericetchart-dev/ruth/blob/66f126c41165a012453acb1a2fd2add812d67105/BRANCH_AUDIT.md).
+Lo snapshot precedente (100 branch prima del ramo di pubblicazione e
+101 dopo la PR #107), il rilascio e i suoi controlli restano consultabili
+in quel commit immutabile. Ora i due ref sono assenti e l'incarico concluso.
+Nessun elenco eliminabile residuo o nuovo rilascio e' pubblicato qui.
 
 ## Cronologia: snapshot iniziale e prerequisiti PR #106
 

@@ -2,22 +2,17 @@
 
 ## Stato corrente verificato — 17 ottobre 2026
 
-Responsabile unico: ORCH-20261017-B, ripresa esplicitamente richiesta dall'utente.
-Chat organizzative: "Ruth - Work Cloud Orchestrator" e
-"Ruth - Work Local Orchestrator"; il nome non trasferisce titolarita.
-Base verificata: 38f066ff81cec8430e4399f2c0144c07c2d2c22d. PR #106 merged con CI main
-39055668218 success. MIG-016 resta chiusa; MIG-017 non autorizzata.
-BRANCH-ARCHIVE-001: complete. L'esecutore locale assegnato dalla PR #106
-ha creato 11 tag annotati e si e' fermato prima delle cancellazioni.
-B ha verificato autonomamente tutti gli 11 ref heads e tags, gli oggetti
-tag annotati e la dereferenziazione al commit atteso: nessuna differenza.
-Capacita create-tag autenticata: provata dall'esecutore; delete-ref:
-NON TENTATA. B dispone della connessione per documenti/PR/merge, non
-attribuisce a se' le mutazioni o le verifiche locali dell'esecutore.
-Inventario live: 100 branch (pagine 100/0), main piu' 88 contenuti e
-11 non contenuti; zero PR/issue aperte, 11 tag. Branch eliminati: 0.
-HEAD locale riferita dall'esecutore: 5b77b08693a808c359b294bf1ab40f4fba8f5137,
-working tree pulito e invariato; nessuna sync o esecuzione applicativa.
+Responsabile: ORCH-20261017-B. Base riconfermata:
+66f126c41165a012453acb1a2fd2add812d67105 (PR #107 merged; CI success).
+BRANCH-ARCHIVE-001 resta complete. Tutti gli 11 ref tags, oggetti annotati
+e commit sotto sono stati riletti indipendentemente da B, insieme agli
+11 branch originari: nessuna differenza rispetto alla PR #107.
+BRANCH-DELETE-001 complete: 2 rami documentali di B eliminati dall'esecutore
+con mutazione condizionata allo SHA; assenza remota verificata da B.
+Capacita create-tag e delete-ref provate dall'esecutore; B non ha eseguito
+queste mutazioni. Inventario alla verifica: 99 branch, zero PR/issue aperte,
+11 tag. Le due cancellazioni non coinvolgono alcuna riga di questo registro.
+Dettagli e riconciliazione della seconda lettura in BRANCH_AUDIT.md.
 
 Decisione vigente: BRANCH-LIFECYCLE-001. Gli 11 tag sotto sono ora fonti
 remote esistenti, durature e immutabili. I branch originali sono ancora
@@ -61,7 +56,7 @@ dalla cancellazione: nessuna attesa circolare. Esecutore locale conferma
 solo le proprie attivita, non quelle di altre chat.
 
 Per tutti gli 11 rami di questa tabella: archive verified;
-operational_references effective_on_this_pr_merge;
+operational_references verified_since_pr_107;
 users_release unconfirmed; writes_ceased unconfirmed;
 other_assignments none_published_found; integrations_release unconfirmed;
 deletion blocked_users_confirmation. Non sono nell'elenco eliminabile.

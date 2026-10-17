@@ -39,9 +39,10 @@ Solo main e' permanente. Le approvazioni valide restano valide; nessun
 nuovo scope e' autorizzato dal cambio chat.
 Vedere ORCHESTRATOR_HANDOFF.md, SUCCESSOR_MESSAGE.md, BRANCH_AUDIT.md
 e BRANCH_ARCHIVE.md. Gli 11 tag annotati sono creati e verificati;
-BRANCH-ARCHIVE-001 complete. Nessun ramo eliminato; delete-ref non tentata.
-BRANCH_AUDIT.md rilascia soltanto due rami documentali di B dopo merge/CI
-della pubblicazione corrente. Gli altri rami richiedono conferme utilizzatori.
+BRANCH-ARCHIVE-001 complete. BRANCH-DELETE-001 complete: due rami documentali
+eliminati con condizione SHA e assenza remota verificata; capacita delete-ref
+provata dall'esecutore. BRANCH-CLEANUP-001 resta aperto: gli altri branch
+richiedono rilascio individuale. Nessun nuovo elenco eliminabile assegnato.
 
 ## Letture di ripresa
 
