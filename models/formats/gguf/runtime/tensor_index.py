@@ -21,6 +21,10 @@ _MAX_ALIGNMENT = 1024 * 1024
 # Only uncompressed scalar GGML types whose byte count is unambiguous.
 # Quantized and future types are not interpreted without block-size rules.
 _SCALAR_BYTES = {0: 4, 1: 2, 24: 1, 25: 2, 26: 4, 27: 8, 28: 8, 30: 2}
+# Restricted, authoritative GGML types: (elements per block, bytes per block).
+# No dequantization and no assumptions about newer or other layouts.
+_BLOCK_SIZES = {2: (32, 18), 3: (32, 20), 6: (32, 22),
+                7: (32, 24), 8: (32, 34)}
 
 
 @dataclass(frozen=True)
@@ -42,7 +46,7 @@ class GGUFTensorIndexReport:
         return len(self.models)
 
 
-def _parse(file) -> tuple[int, int]:
+def _parse(file, *, validate_blocks: bool = False) -> tuple[int, int]:
     cursor = _Cursor(file)
     raw = cursor.read(24)
     if raw[:4] != b"GGUF":
@@ -103,10 +107,13 @@ def _parse(file) -> tuple[int, int]:
             if not 1 <= ndims <= _MAX_DIMENSIONS:
                 raise _ParseError("invalid_dimensions")
             nelems = 1
-            for _ in range(ndims):
+            first_dimension = None
+            for axis in range(ndims):
                 dimension = cursor.number(8, order)
                 if not dimension:
                     raise _ParseError("invalid_dimensions")
+                if axis == 0:
+                    first_dimension = dimension
                 if nelems > _MAX_ELEMENTS // dimension:
                     raise _ParseError("limit_exceeded")
                 nelems *= dimension
@@ -119,6 +126,11 @@ def _parse(file) -> tuple[int, int]:
             offsets.add(offset)
             bytes_per_element = _SCALAR_BYTES.get(kind)
             extent = None if bytes_per_element is None else nelems * bytes_per_element
+            if extent is None and validate_blocks and kind in _BLOCK_SIZES:
+                block_elements, block_bytes = _BLOCK_SIZES[kind]
+                if first_dimension % block_elements:
+                    raise _ParseError("invalid_block_dimension")
+                extent = (nelems // block_elements) * block_bytes
             if extent is None:
                 unknown_count += 1
             descriptors.append((offset, extent))
@@ -147,7 +159,7 @@ def _parse(file) -> tuple[int, int]:
     return tensor_count, unknown_count
 
 
-def _inspect(record: ModelRecord, root: Path) -> GGUFTensorIndex:
+def _inspect(record: ModelRecord, root: Path, *, validate_blocks: bool = False) -> GGUFTensorIndex:
     if record.format != "gguf":
         return GGUFTensorIndex(record.id, "not_gguf")
     if record.status == "missing":
@@ -159,7 +171,7 @@ def _inspect(record: ModelRecord, root: Path) -> GGUFTensorIndex:
     try:
         fd = os.open(path, flags)
         with os.fdopen(fd, "rb") as stream:
-            count, unknown = _parse(stream)
+            count, unknown = _parse(stream, validate_blocks=validate_blocks)
         return GGUFTensorIndex(record.id, "size_unverified" if unknown else "index_checked", count, unknown)
     except _ParseError as error:
         return GGUFTensorIndex(record.id, error.code)
