@@ -108,7 +108,7 @@ class StructuralStabilityTests(unittest.TestCase):
             report = self.run_summary()
         self.assertEqual(report.status, "invalid")
         self.assertEqual(report.models[-1].reason, "STABILITY:unavailable")
-        self.assertEqual(inspect.call_count, 3)
+        self.assertEqual(inspect.call_count, 4)
 
 
 if __name__ == "__main__":

@@ -14,7 +14,7 @@ class PipelineTests(unittest.TestCase):
     def test_synthetic_chain(self):
         result = run_fixture_pipeline()
         self.assertEqual(result.status, "passed", result)
-        self.assertEqual(result.fixtures, 3)
+        self.assertEqual(result.fixtures, 4)
         self.assertEqual(result.stages, (
             "CAT=ready", "GGUF=inspected", "META=inspected",
             "INDEX=partial", "BLOCKS=partial", "KBLOCKS=inspected",
@@ -26,15 +26,15 @@ class PipelineTests(unittest.TestCase):
             self.assertEqual(catalog(project_root=root).status, "not_configured")
             _create_fixture_catalog(root)
             self.assertEqual(tuple(x.byte_order for x in inspect_headers(project_root=root).headers),
-                             ("little", "big", "little"))
+                             ("little", "big", "little", "little"))
             self.assertEqual(tuple(x.architecture for x in inspect_all_metadata(project_root=root).models),
-                             ("llama", "llama", "llama"))
+                             ("llama", "llama", "llama", "llama"))
             self.assertEqual(tuple(x.size_unverified for x in inspect_all_tensor_indexes(project_root=root).models),
-                             (0, 1, 1))
+                             (0, 1, 1, 1))
             self.assertEqual(tuple(x.size_unverified for x in inspect_all_block_layouts(project_root=root).models),
-                             (0, 0, 1))
+                             (0, 0, 1, 1))
             self.assertEqual(tuple(x.size_unverified for x in inspect_all_kblock_layouts(project_root=root).models),
-                             (0, 0, 0))
+                             (0, 0, 0, 0))
 
     def test_corrupt_magic_is_rejected(self):
         with TemporaryDirectory() as temp:
