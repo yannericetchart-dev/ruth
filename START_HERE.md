@@ -204,3 +204,18 @@ tipi K-quant supportati e non i byte dei tensori.
 **GGUF-KBLOCK-MANUAL-001 pending** dopo merge documentale:
 prova personale di Ruth e fixture sintetiche prima di
 qualunque nuova migrazione. Le note candidate sono storiche.
+
+## MIG-FLOW-002 revisione 2 e GGUF-KBLOCK-MANUAL-001 (17 ottobre 2026)
+
+L'utente dispone che, se incolla un log di collaudo personale completo,
+positivo e riferito alla revisione main verificata, esso costituisca
+accettazione sufficiente: non chiedere un secondo consenso. Completare
+autonomamente checkpoint, mappe, PR/CI/merge e proporre lo scope successivo,
+senza scriverne il codice prima del nuovo verde (MIG-FLOW-001).
+Questo prevale sulle istruzioni storiche di conferma separata.
+
+Prova MIG-011: flusso Ruth 11 fasi e 9 test sintetici K-block
+superati (`OK`) sul commit `233efc358f56a66d2abf796fa8e20a476aa788cf`.
+GGUF-KBLOCK-MANUAL-001 e MIG-011 complete dopo la chiusura
+documentale. Catalogo `not_configured` valido; nessun GGUF reale
+verificato. Leggere l'ultimo CHECKPOINT per lo SHA di chiusura.

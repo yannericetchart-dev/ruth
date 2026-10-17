@@ -1,9 +1,9 @@
 # Ruth: checkpoint di progetto
 
-Revisione documentale: 35 (indice main); CONT-001 revisione 1.
+Revisione documentale: 36 (indice main); CONT-001 revisione 1.
 Fase 3: migrazione incrementale per componente.
-Stato: **GGUF-KBLOCK-001 implementata, verificata in CI, integrata in main;
-GGUF-KBLOCK-MANUAL-001 in attesa di collaudo personale**.
+Stato: **GGUF-KBLOCK-001 implementata, verificata in CI, integrata in main
+e collaudata personalmente (GGUF-KBLOCK-MANUAL-001 complete)**.
 GGUF-BLOCK-MANUAL-001 resta complete.
 GGUF-INDEX-MANUAL-001 rimane complete.
 GGUF-MANUAL-001 e CAT-MANUAL-001 restano complete.
@@ -497,3 +497,37 @@ e DIAG-SCOPE-001. SYNC-001 resta storica/superseded.
   inattivo; no CUDA, backend, download, inferenza.
   Prossima migrazione bloccata fino a collaudo personale
   e separata approvazione di un nuovo scope.
+
+## GGUF-KBLOCK-MANUAL-001 accettata; MIG-FLOW-002 revisione 2 (17 ottobre 2026)
+
+- Prova comunicata dall'utente il 17 ottobre 2026 per main
+  `233efc358f56a66d2abf796fa8e20a476aa788cf`, risolto e confrontato al ref heads/main GitHub:
+  flusso normale `.venv/bin/python main.py` concluso senza errori
+  su undici fasi in ordine, inclusa KBLOCKS.
+- CAT, GGUF, META, INDEX, BLOCKS, KBLOCKS: `not_configured`
+  come skip validi con catalogo opzionale assente.
+- Suite mirata `test_kblocks.py`: **9 test superati, esito OK**,
+  senza failure; verifica manuale sintetica distinta dalla
+  verifica precedente CI e dall'uso di un GGUF reale.
+- Evidenza positiva sufficiente come accettazione personale ai sensi
+  della nuova MIG-FLOW-002 revisione 2; l'utente ha autorizzato
+  espressamente la chiusura automatica senza una seconda conferma.
+- Nessun GGUF reale, dato tensore, dequantizzazione, CUDA,
+  backend, download o inferenza collaudati. Nessun dato host,
+  path, output grezzo o log pubblicato (DATA-001).
+- Stato finale MIG-011: implementation **complete**;
+  verification **passed** (CI e fixture sintetiche);
+  integration **merged** (PR #68); manual acceptance **passed**
+  (GGUF-KBLOCK-MANUAL-001). ROOT MIG-011 **complete**,
+  `blocked_by=[]`. Non vi sono migrazioni aggiuntive autorizzate.
+- `local_sync: verified_on_tested_revision` per
+  `233efc358f56a66d2abf796fa8e20a476aa788cf` sulla base della prova utente;
+  `local_sync: pending_docs_fast_forward` per il successivo
+  commit documentale main. Il clone locale non e' stato modificato
+  dall'assistente.
+- Regola stabile MIG-FLOW-002-R2: quando l'utente incolla prova
+  sufficiente di SHA main, flusso integrato e test specifici
+  passati, registrare accettazione direttamente, senza un
+  secondo "si"; con evidenze non sufficienti o errori non chiudere.
+  Dopo merge proporre lo scope successivo, da approvare con
+  MIG-FLOW-001. Le precedenti note manual pending sono storiche.
