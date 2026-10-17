@@ -409,3 +409,15 @@ GPU-MANUAL-001 richiesta solo dopo main, secondo MIG-FLOW-002.
 - Le PR #53-#57 avevano gia' integrato e verificato tecnicamente
   la nona fase INDEX; la conferma personale successiva completa MIG-009.
 - Prossimo componente non approvato; Kaggle inattivo.
+
+## MIG-010: GGUF-BLOCK-SCOPE-001 approvato (17 ottobre 2026)
+
+- Perimetro: cinque tipi GGML quantizzati con 32 elementi per
+  blocco, strutture bounded, verifica offset/ingombro senza
+  leggere contenuti tensor o effettuare inferenza.
+- API inspect_block_layout e inspect_all_block_layouts; decimo
+  passo default Ruth, mirato `gguf-blocks`. Nessun download.
+- Scope [GGUF-BLOCK-SCOPE-001](models/formats/gguf/BLOCK_SCOPE.md).
+- Candidate in branch remoto, test e mappe in preparazione,
+  CI e promozioni ancora da verificare. Dopo il merge
+  GGUF-BLOCK-MANUAL-001 personale obbligatorio.

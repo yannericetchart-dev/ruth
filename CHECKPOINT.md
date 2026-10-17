@@ -360,3 +360,22 @@ e DIAG-SCOPE-001. SYNC-001 resta storica/superseded.
 - Le note precedenti candidate/active/pending/blocked sono storiche
   e non guidano la fase corrente. Il prossimo passo e' definire e
   approvare un nuovo perimetro senza anticipare implementazioni.
+
+## GGUF-BLOCK-SCOPE-001 approvata; MIG-010 candidata (17 ottobre 2026)
+
+- Via libera esplicito per cinque tipi quantizzati GGML;
+  base main `6f472b0ac182b113c5c727c3f8f5c291c074de2e`, ramo remoto
+  `models/formats/gguf/work/GGUF-BLOCK-001`.
+- Aggiunta candidata al reader INDEX con calcolo opzionale delle
+  dimensioni Q4_0/Q4_1/Q5_0/Q5_1/Q8_0; controllo sui soli
+  descrittori e dimensioni del file. Nessun payload letto.
+- API immutabili inspect_block_layout e inspect_all_block_layouts.
+  Flusso futuro di dieci fasi con BLOCKS dopo INDEX e
+  sottocomando mirato `gguf-blocks`.
+- Stato della nuova porzione **candidate implementation**;
+  verification **not_run**, integration **not_merged**.
+  Le precedenti nove fasi restano implementate, verificate,
+  integrate e accettate personalmente.
+- Collaudo GGUF-BLOCK-MANUAL-001 pianificato soltanto dopo
+  promozioni e CI positive. Nessun nuovo perimetro approvato.
+  Local sync `pending_no_access`; REMOTE-001 e DATA-001 invariati.

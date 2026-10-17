@@ -410,3 +410,23 @@ Ogni sostituzione deve collegare entrambe le decisioni e aggiornare le mappe.
   niente path, nomi modelli, output grezzi, inventari, log o benchmark.
 GGUF-INDEX-SCOPE-001 resta invariato; nessuna migrazione successiva
 autorizzata implicitamente.
+
+## GGUF-BLOCK-SCOPE-001: blocchi quantizzati dichiarativi (17 ottobre 2026)
+
+- Stato: **approved** per MIG-010; base main `6f472b0ac182b113c5c727c3f8f5c291c074de2e`.
+- Cinque tipi GGML: Q4_0 (id 2, 32:18), Q4_1 (3, 32:20),
+  Q5_0 (6, 32:22), Q5_1 (7, 32:24), Q8_0 (8, 32:34).
+  Primo asse divisibile per 32; estensione in byte dal numero
+  blocchi. Altri tipi restano `size_unverified`.
+- Solo modelli GGUF nel catalogo locale CAT-001, reuse parser
+  e difese INDEX, limiti su strutture, nomi e contatori.
+  Controlli offset, sovrapposizioni ed estremi del file.
+- API immutabili inspect_block_layout / inspect_all_block_layouts;
+  decimo passaggio `BLOCKS` automatico dopo `INDEX`,
+  `main.py gguf-blocks` mirato. Catalogo assente: skip valido.
+- Non si leggono o dequantizzano pesi. Nessun download,
+  rete, inferenza, CUDA, backend, benchmark o dati macchina.
+- Fixture sintetiche, CI, mappe e PR fino a main; poi collaudo
+  personale GGUF-BLOCK-MANUAL-001 obbligatorio. Nessuna
+  migrazione seguente implicitamente approvata.
+- Si applicano MAIN-FLOW-001, MIG-FLOW-001/002, DATA-001, REMOTE-001.
