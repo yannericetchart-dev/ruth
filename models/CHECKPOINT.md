@@ -196,3 +196,16 @@
   accettate; nessun payload dei tensori letto.
 - GGUF-KBLOCK-MANUAL-001 richiede prova personale default
   e fixture sintetica locale dopo merge in main; DATA-001 vigente.
+
+## GGUF-KBLOCK-001 integrata, collaudo pending (17 ottobre 2026)
+
+- Supporto bounded dei sei tipi K-quant con superblocchi 256,
+  nessuna lettura pesi; main `a803e15e872d71a96b7b2de37b13a8964d37d168` dopo PR #65-#68.
+- CI runs 39025028855, 39025109274, 39025159357,
+  39025210189 success: fixture sintetiche e mappe.
+- Stato tecnico: implementation complete; verification passed;
+  integration merged. **GGUF-KBLOCK-MANUAL-001 active/pending**.
+- Test manuale richiesto: Ruth default 11 passi e suite
+  test_kblocks.py con fixture sintetiche locale, poi
+  conferma esplicita. Vecchie 10 fasi restano accettate.
+  DATA-001 e MIG-FLOW-002 invariati.
