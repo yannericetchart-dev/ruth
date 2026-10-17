@@ -1,0 +1,667 @@
+{
+  "assignment_id": "BRANCH-DELETE-002",
+  "repository": "yannericetchart-dev/ruth",
+  "base_main_sha": "7988da89891e03ce364b73ffb692db429b242bb4",
+  "owner": "ORCH-20261017-B",
+  "executor": "01a14a37-aa01-70a2-b9cf-6702224b121f",
+  "users_release": {
+    "status": "confirmed_by_user",
+    "date": "2026-10-17",
+    "scope": "All 97 pre-existing non-main branches in frozen_targets",
+    "evidence": "User answered yes to the explicit release question: old chats/processes stopped, no pending work/integration and no need to keep the original refs; confirmation: si ti confermo che nessun processo e attivo"
+  },
+  "protected_refs": [
+    "refs/heads/main",
+    "refs/tags/*"
+  ],
+  "expected_heads_before": 99,
+  "expected_deleted_this_assignment": 98,
+  "expected_heads_after_success": 1,
+  "frozen_targets": [
+    {
+      "branch": "ci/python-isolation",
+      "expected_sha": "7d1c668bf68a62829946ab787613801305249a6f",
+      "preservation": "contained_in_main",
+      "archive": null
+    },
+    {
+      "branch": "docs/CAT-001-final-checkpoint",
+      "expected_sha": "bbc6de5bbcf40f9b9052685b814f0f545a7d0ada",
+      "preservation": "contained_in_main",
+      "archive": null
+    },
+    {
+      "branch": "docs/CAT-MANUAL-001-complete",
+      "expected_sha": "863cf14cdf999c22e2cf1375cc161cb2acb1413c",
+      "preservation": "contained_in_main",
+      "archive": null
+    },
+    {
+      "branch": "docs/DEP-001-final-checkpoint",
+      "expected_sha": "3e1e023fcbc1087930d0b6b823d1dcc795d24dde",
+      "preservation": "contained_in_main",
+      "archive": null
+    },
+    {
+      "branch": "docs/DIAG-001-final",
+      "expected_sha": "5343b4e01d0a99badc3f79fd03861a4b5c9b064a",
+      "preservation": "contained_in_main",
+      "archive": null
+    },
+    {
+      "branch": "docs/DIAG-MANUAL-001-complete",
+      "expected_sha": "515bea063dba65436354fee3bf125b01d6ffb2cb",
+      "preservation": "contained_in_main",
+      "archive": null
+    },
+    {
+      "branch": "docs/GGUF-001-final-checkpoint",
+      "expected_sha": "b3e27ed715931c015af8a38470b4ea8beee84996",
+      "preservation": "contained_in_main",
+      "archive": null
+    },
+    {
+      "branch": "docs/GGUF-BLOCK-001-final-checkpoint",
+      "expected_sha": "091515bd20dea3de8e1e8e2f381cd588625dc2fc",
+      "preservation": "contained_in_main",
+      "archive": null
+    },
+    {
+      "branch": "docs/GGUF-BLOCK-MANUAL-001-complete",
+      "expected_sha": "774de775be7c1498fb000aecd8b2fff843a41d06",
+      "preservation": "contained_in_main",
+      "archive": null
+    },
+    {
+      "branch": "docs/GGUF-FIXTURE-001-integrated",
+      "expected_sha": "fe973443ac8bc89d2d9d0521e2f0bde3aeaf067f",
+      "preservation": "contained_in_main",
+      "archive": null
+    },
+    {
+      "branch": "docs/GGUF-FIXTURE-MANUAL-001-closure",
+      "expected_sha": "503bf0e42d473625a955bd4583e25e740b5672b4",
+      "preservation": "contained_in_main",
+      "archive": null
+    },
+    {
+      "branch": "docs/GGUF-INDEX-001-final-checkpoint",
+      "expected_sha": "751b2ed90dff7aafa0d502e6203ac81e0ca71883",
+      "preservation": "contained_in_main",
+      "archive": null
+    },
+    {
+      "branch": "docs/GGUF-INDEX-MANUAL-001-complete",
+      "expected_sha": "97e0710ac348cf047ff39ddfbdd23bb1dfeb893e",
+      "preservation": "contained_in_main",
+      "archive": null
+    },
+    {
+      "branch": "docs/GGUF-KBLOCK-001-final-checkpoint",
+      "expected_sha": "0e85f312e1853f245c99a69ec4db2d9c9f87b0f4",
+      "preservation": "contained_in_main",
+      "archive": null
+    },
+    {
+      "branch": "docs/GGUF-KBLOCK-MANUAL-001-and-MIG-FLOW-002-r2",
+      "expected_sha": "4b12f5f81afdc60d30e2e0427cb31ac61c6fd482",
+      "preservation": "contained_in_main",
+      "archive": null
+    },
+    {
+      "branch": "docs/GGUF-MANUAL-001-complete",
+      "expected_sha": "045a170a859a63e187fa5f291c46731e46a04a06",
+      "preservation": "contained_in_main",
+      "archive": null
+    },
+    {
+      "branch": "docs/GGUF-META-001-final-checkpoint",
+      "expected_sha": "e381a91df19dcf94120c0f8b4a7ae629677797ff",
+      "preservation": "contained_in_main",
+      "archive": null
+    },
+    {
+      "branch": "docs/GGUF-META-MANUAL-001-complete",
+      "expected_sha": "88bca19509cbae97dab9833f1f6776f2e72c2ae3",
+      "preservation": "contained_in_main",
+      "archive": null
+    },
+    {
+      "branch": "docs/GGUF-STRUCT-STABILITY-001-integrated",
+      "expected_sha": "fe56de41cef7193354a0edac7463f7f29e5ede36",
+      "preservation": "contained_in_main",
+      "archive": null
+    },
+    {
+      "branch": "docs/GGUF-STRUCT-SUMMARY-001-integrated",
+      "expected_sha": "5c1b2fb259d4496b04af2309d1e2c8889eda71d5",
+      "preservation": "contained_in_main",
+      "archive": null
+    },
+    {
+      "branch": "docs/GGUF-STRUCT-SUMMARY-MANUAL-001-closure",
+      "expected_sha": "cc7403486a24d669865cbcdb108605a3b6a84e06",
+      "preservation": "contained_in_main",
+      "archive": null
+    },
+    {
+      "branch": "docs/GPU-001-final-checkpoint",
+      "expected_sha": "25fe46f59be1a3f0d8f3ea3c52ad77ce6daa1083",
+      "preservation": "contained_in_main",
+      "archive": null
+    },
+    {
+      "branch": "docs/GPU-MANUAL-001-complete",
+      "expected_sha": "31384aed606ba620b0b428037590f2765f8cd797",
+      "preservation": "contained_in_main",
+      "archive": null
+    },
+    {
+      "branch": "docs/HW-001-final-checkpoint",
+      "expected_sha": "1779f7db5f1bdd525796a744c09255b865021d5c",
+      "preservation": "contained_in_main",
+      "archive": null
+    },
+    {
+      "branch": "docs/HW-MANUAL-001-complete",
+      "expected_sha": "33f6e75cf16595718328d357873e2d67fef443c9",
+      "preservation": "contained_in_main",
+      "archive": null
+    },
+    {
+      "branch": "docs/MAIN-FLOW-001-final",
+      "expected_sha": "dcc0908f7fa89d753da80c0d37c858dd8c98903a",
+      "preservation": "contained_in_main",
+      "archive": null
+    },
+    {
+      "branch": "docs/MAIN-MANUAL-001-complete",
+      "expected_sha": "0282c78bf3de8bf55d4c0344b75aea712a20f143",
+      "preservation": "contained_in_main",
+      "archive": null
+    },
+    {
+      "branch": "docs/MIG-012-checkpoint-header",
+      "expected_sha": "198ddc38c4b8771051660fe5283899dae5414d05",
+      "preservation": "contained_in_main",
+      "archive": null
+    },
+    {
+      "branch": "docs/MIG-014-manual-closure",
+      "expected_sha": "624efbe451d31ee84a8ef09284b64fe0591f5e0a",
+      "preservation": "contained_in_main",
+      "archive": null
+    },
+    {
+      "branch": "docs/MIG-015-integrated",
+      "expected_sha": "53a888e06c98eac2925c7e35b9d8667cf09110d5",
+      "preservation": "contained_in_main",
+      "archive": null
+    },
+    {
+      "branch": "docs/MIG-015-manual-closure",
+      "expected_sha": "48c45fb4e198e2d4ba4ae0ef6726a80e450c9cad",
+      "preservation": "contained_in_main",
+      "archive": null
+    },
+    {
+      "branch": "docs/MIG-016-integrated",
+      "expected_sha": "8db9dfae31fa19c795ddd24a5bfcf8adafa49e97",
+      "preservation": "contained_in_main",
+      "archive": null
+    },
+    {
+      "branch": "docs/PY-001-final-checkpoint",
+      "expected_sha": "9a9235c9f0ea8a0c2168fe0261175f23c1ac48ee",
+      "preservation": "contained_in_main",
+      "archive": null
+    },
+    {
+      "branch": "docs/PY-MANUAL-001-confirmed",
+      "expected_sha": "72f133aad595dcec9e92ff82e90622f6f8f80a48",
+      "preservation": "contained_in_main",
+      "archive": null
+    },
+    {
+      "branch": "docs/PY-MANUAL-001-positive-run",
+      "expected_sha": "b16b3843b323587b516aff77740ae4440826e809",
+      "preservation": "contained_in_main",
+      "archive": null
+    },
+    {
+      "branch": "docs/REMOTE-001",
+      "expected_sha": "a4e342f60c48af794cf9dfc179c8d27fda7a3517",
+      "preservation": "contained_in_main",
+      "archive": null
+    },
+    {
+      "branch": "docs/SYNC-001-pre-resume-gate",
+      "expected_sha": "1eb0c5101d0017739cff3b06666579b7531a7f04",
+      "preservation": "contained_in_main",
+      "archive": null
+    },
+    {
+      "branch": "docs/SYNC-001",
+      "expected_sha": "667dafbdc9862598ab5dca298667c50e96627a82",
+      "preservation": "contained_in_main",
+      "archive": null
+    },
+    {
+      "branch": "environment/dependencies/main",
+      "expected_sha": "b2bc0095407edf766c2563bbedc2e69889b074ce",
+      "preservation": "contained_in_main",
+      "archive": null
+    },
+    {
+      "branch": "environment/dependencies/work/DEP-001",
+      "expected_sha": "ea708c7471584e5972863a657b4b402d5339d0fe",
+      "preservation": "contained_in_main",
+      "archive": null
+    },
+    {
+      "branch": "environment/diagnostics/main",
+      "expected_sha": "3e8d1c19e35914ee69b287eb1a01d15677212543",
+      "preservation": "contained_in_main",
+      "archive": null
+    },
+    {
+      "branch": "environment/diagnostics/work/DIAG-001",
+      "expected_sha": "17a1cb65c98be40d8508b16f8ae69f0aa7fef3a3",
+      "preservation": "contained_in_main",
+      "archive": null
+    },
+    {
+      "branch": "environment/main",
+      "expected_sha": "3e8d1c19e35914ee69b287eb1a01d15677212543",
+      "preservation": "contained_in_main",
+      "archive": null
+    },
+    {
+      "branch": "environment/python/main",
+      "expected_sha": "b80520ad903ff18f93398725ea95cd91f51da5d8",
+      "preservation": "verified_annotated_archive",
+      "archive": {
+        "tag": "archive/2026-10-17/environment/python/main",
+        "tag_object_sha": "e484b4f9af2ef89a2172fb3cbca684cdc9c4a5d5",
+        "commit": "b80520ad903ff18f93398725ea95cd91f51da5d8"
+      }
+    },
+    {
+      "branch": "environment/python/work/entrypoint",
+      "expected_sha": "b80520ad903ff18f93398725ea95cd91f51da5d8",
+      "preservation": "verified_annotated_archive",
+      "archive": {
+        "tag": "archive/2026-10-17/environment/python/work/entrypoint",
+        "tag_object_sha": "d4526159d67220cdf6be6cc9278d87a5929265f2",
+        "commit": "b80520ad903ff18f93398725ea95cd91f51da5d8"
+      }
+    },
+    {
+      "branch": "environment/python/work/inspect-venv",
+      "expected_sha": "80218739327666b0250c3715ba9cfb6fe1f114d5",
+      "preservation": "verified_annotated_archive",
+      "archive": {
+        "tag": "archive/2026-10-17/environment/python/work/inspect-venv",
+        "tag_object_sha": "ef4c1a30976bafcb2a7587caee6775c5438fa624",
+        "commit": "80218739327666b0250c3715ba9cfb6fe1f114d5"
+      }
+    },
+    {
+      "branch": "environment/work/DEP-001-promotion",
+      "expected_sha": "26a287f03bc83e4b025d94c548eaf3b086cd0012",
+      "preservation": "contained_in_main",
+      "archive": null
+    },
+    {
+      "branch": "environment/work/PY-001-entrypoint",
+      "expected_sha": "5fc816407f5c8873fd2ed39baa9d5293a9810c73",
+      "preservation": "contained_in_main",
+      "archive": null
+    },
+    {
+      "branch": "feat/gemma3-flash-kv-policy",
+      "expected_sha": "dc6039be1f17e09c6ff407dbee1ee6783eecb853",
+      "preservation": "verified_annotated_archive",
+      "archive": {
+        "tag": "archive/2026-10-17/feat/gemma3-flash-kv-policy",
+        "tag_object_sha": "5d9ff65466246d683a8ff981ab2ac72aa0986d44",
+        "commit": "dc6039be1f17e09c6ff407dbee1ee6783eecb853"
+      }
+    },
+    {
+      "branch": "feat/gemma3-kv-matrix-18",
+      "expected_sha": "d0ffdea9711bebd18da9b1e7866d3f9cd8c2f09a",
+      "preservation": "verified_annotated_archive",
+      "archive": {
+        "tag": "archive/2026-10-17/feat/gemma3-kv-matrix-18",
+        "tag_object_sha": "1f2ebd04320fff166f986095cda59aad1d48974c",
+        "commit": "d0ffdea9711bebd18da9b1e7866d3f9cd8c2f09a"
+      }
+    },
+    {
+      "branch": "feat/gemma3-kv-precision-plans",
+      "expected_sha": "5080cf0c74ed1b92c0cb4530895c9911e3e189b7",
+      "preservation": "verified_annotated_archive",
+      "archive": {
+        "tag": "archive/2026-10-17/feat/gemma3-kv-precision-plans",
+        "tag_object_sha": "a84b46a66c7fedc4096aa8318c7ef301082a5f27",
+        "commit": "5080cf0c74ed1b92c0cb4530895c9911e3e189b7"
+      }
+    },
+    {
+      "branch": "feat/gemma3-native-context-probes",
+      "expected_sha": "9ed7b187126dce38a3609c1e9e62bd6a17b786bd",
+      "preservation": "verified_annotated_archive",
+      "archive": {
+        "tag": "archive/2026-10-17/feat/gemma3-native-context-probes",
+        "tag_object_sha": "3bc25782d6101376fa33b546162d5ba40159db4a",
+        "commit": "9ed7b187126dce38a3609c1e9e62bd6a17b786bd"
+      }
+    },
+    {
+      "branch": "feat/gemma3-phase27-numeric-benchmark",
+      "expected_sha": "c09432b09f5f65e8f8428835d4347311d86ae6af",
+      "preservation": "verified_annotated_archive",
+      "archive": {
+        "tag": "archive/2026-10-17/feat/gemma3-phase27-numeric-benchmark",
+        "tag_object_sha": "26a9ed5c194d179de828de7c25caa72b5925c1d0",
+        "commit": "c09432b09f5f65e8f8428835d4347311d86ae6af"
+      }
+    },
+    {
+      "branch": "feat/gemma3-phase28-context-dispatch",
+      "expected_sha": "4ceea508025650ed64b33190834d0b5c85f69db2",
+      "preservation": "verified_annotated_archive",
+      "archive": {
+        "tag": "archive/2026-10-17/feat/gemma3-phase28-context-dispatch",
+        "tag_object_sha": "0f5b7b928c65dcf15b776a5b4c515820720d6746",
+        "commit": "4ceea508025650ed64b33190834d0b5c85f69db2"
+      }
+    },
+    {
+      "branch": "feature/minimal-chat",
+      "expected_sha": "954f408ece2d7595bcb67447fa277acb9eaffc73",
+      "preservation": "verified_annotated_archive",
+      "archive": {
+        "tag": "archive/2026-10-17/feature/minimal-chat",
+        "tag_object_sha": "c7ac032ec285232c79344290fa55bf34df8dc865",
+        "commit": "954f408ece2d7595bcb67447fa277acb9eaffc73"
+      }
+    },
+    {
+      "branch": "hardware/cpu/main",
+      "expected_sha": "ae492a1be3b12c0ffd6f9987d0d959aceb4a9ad4",
+      "preservation": "contained_in_main",
+      "archive": null
+    },
+    {
+      "branch": "hardware/cpu/work/HW-001",
+      "expected_sha": "6959fbd39a4d71665efd39110310b4df9927bd7c",
+      "preservation": "contained_in_main",
+      "archive": null
+    },
+    {
+      "branch": "hardware/gpu/main",
+      "expected_sha": "60e137a422403efa7d8d4005240abf317ce87e24",
+      "preservation": "contained_in_main",
+      "archive": null
+    },
+    {
+      "branch": "hardware/gpu/nvidia/main",
+      "expected_sha": "60e137a422403efa7d8d4005240abf317ce87e24",
+      "preservation": "contained_in_main",
+      "archive": null
+    },
+    {
+      "branch": "hardware/gpu/nvidia/work/GPU-001",
+      "expected_sha": "b355ed53bd182d8ebb2b981911885bc58719e2e6",
+      "preservation": "contained_in_main",
+      "archive": null
+    },
+    {
+      "branch": "hardware/main",
+      "expected_sha": "60e137a422403efa7d8d4005240abf317ce87e24",
+      "preservation": "contained_in_main",
+      "archive": null
+    },
+    {
+      "branch": "model-profiling",
+      "expected_sha": "52b67662dff9409864dfd5da62059a1dfd4532cb",
+      "preservation": "verified_annotated_archive",
+      "archive": {
+        "tag": "archive/2026-10-17/model-profiling",
+        "tag_object_sha": "779742a35faee71399209d85595145be01da13b4",
+        "commit": "52b67662dff9409864dfd5da62059a1dfd4532cb"
+      }
+    },
+    {
+      "branch": "models/catalog/main",
+      "expected_sha": "90e57f106fb664b0257775260044125ea85228e2",
+      "preservation": "contained_in_main",
+      "archive": null
+    },
+    {
+      "branch": "models/catalog/work/CAT-001",
+      "expected_sha": "1d3f4cb1a25c706d3097a1a4455cd59150c47847",
+      "preservation": "contained_in_main",
+      "archive": null
+    },
+    {
+      "branch": "models/formats/gguf/main",
+      "expected_sha": "da9eba7392395ed05e81296aa4c595dc61d7b35e",
+      "preservation": "contained_in_main",
+      "archive": null
+    },
+    {
+      "branch": "models/formats/gguf/work/GGUF-001",
+      "expected_sha": "088cb7c4ac4d335d5b58d1beb47cd03218bdde7a",
+      "preservation": "contained_in_main",
+      "archive": null
+    },
+    {
+      "branch": "models/formats/gguf/work/GGUF-BLOCK-001",
+      "expected_sha": "a4913c38d96aba8b879c70ee4db383abc8037d23",
+      "preservation": "contained_in_main",
+      "archive": null
+    },
+    {
+      "branch": "models/formats/gguf/work/GGUF-FIXTURE-001",
+      "expected_sha": "c298582935e4abd800f0cd293219e1c0489cd2b1",
+      "preservation": "contained_in_main",
+      "archive": null
+    },
+    {
+      "branch": "models/formats/gguf/work/GGUF-FIXTURE-SUMMARY-001",
+      "expected_sha": "26e41fef60a0ea87cbeb655794bf7dfa6bcc0da3",
+      "preservation": "contained_in_main",
+      "archive": null
+    },
+    {
+      "branch": "models/formats/gguf/work/GGUF-INDEX-001",
+      "expected_sha": "469f5b4807059199ed855fafbeabb8e8e4654c49",
+      "preservation": "contained_in_main",
+      "archive": null
+    },
+    {
+      "branch": "models/formats/gguf/work/GGUF-KBLOCK-001",
+      "expected_sha": "61f00a4b347d229aaa64a77c9bd93fc6600af45d",
+      "preservation": "contained_in_main",
+      "archive": null
+    },
+    {
+      "branch": "models/formats/gguf/work/GGUF-META-001",
+      "expected_sha": "a7e663fd3789ff25495d6be42f8f28115e8f9b37",
+      "preservation": "contained_in_main",
+      "archive": null
+    },
+    {
+      "branch": "models/formats/gguf/work/GGUF-MULTITENSOR-FIXTURE-001",
+      "expected_sha": "477e12b225593f8370241b8b45c5816c9b9846d0",
+      "preservation": "contained_in_main",
+      "archive": null
+    },
+    {
+      "branch": "models/formats/gguf/work/GGUF-STRUCT-STABILITY-001",
+      "expected_sha": "0e3e8e4fe714ec57978c83921fb294c971728429",
+      "preservation": "contained_in_main",
+      "archive": null
+    },
+    {
+      "branch": "models/formats/gguf/work/GGUF-STRUCT-SUMMARY-001",
+      "expected_sha": "f6052d99c51c3f2c17b745babf741bc68d256c0d",
+      "preservation": "contained_in_main",
+      "archive": null
+    },
+    {
+      "branch": "models/formats/main",
+      "expected_sha": "f4218833623a45ad5574cf17ef993a455265141d",
+      "preservation": "contained_in_main",
+      "archive": null
+    },
+    {
+      "branch": "models/formats/work/GGUF-FIXTURE-001",
+      "expected_sha": "3d6a49b96a70a9258820e4878e7c6cbd8787eec0",
+      "preservation": "contained_in_main",
+      "archive": null
+    },
+    {
+      "branch": "models/formats/work/GGUF-FIXTURE-SUMMARY-001",
+      "expected_sha": "294361d0968d853c167ef8dbc222d82fa7a32438",
+      "preservation": "contained_in_main",
+      "archive": null
+    },
+    {
+      "branch": "models/formats/work/GGUF-MULTITENSOR-FIXTURE-001",
+      "expected_sha": "da9eba7392395ed05e81296aa4c595dc61d7b35e",
+      "preservation": "contained_in_main",
+      "archive": null
+    },
+    {
+      "branch": "models/formats/work/GGUF-STRUCT-STABILITY-001",
+      "expected_sha": "01a0e11e4cae56f87a0738b97d95282d88ed371b",
+      "preservation": "contained_in_main",
+      "archive": null
+    },
+    {
+      "branch": "models/formats/work/GGUF-STRUCT-SUMMARY-001",
+      "expected_sha": "77bbf827dc1f92ead4257126ad4dc3750a575d24",
+      "preservation": "contained_in_main",
+      "archive": null
+    },
+    {
+      "branch": "models/main",
+      "expected_sha": "d3a2826522654806ae60e9caae71382d9ab74ed2",
+      "preservation": "contained_in_main",
+      "archive": null
+    },
+    {
+      "branch": "models/work/GGUF-FIXTURE-001",
+      "expected_sha": "96b561245ddd1dec6bccd24175c1fdfc2b2612e6",
+      "preservation": "contained_in_main",
+      "archive": null
+    },
+    {
+      "branch": "models/work/GGUF-FIXTURE-SUMMARY-001",
+      "expected_sha": "388564de883873f6a583b93f17b5863b88fecba7",
+      "preservation": "contained_in_main",
+      "archive": null
+    },
+    {
+      "branch": "models/work/GGUF-MULTITENSOR-FIXTURE-001",
+      "expected_sha": "f4218833623a45ad5574cf17ef993a455265141d",
+      "preservation": "contained_in_main",
+      "archive": null
+    },
+    {
+      "branch": "models/work/GGUF-STRUCT-STABILITY-001",
+      "expected_sha": "f280fb9528c78f2cf750bc5e4cf14305cf13bd8e",
+      "preservation": "contained_in_main",
+      "archive": null
+    },
+    {
+      "branch": "models/work/GGUF-STRUCT-SUMMARY-001",
+      "expected_sha": "53bcf601a13cc3f4d5c624d69229358aa5fc57ae",
+      "preservation": "contained_in_main",
+      "archive": null
+    },
+    {
+      "branch": "runtime/work/MAIN-FLOW-001",
+      "expected_sha": "f624b09b53e4fd80d075a29bd45a2834773672df",
+      "preservation": "contained_in_main",
+      "archive": null
+    },
+    {
+      "branch": "work/CONT-001-R2-ORCH-001",
+      "expected_sha": "2afbfee834e2c11d4a71c6f8edffd938357a4212",
+      "preservation": "contained_in_main",
+      "archive": null
+    },
+    {
+      "branch": "work/CONT-001-R2-close",
+      "expected_sha": "ff3f0fb131e0e575dd7b527c93d709bd949a323e",
+      "preservation": "contained_in_main",
+      "archive": null
+    },
+    {
+      "branch": "work/GGUF-FIXTURE-001",
+      "expected_sha": "97b44491c7502d1123a3e856b57c85f30401ae58",
+      "preservation": "contained_in_main",
+      "archive": null
+    },
+    {
+      "branch": "work/GGUF-FIXTURE-SUMMARY-001",
+      "expected_sha": "0266a44aea496205dd55f648faf56b693656416d",
+      "preservation": "contained_in_main",
+      "archive": null
+    },
+    {
+      "branch": "work/GGUF-MULTITENSOR-FIXTURE-001",
+      "expected_sha": "d3a2826522654806ae60e9caae71382d9ab74ed2",
+      "preservation": "contained_in_main",
+      "archive": null
+    },
+    {
+      "branch": "work/GGUF-STRUCT-STABILITY-001",
+      "expected_sha": "b62e6fabaa2ffbb9bea06da6c976426321d8deb8",
+      "preservation": "contained_in_main",
+      "archive": null
+    },
+    {
+      "branch": "work/GGUF-STRUCT-SUMMARY-001",
+      "expected_sha": "c36957af18eac4d96ee77f937eb61a3930594af1",
+      "preservation": "contained_in_main",
+      "archive": null
+    },
+    {
+      "branch": "work/MIG-016-delegated-close",
+      "expected_sha": "a5f10c5ebf3824ed48beb3e3c249bc59d1d59204",
+      "preservation": "contained_in_main",
+      "archive": null
+    },
+    {
+      "branch": "work/ORCH-SUCCESSION-BRANCH-LIFECYCLE",
+      "expected_sha": "8b39fb478d7b6f63fa7c271b059098a1a0b514f4",
+      "preservation": "contained_in_main",
+      "archive": null
+    }
+  ],
+  "publication_branch": {
+    "branch": "work/BRANCH-ARCHIVE-001-record",
+    "expected_sha_source": "head.sha of the merged assignment PR; literal SHA also recorded in that PR body and in the execution prompt",
+    "owner_release": "ORCH-20261017-B ceases all writes to this branch on assignment PR merge; no other assigned users",
+    "preservation": "contained_in_assignment_merge",
+    "delete_last": true
+  },
+  "gates": [
+    "Assignment PR merged; positive candidate and main CI",
+    "Main equals assignment PR merge_commit_sha",
+    "97 frozen SHA pairs plus exact publication branch/SHA pair from assignment PR body",
+    "Immediately recheck main, branch SHA, open PR head/base and assignments/users/integrations before every deletion",
+    "For uncontained history reverify annotated archive ref, tag-object SHA and peeled commit",
+    "One conditional mutation per branch with exact expected beforeOid, zero afterOid and force=false",
+    "Stop on mismatch, error or ambiguous response; reconcile read-only before any further decision; never blindly retry a mutation",
+    "Protect main and all tags; no other branches, checkout or host changes"
+  ],
+  "local_effects": "No checkout/metadata changes, sync, copies, installations, environments, Ruth execution or application tests",
+  "report": "Portable per-branch outcome and preserved tags; return to B without document writes"
+}

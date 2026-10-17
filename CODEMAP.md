@@ -29,6 +29,7 @@ La presenza dello scaffold non implica una implementazione runtime.
 - [ARCHITECTURE.md](ARCHITECTURE.md)
 - [BRANCH_ARCHIVE.md](BRANCH_ARCHIVE.md)
 - [BRANCH_AUDIT.md](BRANCH_AUDIT.md)
+- [BRANCH_DELETE_002.json](BRANCH_DELETE_002.json)
 - [CHECKPOINT.md](CHECKPOINT.md)
 - [DECISIONS.md](DECISIONS.md)
 - [MIGRATION.md](MIGRATION.md)
