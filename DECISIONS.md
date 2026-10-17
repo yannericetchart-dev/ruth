@@ -528,3 +528,11 @@ autorizzata implicitamente.
   (DATA-001); solo SHA, stato e conteggi generici possono essere registrati.
 - Sostituisce l'obbligo di doppia approvazione dopo log positivo
   previsto dalla vecchia formulazione di MIG-FLOW-002.
+
+## GGUF-FIXTURE-SCOPE-001 (MIG-012)
+
+- Stato: accepted, 17 ottobre 2026, autorizzazione esplicita utente.
+- Tre fixture GGUF sintetiche temporanee v2/v3, tipi scalare, Q4_0 e Q4_K. CAT e lettori GGUF eseguiti sul catalogo isolato; il formato K resta non verificato nei precedenti INDEX/BLOCKS, ma viene verificato in KBLOCKS.
+- Dodicesima fase automatica FIXTURE dopo KBLOCKS, comando mirato gguf-fixture, test sintetici e promozione fino a main dopo CI.
+- Nessun modello reale, lettura tensor_data, download, CUDA o inferenza. DATA-001, REMOTE-001, MIG-FLOW-002-R2 vigenti.
+- Stato tecnico candidate; CI, merge e collaudo personale non ancora attestati.

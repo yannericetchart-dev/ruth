@@ -219,3 +219,7 @@ superati (`OK`) sul commit `233efc358f56a66d2abf796fa8e20a476aa788cf`.
 GGUF-KBLOCK-MANUAL-001 e MIG-011 complete dopo la chiusura
 documentale. Catalogo `not_configured` valido; nessun GGUF reale
 verificato. Leggere l'ultimo CHECKPOINT per lo SHA di chiusura.
+
+## MIG-012 (17 ottobre 2026)
+
+GGUF-FIXTURE-SCOPE-001 approvata: collaudo sintetico CAT->GGUF->META->INDEX->BLOCKS->KBLOCKS, dodicesimo passaggio FIXTURE. Stato candidato, non ancora collaudato dall'utente. Nessun modello reale o peso letto. Consultare CHECKPOINT.md.
