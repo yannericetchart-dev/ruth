@@ -1,6 +1,7 @@
 # Ruth: orchestrazione e continuita' fra chat
 
-Protocollo CONT-001 revisione 2; decisione ORCH-001.
+Protocollo CONT-001 revisione 2; decisione ORCH-001 revisione 2.
+HANDOFF-001 e BRANCH-LIFECYCLE-001 approvate il 17 ottobre 2026.
 Approvazione esplicita dell'utente: 17 ottobre 2026.
 MIG-FLOW-002 revisione 3 disciplina il collaudo delegato.
 Questo documento non approva nuove funzioni o migrazioni applicative.
@@ -163,3 +164,100 @@ Questi campi descrivono checkpoint documentali, non un nuovo schema runtime
 o un'estensione del validatore NODE. In Git soltanto SHA, stati, conteggi e
 riferimenti portabili a PR/CI. Log, percorsi personali, inventari, versioni
 specifiche di pacchetti, credenziali, manifest e dati reali restano locali.
+
+## Sostituzione dell'orchestratore (HANDOFF-001)
+
+Prima del cambio chat, il titolare pubblica su GitHub una consegna completa:
+ID del passaggio, responsabile uscente/entrante, perimetri e approvazioni
+ancora validi, SHA di main e delle prove, incarichi con titolari, branch e
+PR, prerequisiti, verifiche, blocchi e prossima azione.
+La consegna e' in ORCHESTRATOR_HANDOFF.md; le coordinate personali delle
+risorse locali restano fuori da Git e sono fornite privatamente dall'utente.
+Le approvazioni valide restano valide; il cambio chat non approva nuovi scope.
+
+Fasi: preparing -> released -> claimed. Durante preparing l'uscente esegue
+soltanto le scritture necessarie a completare questa consegna; non avvia
+nuovi incarichi. Il rilascio diventa effettivo al merge della PR di consegna
+in main. Da quel momento l'uscente cessa nuove scritture ai documenti comuni,
+anche se continua a leggere o a rispondere. Il candidato successore non
+scrive sui documenti comuni prima della presa in carico, salvo la PR
+dedicata alla sola registrazione della presa in carico descritta sotto.
+
+Il successore Work Cloud opera fuori dal progetto: risolve nuovamente
+heads/main e legge a quello SHA indice, decisioni, checkpoint, consegna,
+audit/archivi, incarichi e mappe. Ricostruisce lo stato da GitHub, non dalla
+sola cronologia o dal messaggio di avvio. Verifica nuovamente strumenti
+autenticati, accessi locali per risorsa, permessi della sessione e ambiente.
+Una verifica storica non dimostra accessi o scrittura nella nuova chat.
+In assenza di risorsa/permesso dichiara il blocco, senza cercare credenziali,
+creare ambienti o modificare checkout implicitamente.
+
+La presa in carico e' esplicita: pubblicare tramite PR il proprio ID
+organizzativo, l'ID della consegna, il precedente titolare e lo SHA della
+consegna letta, confermando le verifiche eseguite e i blocchi rimasti.
+La PR di claim modifica solo lo stato della consegna e il checkpoint
+necessario ad attribuire la responsabilita; non avvia altro lavoro.
+Prima del merge rileggere consegna, owner e main: se e' gia' avvenuto
+un claim o c'e' contesa tra successori, non integrare un claim obsoleto
+e non procedere con altre scritture. Far risolvere la contesa all'utente.
+Una sola presa in carico confermata abilita il nuovo titolare alle
+scritture comuni. Non presumere una presa in carico dal silenzio.
+
+Il testo completo di avvio e' in SUCCESSOR_MESSAGE.md. L'utente puo'
+aprire personalmente la chat. Non presumere la creazione automatica se
+gli strumenti dell'app non rispondono; la sola esposizione di un tool
+non equivale a una chat creata o a un passaggio completato.
+
+## Branch temporanei (BRANCH-LIFECYCLE-001)
+
+main e' l'unico branch permanente. Creare solo i rami necessari al lavoro
+approvato, inclusi eventuali padri temporanei richiesti dalle integrazioni.
+Il nome /main di un componente indica il suo ruolo nell'integrazione,
+non una promessa di permanenza. Una mappa planned non autorizza a creare
+il branch. Ogni ramo temporaneo ha responsabile, utilizzatori, perimetro,
+padre, integrazioni pendenti e criterio di rimozione nel checkpoint.
+Un branch senza queste verifiche non e' automaticamente eliminabile.
+
+Il responsabile unico della pulizia e' l'orchestratore titolare. Prima
+di OGNI cancellazione rileggere main, SHA corrente del ramo, PR aperte sia
+con quel ramo come head sia come base, incarichi/utenti e integrazioni
+pendenti. Confrontare con lo SHA esaminato; se cambia, riesaminare e non
+cancellare sulla base di un inventario precedente. Confermare che il
+titolare del branch abbia cessato le scritture e non vi siano utilizzatori
+attivi. Una PR merged o ahead_by=0, da soli, non provano che il ramo sia libero.
+
+Se tutta la storia e' contenuta in main e non vi sono utilizzatori o
+integrazioni pendenti, il ramo puo' essere eliminato nel perimetro autorizzato.
+Se vi sono commit non contenuti, PRIMA preservare l'esatto tip con un tag
+remoto duraturo d'archivio; registrare ramo originario, commit e tag in
+BRANCH_ARCHIVE.md. Preferire un tag annotato; verificare il ref remoto e,
+se annotato, dereferenziarlo fino al commit atteso. Il tag resta immutabile:
+non spostarlo o eliminarlo durante la pulizia. Un nome pianificato o uno
+SHA scritto in un documento non sostituiscono un ref d'archivio esistente.
+
+Dopo verifica del tag aggiornare i riferimenti correnti di migrazione
+al tag e allo SHA immutabile, conservando i nomi storici nella cronologia.
+Riconfermare subito prima della cancellazione SHA, PR e incarichi.
+Usare strumenti autenticati per la mutazione richiesta e, quando disponibile,
+una condizione sullo SHA atteso; poi rileggere il remoto per confermare
+l'assenza del ramo. Mai importare codice storico in main per rendere
+eliminabile un ramo; la storia non integrata resta nell'archivio.
+
+Dopo una rimozione verificata aggiornare checkpoint, NODE e mappe: un ramo
+eliminato non puo' restare present. Usare archived per il ramo dismesso,
+mantenendo nome/padre logici e prova della conservazione; planned indica
+un ramo futuro non ancora creato. Flag temporary_branch identifica i rami
+di componente oggi presenti; solo main ha permanent_branch.
+I padri logici nei metadati possono non esistere come ref: ricrearli solo
+quando necessari a un lavoro approvato, registrando lo stato reale.
+
+Questa decisione sostituisce esplicitamente la precedente permanenza dei
+branch storici: si conserva la storia tramite archivi verificati, non
+necessariamente il ref heads originario. Non riscrivere la cronologia.
+La pulizia riguarda ref remoti; non autorizza modifiche ai checkout storici.
+
+Se mancano creazione tag o delete-ref autenticati, dichiarare il blocco
+concreto e lasciare i branch intatti. Non simulare tag con branch, non
+usare create_branch/update_ref come strumenti per tag o cancellazioni
+e non trattare GET come una mutazione. Non dichiarare completa la pulizia.
+BRANCH_AUDIT.md contiene uno snapshot di audit, da riconfermare live.

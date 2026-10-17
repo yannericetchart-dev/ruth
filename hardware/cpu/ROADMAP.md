@@ -8,7 +8,7 @@ Inventario CPU portabile.
 
 Sviluppo: **active**; codice: **complete**; maturita: experimental; verifica: passed; integrazione: merged.
 
-Flag: in_scope. Blocchi: nessuno registrato.
+Flag: in_scope, temporary_branch. Blocchi: nessuno registrato.
 
 Ambito verifica: HW-001/CPU-001: CI GitHub runs 38913317440, 38913438829, 38913533057 passed (74 test sintetici e 249 mappe); PR #25, #26, #27 integrate. Collaudo personale HW-MANUAL-001 passed il 16 ottobre 2026 sul commit 59b26fd6b427e6756ce0285fee60590cb077ebf1, con sequenza PY->DEP->DIAG->HW e report CPU/RAM disponibili; non certifica GPU, CUDA, backend o inferenza.
 

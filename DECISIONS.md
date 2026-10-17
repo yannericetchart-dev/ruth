@@ -36,9 +36,75 @@ Ogni sostituzione deve collegare entrambe le decisioni e aggiornare le mappe.
   riguarda la revisione di ingresso del protocollo, non tutte le chat future.
 - Sostituisce: nessuna decisione registrata.
 
-## ORCH-001: orchestratore e chat branch
+## ORCH-001 revisione 2: successione e responsabilita unica
 
-- Stato: accepted; approvazione esplicita dell'utente il 17 ottobre 2026.
+- Stato: accepted; disposizione esplicita dell'utente il 17 ottobre 2026.
+- Estende ORCH-001 revisione 1 con HANDOFF-001 e BRANCH-LIFECYCLE-001.
+  Restano ruoli, GitHub-first, parallelismo approvato e integrazioni seriali.
+- Prima del cambio chat l'uscente pubblica la consegna completa su GitHub.
+  Durante il passaggio cessa nuove scritture comuni; il successore Work Cloud
+  fuori dal progetto ricostruisce lo stato, riverifica strumenti/accessi,
+  permessi e ambiente e assume esplicitamente il ruolo. Un solo titolare
+  puo' scrivere i documenti comuni.
+- Approvazioni valide conservate nei loro limiti. Il cambio chat non
+  autorizza nuovi perimetri o ulteriori installazioni.
+
+## HANDOFF-001: consegna verificata dell'orchestratore
+
+- Stato: accepted; approvazione dell'utente il 17 ottobre 2026.
+- La consegna pubblicata contiene perimetri approvati, responsabile,
+  SHA, incarichi, branch/PR, prerequisiti, verifiche, blocchi e prossima azione.
+- preparing: sole scritture necessarie a completare la consegna.
+  released: al merge della PR di consegna l'uscente cessa nuove scritture
+  comuni. claimed: il successore verificato registra una presa in carico
+  esplicita tramite PR limitata al claim, prima di ogni altro lavoro.
+- Verificare assenza di titolari o claim concorrenti prima del merge;
+  un claim obsoleto non abilita scritture. Contese risolte dall'utente.
+- Testo di avvio in SUCCESSOR_MESSAGE.md; l'utente puo' aprire la chat se
+  la creazione automatica non e' disponibile. Nessuna chat e' presunta creata.
+- Attuazione e limiti in ORCHESTRATION.md e ORCHESTRATOR_HANDOFF.md.
+  DATA-001: coordinate personali delle risorse fuori da Git.
+
+## BRANCH-LIFECYCLE-001: main unico permanente, storia preservata
+
+- Stato: accepted; pulizia remota autorizzata dall'utente il 17 ottobre 2026.
+- main e' l'unico branch permanente. Creare solo branch necessari al
+  lavoro approvato, inclusi padri temporanei; eliminarli quando non
+  hanno utilizzatori o integrazioni pendenti.
+- Prima di ogni cancellazione riconfermare main, SHA del branch, PR
+  head/base, incarichi, responsabile e integrazioni. Un audit precedente
+  o l'assenza di PR aperte non sono una verifica di utilizzatori assenti.
+- Per commit non contenuti in main, prima creare e verificare tag remoti
+  d'archivio duraturi, aggiornare fonti di migrazione, poi eliminare il
+  branch. Tag immutabili con tip esatto e storia raggiungibile; nessun
+  codice storico importato in main per giustificare la rimozione.
+- Aggiornare checkpoint, NODE e mappe dopo rimozione verificata: nessun
+  branch eliminato dichiarato present. Le operazioni riguardano ref
+  remoti, non checkout storici locali.
+- Sostituisce esplicitamente le disposizioni di permanenza dei branch
+  storici presenti in START_HERE.md, ARCHITECTURE.md e MIGRATION.md.
+  La conservazione della storia DATA-001 resta valida, tramite tag verificati.
+- Se mancano create-tag o delete-ref autenticati, lasciare i rami intatti
+  e registrare il blocco; niente archivi o pulizia dichiarati completi.
+- Stato iniziale riconfermato: 97 branch, 85 contenuti e 11 non contenuti;
+  zero PR/issue aperte e zero tag. Pulizia bloccata da strumenti mancanti
+  e autenticazione CLI non valida. BRANCH_AUDIT.md e BRANCH_ARCHIVE.md.
+
+## Disposizione precedente: permanenza dei branch storici (storica)
+
+- Stato: superseded da BRANCH-LIFECYCLE-001.
+- Registrazione retrospettiva delle istruzioni precedenti, non nuova
+  decisione di permanenza: START_HERE.md manteneva i branch storici come
+  fonti conservate; ARCHITECTURE.md e MIGRATION.md ne imponevano il mantenimento.
+- La nuova regola conserva la storia tramite archivi verificati e
+  consente di rimuovere i ref originali quando non piu' necessari.
+- Le citazioni e i riferimenti nelle registrazioni datate restano
+  cronologia, non obblighi attuali di permanenza.
+
+## ORCH-001 revisione 1: orchestratore e chat branch (storica)
+
+- Stato: superseded nelle regole di successione e ciclo dei branch dalla
+  revisione 2; le altre regole sono conservate dalla revisione 2.
 - Organizzazione: orchestratore Work Cloud fuori dal progetto; chat branch
   ChatGPT ordinarie nel progetto Ruth, aperte e fatte proseguire dall'utente.
   Nessuna creazione o prosecuzione autonoma delle chat e' presunta.

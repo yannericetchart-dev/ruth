@@ -30,6 +30,17 @@ nel perimetro iniziale. Dopo chiusura proporre lo scope successivo e
 attendere il nuovo OK prima di implementarlo. DATA-001 e GitHub-first invariati.
 Le prove personali storiche conservano la loro attribuzione.
 
+## Successione e branch temporanei
+
+ORCH-001 revisione 2 estende il protocollo con HANDOFF-001 e
+BRANCH-LIFECYCLE-001: consegna GitHub prima del cambio, cessazione delle
+scritture dell'uscente e claim esplicito del successore dopo nuove verifiche.
+Solo main e' permanente. Le approvazioni valide restano valide; nessun
+nuovo scope e' autorizzato dal cambio chat.
+Vedere ORCHESTRATOR_HANDOFF.md, SUCCESSOR_MESSAGE.md, BRANCH_AUDIT.md
+e BRANCH_ARCHIVE.md. La pulizia attuale e' bloccata per mutazioni
+autenticate mancanti: nessun ramo eliminato e nessun tag creato.
+
 ## Letture di ripresa
 
 1. [Istruzioni operative](AGENTS.md).
@@ -40,6 +51,8 @@ Le prove personali storiche conservano la loro attribuzione.
    e mappe del componente e dei suoi antenati.
 6. [Regole dello scaffold](ARCHITECTURE.md) e checkpoint del componente.
 7. [Orchestrazione e incarichi](ORCHESTRATION.md).
+8. [Consegna corrente](ORCHESTRATOR_HANDOFF.md), [audit](BRANCH_AUDIT.md)
+   e [archivi](BRANCH_ARCHIVE.md).
 
 ## Stato del progetto
 
@@ -48,7 +61,9 @@ fra i client, poi lo scaffold documentale, infine la migrazione incrementale.
 L'architettura proposta resta evolvibile. Il checkpoint indica branch,
 revisioni e stato di integrazione di ciascuna porzione. Un'implementazione
 nel branch di lavoro non deve essere considerata gia disponibile in main.
-I branch storici rimangono fonti conservate della migrazione.
+La storia dei rami storici va conservata tramite tag d'archivio verificati
+prima della loro eventuale rimozione (BRANCH-LIFECYCLE-001).
+main e' l'unico branch permanente; gli archivi pianificati non sono ancora creati.
 
 Kaggle e' un'integrazione futura inattiva. Log, misure, modelli e dati di
 macchina rimangono locali secondo DATA-001. Non sono fonti pubbliche di stato.

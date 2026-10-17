@@ -1,6 +1,7 @@
 # Ruth: configurazione e collaudo della continuita'
 
-Protocollo CONT-001 revisione 2; ORCH-001; MIG-FLOW-002 revisione 3.
+Protocollo CONT-001 revisione 2; ORCH-001 revisione 2; MIG-FLOW-002 revisione 3.
+HANDOFF-001 e BRANCH-LIFECYCLE-001.
 Fonte comune: GitHub, branch main. Procedura generica senza dati di macchina.
 
 ## Ripresa e ruoli
@@ -18,6 +19,24 @@ GitHub conserva contratti, prerequisiti e checkpoint; la cronologia delle
 altre chat non e' un canale di coordinamento presunto.
 Assegnazioni, parallelismo esplicitamente approvato, responsabili unici e
 integrazioni seriali seguono ORCHESTRATION.md.
+
+## Cambio dell'orchestratore e strumenti di pulizia
+
+Seguire HANDOFF-001: pubblicare consegna, rilasciare le scritture comuni
+dell'uscente e registrare claim verificato del successore. Usare
+SUCCESSOR_MESSAGE.md per la nuova chat Work Cloud fuori dal progetto.
+Il successore verifica strumenti autenticati, risorse locali, permessi
+della propria sessione e ambiente, senza ereditare presunte capacita.
+ORCHESTRATOR_HANDOFF.md descrive approvazioni, SHA, incarichi e blocchi.
+La creazione automatica non e' dimostrata se gli strumenti app falliscono.
+
+main e' il solo branch permanente; BRANCH_AUDIT.md e' uno snapshot.
+Per tag e cancellazioni controllare la disponibilita delle specifiche
+mutazioni autenticate. L'accesso GitHub per commit/PR non dimostra la
+disponibilita di create-tag/delete-ref, ne' autenticazione CLI.
+Non cercare token, cambiare login o usare strumenti con semantica diversa.
+Se manca una capacita, lasciare i rami e registrare il blocco. Gli archivi
+sono fonti valide solo dopo verifica del ref remoto (BRANCH_ARCHIVE.md).
 
 ## Sviluppo GitHub-first (REMOTE-001)
 
@@ -93,7 +112,7 @@ operative incompatibili con questo blocco. La modifica della UI e' distinta
 dalla pubblicazione GitHub; non e' stata eseguita automaticamente.
 
 ```text
-Progetto: yannericetchart-dev/ruth. CONT-001 rev.2, ORCH-001, MIG-FLOW-002 rev.3.
+Progetto: yannericetchart-dev/ruth. CONT-001 rev.2, ORCH-001 rev.2, MIG-FLOW-002 rev.3.
 A ogni nuova chat o ripresa risolvi prima main tramite la connessione GitHub:
 https://api.github.com/repos/yannericetchart-dev/ruth/git/ref/heads/main
 Usa object.sha come ref per START_HERE.md, AGENTS.md, DECISIONS.md,
@@ -122,6 +141,16 @@ prima di implementarlo. Non dedurre autorizzazioni dal silenzio.
 DATA-001: in Git solo materiale portabile, SHA, stati e conteggi; nessun
 percorso personale, log, inventario host, dato reale o credenziale.
 Kaggle resta inattivo. I documenti GitHub non aggiornano da soli la UI.
+Per sostituire l'orchestratore applica HANDOFF-001: consegna pubblicata,
+uscente senza nuove scritture comuni e successore verificato con claim
+esplicito. Leggi ORCHESTRATOR_HANDOFF.md prima di scrivere; un solo titolare.
+Le approvazioni restano valide, il cambio chat non autorizza nuovi scope.
+BRANCH-LIFECYCLE-001: solo main permanente; crea solo i rami necessari,
+padri inclusi. Prima di ogni rimozione riconferma SHA, PR e utilizzatori.
+Per storia non integrata prima verifica tag d'archivio remoti e aggiorna
+le fonti. Non importare codice storico in main per eliminare un branch.
+Senza create-tag/delete-ref autenticati dichiara il blocco, senza pulizia
+presunta. Aggiorna NODE e mappe dopo una rimozione effettivamente verificata.
 ```
 
 ## Collaudo indipendente della continuita'
