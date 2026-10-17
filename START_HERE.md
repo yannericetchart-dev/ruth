@@ -165,3 +165,31 @@ Decima fase Ruth dopo INDEX, scope in
 `models/formats/gguf/BLOCK_SCOPE.md`. Codice candidato:
 CI e promozioni ancora da verificare. Collaudo personale
 GGUF-BLOCK-MANUAL-001 richiesto dopo il merge in main.
+
+## GGUF-BLOCK-001 integrata tecnicamente (17 ottobre 2026)
+
+Le PR #59 (GGUF), #60 (Formats), #61 (Models) e #62 (main)
+integrano il controllo BLOCKS, decima fase del default Ruth.
+Commit applicativo `5f896f1bbacaa8c802f66f2a40ee7663cfa40604`, verifiche CI sintetiche e mappe
+superate. Solo metadati, descriptor ed estensione byte: nessun peso
+del modello letto. **GGUF-BLOCK-MANUAL-001 resta pending** fino al
+collaudo personale sul main aggiornato e conferma esplicita.
+Le precedenti note candidate sono storiche.
+
+## GGUF-BLOCK-MANUAL-001 superato personalmente (17 ottobre 2026)
+
+L'utente conferma l'esito positivo del flusso Ruth a dieci fasi
+sul commit main `2f42a9d7a631e8779613784b58f8ce1b92afff9c`. Il catalogo locale non configurato
+e gli skip di GGUF, META, INDEX e BLOCKS sono validi;
+nessun file GGUF reale testato. MIG-010 complete; prossimo
+perimetro ancora da proporre e approvare (MIG-FLOW-001).
+Le precedenti note di manual pending sono storiche.
+
+## GGUF-KBLOCK-SCOPE-001 approvato (17 ottobre 2026)
+
+Autorizzata MIG-011: calcolo strutturale bounded degli ingombri
+dei sei tipi K-quant GGML Q2_K/Q3_K/Q4_K/Q5_K/Q6_K/Q8_K, soltanto
+per GGUF del catalogo. Undicesimo passaggio Ruth KBLOCKS dopo
+BLOCKS. Scope: `models/formats/gguf/KBLOCK_SCOPE.md`.
+Codice candidato sul ramo remoto; CI/promozioni in attesa.
+GGUF-KBLOCK-MANUAL-001 richiesta dopo main; nessun peso letto.

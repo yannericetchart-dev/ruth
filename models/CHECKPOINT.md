@@ -149,3 +149,50 @@
 - Scope nel GGUF/BLOCK_SCOPE.md, codice candidato remoto:
   test/CI e promozioni ancora pendenti.
   GGUF-BLOCK-MANUAL-001 dopo main; DATA-001 invariato.
+
+## GGUF-BLOCK-001 verificata e integrata (17 ottobre 2026)
+
+- Cinque tipi GGML supportati senza accesso al tensor_data:
+  Q4_0/Q4_1/Q5_0/Q5_1/Q8_0. Report immutabili, decima
+  fase Ruth; unknown `size_unverified`.
+- CI runs 39022476943, 39022574327, 39022637716,
+  39022698747 success (fixture, regressioni e mappe).
+  PR #59-#62 promosse in main `5f896f1bbacaa8c802f66f2a40ee7663cfa40604`.
+- Stato tecnico: implementation complete, verification passed
+  (sintetica), integration merged. Manual
+  **GGUF-BLOCK-MANUAL-001 active/pending**.
+- L'accettazione personale delle nove fasi precedenti resta valida.
+  Nessun download, payload, inferenza o dato host in Git (DATA-001).
+
+## GGUF-BLOCK-MANUAL-001 superata (17 ottobre 2026)
+
+- L'utente ha eseguito personalmente il flusso di dieci controlli
+  di `.venv/bin/python main.py` sulla revisione `2f42a9d7a631e8779613784b58f8ce1b92afff9c`,
+  coincidente con il main pubblicato; ha confermato esplicitamente
+  positivo il collaudo GGUF-BLOCK-MANUAL-001 il 17 ottobre 2026.
+- Tutte le fasi PY -> DEP -> DIAG -> HW -> NVIDIA -> CAT -> GGUF ->
+  META -> INDEX -> BLOCKS sono state completate in ordine.
+  Il catalogo opzionale assente e' risultato `not_configured`
+  e GGUF/META/INDEX/BLOCKS sono skip validi e non bloccanti.
+- Non e' stato collaudato personalmente alcun file GGUF reale:
+  l'esito non certifica pesi, integrita', dequantizzazione,
+  CUDA, backend, runtime o inferenza.
+- I risultati di CI e la verifica con fixture sintetiche dei cinque
+  tipi Q4_0/Q4_1/Q5_0/Q5_1/Q8_0 restano distinti
+  dall'accettazione manuale senza catalogo.
+- DATA-001 e REMOTE-001 rispettati: non vengono versionati
+  inventari dell'host, percorsi reali, log, manifest, modelli,
+  benchmark o credenziali. Nessuna nuova migrazione approvata.
+- Scope GGUF-BLOCK-001 implementato, verificato con fixture in CI
+  e integrato in main; **manual acceptance passed**.
+  La prossima porzione richiede approvazione distinta.
+
+## GGUF-KBLOCK-001 candidata (17 ottobre 2026)
+
+- MIG-011 approvata; supporto descriptor-only Q2_K, Q3_K,
+  Q4_K, Q5_K, Q6_K, Q8_K (blocco 256) nella nuova KBLOCKS.
+- Codice candidato in branch remoto; CI, PR e mappe
+  non ancora completate. Le 10 fasi precedenti rimangono
+  accettate; nessun payload dei tensori letto.
+- GGUF-KBLOCK-MANUAL-001 richiede prova personale default
+  e fixture sintetica locale dopo merge in main; DATA-001 vigente.

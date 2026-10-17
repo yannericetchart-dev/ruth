@@ -421,3 +421,54 @@ GPU-MANUAL-001 richiesta solo dopo main, secondo MIG-FLOW-002.
 - Candidate in branch remoto, test e mappe in preparazione,
   CI e promozioni ancora da verificare. Dopo il merge
   GGUF-BLOCK-MANUAL-001 personale obbligatorio.
+
+## GGUF-BLOCK-001: integrazione tecnica (17 ottobre 2026)
+
+- Scope approvato GGUF-BLOCK-SCOPE-001: calcolo bounded
+  degli ingombri di cinque tipi quantizzati GGML, soli
+  file GGUF dichiarati in CAT. Nessuna lettura di pesi.
+- CI, mappe e fixture superate attraverso PR #59, #60,
+  #61, #62 fino a main `5f896f1bbacaa8c802f66f2a40ee7663cfa40604`.
+- Decimo passo BLOCKS nel default Ruth, mirato `gguf-blocks`.
+  Nessun catalogo = skip valido.
+- GGUF-BLOCK-MANUAL-001 attiva/pending prima del
+  prossimo scope. Notazioni candidate precedenti storiche.
+
+## Chiusura MIG-010 / GGUF-BLOCK-MANUAL-001 (17 ottobre 2026)
+
+- L'utente ha eseguito personalmente il flusso di dieci controlli
+  di `.venv/bin/python main.py` sulla revisione `2f42a9d7a631e8779613784b58f8ce1b92afff9c`,
+  coincidente con il main pubblicato; ha confermato esplicitamente
+  positivo il collaudo GGUF-BLOCK-MANUAL-001 il 17 ottobre 2026.
+- Tutte le fasi PY -> DEP -> DIAG -> HW -> NVIDIA -> CAT -> GGUF ->
+  META -> INDEX -> BLOCKS sono state completate in ordine.
+  Il catalogo opzionale assente e' risultato `not_configured`
+  e GGUF/META/INDEX/BLOCKS sono skip validi e non bloccanti.
+- Non e' stato collaudato personalmente alcun file GGUF reale:
+  l'esito non certifica pesi, integrita', dequantizzazione,
+  CUDA, backend, runtime o inferenza.
+- I risultati di CI e la verifica con fixture sintetiche dei cinque
+  tipi Q4_0/Q4_1/Q5_0/Q5_1/Q8_0 restano distinti
+  dall'accettazione manuale senza catalogo.
+- DATA-001 e REMOTE-001 rispettati: non vengono versionati
+  inventari dell'host, percorsi reali, log, manifest, modelli,
+  benchmark o credenziali. Nessuna nuova migrazione approvata.
+- GGUF-BLOCK-001: implementazione complete, verifica sintetica CI
+  passed, integrazione in main (PR #62), accettazione personale
+  complete. La fase BLOCKS resta read-only e catalog-bound;
+  nessuna estensione del supporto ai tipi non previsti.
+- I riferimenti precedenti a manual pending sono storici.
+  Nessuna migrazione ulteriore autorizzata implicitamente.
+
+## MIG-011: GGUF-KBLOCK-SCOPE-001 approvato (17 ottobre 2026)
+
+- Calcolo strutturale dell'ingombro per sei tipi K-quant GGML
+  da 256 elementi/blocco nei soli GGUF dichiarati in CAT.
+  Verifica bounded read-only di dimensioni/offset/overlap,
+  mai dei byte dei pesi.
+- API nuove catalog-bound e undicesimo passo KBLOCKS,
+  mirato `gguf-kblocks`. Scope in
+  [KBLOCK_SCOPE.md](models/formats/gguf/KBLOCK_SCOPE.md).
+- Candidato remoto; CI, mappe e PR in preparazione;
+  collaudo personale GGUF-KBLOCK-MANUAL-001 obbligatorio
+  dopo main. Nessuna migrazione futura pre-approvata.

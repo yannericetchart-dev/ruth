@@ -269,3 +269,36 @@ e' approvata; REMOTE-001, DATA-001 e MIG-FLOW-001/002 invariati.
   niente path, nomi modelli, output grezzi, inventari, log o benchmark.
 Le note precedenti che indicano GGUF-INDEX-MANUAL-001 pending non
 prevalgono sul checkpoint aggiornato.
+
+## GGUF-BLOCK-001: integrazione tecnica (17 ottobre 2026)
+
+GGUF-BLOCK-SCOPE-001 implementato, CI verificata, integrato con
+PR #59-#62 fino al main `5f896f1bbacaa8c802f66f2a40ee7663cfa40604`; Ruth default ora ha dieci
+fasi e BLOCKS segue INDEX. GGUF-BLOCK-MANUAL-001 **pending**:
+non iniziare nuova migrazione prima dell'accettazione personale e
+di un ulteriore scope funzionale esplicitamente approvato.
+Vincoli REMOTE-001, DATA-001 e MIG-FLOW-001/002 invariati.
+Le annotazioni precedenti di candidato sono storiche.
+
+## GGUF-BLOCK-MANUAL-001: accettazione positiva (17 ottobre 2026)
+
+- L'utente ha eseguito personalmente il flusso di dieci controlli
+  di `.venv/bin/python main.py` sulla revisione `2f42a9d7a631e8779613784b58f8ce1b92afff9c`,
+  coincidente con il main pubblicato; ha confermato esplicitamente
+  positivo il collaudo GGUF-BLOCK-MANUAL-001 il 17 ottobre 2026.
+- Tutte le fasi PY -> DEP -> DIAG -> HW -> NVIDIA -> CAT -> GGUF ->
+  META -> INDEX -> BLOCKS sono state completate in ordine.
+  Il catalogo opzionale assente e' risultato `not_configured`
+  e GGUF/META/INDEX/BLOCKS sono skip validi e non bloccanti.
+- Non e' stato collaudato personalmente alcun file GGUF reale:
+  l'esito non certifica pesi, integrita', dequantizzazione,
+  CUDA, backend, runtime o inferenza.
+- I risultati di CI e la verifica con fixture sintetiche dei cinque
+  tipi Q4_0/Q4_1/Q5_0/Q5_1/Q8_0 restano distinti
+  dall'accettazione manuale senza catalogo.
+- DATA-001 e REMOTE-001 rispettati: non vengono versionati
+  inventari dell'host, percorsi reali, log, manifest, modelli,
+  benchmark o credenziali. Nessuna nuova migrazione approvata.
+MIG-010 e il gate manuale sono complete. Le note anteriori
+che indicano `GGUF-BLOCK-MANUAL-001 pending` restano storiche e
+non rappresentano la fase corrente.

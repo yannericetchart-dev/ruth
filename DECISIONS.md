@@ -430,3 +430,63 @@ autorizzata implicitamente.
   personale GGUF-BLOCK-MANUAL-001 obbligatorio. Nessuna
   migrazione seguente implicitamente approvata.
 - Si applicano MAIN-FLOW-001, MIG-FLOW-001/002, DATA-001, REMOTE-001.
+
+### GGUF-BLOCK-001: integrazione verificata (17 ottobre 2026)
+
+- Scope approvato GGUF-BLOCK-SCOPE-001 invariato.
+- PR #59 (leaf), #60 (Formats), #61 (Models), #62 (root)
+  tutte integrate, CI runs 39022476943, 39022574327,
+  39022637716, 39022698747: **success**, con test sintetici
+  GGUF, regressioni CLI e controllo delle mappe.
+- Integrazione main `5f896f1bbacaa8c802f66f2a40ee7663cfa40604`. Supportati unicamente i cinque
+  GGML type IDs 2/3/6/7/8 con formula blocchi.
+  Altri tipi `size_unverified`; nessun dato dei pesi letto.
+- GGUF-BLOCK-MANUAL-001 ancora **pending** (MIG-FLOW-002).
+  Nessuna nuova migrazione autorizzata implicitamente.
+
+### GGUF-BLOCK-MANUAL-001: accettazione positiva (17 ottobre 2026)
+
+- L'utente ha eseguito personalmente il flusso di dieci controlli
+  di `.venv/bin/python main.py` sulla revisione `2f42a9d7a631e8779613784b58f8ce1b92afff9c`,
+  coincidente con il main pubblicato; ha confermato esplicitamente
+  positivo il collaudo GGUF-BLOCK-MANUAL-001 il 17 ottobre 2026.
+- Tutte le fasi PY -> DEP -> DIAG -> HW -> NVIDIA -> CAT -> GGUF ->
+  META -> INDEX -> BLOCKS sono state completate in ordine.
+  Il catalogo opzionale assente e' risultato `not_configured`
+  e GGUF/META/INDEX/BLOCKS sono skip validi e non bloccanti.
+- Non e' stato collaudato personalmente alcun file GGUF reale:
+  l'esito non certifica pesi, integrita', dequantizzazione,
+  CUDA, backend, runtime o inferenza.
+- I risultati di CI e la verifica con fixture sintetiche dei cinque
+  tipi Q4_0/Q4_1/Q5_0/Q5_1/Q8_0 restano distinti
+  dall'accettazione manuale senza catalogo.
+- DATA-001 e REMOTE-001 rispettati: non vengono versionati
+  inventari dell'host, percorsi reali, log, manifest, modelli,
+  benchmark o credenziali. Nessuna nuova migrazione approvata.
+- Stato: **complete/passed** per il gate manuale di MIG-010
+  ai sensi di MIG-FLOW-002, senza estendere GGUF-BLOCK-SCOPE-001.
+- L'implementazione era stata verificata in CI e integrata con
+  PR #59-#62; ora anche il collaudo personale e' stato accettato.
+  Migrazione successiva soltanto dopo specifica approvazione.
+
+## GGUF-KBLOCK-SCOPE-001 — sei superblocchi K (17 ottobre 2026)
+
+- Approvazione esplicita dell'utente, base main `1b497172bfad562e6096e88ac8be69ef01a8ced6`; MIG-011.
+- Sei GGML ID: 10 Q2_K (256:84), 11 Q3_K (256:110),
+  12 Q4_K (256:144), 13 Q5_K (256:176), 14 Q6_K (256:210),
+  15 Q8_K (256:292), secondo ggml.h/ggml-common.h.
+- Calcolo ingombri di soli descrittori GGUF in CAT con la
+  prima dimensione divisibile per 256; controlli bounded,
+  allineamento, limiti file e sovrapposizioni. Altri
+  tipi restano `size_unverified`.
+- Nessuna modifica implicita alle precedenti API INDEX/BLOCKS,
+  che continueranno a non attestare tipi K.
+- API inspect_kblock_layout / inspect_all_kblock_layouts
+  immutabili. Undicesimo passaggio `KBLOCKS`, comando
+  mirato `gguf-kblocks`, catalogo assente = skip valido.
+- Fixture sintetiche anche per successivo collaudo manuale
+  personale; test/CI/mappe e promozioni fino a main.
+  GGUF-KBLOCK-MANUAL-001 post-merge obbligatorio.
+- Non leggere tensor payload o dequantizzare, no rete,
+  download, CUDA, benchmark, installazioni, inferenza.
+  DATA-001, REMOTE-001, MIG-FLOW-001/002 invariati.

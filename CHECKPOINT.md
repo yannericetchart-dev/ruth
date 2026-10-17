@@ -1,9 +1,10 @@
 # Ruth: checkpoint di progetto
 
-Revisione documentale: 32 (indice main); CONT-001 revisione 1.
+Revisione documentale: 34 (indice main); CONT-001 revisione 1.
 Fase 3: migrazione incrementale per componente.
-Stato: **GGUF-INDEX-001 implementata, verificata in CI, integrata in main
-e accettata personalmente (GGUF-INDEX-MANUAL-001 complete)**.
+Stato: **GGUF-BLOCK-001 implementata, verificata in CI, integrata in main
+e accettata personalmente (GGUF-BLOCK-MANUAL-001 complete)**.
+GGUF-INDEX-MANUAL-001 rimane complete.
 GGUF-MANUAL-001 e CAT-MANUAL-001 restano complete.
 PY, DEP, DIAG, HW/CPU e GPU NVIDIA restano accettate personalmente.
 L'ingresso senza argomenti di Ruth esegue tutte le funzioni integrate.
@@ -379,3 +380,86 @@ e DIAG-SCOPE-001. SYNC-001 resta storica/superseded.
 - Collaudo GGUF-BLOCK-MANUAL-001 pianificato soltanto dopo
   promozioni e CI positive. Nessun nuovo perimetro approvato.
   Local sync `pending_no_access`; REMOTE-001 e DATA-001 invariati.
+
+## GGUF-BLOCK-001: integrazione tecnica completata (17 ottobre 2026)
+
+- Perimetro GGUF-BLOCK-SCOPE-001 approvato, codice in
+  `models/formats/gguf/runtime/blocks.py` e estensione
+  opt-in di `tensor_index.py` per Q4_0, Q4_1, Q5_0,
+  Q5_1 e Q8_0 (32 elementi per blocco, 18/20/22/24/34 byte).
+- Catalog-only, sola lettura bounded dei descrittori, verifica
+  prima dimensione divisibile per 32, calcolo ingombri,
+  bound degli offset e sovrapposizione. Gli altri formati
+  rimangono `size_unverified`, senza falso successo.
+- Ruth con dieci passi: PY -> DEP -> DIAG -> HW -> NVIDIA ->
+  CAT -> GGUF -> META -> INDEX -> BLOCKS. Sottocomando
+  `gguf-blocks`. Catalogo non configurato non bloccante.
+- Promozioni CI superate: PR #59 gguf/main (merge
+  e6236ce45623bad4d4e9df2f80289a59fb30c11d),
+  #60 formats/main (d456646059b5eafe4364b265b8fe774fe8269103),
+  #61 models/main (3172c609440bfa0849df0b908e54a3d91ae27bce),
+  #62 main (`5f896f1bbacaa8c802f66f2a40ee7663cfa40604`). Runs 39022476943,
+  39022574327, 39022637716, 39022698747: **success**,
+  incluso `tools/maps.py --check`.
+- Stato scope: implementation **complete**,
+  verification **passed** (solo fixture sintetiche),
+  integration **merged**. **GGUF-BLOCK-MANUAL-001 pending**:
+  collaudo personale sulla revisione main aggiornata necessario.
+- `local_sync: pending_no_access`: checkout personale non
+  modificato da remoto; i dati reali di host/modelli, log,
+  benchmark e credenziali restano esclusi da Git (DATA-001).
+- Nessun payload letto, hash, dequantizzazione, CUDA,
+  inference, download o acquisizione. Kaggle inattivo.
+  Le note candidate precedenti sono storiche; la prossima
+  migrazione e' bloccata fino al collaudo personale e
+  ad approvazione di uno scope distinto.
+
+## GGUF-BLOCK-MANUAL-001: collaudo accettato (17 ottobre 2026)
+
+- L'utente ha eseguito personalmente il flusso di dieci controlli
+  di `.venv/bin/python main.py` sulla revisione `2f42a9d7a631e8779613784b58f8ce1b92afff9c`,
+  coincidente con il main pubblicato; ha confermato esplicitamente
+  positivo il collaudo GGUF-BLOCK-MANUAL-001 il 17 ottobre 2026.
+- Tutte le fasi PY -> DEP -> DIAG -> HW -> NVIDIA -> CAT -> GGUF ->
+  META -> INDEX -> BLOCKS sono state completate in ordine.
+  Il catalogo opzionale assente e' risultato `not_configured`
+  e GGUF/META/INDEX/BLOCKS sono skip validi e non bloccanti.
+- Non e' stato collaudato personalmente alcun file GGUF reale:
+  l'esito non certifica pesi, integrita', dequantizzazione,
+  CUDA, backend, runtime o inferenza.
+- I risultati di CI e la verifica con fixture sintetiche dei cinque
+  tipi Q4_0/Q4_1/Q5_0/Q5_1/Q8_0 restano distinti
+  dall'accettazione manuale senza catalogo.
+- DATA-001 e REMOTE-001 rispettati: non vengono versionati
+  inventari dell'host, percorsi reali, log, manifest, modelli,
+  benchmark o credenziali. Nessuna nuova migrazione approvata.
+- Stato definitivo dello scope: implementation **complete**,
+  verification **passed** (CI con fixture sintetiche),
+  integration **merged** (PR #62), manual
+  acceptance **passed/complete** (GGUF-BLOCK-MANUAL-001).
+  Root MIG-010 **complete**, senza blocchi aperti.
+- `local_sync: verified_on_tested_revision` per `2f42a9d7a631e8779613784b58f8ce1b92afff9c`,
+  come comunicato dall'utente; dopo merge di questi soli documenti,
+  `local_sync: pending_docs_fast_forward`. Il clone principale
+  non e' stato modificato dall'assistente.
+- Le annotazioni anteriori candidate/active/pending/blocked sono
+  storiche: questo checkpoint ne sostituisce lo stato.
+  Passo successivo: definire un nuovo scope separato e richiedere
+  approvazione esplicita prima di modificare altro codice.
+
+## GGUF-KBLOCK-SCOPE-001 approvato, MIG-011 candidata (17 ottobre 2026)
+
+- Via libera esplicito ai sei K-quant GGML da 256 elementi;
+  base main `1b497172bfad562e6096e88ac8be69ef01a8ced6`, ramo remoto
+  `models/formats/gguf/work/GGUF-KBLOCK-001`.
+- API e fixture candidate per GGUF-KBLOCK-001, read-only
+  e catalog-bound: Q2_K/Q3_K/Q4_K/Q5_K/Q6_K/Q8_K.
+  La semantica di INDEX e BLOCKS rimane invariata.
+- Ruth default prevista con 11 fasi, KBLOCKS dopo BLOCKS;
+  comando mirato `gguf-kblocks`. Catalogo assente skip valido.
+- Stato nuova porzione: candidate implementation,
+  verification not_run, integration pending; collaudo
+  GGUF-KBLOCK-MANUAL-001 pianificato dopo main.
+- Nessun tensor_data letto, rete/download, CUDA, benchmark,
+  inferenza, dato locale in Git (DATA-001). Checkout principale
+  intatto (REMOTE-001). Prossimo scope ancora da autorizzare.
