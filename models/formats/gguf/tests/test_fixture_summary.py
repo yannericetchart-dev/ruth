@@ -16,19 +16,20 @@ class FixtureSummaryTests(unittest.TestCase):
         fixture._create_fixture_catalog(self.root)
         self.target = self.root / ".local/models/kquant.gguf"
 
-    def test_full_synthetic_pipeline_checks_all_three_summary_verdicts(self):
+    def test_full_synthetic_pipeline_checks_all_four_summary_verdicts(self):
         result = fixture.run_fixture_pipeline()
         self.assertEqual(result.status, "passed", result)
-        self.assertEqual(result.fixtures, 3)
+        self.assertEqual(result.fixtures, 4)
         self.assertEqual(result.stages[-1], "SUMMARY=structural_checked")
 
-    def test_summary_has_three_stable_structurally_checked_models(self):
+    def test_summary_has_four_stable_structurally_checked_models(self):
         report = summary.inspect_structural_summaries(project_root=self.root)
         self.assertEqual(report.status, "structural_checked")
         self.assertEqual(tuple((r.model_id, r.status, r.tensor_count)
                                for r in report.models),
                          (("scalar", "structural_checked", 1),
                           ("q4", "structural_checked", 1),
+                          ("multi", "structural_checked", 3),
                           ("kquant", "structural_checked", 1)))
 
     def test_unsupported_quantization_is_not_falsely_verified(self):
