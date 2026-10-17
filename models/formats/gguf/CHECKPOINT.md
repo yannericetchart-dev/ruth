@@ -476,3 +476,30 @@
   `GGUF-MULTITENSOR-MANUAL-001` **pending** solo dopo main.
   Branch `models/formats/gguf/work/GGUF-MULTITENSOR-FIXTURE-001`.
   Local checkout non accessibile: `local_sync: pending_no_access`.
+
+## MIG-016 integrazione tecnica completata (17 ottobre 2026)
+
+- PR #96 GGUF, #97 Formats, #98 Models e #99 main integrate dopo
+  GitHub CI **success** a ogni promozione (suite sintetiche, regressioni,
+  punto d'ingresso e mappe); commit applicativo main `4eb92225e3addbc8b7d58b15243557dae86e4479`.
+- FIXTURE ora dichiara **4 GGUF sintetici** in catalogo temporaneo:
+  `scalar`, `q4`, `multi` e `kquant`. `multi` ha tre descrittori
+  (F32, Q4_0, Q4_K), offset 0/32/64 e intervalli validi.
+  CAT/GGUF/META/INDEX/BLOCKS/KBLOCKS/SUMMARY sempre in sequenza;
+  INDEX/BLOCKS possono ancora produrre `partial` per tipi legittimi,
+  KBLOCKS completa il dimensionamento, SUMMARY deve essere
+  `structural_checked` con `tensor_count=3` per multi.
+- Suite mirata `test_multitensor`: **11 test sintetici** passati in CI,
+  incluso big endian, allineamento personalizzato, ordine descrittori,
+  offset/sovrapposizione, extent insufficiente, tipo sconosciuto.
+  Suite legacy fixture adattate da 3 a 4 modelli, senza modifica ai parser.
+- Il flusso Ruth resta a **13 fasi**. Stato MIG-016:
+  implementation **complete**, verification **passed (CI)**,
+  integration **merged**, personal `GGUF-MULTITENSOR-MANUAL-001`
+  **pending**. Per collaudo personale: default Ruth e suite
+  `python -m unittest models.formats.gguf.tests.test_multitensor -v`
+  (11 test). Se positivo su commit main verificato, MIG-FLOW-002-R2
+  autorizza la chiusura automatica senza richiesta di ulteriore consenso.
+- Nessun GGUF reale/pesi, tensor_data, hash, dequantizzazione, rete,
+  download, CUDA o inferenza. DATA-001/REMOTE-001 invariati, Kaggle inattivo.
+  `local_sync: pending_no_access`; nessun perimetro MIG-017 approvato.
