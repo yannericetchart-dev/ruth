@@ -20,6 +20,7 @@ Ambito verifica: GGUF-001: CI success runs 38935705385, 38935861881, 38935943414
 4. `FORMAT-BLOCK-001` [complete] GGUF-BLOCK-001 five-type descriptor block layout verification passed CI, integrated via PR #62; no other quantized type support.
 5. `FORMAT-KBLOCK-001` [complete] GGUF-KBLOCK-001 delegated bounded K-quant reader CI verified and merged to main via PR #68; remaining quantized types excluded.
 6. `FORMAT-FIXTURE-001` [complete] MIG-012: GGUF-FIXTURE-001 implemented, CI passed and integrated via PR #71-#74; personal 12-stage Ruth plus 4 synthetic tests OK on a3ced17b0e4bccaf8fe8e10db9c1f5b5c508bda3, accepted under MIG-FLOW-002-R2. No real GGUF tested; next scope requires approval.
+7. `FORMAT-SUMMARY-001` [active] MIG-013 scope approved: aggregate GGUF structural verdicts from CAT-bound bounded readers, 13th default Ruth step; candidate code, CI/merges/manual pending.
 
 ## Componenti (ordine locale, ID stabili)
 

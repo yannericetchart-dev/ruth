@@ -26,5 +26,6 @@ Ambito verifica: GGUF-001: CI success runs 38935705385, 38935861881, 38935943414
 10. `GGUF-KBLOCK-MANUAL-001` [complete] User supplied positive 11-stage Ruth output on main 233efc358f56a66d2abf796fa8e20a476aa788cf and local 9-test K-block fixture suite OK, deemed acceptance under MIG-FLOW-002 revision 2; CAT not configured, no real GGUF checked.
 11. `GGUF-FIXTURE-001` [complete] MIG-012: GGUF-FIXTURE-001 implemented, CI passed and integrated via PR #71-#74; personal 12-stage Ruth plus 4 synthetic tests OK on a3ced17b0e4bccaf8fe8e10db9c1f5b5c508bda3, accepted under MIG-FLOW-002-R2. No real GGUF tested; next scope requires approval.
 12. `GGUF-FIXTURE-MANUAL-001` [complete] Personal 12-step Ruth run on verified main a3ced17b0e4bccaf8fe8e10db9c1f5b5c508bda3 and targeted test_pipeline suite (4 tests, OK), accepted on 17 October 2026 without second approval; synthetic-only fixture, no real GGUF.
+13. `GGUF-STRUCT-SUMMARY-001` [active] MIG-013 scope approved: aggregate GGUF structural verdicts from CAT-bound bounded readers, 13th default Ruth step; candidate code, CI/merges/manual pending.
 
 Propagare impatti e blocchi al [padre](../ROADMAP.md) e proseguire fino alla radice.

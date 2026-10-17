@@ -15,6 +15,7 @@ Nodo responsabile: [MODEL](NODE.yaml). Ripresa: [START_HERE](../START_HERE.md).
 - `acquire(request) -> AcquisitionResult [proposta]`
 - `verify(artifact) -> VerificationReport [proposta]`
 - `run_fixture_pipeline() -> GGUFIndirectFixtureReport [MIG-012 verified and integrated]`
+- `inspect_structural_summaries(*, project_root: Path | None = None) -> GGUFStructuralReport [MIG-013 candidate]`
 
 Dipendenze: nessuna.
 
