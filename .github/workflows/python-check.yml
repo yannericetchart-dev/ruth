@@ -40,6 +40,8 @@ jobs:
         run: python3 -m unittest discover -s models/formats/gguf/tests -p 'test_index.py' -v
       - name: GGUF block layout synthetic tests
         run: python3 -m unittest discover -s models/formats/gguf/tests -p 'test_blocks.py' -v
+      - name: GGUF K-block six-type synthetic tests
+        run: python3 -m unittest discover -s models/formats/gguf/tests -p 'test_kblocks.py' -v
       - name: Root tests and entrypoint
         run: python3 -m unittest discover -s tests -v
       - name: Check generated maps

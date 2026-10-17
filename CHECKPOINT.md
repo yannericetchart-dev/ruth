@@ -446,3 +446,20 @@ e DIAG-SCOPE-001. SYNC-001 resta storica/superseded.
   storiche: questo checkpoint ne sostituisce lo stato.
   Passo successivo: definire un nuovo scope separato e richiedere
   approvazione esplicita prima di modificare altro codice.
+
+## GGUF-KBLOCK-SCOPE-001 approvato, MIG-011 candidata (17 ottobre 2026)
+
+- Via libera esplicito ai sei K-quant GGML da 256 elementi;
+  base main `1b497172bfad562e6096e88ac8be69ef01a8ced6`, ramo remoto
+  `models/formats/gguf/work/GGUF-KBLOCK-001`.
+- API e fixture candidate per GGUF-KBLOCK-001, read-only
+  e catalog-bound: Q2_K/Q3_K/Q4_K/Q5_K/Q6_K/Q8_K.
+  La semantica di INDEX e BLOCKS rimane invariata.
+- Ruth default prevista con 11 fasi, KBLOCKS dopo BLOCKS;
+  comando mirato `gguf-kblocks`. Catalogo assente skip valido.
+- Stato nuova porzione: candidate implementation,
+  verification not_run, integration pending; collaudo
+  GGUF-KBLOCK-MANUAL-001 pianificato dopo main.
+- Nessun tensor_data letto, rete/download, CUDA, benchmark,
+  inferenza, dato locale in Git (DATA-001). Checkout principale
+  intatto (REMOTE-001). Prossimo scope ancora da autorizzare.

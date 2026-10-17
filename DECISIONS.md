@@ -468,3 +468,25 @@ autorizzata implicitamente.
 - L'implementazione era stata verificata in CI e integrata con
   PR #59-#62; ora anche il collaudo personale e' stato accettato.
   Migrazione successiva soltanto dopo specifica approvazione.
+
+## GGUF-KBLOCK-SCOPE-001 — sei superblocchi K (17 ottobre 2026)
+
+- Approvazione esplicita dell'utente, base main `1b497172bfad562e6096e88ac8be69ef01a8ced6`; MIG-011.
+- Sei GGML ID: 10 Q2_K (256:84), 11 Q3_K (256:110),
+  12 Q4_K (256:144), 13 Q5_K (256:176), 14 Q6_K (256:210),
+  15 Q8_K (256:292), secondo ggml.h/ggml-common.h.
+- Calcolo ingombri di soli descrittori GGUF in CAT con la
+  prima dimensione divisibile per 256; controlli bounded,
+  allineamento, limiti file e sovrapposizioni. Altri
+  tipi restano `size_unverified`.
+- Nessuna modifica implicita alle precedenti API INDEX/BLOCKS,
+  che continueranno a non attestare tipi K.
+- API inspect_kblock_layout / inspect_all_kblock_layouts
+  immutabili. Undicesimo passaggio `KBLOCKS`, comando
+  mirato `gguf-kblocks`, catalogo assente = skip valido.
+- Fixture sintetiche anche per successivo collaudo manuale
+  personale; test/CI/mappe e promozioni fino a main.
+  GGUF-KBLOCK-MANUAL-001 post-merge obbligatorio.
+- Non leggere tensor payload o dequantizzare, no rete,
+  download, CUDA, benchmark, installazioni, inferenza.
+  DATA-001, REMOTE-001, MIG-FLOW-001/002 invariati.
