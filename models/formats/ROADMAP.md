@@ -19,6 +19,7 @@ Ambito verifica: GGUF-001: CI success runs 38935705385, 38935861881, 38935943414
 3. `FORMAT-INDEX-001` [complete] GGUF-INDEX-001 delegated bounded tensor-index reader CI verified and merged to main via PR #56; full tensor decoding excluded.
 4. `FORMAT-BLOCK-001` [complete] GGUF-BLOCK-001 five-type descriptor block layout verification passed CI, integrated via PR #62; no other quantized type support.
 5. `FORMAT-KBLOCK-001` [complete] GGUF-KBLOCK-001 delegated bounded K-quant reader CI verified and merged to main via PR #68; remaining quantized types excluded.
+6. `FORMAT-FIXTURE-001` [active] MIG-012 approved: synthetic CAT through KBLOCKS integrated fixture check; implementation candidate; CI, main promotion and personal acceptance pending.
 
 ## Componenti (ordine locale, ID stabili)
 

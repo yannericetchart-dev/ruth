@@ -15,6 +15,8 @@ Nodo responsabile: [MODEL](NODE.yaml). Ripresa: [START_HERE](../START_HERE.md).
 - `acquire(request) -> AcquisitionResult [proposta]`
 - `verify(artifact) -> VerificationReport [proposta]`
 
+- `run_fixture_pipeline() -> GGUFIndirectFixtureReport [MIG-012 candidate]`
+
 Dipendenze: nessuna.
 
 ## Contratti delegati

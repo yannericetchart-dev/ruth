@@ -14,3 +14,4 @@ Contenuto riservato a: test e fixture sintetiche.
 - [test_index.py](test_index.py)
 - [test_kblocks.py](test_kblocks.py)
 - [test_metadata.py](test_metadata.py)
+- [test_pipeline.py](test_pipeline.py)

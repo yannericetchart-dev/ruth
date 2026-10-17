@@ -24,5 +24,6 @@ Ambito verifica: GGUF-001: CI success runs 38935705385, 38935861881, 38935943414
 8. `GGUF-BLOCK-MANUAL-001` [complete] User explicitly accepted successful ten-stage Ruth main run on 2f42a9d7a631e8779613784b58f8ce1b92afff9c; BLOCKS not_configured valid, no real GGUF file or weight inspected.
 9. `GGUF-KBLOCK-001` [complete] GGUF-KBLOCK-SCOPE-001 six K-quant types Q2_K/Q3_K/Q4_K/Q5_K/Q6_K/Q8_K implemented, synthetic CI passed and integrated in main PR #68.
 10. `GGUF-KBLOCK-MANUAL-001` [complete] User supplied positive 11-stage Ruth output on main 233efc358f56a66d2abf796fa8e20a476aa788cf and local 9-test K-block fixture suite OK, deemed acceptance under MIG-FLOW-002 revision 2; CAT not configured, no real GGUF checked.
+11. `GGUF-FIXTURE-001` [active] MIG-012 approved: synthetic CAT through KBLOCKS integrated fixture check; implementation candidate; CI, main promotion and personal acceptance pending.
 
 Propagare impatti e blocchi al [padre](../ROADMAP.md) e proseguire fino alla radice.

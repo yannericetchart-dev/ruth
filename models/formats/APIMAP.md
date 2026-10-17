@@ -12,6 +12,8 @@ Nodo responsabile: [FORMAT](NODE.yaml). Ripresa: [START_HERE](../../START_HERE.m
 - `inspect_all_block_layouts(*, project_root: Path | None = None) -> GGUFBlockLayoutReport [CI verified and integrated]`
 - `inspect_all_kblock_layouts(*, project_root: Path | None = None) -> GGUFKBlockReport [CI verified and integrated]`
 
+- `run_fixture_pipeline() -> GGUFIndirectFixtureReport [MIG-012 candidate]`
+
 Dipendenze: nessuna.
 
 ## Contratti delegati
