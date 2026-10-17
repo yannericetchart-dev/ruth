@@ -1,5 +1,8 @@
 # Ruth: struttura evolvibile, revisione 1
 
+Protocollo operativo: CONT-001 revisione 2, ORCH-001 e MIG-FLOW-002 revisione 3.
+Vedere ORCHESTRATION.md per responsabilita, incarichi e parallelismo approvato.
+
 La struttura e le firme proposte sono una base di lavoro. Una funzione
 documentata come proposta non e' una funzione disponibile. I branch storici
 restano fonti della migrazione e non vengono riscritti.
@@ -101,17 +104,24 @@ e attendere il verde sul perimetro (MIG-FLOW-001). Dopo l'approvazione,
 completare tutte le promozioni fino a main senza chiedere conferma a ogni
 passaggio; fermarsi per dubbi o domande che richiedono una decisione.
 
-Ogni porzione deve inoltre essere eseguita dal punto d'ingresso ufficiale
-di Ruth in main con messaggi a terminale corrispondenti (MIG-FLOW-002).
-Dopo l'integrazione, l'utente esegue Ruth localmente di persona e
-incolla la prova: se SHA main, sequenza e test prescritti coincidono con
-gli esiti previsti, l'output stesso equivale ad accettazione positiva
-(MIG-FLOW-002 revisione 2); non chiedere un secondo "si".
-Chiudere checkpoint e mappe tramite PR/CI/merge e proporre lo scope
-seguente, ancora soggetto ad autorizzazione esplicita (MIG-FLOW-001).
-Se evidenze mancanti o errori, non accettare. L'integrazione tecnica
-e il collaudo manuale restano stati distinti; il silenzio e la sola CI
-non costituiscono accettazione.
+Ogni porzione deve inoltre essere eseguita dall'ingresso ufficiale Ruth
+dopo il merge in main. Il collaudo locale delegato dell'orchestratore
+puo' chiudere la porzione quando SHA, intero flusso, esiti e test
+prescritti sono verificati (MIG-FLOW-002 revisione 3).
+Registrare delegated e non esecuzione personale dell'utente.
+Prove incomplete o fallite mantengono aperta la porzione.
+Valutazioni umane richieste devono essere esplicite nel perimetro iniziale.
+Dopo chiusura via GitHub proporre lo scope seguente e attendere il nuovo OK.
+
+Ogni branch e ogni padre di integrazione hanno un responsabile unico.
+Integrazioni nello stesso padre e aggiornamenti dei documenti comuni sono
+seriali; l'orchestratore e' responsabile dei documenti comuni e della
+rigenerazione globale delle mappe. Il parallelismo fra incarichi deve
+essere identificato nel verde iniziale. Contratto pronto, implementazione
+verificata e integrazione sono prerequisiti distinti: controllare l'intero
+grafo degli incarichi per evitare attese circolari, senza presumere che
+il solo validatore dei depends_on fra nodi lo certifichi.
+Non modificare implicitamente lo schema NODE o il validatore.
 
 ## Punto d'ingresso completo e sequenziale (MAIN-FLOW-001)
 

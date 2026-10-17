@@ -1,145 +1,137 @@
 # Ruth: configurazione e collaudo della continuita'
 
-Protocollo: CONT-001, revisione 1. Fonte comune: GitHub, branch `main`.
-Questo documento e' una procedura generica, senza percorsi o account locali.
+Protocollo CONT-001 revisione 2; ORCH-001; MIG-FLOW-002 revisione 3.
+Fonte comune: GitHub, branch main. Procedura generica senza dati di macchina.
 
-## Codex (REMOTE-001)
+## Ripresa e ruoli
 
-Il clone principale e' di sola lettura durante lo sviluppo. Codex deve
-risolvere main su GitHub e leggere START_HERE.md, AGENTS.md, DECISIONS.md
-e CHECKPOINT.md a quel commit, anche se i corrispondenti file locali non
-sono aggiornati. Non usare un AGENTS.md locale datato per sostituire le
-istruzioni vigenti su GitHub. Il lavoro versionato avviene tramite GitHub:
-branch di lavoro remoto, commit e PR, revisioni e merge fino a main.
-Non scrivere file tracciati o nuovi file destinati al repository nel
-checkout principale, non eseguire autoformat o generatori su di esso,
-non lanciare comandi che modifichino il suo stato Git.
-Le modifiche locali preesistenti restano intatte e non sono parte del lavoro.
+A ogni ripresa risolvere il ref heads/main tramite il connettore GitHub,
+usare object.sha per START_HERE.md e tutti i documenti applicabili.
+Leggere AGENTS.md, DECISIONS.md, CHECKPOINT.md, ORCHESTRATION.md e mappe
+del componente e antenati. Non usare un blob SHA come commit.
+In mancanza di accesso o fonti dichiarare la ripresa incompleta.
 
-Quando servono test, verifiche delle mappe, build o comandi da terminale,
-materializzare **uno snapshot della revisione GitHub candidata** in una
-directory temporanea esterna oppure in `.local/verification/` ignorata.
-Eseguire i test interamente da questa copia, usare cache e output temporanei
-al suo interno e non riportare nel clone principale le modifiche generate.
-Un modo possibile, quando il commit candidato e' disponibile nell'object
-store, e' `git archive <commit>` estratto in tale directory; se manca,
-scaricare il commit con un fetch che non cambi branch/working tree e poi
-materializzarlo. Non usare una worktree come scorciatoia per scrivere
-nel checkout principale. Pubblicare ogni correzione versionata su GitHub
-e verificare di nuovo la revisione risultante.
+L'orchestratore Work Cloud opera fuori dal progetto. Le chat branch sono
+ChatGPT ordinarie dentro il progetto Ruth, aperte e fatte proseguire
+dall'utente. Gli strumenti effettivi si verificano in ogni chat.
+GitHub conserva contratti, prerequisiti e checkpoint; la cronologia delle
+altre chat non e' un canale di coordinamento presunto.
+Assegnazioni, parallelismo esplicitamente approvato, responsabili unici e
+integrazioni seriali seguono ORCHESTRATION.md.
 
-Solo **dopo** l'integrazione in main procedere alla sincronizzazione
-sicura del checkout locale secondo la procedura finale sotto. Se il clone
-non e' pulito o e' su un branch diverso, non sovrascriverlo né forzare:
-segnalare il blocco e chiedere come preservare i dati.
+## Sviluppo GitHub-first (REMOTE-001)
 
-## ChatGPT: istruzioni del progetto
+Tutte le modifiche versionate avvengono su GitHub con branch, commit, PR,
+revisioni e CI fino a main. Il checkout principale resta intatto durante
+lo sviluppo; non importare o eliminare modifiche locali preesistenti.
+Gli strumenti GitHub mancanti sono un blocco, non una ragione per sviluppare
+silenziosamente nel clone personale.
 
-Conservare le istruzioni precedenti compatibili. Aggiungere questo blocco
-alle istruzioni del Progetto associato a Ruth, senza inserirvi dettagli di
-macchina. Non e' sufficiente allegare il documento a una singola chat.
+Le verifiche pre-merge possono usare solo snapshot puliti del candidato
+pubblicato, in spazi isolati autorizzati, ignorati o esterni al checkout.
+Le copie, gli ambienti e le installazioni non sono autorizzati implicitamente.
+Correzioni versionate vanno ripubblicate su GitHub e nuovamente verificate.
+Cache, build, fixture temporanee e risultati restano fuori dai file tracciati.
+
+## Sincronizzazione finale delegata
+
+La sincronizzazione non e' un prerequisito dello sviluppo remoto.
+Dopo il merge in main l'orchestratore fissa lo SHA target dal ref GitHub e
+controlla in lettura il checkout pulito designato, senza cercare o alterare
+copie storiche. Comandi diagnostici possibili, nella copia autorizzata:
+
+```sh
+GIT_OPTIONAL_LOCKS=0 git remote -v
+GIT_OPTIONAL_LOCKS=0 git branch --show-current
+GIT_OPTIONAL_LOCKS=0 git rev-parse HEAD
+GIT_OPTIONAL_LOCKS=0 git -c core.fsmonitor=false status --porcelain=v1 --untracked-files=all --ignore-submodules=none
+```
+
+Verificare separatamente permessi del sistema operativo e limiti di scrittura
+della sessione su checkout, metadati Git e destinazioni di output.
+La leggibilita' e la presenza di .venv non dimostrano scrittura o prontezza
+dell'ambiente. Non fare prove di scrittura fuori dall'autorizzazione.
+
+Solo con permessi sufficienti, remoto canonico, main pulito e fast-forward
+possibile, acquisire il ref remoto dopo il merge e confrontarlo con lo SHA
+target. Se coincide, procedere con merge --ff-only verso lo SHA fissato,
+poi verificare HEAD e pulizia. Nessun aggiornamento a una revisione diversa
+senza nuova valutazione del target.
+
+Fermarsi con pending_permissions, pending_no_access o blocked_divergence
+quando applicabile. Non usare reset, clean, stash, rebase, force, cambio
+branch o scarto file automatico. Il checkout storico modificato va
+preservato integralmente. Nuove copie/ambienti richiedono autorizzazione
+separata; non copiare automaticamente modifiche o dati dalla copia storica.
+
+## Collaudo locale delegato (MIG-FLOW-002 revisione 3)
+
+Dopo la sync verificata, usare l'interprete della copia pulita designata,
+senza installazioni implicite, per il default main.py e i test prescritti.
+Verificare revisione, intero flusso, ordine e riepilogo, esiti attesi e
+tutti i test previsti dal perimetro. Conservare output ed evidenze reali
+solo localmente in spazi autorizzati; in Git soltanto SHA, stati e conteggi.
+Evitare output o cache nei file tracciati e ricontrollarne la pulizia.
+
+Il collaudo delegato completo e positivo puo' chiudere la porzione senza
+ripetizione personale o conferma ridondante. Registrare mode: delegated,
+mai esecuzione personale dell'utente. L'esecuzione personale effettiva resta
+registrabile come personal; le prove storiche mantengono la loro attribuzione.
+Valutazioni umane sono gate solo se dichiarate nel perimetro iniziale.
+Prove incomplete, fallite o incongruenti mantengono aperta la porzione.
+
+Dopo la chiusura verificata aggiornare documentazione/mappe via PR/CI/merge,
+proporre lo scope seguente e attendere il nuovo OK prima di implementarlo.
+Se la chiusura modifica solo documenti, mantenere il riferimento al commit
+collaudato e registrare pending_docs_fast_forward per la sync residua;
+non attribuire un'esecuzione alla nuova revisione senza averla svolta.
+
+## Testo da inserire nelle istruzioni del progetto ChatGPT
+
+Conservare le istruzioni precedenti compatibili e sostituire le indicazioni
+operative incompatibili con questo blocco. La modifica della UI e' distinta
+dalla pubblicazione GitHub; non e' stata eseguita automaticamente.
 
 ```text
-Progetto: yannericetchart-dev/ruth. Protocollo CONT-001 revisione 1.
-All'inizio di ogni nuova chat o ripresa del lavoro, usa la connessione GitHub
-per risolvere prima il commit main tramite
+Progetto: yannericetchart-dev/ruth. CONT-001 rev.2, ORCH-001, MIG-FLOW-002 rev.3.
+A ogni nuova chat o ripresa risolvi prima main tramite la connessione GitHub:
 https://api.github.com/repos/yannericetchart-dev/ruth/git/ref/heads/main
-(campo object.sha; in alternativa branch API, campo commit.sha).
-Leggi poi START_HERE.md e gli altri documenti usando quel commit come ref.
-Lo SHA del blob di un file non e' lo SHA del commit. Se non riesci a risolvere
-il ref, dichiara la ripresa incompleta prima di sviluppare.
-Segui i riferimenti a AGENTS.md, DECISIONS.md, CHECKPOINT.md e alle
-mappe applicabili. Non presumere che un file caricato o una chat precedente
-rappresenti l'ultima revisione. Se GitHub non e' accessibile, dichiaralo.
-Usa GitHub come unica fonte di modifiche versionate. Non modificare il
-checkout principale locale durante lo sviluppo; per test usa solo copie
-isolate ignorate da Git o cartelle temporanee esterne. Sincronizza il clone
-locale solo dopo il merge definitivo in main secondo REMOTE-001.
-Prima di modificare codice, riassumi obiettivo, fase, decisioni, limiti e
-prossima azione. Distingui pianificato, implementato, verificato e integrato.
-Aggiorna checkpoint, decisioni e mappe entro il perimetro autorizzato. Se non
-puoi pubblicare lo stato aggiornato, dichiara il passaggio di consegne incompleto.
-DATA-001: log, risultati benchmark, credenziali e dati reali di host/utente
-rimangono locali ed esclusi da Git. Kaggle e' inattivo.
+Usa object.sha come ref per START_HERE.md, AGENTS.md, DECISIONS.md,
+CHECKPOINT.md, ORCHESTRATION.md e le mappe del componente e dei suoi antenati.
+Lo SHA di un blob non e' il commit. Se manca una fonte, dichiara il blocco.
+Questa e' una chat branch ChatGPT ordinaria nel progetto Ruth, aperta e fatta
+proseguire dall'utente. L'orchestratore Work Cloud opera fuori dal progetto.
+GitHub contiene istruzioni, contratti, checkpoint e dipendenze condivisi.
+Prima del lavoro verifica incarico, responsabile unico, branch/padre, SHA base,
+scope approvato e prerequisiti. Il verde iniziale deve elencare esplicitamente
+le attivita autorizzate anche al parallelismo; nessuna concorrenza implicita.
+Rispetta il responsabile unico delle integrazioni in ciascun padre e quello
+dei documenti comuni. Pubblica il checkpoint del tuo incarico e proponi al
+responsabile gli aggiornamenti comuni, senza scritture concorrenti.
+Modifiche versionate solo su GitHub; promozioni seriali e CI fino a main.
+Preserva i checkout locali durante lo sviluppo e ogni lavoro preesistente.
+Aggiornamento conservativo e collaudo locali post-merge sono delegati
+all'orchestratore, solo con accessi e permessi effettivamente verificati.
+Il collaudo delegato completo e positivo puo' chiudere la porzione: SHA,
+flusso ufficiale completo, esiti attesi e test prescritti devono coincidere.
+Registralo come delegated, mai come esecuzione personale dell'utente.
+Prove incomplete o fallite mantengono aperta la porzione. Valutazioni umane
+sono richieste solo se dichiarate nel perimetro iniziale.
+Dopo chiusura verificata proponi lo scope successivo e attendi il nuovo OK
+prima di implementarlo. Non dedurre autorizzazioni dal silenzio.
+DATA-001: in Git solo materiale portabile, SHA, stati e conteggi; nessun
+percorso personale, log, inventario host, dato reale o credenziale.
+Kaggle resta inattivo. I documenti GitHub non aggiornano da soli la UI.
 ```
 
-## Collaudo indipendente
+## Collaudo indipendente della continuita'
 
-Eseguire in una nuova chat/sessione per ciascun client, senza incollare la
-cronologia precedente. Messaggio di prova: `Riprendi il progetto Ruth`.
-Non introdurre modifiche di codice durante il collaudo.
-
-Esito positivo soltanto se il client:
-
-1. legge il punto di ingresso da GitHub e identifica la revisione;
-2. ricostruisce fase e prossima azione dal checkpoint corrente;
-3. riconosce Kaggle inattivo e il vincolo sui dati locali;
-4. distingue configurazione, scaffold e migrazione applicativa;
-5. dichiara fonti mancanti o divergenze anziche' presumere esiti positivi.
-
-Registrare transcript, nomi dei client e risultati in `.local/verification/`.
-In Git riportare soltanto lo stato generale del processo, senza log o dati
-personali. Aggiornare CHECKPOINT.md dopo la verifica dei due client.
-
-## Sincronizzazione
-
-Le istruzioni del Progetto ChatGPT e AGENTS.md sono due ingressi distinti:
-modificare il file locale non aggiorna automaticamente le impostazioni della
-UI. Dopo una modifica del protocollo verificarli entrambi. Commit e push
-rendono condivise le modifiche, mentre un commit soltanto locale non lo fa.
-
-### Sincronizzazione finale, solo dopo il merge in main (REMOTE-001)
-
-Lo sviluppo e i test devono gia' essere completati su GitHub prima di
-sincronizzare il clone principale. La sincronizzazione locale non e'
-un prerequisito per riprendere il lavoro remoto, contrariamente alla
-vecchia SYNC-001. ChatGPT Ruth usa Chat + GitHub (non Work).
-
-Al termine delle promozioni leggere di nuovo il ref heads/main via GitHub
-e comunicare all'utente il commit target. Se il client ha accesso al
-clone principale, rilevarne **senza scriverlo** lo stato; altrimenti
-dare all'utente i seguenti comandi per la verifica, da eseguire nella
-cartella locale di Ruth:
-
-```sh
-git remote -v
-git status --short --branch
-git branch --show-current
-git rev-parse HEAD
-git fetch origin
-git rev-parse origin/main
-git status --porcelain --untracked-files=all
-```
-
-Se origin non punta al repository canonico, se il checkout e' sporco,
-se il branch attivo non e' main o se origin/main non coincide con lo SHA
-GitHub comunicato, **fermarsi senza alterare nulla** e segnalare il
-problema. Su un clone pulito, branch main, remote corretto e aggiornamento
-fast-forward possibile, completare con:
-
-```sh
-git merge --ff-only origin/main
-git rev-parse HEAD
-git status --short --branch
-```
-
-Confrontare il nuovo HEAD con il commit GitHub target e registrare
-l'esito nel checkpoint: `local_sync: verified`, `pending_no_access`
-oppure `blocked_divergence`. Non usare reset --hard, clean, stash,
-rebase, cambi branch automatici o force-push per nascondere lavoro locale.
-In caso di blocco, non cancellare ne' pubblicare automaticamente i file
-esistenti: servira' una procedura conservativa specifica, separata.
-
-Dopo la sincronizzazione effettuare il collaudo personale MIG-FLOW-002
-(revisione 2). L'utente puo' incollare direttamente gli esiti:
-se il commit coincide con main e il flusso completo con i test mirati
-prescritti risulta positivo, l'output e' gia' accettazione personale.
-Non richiedere un secondo "si"; chiudere via GitHub con PR/CI/merge e
-proporre la prossima migrazione, il cui scope richiede comunque nuovo verde
-(MIG-FLOW-001). Se la prova e' ambigua/fallita, non chiudere.
-Non riportare log, percorsi personali o dati host in Git; conservare
-ogni evidenza reale esclusivamente in .local/.
-
-Le modifiche ai documenti GitHub non cambiano automaticamente le istruzioni
-della UI del Progetto ChatGPT: se il protocollo persistente e' stato
-aggiornato, allineare anche tali istruzioni e ripetere il test di ripresa.
+Dopo l'allineamento UI, l'utente apre una nuova chat ordinaria nel progetto.
+Messaggio di prova: Riprendi il progetto Ruth.
+Senza introdurre codice, verificare risoluzione dello SHA, ricostruzione
+dello stato, incarico e prerequisiti, ruoli, parallelismo autorizzato,
+DATA-001 e distinzione fra CI, integrazione, sync e collaudo delegato.
+Ripetere la ripresa nell'orchestratore fuori dal progetto; non presume
+le istruzioni UI del progetto e deve leggere GitHub.
+Registrare solo esiti generali portabili. Non dichiarare verificata ogni
+chat futura sulla base di un collaudo storico.

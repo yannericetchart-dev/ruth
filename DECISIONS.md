@@ -4,9 +4,27 @@ Le decisioni sono riferite al progetto, senza informazioni personali o
 inventari di macchina. Stati: proposed, accepted, superseded, rejected.
 Ogni sostituzione deve collegare entrambe le decisioni e aggiornare le mappe.
 
-## CONT-001: continuita' fra chat
+## CONT-001 revisione 2: continuita' fra chat
 
-- Stato: accepted.
+- Stato: accepted; approvazione esplicita dell'utente il 17 ottobre 2026.
+- GitHub e' il punto di ingresso comune e la fonte di istruzioni,
+  contratti, checkpoint e dipendenze. A ogni ripresa fissare heads/main,
+  leggere i documenti al commit e confrontare lo stato con codice/PR reali.
+- Orchestratore Work Cloud fuori dal progetto; chat branch ChatGPT
+  ordinarie dentro il progetto Ruth, aperte e fatte proseguire dall'utente.
+  Responsabili, parallelismo approvato e integrazioni seriali in ORCH-001.
+- Obiettivo: continuita' senza condivisione implicita della cronologia
+  o presunzione di strumenti/localita' basata sul client.
+- Verifica richiesta: allineamento delle istruzioni UI e ripresa indipendente
+  nelle chat branch e nell'orchestratore. Il collaudo storico rev.1 non
+  dimostra che la UI o la ripresa rev.2 siano gia' verificate.
+- Sostituisce: CONT-001 revisione 1 nelle regole operative.
+  DATA-001 e sviluppo GitHub-first REMOTE-001 invariati.
+
+## CONT-001 revisione 1: continuita' fra chat (storica)
+
+- Stato: superseded dalla revisione 2 approvata il 17 ottobre 2026.
+- Il testo seguente conserva la decisione e il collaudo della revisione 1.
 - Decisione: GitHub e' il punto di ingresso comune per ChatGPT e Codex.
   Istruzioni persistenti impongono lettura di indice, decisioni, checkpoint
   e mappe, seguita da confronto con il codice realmente disponibile.
@@ -17,6 +35,58 @@ Ogni sostituzione deve collegare entrambe le decisioni e aggiornare le mappe.
   indipendente su entrambi i client. I risultati restano locali. Il collaudo
   riguarda la revisione di ingresso del protocollo, non tutte le chat future.
 - Sostituisce: nessuna decisione registrata.
+
+## ORCH-001: orchestratore e chat branch
+
+- Stato: accepted; approvazione esplicita dell'utente il 17 ottobre 2026.
+- Organizzazione: orchestratore Work Cloud fuori dal progetto; chat branch
+  ChatGPT ordinarie nel progetto Ruth, aperte e fatte proseguire dall'utente.
+  Nessuna creazione o prosecuzione autonoma delle chat e' presunta.
+- Contratti, checkpoint e dipendenze condivisi su GitHub. Un responsabile
+  per branch e uno per ciascun padre; integrazioni seriali nello stesso
+  padre. L'orchestratore e' responsabile unico di main, documenti comuni
+  e rigenerazione globale delle mappe. Passaggi di responsabilita espliciti.
+- Il verde iniziale identifica anche le attivita autorizzate al parallelismo.
+  Contratto pronto, implementazione verificata e integrazione sono stati
+  distinti. Controllare il grafo degli incarichi prima di avviarli e risolvere
+  i cicli con prerequisiti preliminari o sequenze esplicite.
+- Sync conservativa e collaudo locale post-merge sono delegati all'orchestratore
+  solo con accesso e permessi effettivi. Conservare copie storiche e lavoro
+  preesistente; nessuna nuova copia/ambiente o importazione implicita.
+- Sostituisce le indicazioni operative che escludevano Work come ruolo
+  organizzativo per Ruth. Non attesta la topologia dell'esecutore o
+  un accesso host generale, e non amplia i permessi della sessione.
+- Attuazione: ORCHESTRATION.md e PROJECT_SETUP.md. Nessuna nuova funzione
+  Ruth approvata da questa decisione. DATA-001 e REMOTE-001 invariati.
+
+## MIG-FLOW-002 revisione 3: collaudo locale delegato e chiusura
+
+- Stato: accepted; approvazione esplicita dell'utente il 17 ottobre 2026.
+- Dopo integrazione in main, l'orchestratore puo' chiudere la porzione con
+  collaudo locale delegato positivo quando ha verificato SHA, ingresso
+  ufficiale e intero flusso, esiti attesi e tutti i test prescritti.
+  Un import, una API isolata o la sola CI non sono sufficienti.
+- Registrare mode: delegated, mai come esecuzione personale dell'utente.
+  Non richiedere ripetizione personale o consenso ridondante dopo prova
+  completa. Le prove personali effettive/storiche conservano la loro
+  attribuzione; la revisione 3 non le riscrive.
+- Se le prove sono incomplete, falliscono o sono incongruenti, la porzione
+  resta aperta. Correggere entro scope, pubblicare e verificare nuovamente
+  il candidato. Non attribuire esiti non osservati.
+- Le verifiche che richiedono davvero una valutazione umana devono essere
+  dichiarate nel perimetro iniziale e soddisfatte prima della chiusura.
+- Dopo chiusura verificata completare checkpoint, NODE/mappe, PR/CI/merge
+  e proporre il perimetro seguente; il nuovo OK dell'utente e' necessario
+  prima di implementarlo (MIG-FLOW-001). Un verde non si estende a scope nuovi.
+- Evidenze Git solo portabili: SHA, stati, conteggi, PR/CI; log e dati
+  dell'host restano locali (DATA-001). Sync post-merge conservativa e con
+  permessi verificati secondo REMOTE-001 e ORCH-001.
+- Sostituisce MIG-FLOW-002 revisioni 1/2 e MIG-FLOW-002-R2 limitatamente
+  all'obbligo generale di collaudo personale. Rimangono ingresso completo,
+  verifica dell'evidenza e assenza di seconda conferma dopo successo.
+- Ambito corrente: consente il collaudo delegato della porzione gia' integrata
+  secondo i suoi test prescritti; non dichiara MIG-016 collaudata e non
+  autorizza MIG-017 o altre migrazioni.
 
 ## MIG-FLOW-001: approvazione delle funzioni, poi integrazione completa
 
@@ -35,9 +105,11 @@ Ogni sostituzione deve collegare entrambe le decisioni e aggiornare le mappe.
 - Sostituisce: l'interpretazione operativa che richiedeva un nuovo via libera
   per ogni singolo passaggio fra branch padri.
 
-## MIG-FLOW-002: esecuzione dall'ingresso e conferma manuale
+## MIG-FLOW-002 revisione 2: collaudo personale (storica)
 
-- Stato: accepted.
+- Stato: superseded dalla revisione 3 approvata il 17 ottobre 2026.
+- Nota storica: il requisito generale di esecuzione personale descritto
+  qui sotto non e' piu' vigente; conservate le accettazioni gia' registrate.
 - Decisione (revisione 2, 17 ottobre 2026): ogni porzione integrata in main
   deve essere eseguita dall'ingresso ufficiale Ruth. Dopo l'integrazione,
   l'utente avvia personalmente il flusso: un output di collaudo positivo
@@ -90,6 +162,13 @@ Ogni sostituzione deve collegare entrambe le decisioni e aggiornare le mappe.
   dichiarazione di capacita' gia' disponibili.
 - Sostituisce: nessuna decisione registrata.
 
+## Lettura delle registrazioni storiche
+
+Le voci applicative datate e le formulazioni dei gate nelle revisioni
+superate conservano la storia. Per il processo corrente prevalgono
+CONT-001 revisione 2, ORCH-001 e MIG-FLOW-002 revisione 3.
+Le accettazioni personali storiche non sono collaudi delegati.
+
 ## SYNC-001: sincronizzare prima di riprendere o chiudere il lavoro
 
 - Stato: superseded.
@@ -127,7 +206,12 @@ Ogni sostituzione deve collegare entrambe le decisioni e aggiornare le mappe.
 
 ## REMOTE-001: sviluppo GitHub-first e sincronizzazione locale post-merge
 
-- Stato: accepted.
+- Stato: accepted; sviluppo GitHub-first invariato.
+- Precisazione vigente ORCH-001/MIG-FLOW-002 rev.3: sync e collaudo locali
+  post-merge sono delegati all'orchestratore con permessi verificati;
+  il collaudo delegato completo puo' chiudere la porzione senza ripetizione
+  personale. I rimandi storici alla prova personale rev.2 qui sotto
+  sono superati solo per quel requisito, non per la protezione del clone.
 - Decisione: ChatGPT e Codex modificano file versionati, decisioni,
   checkpoint e mappe *direttamente su GitHub*, usando branch, commit, PR
   e promozioni fino a main; il checkout principale locale resta intatto
@@ -516,7 +600,8 @@ autorizzata implicitamente.
 
 ## MIG-FLOW-002-R2: accettazione automatica da evidenza positiva (17 ottobre 2026)
 
-- Stato: accepted, disposizione esplicita dell'utente.
+- Stato: superseded dalla revisione 3 per il gate generale; registrazione
+  storica della disposizione dell'utente sulla prova personale senza doppio consenso.
 - La prova personale incollata con SHA main corrispondente, fasi concluse
   e test prescritti superati vale come accettazione, senza secondo consenso.
 - Dopo verifica completare autonomamente la chiusura GitHub e proporre

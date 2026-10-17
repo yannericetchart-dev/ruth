@@ -23,7 +23,7 @@ funzionante. Nessuna modifica locale al checkout principale e' fonte di
 sviluppo: ogni modifica versionata deve essere pubblicata direttamente su
 GitHub e identificata con commit o PR.
 
-## Continuita' CONT-001
+## Continuita' CONT-001 revisione 2
 
 - Leggere le istruzioni degli antenati e le mappe del componente interessato.
 - Aggiornare decisioni, checkpoint e mappe dopo ogni passaggio significativo.
@@ -33,6 +33,19 @@ GitHub e identificata con commit o PR.
   integrazione. Ogni attivita' concorrente deve avere un checkpoint proprio.
 - In caso di documenti contraddittori, controllare le fonti e dichiarare la
   divergenza prima di effettuare modifiche che dipendono dalla decisione.
+
+## Organizzazione ORCH-001
+
+L'orchestratore Work Cloud opera fuori dal progetto e legge autonomamente
+GitHub. Le chat branch restano ChatGPT ordinarie nel progetto Ruth, aperte
+e fatte proseguire dall'utente. GitHub contiene contratti e checkpoint.
+Applicare ORCHESTRATION.md: un responsabile per branch, integrazioni seriali
+con responsabile unico in ciascun padre; l'orchestratore e' il responsabile
+unico dei documenti comuni e della rigenerazione globale delle mappe.
+Il verde iniziale deve identificare esplicitamente anche le attivita
+autorizzate al parallelismo. Non avviare parallelismo non dichiarato.
+Verificare prerequisiti e assenza di cicli fra incarichi prima dell'avvio.
+La presenza di strumenti o percorsi non prova accesso locale o scrittura.
 
 ## Portabilita' DATA-001
 
@@ -65,6 +78,8 @@ Prima di ogni porzione presentare all'utente una descrizione delle funzioni:
 scopo, ingressi, risultati, controlli, effetti sui dati, limiti e verifiche.
 Attendere il suo semaforo verde su quel perimetro prima di migrare.
 Registrare perimetro e approvazione nel checkpoint, senza dedurli dal silenzio.
+Dichiarare responsabili, prerequisiti, parallelismo autorizzato e ogni
+valutazione umana richiesta prima dell'approvazione (ORCH-001).
 
 Dopo il verde, completare autonomamente implementazione, correzioni, test,
 revisioni, PR e promozioni lungo tutti i branch padri fino all'integrazione
@@ -75,36 +90,32 @@ sostanziale del perimetro. Una normale scelta tecnica interna non e' un nuovo
 passaggio di approvazione. Non iniziare la porzione seguente senza averne
 prima presentato le funzioni e ricevuto il relativo verde.
 
-## Migrazioni: ingresso reale e collaudo manuale (MIG-FLOW-002)
+## Migrazioni: ingresso reale e collaudo delegato (MIG-FLOW-002 rev.3)
 
-Ogni porzione migrata deve essere eseguita attraverso il punto d'ingresso
-ufficiale di Ruth in main, con messaggi a terminale corrispondenti alla
-funzione e al suo esito. Un import, una API isolata o i soli test non
-soddisfano questo requisito. Includere questo percorso nella descrizione
-funzionale sottoposta all'utente prima del verde.
+Ogni porzione integrata in main deve essere eseguita attraverso l'ingresso
+ufficiale di Ruth, con l'intero flusso integrato e i messaggi/esiti attesi;
+un import, una API isolata o la sola CI non soddisfano il requisito.
+Dopo merge e sincronizzazione conservativa, l'orchestratore esegue il
+collaudo locale delegato solo con accesso, permessi e ambiente verificati.
+Verificare SHA provato, flusso completo, ordine/esiti e tutti i test
+prescritti dal perimetro. Il successo completo puo' chiudere la porzione
+senza ripetizione personale o un secondo consenso dell'utente.
 
-Dopo l'integrazione in main fornire all'utente il comando di avvio e i
-messaggi/esiti attesi. L'utente avvia Ruth localmente di persona.
-**MIG-FLOW-002 revisione 2 (17 ottobre 2026):** quando l'utente incolla
-l'output del collaudo che dimostra il successo, questo costituisce gia'
-accettazione personale sufficiente: **non chiedere un secondo "si"**.
-Verificare il commit provato contro il ref commit main pubblicato e che
-l'output mostri il completamento dell'intero flusso, gli esiti previsti e
-i test mirati previsti nel perimetro (per esempio unittest con "OK"),
-senza failure. Se i dati sono incompleti, ambigui, falliti o incongrui,
-non segnare accepted: chiedere solo la prova necessaria o lavorare alla
-correzione. Non trattare il silenzio o le sole CI come collaudo personale.
+Registrare mode: delegated, mai esecuzione personale dell'utente.
+Le valutazioni umane davvero necessarie devono essere previste nel
+perimetro iniziale e restano gate quando richieste. Le prove personali
+effettive e storiche conservano mode: personal e la loro attribuzione.
+Prove incomplete, fallite, ambigue o incongruenti mantengono la porzione
+aperta: correggere entro scope e verificare nuovamente la revisione.
+Non equiparare skip validi con la verifica di modelli reali.
 
-Dopo esito personale positivo, procedere **nello stesso turno**
-autonomamente con documentazione di chiusura, NODE/mappe, PR/CI/merge
-in main; distinguere prove manuali, CI sintetiche e integrazione.
-Registrare solo SHA provato, esito sintetico e numero di test,
-mai output grezzi, path reali, dati dell'host o log (DATA-001).
-**Subito dopo la chiusura verificata, proporre il perimetro dettagliato
-della migrazione seguente, senza implementarlo prima del nuovo verde**
-(MIG-FLOW-001). Non fermarsi per conferme ridondanti.
-Se il collaudo fallisce, restare sulla porzione corrente e correggerla.
-
+Dopo esito completo aggiornare autonomamente checkpoint, NODE/mappe,
+PR/CI/merge e proporre lo scope successivo; attendere il nuovo OK prima
+di implementarlo (MIG-FLOW-001). Solo SHA, esiti sintetici e conteggi
+in Git, mai log o dati dell'host (DATA-001).
+ORCHESTRATION.md e PROJECT_SETUP.md definiscono evidenze e procedura.
+Questa revisione sostituisce l'obbligo generale di collaudo personale
+della revisione 2; non riscrive le accettazioni storiche.
 
 ## Sviluppo remoto e sincronizzazione finale (REMOTE-001)
 
@@ -145,14 +156,15 @@ non forzare reset, clean, stash, rebase, scarti, cambio branch o merge:
 segnalare `local_sync: blocked_divergence` finche' venga scelta una
 procedura sicura. Nessuna modifica locale preesistente deve essere persa.
 
-Separare sempre: codice pubblicato e verificato su GitHub, integrazione in
-main, sincronizzazione del checkout personale e collaudo manuale
-MIG-FLOW-002. La migrazione successiva resta bloccata finche' l'utente
-non conferma il collaudo locale positivo; non e' bloccata la promozione
-gia' autorizzata dalla mera assenza di sincronizzazione preliminare.
-In ChatGPT Ruth si usa Chat + GitHub, non Work come soluzione implicita
-per accedere al filesystem locale.
-
+Separare sempre codice pubblicato, verifica CI, integrazione, sync locale,
+collaudo delegated/personal e valutazione umana quando prevista.
+Il collaudo delegato positivo completo soddisfa MIG-FLOW-002 revisione 3.
+La migrazione seguente richiede comunque nuovo perimetro e OK esplicito.
+Il ruolo Work Cloud fuori dal progetto e le chat ordinarie nel progetto
+sono definiti da ORCH-001; non presumono accesso locale.
+Verificare i permessi prima di qualsiasi aggiornamento post-merge.
+Senza scrittura registrare pending_permissions; preservare integralmente
+i checkout storici modificati, senza crearne copie o ambienti impliciti.
 
 ## Mappe ricorsive
 
@@ -218,6 +230,12 @@ read-only e sesta fase automatica di main.py; `catalog` mirato.
 No scansione, no GGUF binary, no Hugging Face, no installazione,
 no download o inferenza. Nessun dato modelli reale su Git (DATA-001).
 Dopo merge serve collaudo personale CAT-MANUAL-001 (MIG-FLOW-002).
+
+## Cronologia applicativa
+
+Le note datate seguenti conservano lo stato al momento della registrazione.
+Per regole operative e gate prevalgono CONT-001 rev.2, ORCH-001 e
+MIG-FLOW-002 rev.3; per stato corrente consultare CHECKPOINT.md.
 
 ## CAT-001: integrazione tecnica completata
 
@@ -325,10 +343,9 @@ Le precedenti note di codice candidato sono storiche.
 Non avviare MIG-012 prima della conferma e nuovo scope approvato.
 REMOTE-001 e DATA-001 restano vigenti.
 
-## MIG-FLOW-002 revisione 2: prova positiva equivale ad accettazione
+## Nota storica MIG-FLOW-002 revisione 2
 
-La comunicazione dell'utente del 17 ottobre 2026 sostituisce l'obbligo
-precedente di richiedere un "si" dopo un log personale positivo.
-D'ora in avanti, seguire la verifica evidenze, la chiusura GitHub e la
-proposta dello scope successivo descritti sopra. MIG-FLOW-001 resta
-invariata: serve approvazione specifica prima di qualunque nuovo codice.
+La regola del 17 ottobre 2026 sull'evidenza personale senza secondo consenso
+resta parte della storia in DECISIONS.md. Il requisito generale di esecuzione
+personale e' sostituito da MIG-FLOW-002 revisione 3; le precedenti prove
+mantengono la loro attribuzione. Lo stato corrente e' in CHECKPOINT.md.

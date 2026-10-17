@@ -31,6 +31,7 @@ La presenza dello scaffold non implica una implementazione runtime.
 - [DECISIONS.md](DECISIONS.md)
 - [MIGRATION.md](MIGRATION.md)
 - [NODE.yaml](NODE.yaml)
+- [ORCHESTRATION.md](ORCHESTRATION.md)
 - [PROJECT_SETUP.md](PROJECT_SETUP.md)
 - [START_HERE.md](START_HERE.md)
 - [main.py](main.py)

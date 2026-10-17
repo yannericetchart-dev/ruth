@@ -1,7 +1,7 @@
 # Ruth: punto di ingresso comune
 
 Repository canonico: <https://github.com/yannericetchart-dev/ruth>.
-Branch di ingresso: `main`. Protocollo: `CONT-001`, revisione 1.
+Branch di ingresso: `main`. Protocollo: `CONT-001`, revisione 2.
 
 Questo indice e' comune a ChatGPT e Codex. Leggerlo nuovamente da GitHub
 all'inizio di ogni attivita', fissando la revisione letta. Le copie locali e
@@ -10,6 +10,25 @@ modifiche pubblicate. In REMOTE-001 lo sviluppo versionato e' svolto tramite
 GitHub e la sincronizzazione del checkout locale avviene solo dopo il merge
 in main. Il clone principale non va modificato durante lo sviluppo.
 L'indice non implica che il codice dei branch di sviluppo sia gia' in main.
+
+## Protocollo vigente: ORCH-001 e MIG-FLOW-002 revisione 3
+
+Approvato dall'utente il 17 ottobre 2026: orchestratore Work Cloud fuori
+dal progetto; chat branch ChatGPT ordinarie dentro il progetto Ruth,
+aperte e fatte proseguire dall'utente. GitHub conserva contratti,
+checkpoint e dipendenze. Vedere [ORCHESTRATION.md](ORCHESTRATION.md).
+Il verde iniziale identifica anche le attivita autorizzate al parallelismo;
+un responsabile per branch, integrazioni seriali per padre e documenti
+comuni sotto responsabilita unica dell'orchestratore.
+
+Dopo merge in main, sync conservativa e collaudo locali sono delegati
+all'orchestratore con accesso/permessi verificati. SHA, flusso completo,
+esiti e test prescritti positivi consentono la chiusura, registrata
+come delegated, senza ripetizione personale. Prove incomplete o fallite
+lasciano aperta la porzione. Valutazioni umane devono essere previste
+nel perimetro iniziale. Dopo chiusura proporre lo scope successivo e
+attendere il nuovo OK prima di implementarlo. DATA-001 e GitHub-first invariati.
+Le prove personali storiche conservano la loro attribuzione.
 
 ## Letture di ripresa
 
@@ -20,6 +39,7 @@ L'indice non implica che il codice dei branch di sviluppo sia gia' in main.
 5. [Roadmap](ROADMAP.md), [codemap](CODEMAP.md), [apimap](APIMAP.md)
    e mappe del componente e dei suoi antenati.
 6. [Regole dello scaffold](ARCHITECTURE.md) e checkpoint del componente.
+7. [Orchestrazione e incarichi](ORCHESTRATION.md).
 
 ## Stato del progetto
 
@@ -41,6 +61,13 @@ Per il lavoro corrente applicare REMOTE-001, che sostituisce SYNC-001:
 nessun blocco di ripresa dovuto al mancato allineamento del clone locale.
 Se manca una fonte o un collaudo non e' stato svolto, dichiararlo. Non
 dedurre il completamento di una fase dalla sola presenza dei documenti.
+
+## Lettura della cronologia
+
+Le sezioni applicative datate seguenti conservano la storia delle porzioni.
+Le istruzioni di collaudo personale rev.2 sono storiche: i gate correnti
+sono quelli di MIG-FLOW-002 rev.3 sopra. Lo stato aggiornato e' all'inizio
+di CHECKPOINT.md; non inferire nuove autorizzazioni dalle note precedenti.
 
 ## Regola del punto d'ingresso (MAIN-FLOW-001)
 
