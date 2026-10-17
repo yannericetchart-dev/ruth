@@ -8,7 +8,38 @@ Nessuna PR o issue aperta al controllo iniziale. Nessun tag remoto presente.
 L'inventario preliminare fornito dall'utente coincide con nomi e SHA live;
 la classificazione e' stata ricalcolata tramite confronto dei commit GitHub.
 
-## Esito operativo
+## BRANCH-CLEANUP-001: prerequisiti correnti (17 ottobre 2026)
+
+Base: 5b77b08693a808c359b294bf1ab40f4fba8f5137.
+Incarico completo BRANCH-ARCHIVE-001, evidenze attribuite e gate:
+ORCHESTRATION.md, sezione "incarico archivi e gate di cancellazione".
+Esecutore nominativo: chat Codex locale 01a14a37-aa01-70a2-b9cf-6702224b121f,
+titolo "Ruth - Work Local - Orchestrator", ruolo limitato di esecutore.
+ORCH-20261017-B resta unico titolare di documenti comuni, mappe, PR e merge.
+Dopo merge dei prerequisiti con CI positiva: solo creazione/verifica degli
+11 tag del registro, nessuna cancellazione; mutazioni tuttora non tentate.
+Resoconto esecutore: gh autenticato, push=true, checkout main pulito alla
+base e invariato; scrittura indicata dai controlli con accesso esteso.
+Prova temporanea positiva storica, non ripetuta in questo incarico.
+B non attribuisce a se' accesso o verifiche locali dell'esecutore.
+Inventario riferito 50/49/0: 99 branch, 87 contained_candidate e 11
+archive_required, main protetto. B ha riconfermato ref main, PR #105 merged,
+99 branch con seconda pagina vuota, zero PR/issue aperte, zero tag e 11 tip.
+61 NODE/checkpoint esaminati; nessun incarico concorrente pubblicato trovato.
+MODEL-001 state=complete; Models implementation=partial, storia CAT preservata.
+Per tutti gli 11 rami users_release unconfirmed: cancellazioni bloccate.
+Zero PR head/base non prova assenza di utilizzatori o integrazioni pendenti.
+Dopo esiti archivi, B verifica e aggiorna fonti operative via PR/CI/merge;
+solo dopo risoluzione utilizzatori rilascia elenco esatto branch/SHA.
+Nessun elenco eliminabile ora. Cancellazioni richiederanno condizione SHA.
+Tag creati 0; branch cancellati 0; documenti/PR dell'esecutore 0.
+Il ramo documentale di B aggiunge un temporaneo, pending_cleanup dopo merge.
+Nessuna sync, nuova copia/ambiente, installazione, esecuzione Ruth o test
+applicativo in questo incarico. MIG-016 chiusa; MIG-017 non approvata.
+Le sezioni precedenti/successive datate della successione descrivono
+gli strumenti e i blocchi storici, senza annullare questa assegnazione.
+
+## Esito operativo storico alla base dell'audit
 
 cleanup_status: blocked_missing_authenticated_ref_mutations.
 deleted_branches: 0. created_archive_tags: 0.

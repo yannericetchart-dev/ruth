@@ -261,3 +261,101 @@ concreto e lasciare i branch intatti. Non simulare tag con branch, non
 usare create_branch/update_ref come strumenti per tag o cancellazioni
 e non trattare GET come una mutazione. Non dichiarare completa la pulizia.
 BRANCH_AUDIT.md contiene uno snapshot di audit, da riconfermare live.
+
+## BRANCH-CLEANUP-001: incarico archivi e gate di cancellazione (17 ottobre 2026)
+
+Responsabile unico documenti comuni, mappe, PR e integrazione: ORCH-20261017-B
+(claim PR #105 merged). A non ha pubblicato modifiche per questo incarico.
+Base letta: 5b77b08693a808c359b294bf1ab40f4fba8f5137.
+
+### Incarico nominativo BRANCH-ARCHIVE-001
+
+Esecutore: chat Codex locale 01a14a37-aa01-70a2-b9cf-6702224b121f,
+titolo attuale "Ruth - Work Local - Orchestrator".
+Ruolo limitato: esecutore locale; il titolo non attribuisce titolarita
+di orchestratore, documenti comuni o mappe.
+Incarico esplicitamente richiesto dall'utente nel perimetro gia' approvato.
+Responsabile del padre e delle integrazioni: ORCH-20261017-B; padre main.
+Nessun branch applicativo assegnato, nessun parallelismo autorizzato.
+Primo gate: merge della PR di questi prerequisiti con CI positiva.
+Dopo il gate, unico lavoro consentito all'esecutore: creare e verificare
+gli 11 tag duraturi esattamente elencati in BRANCH_ARCHIVE.md.
+Nessuna mutazione e' attestata come gia' riuscita.
+
+Prima di ciascun tag rileggere main e l'esatto tip remoto del ramo;
+confrontare con il registro e fermarsi su differenze, contese o mutamenti
+degli incarichi. Riconfermare PR head/base e stato degli utilizzatori noto.
+Preferire tag annotati; nessun tag di prova, sovrascrittura, spostamento
+o eliminazione di tag. Se il nome esiste, verificarlo senza riscriverlo;
+se non coincide con il commit atteso, fermarsi e riferire il conflitto.
+Verificare il ref remoto e dereferenziare l'eventuale oggetto annotato
+fino al commit atteso. Conservare immutabili gli archivi verificati.
+Restituire per ogni riga: branch, tip riconfermato, tag, tag-object-SHA
+(o non_applicable se leggero), commit dereferenziato, esito ed eventuale blocco.
+Su fallimento o esito ambiguo fermarsi e riportare anche l'eventuale oggetto
+creato senza ref; non attestare archivio completo da un solo tag object.
+Dopo gli archivi FERMARSI prima delle cancellazioni e delle modifiche
+documentali: il resoconto torna a B. Nessuna scrittura locale ai checkout,
+sync, installazione, nuova copia, esecuzione Ruth o test applicativo.
+
+### Evidenze e attribuzione
+
+Resoconto dell'esecutore, inoltrato su istruzione esplicita dell'utente:
+main e titolarita B verificati sulla base sopra; checkout designato con
+remoto canonico, main, HEAD coincidente e working tree pulito, invariato.
+Lettura ordinaria disponibile; con accesso esteso controlli dei permessi
+indicano scrittura disponibile. La prova temporanea creazione/lettura/
+rimozione appartiene all'incarico precedente, non e' stata ripetuta qui.
+Autenticazione gh e letture API riuscite; push=true dichiarato dall'API.
+Queste sono verifiche dell'esecutore, non accessi locali eseguiti da B.
+Il pending_no_access della sessione cloud B non e' una diagnosi del checkout.
+Dopo il merge documentale, HEAD locale riferita resta quella della base;
+nessuna sync viene richiesta da questo incarico di soli ref remoti.
+
+Inventario dell'esecutore paginato 50/49/0: 99 branch, main protetto,
+87 contained_candidate, 11 archive_required; zero PR/issue aperte e zero tag.
+Gli 11 tip e nomi tag coincidono con BRANCH_ARCHIVE.md alla base.
+61 NODE/checkpoint esaminati; nessun incarico locale pubblicato trovato.
+Nessun controllo tecnico fallito. create-tag e delete-ref NON TENTATE:
+push=true non prova la loro capacita effettiva.
+Tag creati 0, branch cancellati 0, documenti/PR modificati dall'esecutore 0.
+
+Verifiche dirette B in questa pubblicazione: ref main e PR #105 merged,
+61 NODE/checkpoint letti alla base, 99 branch (seconda pagina vuota),
+zero PR/issue aperte e zero tag, tutti gli 11 ref heads letti individualmente
+e coincidenti con il registro. Il nuovo branch documentale e' un ulteriore
+temporaneo, utilizzato da B fino al merge e poi pending_cleanup.
+Nessuna mutazione tag o cancellazione eseguita da B.
+
+### Utilizzatori, fonti e integrazioni pendenti
+
+MODEL-001 viene chiusa per riallineare lo stato del catalogo CAT-001 gia'
+completo e accettato; Models implementation resta partial. Evidenze storiche
+CAT-001 e CAT-MANUAL-001 preservate. La chiusura NON certifica rami liberi.
+PR aperte head/base: zero al controllo. Le integrazioni applicative
+approvate risultano concluse; MIG-016 resta chiusa con prova delegated,
+MIG-017 resta soltanto proposta. Nessuna integrazione storica non approvata
+viene attivata o importata per facilitare la pulizia.
+
+Per gli undici rami: nessun incarico operativo pubblicato concorrente
+individuato nei 61 NODE/checkpoint e nei registri comuni consultati.
+Non e' disponibile una conferma nominativa che tutti i precedenti
+utilizzatori abbiano cessato le scritture; l'assenza di PR o di un incarico
+pubblicato non la sostituisce. Stato per ciascuno:
+users_release: unconfirmed; deletion_gate: blocked_users_confirmation.
+Le fonti storiche Python e conversazione sono tuttora utilizzate come
+riferimenti di migrazione: richiedono anche aggiornamento operativo da B
+dopo prova dei tag, mantenendo nomi originari e SHA nella cronologia.
+Le note pending storiche restano cronologia; nessuna integrazione nuova
+viene dedotta da esse.
+
+Secondo gate: B riceve e controlla gli 11 esiti, verifica gli archivi remoti
+e aggiorna i riferimenti operativi e il registro via PR/CI/merge.
+Prima di qualunque rilascio per cancellare, risolvere users_release per
+ciascun ramo, riconfermare incarichi e integrazioni pendenti e PR head/base.
+B pubblichera' solo allora un elenco esatto branch/SHA eliminabili con
+riferimento al merge documentale. Nessun elenco eliminabile rilasciato ora.
+Terzo gate: cancellazione soltanto con condizione sullo SHA atteso e nuova
+verifica immediata di main, tip, PR, utilizzatori e integrazioni.
+Se la mutazione disponibile non supporta quella condizione, fermarsi.
+I checkout storici restano intatti; main unico branch permanente.

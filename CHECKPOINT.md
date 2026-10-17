@@ -1,6 +1,6 @@
 # Ruth: checkpoint di progetto
 
-Revisione documentale: 54 (indice main); CONT-001 revisione 2.
+Revisione documentale: 55 (indice main); CONT-001 revisione 2.
 Fase 3: migrazione incrementale per componente.
 Stato: **MIG-016 GGUF-MULTITENSOR-FIXTURE-001 implementata, verificata in CI e integrata in main; GGUF-MULTITENSOR-MANUAL-001 passed tramite collaudo delegato MIG-FLOW-002 rev.3; MIG-016 chiusa**.
 MIG-015 e GGUF-FIXTURE-SUMMARY-MANUAL-001 restano complete.
@@ -13,6 +13,37 @@ GGUF-INDEX-MANUAL-001 rimane complete.
 GGUF-MANUAL-001 e CAT-MANUAL-001 restano complete.
 PY, DEP, DIAG, HW/CPU e GPU NVIDIA restano accettate personalmente.
 L'ingresso senza argomenti di Ruth esegue tutte le funzioni integrate.
+
+## BRANCH-CLEANUP-001: prerequisiti correnti (17 ottobre 2026)
+
+Base: 5b77b08693a808c359b294bf1ab40f4fba8f5137.
+Incarico completo BRANCH-ARCHIVE-001, evidenze attribuite e gate:
+ORCHESTRATION.md, sezione "incarico archivi e gate di cancellazione".
+Esecutore nominativo: chat Codex locale 01a14a37-aa01-70a2-b9cf-6702224b121f,
+titolo "Ruth - Work Local - Orchestrator", ruolo limitato di esecutore.
+ORCH-20261017-B resta unico titolare di documenti comuni, mappe, PR e merge.
+Dopo merge dei prerequisiti con CI positiva: solo creazione/verifica degli
+11 tag del registro, nessuna cancellazione; mutazioni tuttora non tentate.
+Resoconto esecutore: gh autenticato, push=true, checkout main pulito alla
+base e invariato; scrittura indicata dai controlli con accesso esteso.
+Prova temporanea positiva storica, non ripetuta in questo incarico.
+B non attribuisce a se' accesso o verifiche locali dell'esecutore.
+Inventario riferito 50/49/0: 99 branch, 87 contained_candidate e 11
+archive_required, main protetto. B ha riconfermato ref main, PR #105 merged,
+99 branch con seconda pagina vuota, zero PR/issue aperte, zero tag e 11 tip.
+61 NODE/checkpoint esaminati; nessun incarico concorrente pubblicato trovato.
+MODEL-001 state=complete; Models implementation=partial, storia CAT preservata.
+Per tutti gli 11 rami users_release unconfirmed: cancellazioni bloccate.
+Zero PR head/base non prova assenza di utilizzatori o integrazioni pendenti.
+Dopo esiti archivi, B verifica e aggiorna fonti operative via PR/CI/merge;
+solo dopo risoluzione utilizzatori rilascia elenco esatto branch/SHA.
+Nessun elenco eliminabile ora. Cancellazioni richiederanno condizione SHA.
+Tag creati 0; branch cancellati 0; documenti/PR dell'esecutore 0.
+Il ramo documentale di B aggiunge un temporaneo, pending_cleanup dopo merge.
+Nessuna sync, nuova copia/ambiente, installazione, esecuzione Ruth o test
+applicativo in questo incarico. MIG-016 chiusa; MIG-017 non approvata.
+Le sezioni precedenti/successive datate della successione descrivono
+gli strumenti e i blocchi storici, senza annullare questa assegnazione.
 
 ## Successione dell'orchestratore e branch temporanei
 

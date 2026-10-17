@@ -565,3 +565,12 @@
 - MIG-017 non approvata. Dopo questa chiusura presentare il prossimo
   perimetro funzionale e attendere un nuovo OK prima di implementarlo.
   Le note precedenti di collaudo pending sono cronologia storica.
+
+## MODEL-001: riallineamento documentale (17 ottobre 2026)
+
+Su istruzione esplicita dell'utente MODEL-001 state=complete: CAT-001 gia'
+integrata e accettata (CAT-MANUAL-001, commit 90e57f106fb664b0257775260044125ea85228e2).
+Le evidenze e la descrizione storiche sono preservate. Models implementation
+resta partial; nessuna nuova funzione autorizzata. Questa chiusura non attesta
+assenza di utilizzatori o integrazioni pendenti dei branch: verifiche e gate
+per BRANCH-CLEANUP-001 sono in ORCHESTRATION.md e nel checkpoint radice.
