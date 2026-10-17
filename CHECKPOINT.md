@@ -1,9 +1,9 @@
 # Ruth: checkpoint di progetto
 
-Revisione documentale: 33 (indice main); CONT-001 revisione 1.
+Revisione documentale: 34 (indice main); CONT-001 revisione 1.
 Fase 3: migrazione incrementale per componente.
-Stato: **GGUF-BLOCK-001 implementata, verificata in CI e integrata in main;
-GGUF-BLOCK-MANUAL-001 in attesa di collaudo personale**.
+Stato: **GGUF-BLOCK-001 implementata, verificata in CI, integrata in main
+e accettata personalmente (GGUF-BLOCK-MANUAL-001 complete)**.
 GGUF-INDEX-MANUAL-001 rimane complete.
 GGUF-MANUAL-001 e CAT-MANUAL-001 restano complete.
 PY, DEP, DIAG, HW/CPU e GPU NVIDIA restano accettate personalmente.
@@ -413,3 +413,36 @@ e DIAG-SCOPE-001. SYNC-001 resta storica/superseded.
   Le note candidate precedenti sono storiche; la prossima
   migrazione e' bloccata fino al collaudo personale e
   ad approvazione di uno scope distinto.
+
+## GGUF-BLOCK-MANUAL-001: collaudo accettato (17 ottobre 2026)
+
+- L'utente ha eseguito personalmente il flusso di dieci controlli
+  di `.venv/bin/python main.py` sulla revisione `2f42a9d7a631e8779613784b58f8ce1b92afff9c`,
+  coincidente con il main pubblicato; ha confermato esplicitamente
+  positivo il collaudo GGUF-BLOCK-MANUAL-001 il 17 ottobre 2026.
+- Tutte le fasi PY -> DEP -> DIAG -> HW -> NVIDIA -> CAT -> GGUF ->
+  META -> INDEX -> BLOCKS sono state completate in ordine.
+  Il catalogo opzionale assente e' risultato `not_configured`
+  e GGUF/META/INDEX/BLOCKS sono skip validi e non bloccanti.
+- Non e' stato collaudato personalmente alcun file GGUF reale:
+  l'esito non certifica pesi, integrita', dequantizzazione,
+  CUDA, backend, runtime o inferenza.
+- I risultati di CI e la verifica con fixture sintetiche dei cinque
+  tipi Q4_0/Q4_1/Q5_0/Q5_1/Q8_0 restano distinti
+  dall'accettazione manuale senza catalogo.
+- DATA-001 e REMOTE-001 rispettati: non vengono versionati
+  inventari dell'host, percorsi reali, log, manifest, modelli,
+  benchmark o credenziali. Nessuna nuova migrazione approvata.
+- Stato definitivo dello scope: implementation **complete**,
+  verification **passed** (CI con fixture sintetiche),
+  integration **merged** (PR #62), manual
+  acceptance **passed/complete** (GGUF-BLOCK-MANUAL-001).
+  Root MIG-010 **complete**, senza blocchi aperti.
+- `local_sync: verified_on_tested_revision` per `2f42a9d7a631e8779613784b58f8ce1b92afff9c`,
+  come comunicato dall'utente; dopo merge di questi soli documenti,
+  `local_sync: pending_docs_fast_forward`. Il clone principale
+  non e' stato modificato dall'assistente.
+- Le annotazioni anteriori candidate/active/pending/blocked sono
+  storiche: questo checkpoint ne sostituisce lo stato.
+  Passo successivo: definire un nuovo scope separato e richiedere
+  approvazione esplicita prima di modificare altro codice.

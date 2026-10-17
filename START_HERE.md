@@ -175,3 +175,12 @@ superate. Solo metadati, descriptor ed estensione byte: nessun peso
 del modello letto. **GGUF-BLOCK-MANUAL-001 resta pending** fino al
 collaudo personale sul main aggiornato e conferma esplicita.
 Le precedenti note candidate sono storiche.
+
+## GGUF-BLOCK-MANUAL-001 superato personalmente (17 ottobre 2026)
+
+L'utente conferma l'esito positivo del flusso Ruth a dieci fasi
+sul commit main `2f42a9d7a631e8779613784b58f8ce1b92afff9c`. Il catalogo locale non configurato
+e gli skip di GGUF, META, INDEX e BLOCKS sono validi;
+nessun file GGUF reale testato. MIG-010 complete; prossimo
+perimetro ancora da proporre e approvare (MIG-FLOW-001).
+Le precedenti note di manual pending sono storiche.
