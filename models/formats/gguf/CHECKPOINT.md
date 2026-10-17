@@ -185,3 +185,20 @@
   test_kblocks.py con fixture sintetiche locale, poi
   conferma esplicita. Vecchie 10 fasi restano accettate.
   DATA-001 e MIG-FLOW-002 invariati.
+
+## GGUF-KBLOCK-MANUAL-001 accettata (17 ottobre 2026)
+
+- L'utente ha incollato la prova del default Ruth a undici fasi
+  concluso regolarmente sul commit main verificato `233efc358f56a66d2abf796fa8e20a476aa788cf`.
+- Suite `test_kblocks.py` eseguita personalmente: **9 test, OK**.
+  CAT/GGUF/META/INDEX/BLOCKS/KBLOCKS `not_configured`
+  sono skip validi; nessun GGUF reale verificato.
+- Con MIG-FLOW-002 revisione 2 la prova positiva dell'utente
+  equivale ad accettazione: nessuna conferma ulteriore richiesta.
+  GGUF-KBLOCK-MANUAL-001 **complete**; MIG-011 **complete**.
+- Stato: codice complete, CI passed, main merged e
+  accettazione personale passed. Migrazione seguente
+  soggetta a nuovo scope esplicitamente approvato (MIG-FLOW-001).
+- DATA-001: soltanto SHA, stato e numero test in Git;
+  nessun dato host, percorso, log, benchmark o modello reale.
+  Le note precedenti pending sono storiche.
