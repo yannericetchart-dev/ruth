@@ -17,6 +17,7 @@ La presenza dello scaffold non implica una implementazione runtime.
 
 ## File
 
+- [BLOCK_SCOPE.md](BLOCK_SCOPE.md)
 - [CHECKPOINT.md](CHECKPOINT.md)
 - [INDEX_SCOPE.md](INDEX_SCOPE.md)
 - [METADATA_SCOPE.md](METADATA_SCOPE.md)

@@ -377,3 +377,56 @@ Ogni sostituzione deve collegare entrambe le decisioni e aggiornare le mappe.
   mappe e PR lungo tutti gli antenati. Collaudo personale
   GGUF-INDEX-MANUAL-001 post-merge (MIG-FLOW-002).
 - DATA-001, REMOTE-001, MAIN-FLOW-001 restano vigenti.
+
+### GGUF-INDEX-001: integrazione verificata (16 ottobre 2026)
+
+- Approvazione GGUF-INDEX-SCOPE-001 immutata. PR #53-#56 integrate
+  fino a main `1d51cfeed2bec83119ebf56ff0cb3840089484cf`; CI success runs 38945221302, 38945375637,
+  38945463381, 38945568401; test sintetici e mappe superati.
+- Il validator controlla solo struttura dei descriptor e offset,
+  non legge tensor data e non stima ingombri quantizzati senza
+  regole sufficienti: `size_unverified` e' risultato non confermato.
+- GGUF-INDEX-MANUAL-001 **pending**; il collaudo dell'utente richiede
+  Ruth senza argomenti dalla nuova revisione main.
+- Prossimo perimetro non autorizzato prima di conferma positiva
+  del test personale (MIG-FLOW-002).
+
+### GGUF-INDEX-MANUAL-001: accettazione personale (17 ottobre 2026)
+
+- GGUF-INDEX-MANUAL-001: **complete/passed**, accettazione esplicita
+  dell'utente il 17 ottobre 2026 dopo esecuzione personale del flusso
+  ordinario `.venv/bin/python main.py` sul commit `09045243e944514d40b9e58c6159b013efa2a196`,
+  identico a main verificato su GitHub.
+- Nove fasi in ordine PY -> DEP -> DIAG -> HW -> NVIDIA -> CAT ->
+  GGUF -> META -> INDEX; riepilogo finale di completamento regolare.
+- Catalogo e letture GGUF/META/INDEX `not_configured` sono skip validi
+  e non bloccanti. Nessun file GGUF reale ispezionato personalmente;
+  non risultano validati contenuti dei tensori, pesi o compatibilita'
+  con CUDA/backend/inferenza.
+- La prova manuale completa il gate MIG-FLOW-002 per MIG-009;
+  una nuova migrazione richiede uno scope separato e approvazione
+  esplicita (MIG-FLOW-001). Nessun nuovo componente avviato.
+- DATA-001 e REMOTE-001 invariati: in Git solo esito e commit;
+  niente path, nomi modelli, output grezzi, inventari, log o benchmark.
+GGUF-INDEX-SCOPE-001 resta invariato; nessuna migrazione successiva
+autorizzata implicitamente.
+
+## GGUF-BLOCK-SCOPE-001: blocchi quantizzati dichiarativi (17 ottobre 2026)
+
+- Stato: **approved** per MIG-010; base main `6f472b0ac182b113c5c727c3f8f5c291c074de2e`.
+- Cinque tipi GGML: Q4_0 (id 2, 32:18), Q4_1 (3, 32:20),
+  Q5_0 (6, 32:22), Q5_1 (7, 32:24), Q8_0 (8, 32:34).
+  Primo asse divisibile per 32; estensione in byte dal numero
+  blocchi. Altri tipi restano `size_unverified`.
+- Solo modelli GGUF nel catalogo locale CAT-001, reuse parser
+  e difese INDEX, limiti su strutture, nomi e contatori.
+  Controlli offset, sovrapposizioni ed estremi del file.
+- API immutabili inspect_block_layout / inspect_all_block_layouts;
+  decimo passaggio `BLOCKS` automatico dopo `INDEX`,
+  `main.py gguf-blocks` mirato. Catalogo assente: skip valido.
+- Non si leggono o dequantizzano pesi. Nessun download,
+  rete, inferenza, CUDA, backend, benchmark o dati macchina.
+- Fixture sintetiche, CI, mappe e PR fino a main; poi collaudo
+  personale GGUF-BLOCK-MANUAL-001 obbligatorio. Nessuna
+  migrazione seguente implicitamente approvata.
+- Si applicano MAIN-FLOW-001, MIG-FLOW-001/002, DATA-001, REMOTE-001.

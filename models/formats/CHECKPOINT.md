@@ -69,3 +69,48 @@
   ancora da verificare. GGUF-INDEX-MANUAL-001 dopo merge main.
 - GGUF-META-MANUAL-001 resta accettata: stato storico precedente
   non deve essere invertito. MIG-FLOW-001/002 e DATA-001 vigenti.
+
+## GGUF-INDEX-001 verificata e integrata (16 ottobre 2026)
+
+- Indice tensori GGUF catalog-bound bounded, nona fase Ruth,
+  promosso con PR #53-#56 sino al main `1d51cfeed2bec83119ebf56ff0cb3840089484cf`.
+- CI runs 38945221302, 38945375637, 38945463381,
+  38945568401 success; verifica sintetica e mappe confermate.
+- Stato tecnico: implementation complete, verification passed
+  (fixture sintetiche), integration merged.
+- **GGUF-INDEX-MANUAL-001 active/pending**, dopo sync main:
+  richiesta conferma esplicita dell'utente. Il solo indice non
+  certifica modello, payload, quantizzazione o inferenza.
+- Non aggiungere real host data a Git (DATA-001); perimetro
+  successivo ancora non autorizzato. Note candidate storiche.
+
+## GGUF-INDEX-MANUAL-001: accettazione (17 ottobre 2026)
+
+- GGUF-INDEX-MANUAL-001: **complete/passed**, accettazione esplicita
+  dell'utente il 17 ottobre 2026 dopo esecuzione personale del flusso
+  ordinario `.venv/bin/python main.py` sul commit `09045243e944514d40b9e58c6159b013efa2a196`,
+  identico a main verificato su GitHub.
+- Nove fasi in ordine PY -> DEP -> DIAG -> HW -> NVIDIA -> CAT ->
+  GGUF -> META -> INDEX; riepilogo finale di completamento regolare.
+- Catalogo e letture GGUF/META/INDEX `not_configured` sono skip validi
+  e non bloccanti. Nessun file GGUF reale ispezionato personalmente;
+  non risultano validati contenuti dei tensori, pesi o compatibilita'
+  con CUDA/backend/inferenza.
+- La prova manuale completa il gate MIG-FLOW-002 per MIG-009;
+  una nuova migrazione richiede uno scope separato e approvazione
+  esplicita (MIG-FLOW-001). Nessun nuovo componente avviato.
+- DATA-001 e REMOTE-001 invariati: in Git solo esito e commit;
+  niente path, nomi modelli, output grezzi, inventari, log o benchmark.
+- GGUF-INDEX-001 implemented, CI verified, merged;
+  collaudo personale accepted. Le vecchie note di gate pending
+  sono storiche. Nessun'altra porzione Models autorizzata.
+
+## GGUF-BLOCK-001 candidata (17 ottobre 2026)
+
+- MIG-010 approvata: verifica ingombro GGML Q4_0, Q4_1,
+  Q5_0, Q5_1, Q8_0 senza leggere tensor_data, decimo
+  controllo Ruth dopo INDEX. Reader/index invariato per
+  le nove fasi gia' integrate e accettate.
+- Scope nel GGUF/BLOCK_SCOPE.md, codice candidato remoto:
+  test/CI e promozioni ancora pendenti.
+  GGUF-BLOCK-MANUAL-001 dopo main; DATA-001 invariato.

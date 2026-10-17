@@ -1,9 +1,9 @@
 # Ruth: checkpoint di progetto
 
-Revisione documentale: 30 (indice main); CONT-001 revisione 1.
+Revisione documentale: 32 (indice main); CONT-001 revisione 1.
 Fase 3: migrazione incrementale per componente.
-Stato: **GGUF-META-001 implementata, verificata in CI, integrata in main
-e accettata personalmente (GGUF-META-MANUAL-001 complete)**.
+Stato: **GGUF-INDEX-001 implementata, verificata in CI, integrata in main
+e accettata personalmente (GGUF-INDEX-MANUAL-001 complete)**.
 GGUF-MANUAL-001 e CAT-MANUAL-001 restano complete.
 PY, DEP, DIAG, HW/CPU e GPU NVIDIA restano accettate personalmente.
 L'ingresso senza argomenti di Ruth esegue tutte le funzioni integrate.
@@ -302,3 +302,80 @@ e DIAG-SCOPE-001. SYNC-001 resta storica/superseded.
   collaudo GGUF-INDEX-MANUAL-001 ancora eseguibile.
 - Nessuna modifica all'host, download, tensor payload, CUDA o
   inferenza; dati reali restano locali (DATA-001).
+
+## GGUF-INDEX-001 integrata tecnicamente (16 ottobre 2026)
+
+- Autorizzazione funzionale GGUF-INDEX-SCOPE-001 registrata; soli
+  descrittori tensore di GGUF dichiarati in CAT e dati tensor esclusi.
+- Implementazione `models/formats/gguf/runtime/tensor_index.py`:
+  v2/v3 ed endian, parser KV limitato, max 16384 descrittori,
+  verifica nomi, dimensioni, offset relativi e allineamento.
+  Intervalli certi solo per tipi scalari con ampiezza nota;
+  sconosciuti e quantizzati producono `size_unverified` e stato partial.
+- Nono passaggio dell'ingresso ufficiale `main.py` senza argomenti:
+  PY -> DEP (pip minimo) -> DIAG -> HW -> NVIDIA -> CAT ->
+  GGUF -> META -> INDEX. Sottocomando mirato `gguf-index`.
+  Catalogo assente/vuoto senza GGUF = skip valido e non bloccante.
+- PR #53 foglia gguf/main (merge 8b608074ef08bbae41b8d68565e9fc38ea66e248),
+  #54 formats/main (405c77d1dbfeb0e1ffc66bb0ea261494a9f3546f),
+  #55 models/main (90b7fc5a025279c24a678d52def31b8f37576b61),
+  #56 main (`1d51cfeed2bec83119ebf56ff0cb3840089484cf`); CI success runs 38945221302,
+  38945375637, 38945463381, 38945568401.
+- Stato: implementation complete per scope autorizzato,
+  verification passed (solo fixture sintetiche),
+  integration merged. **GGUF-INDEX-MANUAL-001 active/pending**:
+  avvio personale di Ruth sul nuovo main, conferma esplicita richiesta.
+- `local_sync: pending_no_access` per il nuovo main; il clone
+  principale non e' stato modificato. Il collaudo positivo precedente
+  di GGUF-META resta valido, senza certificazione di modelli reali.
+- Nessun peso, modello, inventario, benchmark, percorso, manifest
+  o log reale in Git (DATA-001). Kaggle inattivo. CUDA, Hugging Face,
+  download e inferenza fuori scope. Nuova migrazione bloccata
+  fino al collaudo personale e a successivo scope autorizzato.
+
+## Chiusura GGUF-INDEX-MANUAL-001 (17 ottobre 2026)
+
+- GGUF-INDEX-MANUAL-001: **complete/passed**, accettazione esplicita
+  dell'utente il 17 ottobre 2026 dopo esecuzione personale del flusso
+  ordinario `.venv/bin/python main.py` sul commit `09045243e944514d40b9e58c6159b013efa2a196`,
+  identico a main verificato su GitHub.
+- Nove fasi in ordine PY -> DEP -> DIAG -> HW -> NVIDIA -> CAT ->
+  GGUF -> META -> INDEX; riepilogo finale di completamento regolare.
+- Catalogo e letture GGUF/META/INDEX `not_configured` sono skip validi
+  e non bloccanti. Nessun file GGUF reale ispezionato personalmente;
+  non risultano validati contenuti dei tensori, pesi o compatibilita'
+  con CUDA/backend/inferenza.
+- La prova manuale completa il gate MIG-FLOW-002 per MIG-009;
+  una nuova migrazione richiede uno scope separato e approvazione
+  esplicita (MIG-FLOW-001). Nessun nuovo componente avviato.
+- DATA-001 e REMOTE-001 invariati: in Git solo esito e commit;
+  niente path, nomi modelli, output grezzi, inventari, log o benchmark.
+- Stato finale: implementation complete; verification passed
+  (test e CI sintetici); integration merged (PR #56);
+  **GGUF-INDEX-MANUAL-001 complete** e **MIG-009 complete**.
+- `local_sync: verified_on_tested_revision` per `09045243e944514d40b9e58c6159b013efa2a196`,
+  come comunicato dall'utente; successivo commit solo documentale:
+  `local_sync: pending_docs_fast_forward`. Il checkout originale
+  non e' stato modificato dall'assistente.
+- Le note precedenti candidate/active/pending/blocked sono storiche
+  e non guidano la fase corrente. Il prossimo passo e' definire e
+  approvare un nuovo perimetro senza anticipare implementazioni.
+
+## GGUF-BLOCK-SCOPE-001 approvata; MIG-010 candidata (17 ottobre 2026)
+
+- Via libera esplicito per cinque tipi quantizzati GGML;
+  base main `6f472b0ac182b113c5c727c3f8f5c291c074de2e`, ramo remoto
+  `models/formats/gguf/work/GGUF-BLOCK-001`.
+- Aggiunta candidata al reader INDEX con calcolo opzionale delle
+  dimensioni Q4_0/Q4_1/Q5_0/Q5_1/Q8_0; controllo sui soli
+  descrittori e dimensioni del file. Nessun payload letto.
+- API immutabili inspect_block_layout e inspect_all_block_layouts.
+  Flusso futuro di dieci fasi con BLOCKS dopo INDEX e
+  sottocomando mirato `gguf-blocks`.
+- Stato della nuova porzione **candidate implementation**;
+  verification **not_run**, integration **not_merged**.
+  Le precedenti nove fasi restano implementate, verificate,
+  integrate e accettate personalmente.
+- Collaudo GGUF-BLOCK-MANUAL-001 pianificato soltanto dopo
+  promozioni e CI positive. Nessun nuovo perimetro approvato.
+  Local sync `pending_no_access`; REMOTE-001 e DATA-001 invariati.

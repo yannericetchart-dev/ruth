@@ -139,3 +139,29 @@ L'utente approva MIG-009: verifica bounded degli indici tensori dei soli
 GGUF catalogati, senza leggere pesi. Nono passaggio automatico Ruth.
 Implementazione candidata; verifiche e promozioni pendenti: consultare
 CHECKPOINT.md. Collaudo GGUF-INDEX-MANUAL-001 solo dopo main.
+
+## GGUF-INDEX-001 integrata tecnicamente (16 ottobre 2026)
+
+Le PR #53 (gguf), #54 (formats), #55 (Models) e #56 (main) hanno
+integrato la nona fase Ruth, INDEX, sul commit `1d51cfeed2bec83119ebf56ff0cb3840089484cf`, con CI
+sintetica e mappe verificate. Solo indici descrittori, mai tensor_data.
+**GGUF-INDEX-MANUAL-001 resta in attesa di collaudo personale**.
+Nessuna migrazione successiva e' autorizzata.
+
+## GGUF-INDEX-MANUAL-001 superato personalmente (17 ottobre 2026)
+
+L'utente ha confermato positivo il collaudo del flusso completo Ruth
+a nove fasi sul main `09045243e944514d40b9e58c6159b013efa2a196`. Catalogo e INDEX
+`not_configured`: risultato previsto. Nessun GGUF reale o payload
+di tensori verificato manualmente. MIG-009 complete. I precedenti
+stati pending sono storici; prossimo scope ancora da approvare.
+
+## GGUF-BLOCK-SCOPE-001 approvato (17 ottobre 2026)
+
+MIG-010 approvata esplicitamente: cinque tipi quantizzati GGML
+(Q4_0, Q4_1, Q5_0, Q5_1 e Q8_0) per verifica bounded degli
+ingombri dei tensori GGUF dichiarati, senza leggere i pesi.
+Decima fase Ruth dopo INDEX, scope in
+`models/formats/gguf/BLOCK_SCOPE.md`. Codice candidato:
+CI e promozioni ancora da verificare. Collaudo personale
+GGUF-BLOCK-MANUAL-001 richiesto dopo il merge in main.
