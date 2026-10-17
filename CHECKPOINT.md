@@ -1,6 +1,6 @@
 # Ruth: checkpoint di progetto
 
-Revisione documentale: 48 (indice main); CONT-001 revisione 1.
+Revisione documentale: 49 (indice main); CONT-001 revisione 1.
 Fase 3: migrazione incrementale per componente.
 Stato: **MIG-015 GGUF-FIXTURE-SUMMARY-001 implementata, verificata in CI, integrata in main e collaudata personalmente (GGUF-FIXTURE-SUMMARY-MANUAL-001 complete)**.
 MIG-014 e GGUF-STRUCT-STABILITY-MANUAL-001 restano complete.
@@ -786,3 +786,25 @@ e DIAG-SCOPE-001. SYNC-001 resta storica/superseded.
 - Le note precedenti `manual pending` sono storiche, non stato corrente;
   MIG-016 **non approvata**. Nuova porzione solo dopo approvazione esplicita
   del perimetro proposto, secondo MIG-FLOW-001.
+
+## MIG-016 / GGUF-MULTITENSOR-FIXTURE-001 approvata (17 ottobre 2026)
+
+- Approvazione esplicita dell'utente, base commit main
+  `3cd6cad3e431f5ad1ab8dc698aee96330ff79ed1`.
+- FIXTURE conserva i tre GGUF sintetici MIG-015 e aggiunge un quarto file
+  con **tre tensori** (scalare F32, Q4_0, Q4_K), offset distinti e dimensioni
+  note. CAT/GGUF/META/INDEX/BLOCKS/KBLOCKS/SUMMARY vengono eseguiti con
+  catalogo temporaneo, senza dati reali. Summary richiede
+  `structural_checked` per tutti e quattro, `tensor_count=3` per multi.
+- Suite `test_multitensor` (11 test sintetici) per layout valido, descrittori
+  non ordinati, endian big, alignment custom, offset non valido e fuori file,
+  overlap, truncation, duplicati, dimensione blocco errata e tipi ignoti
+  (`size_unverified`). Test precedenti fixture 3->4 aggiornati.
+- **13 fasi Ruth invariate**. Nessun nuovo parser, modello reale, lettura
+  tensor data, hash, dequantizzazione, CUDA, download, rete o inferenza.
+  DATA-001, REMOTE-001, MIG-FLOW-001/002 invariati.
+- Stato: autorizzata; codice **candidate**, verifica **pending**,
+  integrazione **pending**, collaudo personale
+  `GGUF-MULTITENSOR-MANUAL-001` **pending** solo dopo main.
+  Branch `models/formats/gguf/work/GGUF-MULTITENSOR-FIXTURE-001`.
+  Local checkout non accessibile: `local_sync: pending_no_access`.
