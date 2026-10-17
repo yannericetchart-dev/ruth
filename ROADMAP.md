@@ -29,6 +29,7 @@ Ambito verifica: CAT-001: CI GitHub 38928909391, 38929028829, 38929118836 succes
 13. `MIG-009` [complete] GGUF-INDEX-SCOPE-001 implemented and CI verified, merged via PR #56; GGUF-INDEX-MANUAL-001 personally accepted on 09045243e944514d40b9e58c6159b013efa2a196 with catalog not_configured. Next functional scope requires explicit approval.
 14. `MIG-010` [complete] GGUF-BLOCK-SCOPE-001 five GGML types implemented, CI verified and integrated via PR #62; GGUF-BLOCK-MANUAL-001 personally accepted on 2f42a9d7a631e8779613784b58f8ce1b92afff9c (catalog not configured). Next scope requires separate explicit approval.
 15. `MIG-011` [complete] GGUF-KBLOCK-SCOPE-001 six GGML K-quant type checks CI passed and integrated via PR #68; personal 11-phase Ruth plus 9 K-block synthetic tests OK on 233efc358f56a66d2abf796fa8e20a476aa788cf; accepted under MIG-FLOW-002 revision 2, next scope requires distinct approval.
+16. `MIG-012` [active] MIG-012 approved: synthetic CAT through KBLOCKS integrated fixture check; implementation candidate; CI, main promotion and personal acceptance pending.
 
 ## Componenti (ordine locale, ID stabili)
 

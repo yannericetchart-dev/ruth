@@ -20,6 +20,7 @@ Ambito verifica: CAT-001: CI GitHub 38928909391, 38929028829, 38929118836 succes
 4. `MODEL-004` [complete] GGUF-INDEX-001 bounded tensor index verified in CI and integrated via PR #56, personally accepted GGUF-INDEX-MANUAL-001 on 09045243e944514d40b9e58c6159b013efa2a196 (no real GGUF payload verified).
 5. `MODEL-005` [complete] GGUF-BLOCK-001 five GGML quantized block types implemented, CI verified and merged via PR #62; personal GGUF-BLOCK-MANUAL-001 acceptance on 2f42a9d7a631e8779613784b58f8ce1b92afff9c with catalog not configured. No tensor data read.
 6. `MODEL-006` [complete] GGUF-KBLOCK-001 CI verified and merged main via PR #68; user personal 11-stage Ruth and nine K-block fixture tests passed on 233efc358f56a66d2abf796fa8e20a476aa788cf; no real model verified.
+7. `MODEL-007` [active] MIG-012 approved: synthetic CAT through KBLOCKS integrated fixture check; implementation candidate; CI, main promotion and personal acceptance pending.
 
 ## Componenti (ordine locale, ID stabili)
 

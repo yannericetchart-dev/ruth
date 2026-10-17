@@ -202,3 +202,10 @@
 - DATA-001: soltanto SHA, stato e numero test in Git;
   nessun dato host, percorso, log, benchmark o modello reale.
   Le note precedenti pending sono storiche.
+
+## MIG-012 / GGUF-FIXTURE-001 approvata (17 ottobre 2026)
+
+- Approvazione esplicita utente. Base main `518ef0d2bdeeafe281a52cde192438fb96eb3f40`, branch `models/formats/gguf/work/GGUF-FIXTURE-001`.
+- Scope: tre file GGUF sintetici in directory temporanea, verifica CAT/GGUF/META/INDEX/BLOCKS/KBLOCKS, dodicesimo passaggio Ruth FIXTURE.
+- Stati: implementation candidate, verification pending, integration pending, personal acceptance pending.
+- Nessun dato di host o modello reale pubblicato; solo fixture generate a runtime. Prossima verifica: CI, mappe, PR e promozione; poi collaudo personale GGUF-FIXTURE-MANUAL-001.
