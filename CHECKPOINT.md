@@ -26,9 +26,14 @@ L'ingresso senza argomenti di Ruth esegue tutte le funzioni integrate.
 - Sviluppo GitHub-first; DATA-001 invariata. Decisioni sostituite conservate
   come storiche in DECISIONS.md; gli obblighi personali rev.2 nelle note
   applicative datate non prevalgono sulla revisione 3.
-- Stato documentazione: testo implementato; verifica e integrazione sono
-  riferite alla PR GitHub associata alla revisione, da controllare prima
-  di dichiararle concluse. Nessuna esecuzione Ruth o test locali svolti.
+- Stato documentazione: implementata, verificata e integrata tramite
+  PR #101, main 5dbd00f1ee8adbf7a093ccfb0d5b96e738d25234.
+  CI PR 39034668530 e CI main 39034711512: success, incluse mappe,
+  regressioni sintetiche e controllo dell'assenza di modifiche generate.
+  Albero integrato identico al candidato revisionato; solo dieci documenti
+  e metadati di protocollo, nessun file applicativo/test/workflow modificato.
+  Nessuna esecuzione Ruth o test locali svolti. Questa registrazione
+  successiva e' soltanto documentale e non chiude il collaudo di MIG-016.
 - Istruzioni UI: blocco aggiornato preparato in PROJECT_SETUP.md;
   inserimento UI e collaudo indipendente della continuita' rev.2 pending.
   La pubblicazione GitHub non cambia automaticamente la UI.
