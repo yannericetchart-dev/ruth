@@ -15,4 +15,5 @@ Contenuto riservato a: implementazioni eseguibili.
 - [kblocks.py](kblocks.py)
 - [metadata.py](metadata.py)
 - [reader.py](reader.py)
+- [structural_summary.py](structural_summary.py)
 - [tensor_index.py](tensor_index.py)
