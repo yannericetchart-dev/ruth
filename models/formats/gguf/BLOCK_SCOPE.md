@@ -53,3 +53,15 @@ read-only della struttura degli indici tensore dei GGUF dichiarati da CAT.
 
 Stato iniziale: scope approvato, implementazione candidata,
 CI e integrazione non ancora verificate.
+
+## Stato tecnico integrato (17 ottobre 2026)
+
+- Implementazione candidate promossa tramite PR #59, #60,
+  #61, #62 a main `5f896f1bbacaa8c802f66f2a40ee7663cfa40604`; CI e mappe superate.
+- Stato tecnico implementato/CI verified/integrated.
+  **GGUF-BLOCK-MANUAL-001 ancora pending**:
+  richiede sincronizzazione sicura del checkout e collaudo
+  personale della decima fase da Ruth senza argomenti.
+- Il gate manuale non amplia il perimetro: non viene
+  certificata l'integrita' dei modelli reali o l'inferenza.
+  Le annotazioni di sviluppo candidato restano storiche.

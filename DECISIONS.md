@@ -430,3 +430,16 @@ autorizzata implicitamente.
   personale GGUF-BLOCK-MANUAL-001 obbligatorio. Nessuna
   migrazione seguente implicitamente approvata.
 - Si applicano MAIN-FLOW-001, MIG-FLOW-001/002, DATA-001, REMOTE-001.
+
+### GGUF-BLOCK-001: integrazione verificata (17 ottobre 2026)
+
+- Scope approvato GGUF-BLOCK-SCOPE-001 invariato.
+- PR #59 (leaf), #60 (Formats), #61 (Models), #62 (root)
+  tutte integrate, CI runs 39022476943, 39022574327,
+  39022637716, 39022698747: **success**, con test sintetici
+  GGUF, regressioni CLI e controllo delle mappe.
+- Integrazione main `5f896f1bbacaa8c802f66f2a40ee7663cfa40604`. Supportati unicamente i cinque
+  GGML type IDs 2/3/6/7/8 con formula blocchi.
+  Altri tipi `size_unverified`; nessun dato dei pesi letto.
+- GGUF-BLOCK-MANUAL-001 ancora **pending** (MIG-FLOW-002).
+  Nessuna nuova migrazione autorizzata implicitamente.

@@ -165,3 +165,13 @@ Decima fase Ruth dopo INDEX, scope in
 `models/formats/gguf/BLOCK_SCOPE.md`. Codice candidato:
 CI e promozioni ancora da verificare. Collaudo personale
 GGUF-BLOCK-MANUAL-001 richiesto dopo il merge in main.
+
+## GGUF-BLOCK-001 integrata tecnicamente (17 ottobre 2026)
+
+Le PR #59 (GGUF), #60 (Formats), #61 (Models) e #62 (main)
+integrano il controllo BLOCKS, decima fase del default Ruth.
+Commit applicativo `5f896f1bbacaa8c802f66f2a40ee7663cfa40604`, verifiche CI sintetiche e mappe
+superate. Solo metadati, descriptor ed estensione byte: nessun peso
+del modello letto. **GGUF-BLOCK-MANUAL-001 resta pending** fino al
+collaudo personale sul main aggiornato e conferma esplicita.
+Le precedenti note candidate sono storiche.

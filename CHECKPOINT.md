@@ -1,9 +1,10 @@
 # Ruth: checkpoint di progetto
 
-Revisione documentale: 32 (indice main); CONT-001 revisione 1.
+Revisione documentale: 33 (indice main); CONT-001 revisione 1.
 Fase 3: migrazione incrementale per componente.
-Stato: **GGUF-INDEX-001 implementata, verificata in CI, integrata in main
-e accettata personalmente (GGUF-INDEX-MANUAL-001 complete)**.
+Stato: **GGUF-BLOCK-001 implementata, verificata in CI e integrata in main;
+GGUF-BLOCK-MANUAL-001 in attesa di collaudo personale**.
+GGUF-INDEX-MANUAL-001 rimane complete.
 GGUF-MANUAL-001 e CAT-MANUAL-001 restano complete.
 PY, DEP, DIAG, HW/CPU e GPU NVIDIA restano accettate personalmente.
 L'ingresso senza argomenti di Ruth esegue tutte le funzioni integrate.
@@ -379,3 +380,36 @@ e DIAG-SCOPE-001. SYNC-001 resta storica/superseded.
 - Collaudo GGUF-BLOCK-MANUAL-001 pianificato soltanto dopo
   promozioni e CI positive. Nessun nuovo perimetro approvato.
   Local sync `pending_no_access`; REMOTE-001 e DATA-001 invariati.
+
+## GGUF-BLOCK-001: integrazione tecnica completata (17 ottobre 2026)
+
+- Perimetro GGUF-BLOCK-SCOPE-001 approvato, codice in
+  `models/formats/gguf/runtime/blocks.py` e estensione
+  opt-in di `tensor_index.py` per Q4_0, Q4_1, Q5_0,
+  Q5_1 e Q8_0 (32 elementi per blocco, 18/20/22/24/34 byte).
+- Catalog-only, sola lettura bounded dei descrittori, verifica
+  prima dimensione divisibile per 32, calcolo ingombri,
+  bound degli offset e sovrapposizione. Gli altri formati
+  rimangono `size_unverified`, senza falso successo.
+- Ruth con dieci passi: PY -> DEP -> DIAG -> HW -> NVIDIA ->
+  CAT -> GGUF -> META -> INDEX -> BLOCKS. Sottocomando
+  `gguf-blocks`. Catalogo non configurato non bloccante.
+- Promozioni CI superate: PR #59 gguf/main (merge
+  e6236ce45623bad4d4e9df2f80289a59fb30c11d),
+  #60 formats/main (d456646059b5eafe4364b265b8fe774fe8269103),
+  #61 models/main (3172c609440bfa0849df0b908e54a3d91ae27bce),
+  #62 main (`5f896f1bbacaa8c802f66f2a40ee7663cfa40604`). Runs 39022476943,
+  39022574327, 39022637716, 39022698747: **success**,
+  incluso `tools/maps.py --check`.
+- Stato scope: implementation **complete**,
+  verification **passed** (solo fixture sintetiche),
+  integration **merged**. **GGUF-BLOCK-MANUAL-001 pending**:
+  collaudo personale sulla revisione main aggiornata necessario.
+- `local_sync: pending_no_access`: checkout personale non
+  modificato da remoto; i dati reali di host/modelli, log,
+  benchmark e credenziali restano esclusi da Git (DATA-001).
+- Nessun payload letto, hash, dequantizzazione, CUDA,
+  inference, download o acquisizione. Kaggle inattivo.
+  Le note candidate precedenti sono storiche; la prossima
+  migrazione e' bloccata fino al collaudo personale e
+  ad approvazione di uno scope distinto.
