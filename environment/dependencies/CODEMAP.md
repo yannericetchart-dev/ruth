@@ -6,7 +6,7 @@ Nodo responsabile: [DEP](NODE.yaml). Ripresa: [START_HERE](../../START_HERE.md).
 
 Scopo: Risolvere e verificare dipendenze generiche senza lock di macchina.
 
-Branch: `environment/dependencies/main` (present); padre Git previsto: `environment/main`.
+Branch: `environment/dependencies/main` (archived); padre Git previsto: `environment/main`.
 
 La presenza dello scaffold non implica una implementazione runtime.
 

@@ -1,5 +1,19 @@
 # GGUF-001: checkpoint di candidato
 
+## Stato del ref remoto (17 ottobre 2026)
+
+Branch logico `models/formats/gguf/main`: **archived / ref remoto assente**.
+Tip prima della rimozione: `da9eba7392395ed05e81296aa4c595dc61d7b35e`.
+Rimosso dall'esecutore in BRANCH-DELETE-002 (PR #109), verificato da B
+tramite inventari completi heads/branches main-only. Conservazione: storia contenuta in main alla revisione
+`e7efb79a86e28209528ebcf4d85ca41f526b9b39`.
+NODE aggiornato ad archived, flag archived_branch e viste rigenerate.
+Nomi e padri Git sotto restano provenienza e contratti logici, non ref presenti.
+Codice, API e collaudi applicativi conservano il loro ambito precedente.
+Per la coda documentale e lo stato finale leggere CHECKPOINT.md radice e
+il checkpoint BRANCH-CLEANUP-001-FINAL sulla PR della registrazione.
+
+
 - GGUF-SCOPE-001 approvato il 16 ottobre 2026 su main `022928e56c5915dc4a9cb0850d62de24972ec190`.
 - Implementazione lettore e settima fase candidate sul work branch;
   verifiche CI e promozioni completate; collaudo personale ancora da eseguire.

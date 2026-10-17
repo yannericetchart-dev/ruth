@@ -41,10 +41,14 @@ Vedere ORCHESTRATOR_HANDOFF.md, SUCCESSOR_MESSAGE.md, BRANCH_AUDIT.md
 e BRANCH_ARCHIVE.md. Gli 11 tag annotati sono creati e verificati;
 BRANCH-ARCHIVE-001 complete. BRANCH-DELETE-001 complete: due rami documentali
 eliminati con condizione SHA e assenza remota verificata; capacita delete-ref
-provata dall'esecutore. L'utente ha confermato il rilascio delle vecchie
-chat/processi: BRANCH-DELETE-002 assegna i 97 rami congelati nel manifest
-BRANCH_DELETE_002.json piu' il ramo documentale esatto della PR, dopo merge/CI.
-BRANCH-CLEANUP-001 resta aperto fino a cancellazioni e aggiornamenti verificati.
+provata dall'esecutore. BRANCH-DELETE-002 complete: 98 rami eliminati,
+verificati da B; prima della registrazione restava soltanto main.
+I 12 NODE di componente e le mappe sono archived. Il manifest e' consumato.
+Resta BRANCH-DELETE-003 per il solo ramo della registrazione finale, dopo
+merge/CI. Per la chiusura effettiva leggere l'ultimo commento strutturato valido
+BRANCH-CLEANUP-001-FINAL nella stessa PR di registrazione (head
+work/BRANCH-CLEANUP-001-final-record), insieme al ref live e agli archivi.
+Senza quel commento complete verificato, il gate finale resta pending.
 
 ## Letture di ripresa
 
@@ -69,8 +73,8 @@ nel branch di lavoro non deve essere considerata gia disponibile in main.
 La storia dei rami storici va conservata tramite tag d'archivio verificati
 prima della loro eventuale rimozione (BRANCH-LIFECYCLE-001).
 main e' l'unico branch permanente; gli 11 archivi sono verificati e immutabili.
-Le fonti operative usano tag e SHA; i rami originari restano presenti fino
-a rilascio individuale e cancellazione verificata.
+Le fonti operative usano tag e SHA; gli undici rami originari sono stati
+eliminati dopo rilascio e conservazione verificata. I tag restano disponibili.
 
 Kaggle e' un'integrazione futura inattiva. Log, misure, modelli e dati di
 macchina rimangono locali secondo DATA-001. Non sono fonti pubbliche di stato.

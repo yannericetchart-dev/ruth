@@ -6,7 +6,7 @@ Nodo responsabile: [MODEL](NODE.yaml). Ripresa: [START_HERE](../START_HERE.md).
 
 Scopo: Catalogare, risolvere, acquisire e verificare artefatti modello.
 
-Branch: `models/main` (present); padre Git previsto: `main`.
+Branch: `models/main` (archived); padre Git previsto: `main`.
 
 La presenza dello scaffold non implica una implementazione runtime.
 

@@ -1,5 +1,19 @@
 # Hardware: checkpoint HW-001
 
+## Stato del ref remoto (17 ottobre 2026)
+
+Branch logico `hardware/main`: **archived / ref remoto assente**.
+Tip prima della rimozione: `60e137a422403efa7d8d4005240abf317ce87e24`.
+Rimosso dall'esecutore in BRANCH-DELETE-002 (PR #109), verificato da B
+tramite inventari completi heads/branches main-only. Conservazione: storia contenuta in main alla revisione
+`e7efb79a86e28209528ebcf4d85ca41f526b9b39`.
+NODE aggiornato ad archived, flag archived_branch e viste rigenerate.
+Nomi e padri Git sotto restano provenienza e contratti logici, non ref presenti.
+Codice, API e collaudi applicativi conservano il loro ambito precedente.
+Per la coda documentale e lo stato finale leggere CHECKPOINT.md radice e
+il checkpoint BRANCH-CLEANUP-001-FINAL sulla PR della registrazione.
+
+
 **HW-001 implementata, verificata, integrata in main e accettata
 personalmente dall'utente** (16 ottobre 2026).
 

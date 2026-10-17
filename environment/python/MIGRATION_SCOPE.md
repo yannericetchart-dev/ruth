@@ -7,10 +7,10 @@ Fonte PY-001/DEP-001: tag annotato remoto verificato
 `4ceea508025650ed64b33190834d0b5c85f69db2`; branch originario
 `feat/gemma3-phase28-context-dispatch`. Prova del ref e oggetto tag in
 BRANCH_ARCHIVE.md; stessa provenienza, nessun codice nuovo importato.
-Il ramo storico Python `environment/python/main` resta presente al tip
+Il ramo storico Python `environment/python/main` e' archived/absent; tip storico
 `b80520ad903ff18f93398725ea95cd91f51da5d8`, ora preservato anche da
-`archive/2026-10-17/environment/python/main`. Nessun ramo eliminato;
-users_release resta unconfirmed. Le promozioni e prove sotto sono storiche.
+`archive/2026-10-17/environment/python/main`. Rilascio utente confermato e
+rimozione verificata in BRANCH-DELETE-002. Le promozioni e prove sotto sono storiche.
 
 
 Stato della revisione funzionale: approvata dall'utente il 16 ottobre 2026, incluso l'ingresso ufficiale.

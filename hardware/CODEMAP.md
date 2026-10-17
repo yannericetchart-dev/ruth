@@ -6,7 +6,7 @@ Nodo responsabile: [HW](NODE.yaml). Ripresa: [START_HERE](../START_HERE.md).
 
 Scopo: Descrivere risorse senza confonderle con compatibilita di inferenza.
 
-Branch: `hardware/main` (present); padre Git previsto: `main`.
+Branch: `hardware/main` (archived); padre Git previsto: `main`.
 
 La presenza dello scaffold non implica una implementazione runtime.
 

@@ -6,7 +6,7 @@ Nodo responsabile: [PY](NODE.yaml). Ripresa: [START_HERE](../../START_HERE.md).
 
 Scopo: Verificare interprete e isolamento del virtualenv.
 
-Branch: `environment/python/main` (present); padre Git previsto: `environment/main`.
+Branch: `environment/python/main` (archived); padre Git previsto: `environment/main`.
 
 La presenza dello scaffold non implica una implementazione runtime.
 

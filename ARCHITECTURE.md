@@ -86,8 +86,10 @@ del branch da solo non impone nessuna compatibilita o permanenza.
 branch.name/parent descrivono il percorso logico; branch.status descrive
 l'esistenza verificata. Un ref eliminato passa ad archived con prova nel
 checkpoint; i rami planned non vengono creati per riempire la mappa.
-I rami oggi presenti restano present finche' una cancellazione non sia
-verificata. temporary_branch non significa deleted.
+I rami presenti restano present finche' una cancellazione non sia
+verificata. temporary_branch non significa deleted. Dopo BRANCH-DELETE-002
+i dodici ref di componente rimossi sono archived con flag archived_branch;
+nome/padre restano contratti logici e non dichiarano ref remoti esistenti.
 
 ## Ordine di migrazione e dipendenze
 

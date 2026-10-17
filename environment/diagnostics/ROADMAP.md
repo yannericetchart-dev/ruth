@@ -8,7 +8,7 @@ Spiegare problemi di ambiente senza alterarlo.
 
 Sviluppo: **active**; codice: **complete**; maturita: experimental; verifica: passed; integrazione: merged.
 
-Flag: in_scope, temporary_branch. Blocchi: nessuno registrato.
+Flag: in_scope, archived_branch. Blocchi: nessuno registrato.
 
 Ambito verifica: DIAG-001: test sintetici GitHub Actions 38908192677, 38908269925, 38908370200 superati (14 PY, 12 DEP, 13 DIAG, 15 root/CLI; mappe coerenti), integrazione PR #20-#22. DIAG-MANUAL-001 superato il 16 ottobre 2026 sul commit b379d2d8a228f55101eb98a19bfb14e8fc7a4bcb: ordine PY->DEP->DIAG e output di riepilogo conformi. Nessuna certificazione hardware, CUDA o runtime.
 

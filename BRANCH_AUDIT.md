@@ -1,191 +1,218 @@
 # Ruth: audit e stato della pulizia dei branch
 
-## BRANCH-DELETE-002: rilascio utilizzatori e incarico (17 ottobre 2026)
+## BRANCH-DELETE-002: esiti verificati (17 ottobre 2026)
 
-Responsabile unico documenti comuni e integrazioni: ORCH-20261017-B.
-Base letta: 7988da89891e03ce364b73ffb692db429b242bb4, PR #108 merged e CI main
-39059195304 success. BRANCH-DELETE-001 resta complete: due ref gia' eliminati.
-BRANCH-CLEANUP-001 e' ora active, non completa: nessuna cancellazione nuova
-viene attestata prima dell'esecuzione e della verifica dei risultati.
+Responsabile comune e integrazioni: ORCH-20261017-B.
+Assegnazione PR #109 merged a e7efb79a86e28209528ebcf4d85ca41f526b9b39; candidato
+debbeee35b586615d296d16e3ade1d4c9a1cb8e5. CI candidato 39062548405 e
+main 39062609916 success. Evidenza: BRANCH-DELETE-002-result-001.
+Esecutore: chat locale 01a14a37-aa01-70a2-b9cf-6702224b121f,
+"Ruth - Work Local Orchestrator"; esecuzione delegata riferita dall'utente.
+BRANCH-DELETE-002 complete/passed: 98 cancellazioni verificate, nessun
+nuovo perimetro funzionale. BRANCH-DELETE-001 resta complete (2 ref).
 
-### Conferma degli utilizzatori
+### Risultati attribuiti all'esecutore
 
-L'utente ha risposto affermativamente alla domanda esplicita sul rilascio
-delle vecchie chat/processi, assenza di lavori e integrazioni pendenti e
-necessita dei ref: "si ti confermo che nessun processo e attivo".
-Fonte: conferma utente del 17 ottobre 2026, successiva alla chiusura #108.
-Il rilascio si applica individualmente a tutti i 97 branch preesistenti
-congelati in BRANCH_DELETE_002.json: users_release confirmed_by_user;
-writes_ceased confirmed_by_user; pending_work/integrations none_pending_confirmed_by_user.
-B ha riletto 61 NODE/checkpoint: nessun altro incarico applicativo attivo,
-zero PR/issue aperte alla base, nessuna integrazione pubblicata pendente.
-I contratti depends_on dei componenti restano validi, ma non richiedono
-la permanenza di un ref heads: main/tag/SHA preservano gli ingressi storici.
-Questo rilascio deriva dalla conferma utente, non da MODEL-001 o zero PR.
-Nessun nuovo perimetro funzionale e' approvato da questa conferma.
+Eliminate esattamente le 97 coppie del manifest alla PR #109 e, per ultimo,
+work/BRANCH-ARCHIVE-001-record al tip debbeee35b586615d296d16e3ade1d4c9a1cb8e5.
+Per ciascuno dei 98 target: attempted=true, prechecks=passed,
+result=deleted_verified. SHA e rilascio riconfermati immediatamente,
+PR head/base paginate senza corrispondenze e nessuna nuova integrazione
+pubblicata. Gli 11 archivi annotati verificati prima delle rimozioni storiche.
+Strumento: GraphQL updateRefs, una richiesta per ramo, beforeOid=SHA atteso,
+afterOid=0000000000000000000000000000000000000000, force=false.
+Nessun errore, ambiguita, tentativo ripetuto, absent_before_attempt o target
+aggiuntivo. Inventario 99 (50/49/0) -> 1 (1/0); prima dell'ultima rimozione
+solo main e il ramo documentale, archivi integri. Main invariato al target.
+Nessuna modifica a checkout/metadati locali, documenti, configurazioni,
+ambienti o esecuzione applicativa. Dati grezzi restano locali (DATA-001).
 
-### Elenco esatto e branch della pubblicazione
+### Verifica indipendente B e stati
 
-BRANCH_DELETE_002.json contiene 97 coppie branch/SHA congelate: 86 tip
-contenuti in main e 11 preservati da tag annotati verificati. BRANCH_AUDIT.md
-ne espone la tabella; BRANCH_ARCHIVE.md conserva tag, oggetti e commit.
-Il 98esimo ramo e' work/BRANCH-ARCHIVE-001-record, riutilizzato per
-questa pubblicazione. B ne attesta il rilascio effettivo al merge dell'incarico:
-nessun altro utilizzatore assegnato, scritture cessate dopo merge, integrazione
-conclusa in main. Il suo SHA candidato esatto e' il head.sha della PR di
-assegnazione merged, registrato anche letteralmente nel corpo della PR e
-nel prompt esecutivo. Non usare il precedente tip osservato alla base.
-Questo legame al candidato evita un riferimento del commit al proprio SHA.
-L'esecutore deve verificarne la coincidenza e cancellare questo ramo per ultimo.
-Dopo il rilascio B sospende nuove scritture GitHub fino al resoconto, salvo
-revoca esplicita che farebbe fallire il controllo di main dell'esecutore.
-Nessun nuovo branch necessario: il numero presente resta 99.
+B ha risolto main al target e controllato PR #109 merged, head esatto e CI.
+Elenco branches 1/0 e git/matching-refs/heads/: soltanto refs/heads/main
+allo SHA atteso. Tutti i 98 nomi del manifest e della PR sono assenti in
+entrambi gli elenchi completi. Zero PR/issue aperte alla verifica iniziale.
+B ha riletto i singoli 11 ref tags e oggetti annotati: SHA oggetto e commit
+dereferenziato coincidono con BRANCH_ARCHIVE.md. I controlli pre-mutazione
+e l'uso GraphQL restano attribuiti all'esecutore; B verifica lo stato remoto.
+BRANCH_DELETE_002.json conserva coppie immutabili e risultati individuali;
+e' un registro consumato, non un incarico da rieseguire. I 12 branch di
+componente rimossi passano ad archived nei NODE, con flag archived_branch
+e viste rigenerate. Il padre logico resta disponibile come contratto,
+non come ref presente. Le parti future planned non vengono create.
+Cancellazioni cumulative prima della presente registrazione: 100.
+MIG-016 resta chiusa; MIG-017 e altre funzioni non autorizzate.
 
-### Incarico nominativo e sequenza
+## Ultimo ramo documentale: BRANCH-DELETE-003 e chiusura effettiva
 
-ID BRANCH-DELETE-002. Esecutore: chat locale
-01a14a37-aa01-70a2-b9cf-6702224b121f, "Ruth - Work Local Orchestrator".
-Padre main, responsabile integrazioni B; nessun parallelismo. Sono autorizzate
-solo le 97 coppie del manifest piu' l'unica coppia del ramo di pubblicazione
-fissata nella PR/prompt. Protezione assoluta refs/heads/main e refs/tags/*.
+Per pubblicare questi esiti e le mappe serve il solo ramo temporaneo
+work/BRANCH-CLEANUP-001-final-record, responsabile unico B, padre main.
+Inventario verificato prima della sua creazione: soltanto main; durante
+la pubblicazione: main e questo ramo. Il suo ciclo e' esplicitamente gestito,
+non e' un ref permanente o un ulteriore ramo storico da conservare.
 
-Gate iniziale: PR di assegnazione merged, CI sul candidato e su main positive;
-risolvere nuovamente object.sha e confrontarlo con il merge_commit_sha della PR.
-Verificare inventario esatto e prerequisiti. Immediatamente prima di OGNI
-rimozione rileggere main (deve restare al merge target), tip atteso, PR aperte
-paginate sia head sia base, incarico, rilascio e nuove integrazioni/utilizzatori.
-Per gli 11 non contenuti riconfermare il tag annotato, SHA oggetto e commit.
-Su qualsiasi differenza fermarsi, senza ampliare o ricalcolare l'elenco.
+Incarico BRANCH-DELETE-003 alla stessa chat locale, nessun parallelismo:
+dopo merge della PR di questa registrazione e CI candidata/main positive,
+eliminare soltanto questo ramo con SHA atteso uguale al head.sha esatto
+della PR, riportato letteralmente nel corpo della PR e nel prompt esecutivo.
+Il main target e' il merge_commit_sha della stessa PR. B ne attesta il
+rilascio al merge: scritture cessate, nessun altro utilizzatore assegnato,
+integrazione conclusa e storia contenuta in main. B sospende nuove
+scritture GitHub fino al resoconto, salvo revoca esplicita che sposta main.
 
-Una mutazione per ramo, con condizione atomica sullo SHA atteso. E' gia'
-provato dall'esecutore GitHub GraphQL updateRefs con beforeOid esatto,
-afterOid 0000000000000000000000000000000000000000 e force=false.
-Niente force generico, cancellazione incondizionata o selezione per prefisso.
-Dopo ciascuna mutazione verificare assenza del ref. Se errore o lettura ambigua,
-fermarsi e riconciliare soltanto in lettura: nessuna ripetizione automatica.
-Un ramo gia' assente prima del tentativo e' absent_before_attempt; l'incarico
-va riesaminato, non attribuire una cancellazione mai eseguita.
+Prima della mutazione: main invariato, tip esatto, nessuna PR aperta con
+quel ramo come head/base, incarico e rilascio confermati, inventario atteso
+esattamente main piu' il solo ramo della registrazione, 11 archivi invariati.
+Una mutazione updateRefs con beforeOid atteso, afterOid zero e force=false;
+proteggere refs/heads/main e tutti i refs/tags/*. Verificare poi ref assente,
+inventario main-only e gli 11 ref/oggetti/commit d'archivio. Su differenza,
+errore o ambiguita fermarsi e riconciliare soltanto in lettura, mai ripetere
+alla cieca. Nessuna modifica ai checkout/metadati, sync, copia, installazione,
+ambiente, documento o esecuzione Ruth. Resoconto portabile a B, non scritture
+comuni dell'esecutore. Nessun altro target autorizzato.
 
-Dopo tutti i controlli: cancellare per ultimo il solo ramo documentale allo
-SHA della PR, verificare inventario finale (atteso soltanto main), main
-invariato e tutti gli 11 archivi con storia raggiungibile. Non scrivere nei
-checkout o loro metadati, documenti, configurazioni o ambienti; nessuna sync,
-copia, installazione, esecuzione Ruth o test applicativo. Log solo locali;
-resoconto portabile per ogni branch/SHA/mutazione/esito, controlli PR e
-rilascio, main prima/dopo, conteggi e verifica archivi. L'esecutore si ferma
-e restituisce i risultati; B aggiorna gli stati effettivi dopo verifica.
-I 12 NODE di componente restano present fino a rimozione verificata;
-nessuno viene anticipatamente marcato archived. MIG-016 chiusa, MIG-017 non autorizzata.
+Stato al commit di questa registrazione: BRANCH-CLEANUP-001 e
+BRANCH-DELETE-003 ancora active/pending_final_ref_verification. Non dichiarare
+la pulizia conclusa mentre il ref documentale e' ancora presente.
+Dopo il resoconto B verifica indipendentemente solo main, lo SHA del merge,
+assenza del ramo, 11 archivi e nessun altro ref o PR pendente. Registra allora
+nella conversazione della STESSA PR un commento strutturato con marker
+BRANCH-CLEANUP-001-FINAL, campi status=complete, BRANCH-DELETE-003=complete,
+main_sha, deleted_documentation_branch, expected_tip_sha, observed_heads=1,
+archive_tags_verified=11, source_report e verification=independent_passed.
+Se una prova manca, status=pending oppure blocked, senza chiusura.
 
-## Elenco congelato dei 97 rami preesistenti
+Leggere l'ultimo commento valido con quel marker: il pending iniziale resta
+storico. Il commento complete deve corrispondere alla PR e al main live.
+Questo commento e' il checkpoint finale degli eventi successivi al merge;
+non richiede un ulteriore branch documentale. Individuare la PR di
+registrazione dal head work/BRANCH-CLEANUP-001-final-record e dal relativo merge: numero,
+link e SHA esatti sono nel corpo PR e nel prompt. A ogni ripresa leggere
+quel commento insieme al ref live: il presente NODE/checkpoint e' lo
+snapshot al momento della pubblicazione, non prova che l'ultima rimozione
+sia gia' avvenuta. Un commento complete valido e main-only sostituiscono
+il pending di questo snapshot per BRANCH-CLEANUP-001 e BRANCH-DELETE-003.
+Le viste e tutti i branch di componente eliminati sono gia' aggiornati;
+il solo ramo documentale non e' rappresentato come componente NODE.
 
-| Branch rilasciato | SHA atteso | Conservazione | Utilizzatori / scritture | Gate |
-| --- | --- | --- | --- | --- |
-| `ci/python-isolation` | `7d1c668bf68a62829946ab787613801305249a6f` | contained_in_main | confirmed_by_user / ceased | eligible_after_assignment_merge_ci |
-| `docs/CAT-001-final-checkpoint` | `bbc6de5bbcf40f9b9052685b814f0f545a7d0ada` | contained_in_main | confirmed_by_user / ceased | eligible_after_assignment_merge_ci |
-| `docs/CAT-MANUAL-001-complete` | `863cf14cdf999c22e2cf1375cc161cb2acb1413c` | contained_in_main | confirmed_by_user / ceased | eligible_after_assignment_merge_ci |
-| `docs/DEP-001-final-checkpoint` | `3e1e023fcbc1087930d0b6b823d1dcc795d24dde` | contained_in_main | confirmed_by_user / ceased | eligible_after_assignment_merge_ci |
-| `docs/DIAG-001-final` | `5343b4e01d0a99badc3f79fd03861a4b5c9b064a` | contained_in_main | confirmed_by_user / ceased | eligible_after_assignment_merge_ci |
-| `docs/DIAG-MANUAL-001-complete` | `515bea063dba65436354fee3bf125b01d6ffb2cb` | contained_in_main | confirmed_by_user / ceased | eligible_after_assignment_merge_ci |
-| `docs/GGUF-001-final-checkpoint` | `b3e27ed715931c015af8a38470b4ea8beee84996` | contained_in_main | confirmed_by_user / ceased | eligible_after_assignment_merge_ci |
-| `docs/GGUF-BLOCK-001-final-checkpoint` | `091515bd20dea3de8e1e8e2f381cd588625dc2fc` | contained_in_main | confirmed_by_user / ceased | eligible_after_assignment_merge_ci |
-| `docs/GGUF-BLOCK-MANUAL-001-complete` | `774de775be7c1498fb000aecd8b2fff843a41d06` | contained_in_main | confirmed_by_user / ceased | eligible_after_assignment_merge_ci |
-| `docs/GGUF-FIXTURE-001-integrated` | `fe973443ac8bc89d2d9d0521e2f0bde3aeaf067f` | contained_in_main | confirmed_by_user / ceased | eligible_after_assignment_merge_ci |
-| `docs/GGUF-FIXTURE-MANUAL-001-closure` | `503bf0e42d473625a955bd4583e25e740b5672b4` | contained_in_main | confirmed_by_user / ceased | eligible_after_assignment_merge_ci |
-| `docs/GGUF-INDEX-001-final-checkpoint` | `751b2ed90dff7aafa0d502e6203ac81e0ca71883` | contained_in_main | confirmed_by_user / ceased | eligible_after_assignment_merge_ci |
-| `docs/GGUF-INDEX-MANUAL-001-complete` | `97e0710ac348cf047ff39ddfbdd23bb1dfeb893e` | contained_in_main | confirmed_by_user / ceased | eligible_after_assignment_merge_ci |
-| `docs/GGUF-KBLOCK-001-final-checkpoint` | `0e85f312e1853f245c99a69ec4db2d9c9f87b0f4` | contained_in_main | confirmed_by_user / ceased | eligible_after_assignment_merge_ci |
-| `docs/GGUF-KBLOCK-MANUAL-001-and-MIG-FLOW-002-r2` | `4b12f5f81afdc60d30e2e0427cb31ac61c6fd482` | contained_in_main | confirmed_by_user / ceased | eligible_after_assignment_merge_ci |
-| `docs/GGUF-MANUAL-001-complete` | `045a170a859a63e187fa5f291c46731e46a04a06` | contained_in_main | confirmed_by_user / ceased | eligible_after_assignment_merge_ci |
-| `docs/GGUF-META-001-final-checkpoint` | `e381a91df19dcf94120c0f8b4a7ae629677797ff` | contained_in_main | confirmed_by_user / ceased | eligible_after_assignment_merge_ci |
-| `docs/GGUF-META-MANUAL-001-complete` | `88bca19509cbae97dab9833f1f6776f2e72c2ae3` | contained_in_main | confirmed_by_user / ceased | eligible_after_assignment_merge_ci |
-| `docs/GGUF-STRUCT-STABILITY-001-integrated` | `fe56de41cef7193354a0edac7463f7f29e5ede36` | contained_in_main | confirmed_by_user / ceased | eligible_after_assignment_merge_ci |
-| `docs/GGUF-STRUCT-SUMMARY-001-integrated` | `5c1b2fb259d4496b04af2309d1e2c8889eda71d5` | contained_in_main | confirmed_by_user / ceased | eligible_after_assignment_merge_ci |
-| `docs/GGUF-STRUCT-SUMMARY-MANUAL-001-closure` | `cc7403486a24d669865cbcdb108605a3b6a84e06` | contained_in_main | confirmed_by_user / ceased | eligible_after_assignment_merge_ci |
-| `docs/GPU-001-final-checkpoint` | `25fe46f59be1a3f0d8f3ea3c52ad77ce6daa1083` | contained_in_main | confirmed_by_user / ceased | eligible_after_assignment_merge_ci |
-| `docs/GPU-MANUAL-001-complete` | `31384aed606ba620b0b428037590f2765f8cd797` | contained_in_main | confirmed_by_user / ceased | eligible_after_assignment_merge_ci |
-| `docs/HW-001-final-checkpoint` | `1779f7db5f1bdd525796a744c09255b865021d5c` | contained_in_main | confirmed_by_user / ceased | eligible_after_assignment_merge_ci |
-| `docs/HW-MANUAL-001-complete` | `33f6e75cf16595718328d357873e2d67fef443c9` | contained_in_main | confirmed_by_user / ceased | eligible_after_assignment_merge_ci |
-| `docs/MAIN-FLOW-001-final` | `dcc0908f7fa89d753da80c0d37c858dd8c98903a` | contained_in_main | confirmed_by_user / ceased | eligible_after_assignment_merge_ci |
-| `docs/MAIN-MANUAL-001-complete` | `0282c78bf3de8bf55d4c0344b75aea712a20f143` | contained_in_main | confirmed_by_user / ceased | eligible_after_assignment_merge_ci |
-| `docs/MIG-012-checkpoint-header` | `198ddc38c4b8771051660fe5283899dae5414d05` | contained_in_main | confirmed_by_user / ceased | eligible_after_assignment_merge_ci |
-| `docs/MIG-014-manual-closure` | `624efbe451d31ee84a8ef09284b64fe0591f5e0a` | contained_in_main | confirmed_by_user / ceased | eligible_after_assignment_merge_ci |
-| `docs/MIG-015-integrated` | `53a888e06c98eac2925c7e35b9d8667cf09110d5` | contained_in_main | confirmed_by_user / ceased | eligible_after_assignment_merge_ci |
-| `docs/MIG-015-manual-closure` | `48c45fb4e198e2d4ba4ae0ef6726a80e450c9cad` | contained_in_main | confirmed_by_user / ceased | eligible_after_assignment_merge_ci |
-| `docs/MIG-016-integrated` | `8db9dfae31fa19c795ddd24a5bfcf8adafa49e97` | contained_in_main | confirmed_by_user / ceased | eligible_after_assignment_merge_ci |
-| `docs/PY-001-final-checkpoint` | `9a9235c9f0ea8a0c2168fe0261175f23c1ac48ee` | contained_in_main | confirmed_by_user / ceased | eligible_after_assignment_merge_ci |
-| `docs/PY-MANUAL-001-confirmed` | `72f133aad595dcec9e92ff82e90622f6f8f80a48` | contained_in_main | confirmed_by_user / ceased | eligible_after_assignment_merge_ci |
-| `docs/PY-MANUAL-001-positive-run` | `b16b3843b323587b516aff77740ae4440826e809` | contained_in_main | confirmed_by_user / ceased | eligible_after_assignment_merge_ci |
-| `docs/REMOTE-001` | `a4e342f60c48af794cf9dfc179c8d27fda7a3517` | contained_in_main | confirmed_by_user / ceased | eligible_after_assignment_merge_ci |
-| `docs/SYNC-001-pre-resume-gate` | `1eb0c5101d0017739cff3b06666579b7531a7f04` | contained_in_main | confirmed_by_user / ceased | eligible_after_assignment_merge_ci |
-| `docs/SYNC-001` | `667dafbdc9862598ab5dca298667c50e96627a82` | contained_in_main | confirmed_by_user / ceased | eligible_after_assignment_merge_ci |
-| `environment/dependencies/main` | `b2bc0095407edf766c2563bbedc2e69889b074ce` | contained_in_main | confirmed_by_user / ceased | eligible_after_assignment_merge_ci |
-| `environment/dependencies/work/DEP-001` | `ea708c7471584e5972863a657b4b402d5339d0fe` | contained_in_main | confirmed_by_user / ceased | eligible_after_assignment_merge_ci |
-| `environment/diagnostics/main` | `3e8d1c19e35914ee69b287eb1a01d15677212543` | contained_in_main | confirmed_by_user / ceased | eligible_after_assignment_merge_ci |
-| `environment/diagnostics/work/DIAG-001` | `17a1cb65c98be40d8508b16f8ae69f0aa7fef3a3` | contained_in_main | confirmed_by_user / ceased | eligible_after_assignment_merge_ci |
-| `environment/main` | `3e8d1c19e35914ee69b287eb1a01d15677212543` | contained_in_main | confirmed_by_user / ceased | eligible_after_assignment_merge_ci |
-| `environment/python/main` | `b80520ad903ff18f93398725ea95cd91f51da5d8` | verified_annotated_archive | confirmed_by_user / ceased | eligible_after_assignment_merge_ci |
-| `environment/python/work/entrypoint` | `b80520ad903ff18f93398725ea95cd91f51da5d8` | verified_annotated_archive | confirmed_by_user / ceased | eligible_after_assignment_merge_ci |
-| `environment/python/work/inspect-venv` | `80218739327666b0250c3715ba9cfb6fe1f114d5` | verified_annotated_archive | confirmed_by_user / ceased | eligible_after_assignment_merge_ci |
-| `environment/work/DEP-001-promotion` | `26a287f03bc83e4b025d94c548eaf3b086cd0012` | contained_in_main | confirmed_by_user / ceased | eligible_after_assignment_merge_ci |
-| `environment/work/PY-001-entrypoint` | `5fc816407f5c8873fd2ed39baa9d5293a9810c73` | contained_in_main | confirmed_by_user / ceased | eligible_after_assignment_merge_ci |
-| `feat/gemma3-flash-kv-policy` | `dc6039be1f17e09c6ff407dbee1ee6783eecb853` | verified_annotated_archive | confirmed_by_user / ceased | eligible_after_assignment_merge_ci |
-| `feat/gemma3-kv-matrix-18` | `d0ffdea9711bebd18da9b1e7866d3f9cd8c2f09a` | verified_annotated_archive | confirmed_by_user / ceased | eligible_after_assignment_merge_ci |
-| `feat/gemma3-kv-precision-plans` | `5080cf0c74ed1b92c0cb4530895c9911e3e189b7` | verified_annotated_archive | confirmed_by_user / ceased | eligible_after_assignment_merge_ci |
-| `feat/gemma3-native-context-probes` | `9ed7b187126dce38a3609c1e9e62bd6a17b786bd` | verified_annotated_archive | confirmed_by_user / ceased | eligible_after_assignment_merge_ci |
-| `feat/gemma3-phase27-numeric-benchmark` | `c09432b09f5f65e8f8428835d4347311d86ae6af` | verified_annotated_archive | confirmed_by_user / ceased | eligible_after_assignment_merge_ci |
-| `feat/gemma3-phase28-context-dispatch` | `4ceea508025650ed64b33190834d0b5c85f69db2` | verified_annotated_archive | confirmed_by_user / ceased | eligible_after_assignment_merge_ci |
-| `feature/minimal-chat` | `954f408ece2d7595bcb67447fa277acb9eaffc73` | verified_annotated_archive | confirmed_by_user / ceased | eligible_after_assignment_merge_ci |
-| `hardware/cpu/main` | `ae492a1be3b12c0ffd6f9987d0d959aceb4a9ad4` | contained_in_main | confirmed_by_user / ceased | eligible_after_assignment_merge_ci |
-| `hardware/cpu/work/HW-001` | `6959fbd39a4d71665efd39110310b4df9927bd7c` | contained_in_main | confirmed_by_user / ceased | eligible_after_assignment_merge_ci |
-| `hardware/gpu/main` | `60e137a422403efa7d8d4005240abf317ce87e24` | contained_in_main | confirmed_by_user / ceased | eligible_after_assignment_merge_ci |
-| `hardware/gpu/nvidia/main` | `60e137a422403efa7d8d4005240abf317ce87e24` | contained_in_main | confirmed_by_user / ceased | eligible_after_assignment_merge_ci |
-| `hardware/gpu/nvidia/work/GPU-001` | `b355ed53bd182d8ebb2b981911885bc58719e2e6` | contained_in_main | confirmed_by_user / ceased | eligible_after_assignment_merge_ci |
-| `hardware/main` | `60e137a422403efa7d8d4005240abf317ce87e24` | contained_in_main | confirmed_by_user / ceased | eligible_after_assignment_merge_ci |
-| `model-profiling` | `52b67662dff9409864dfd5da62059a1dfd4532cb` | verified_annotated_archive | confirmed_by_user / ceased | eligible_after_assignment_merge_ci |
-| `models/catalog/main` | `90e57f106fb664b0257775260044125ea85228e2` | contained_in_main | confirmed_by_user / ceased | eligible_after_assignment_merge_ci |
-| `models/catalog/work/CAT-001` | `1d3f4cb1a25c706d3097a1a4455cd59150c47847` | contained_in_main | confirmed_by_user / ceased | eligible_after_assignment_merge_ci |
-| `models/formats/gguf/main` | `da9eba7392395ed05e81296aa4c595dc61d7b35e` | contained_in_main | confirmed_by_user / ceased | eligible_after_assignment_merge_ci |
-| `models/formats/gguf/work/GGUF-001` | `088cb7c4ac4d335d5b58d1beb47cd03218bdde7a` | contained_in_main | confirmed_by_user / ceased | eligible_after_assignment_merge_ci |
-| `models/formats/gguf/work/GGUF-BLOCK-001` | `a4913c38d96aba8b879c70ee4db383abc8037d23` | contained_in_main | confirmed_by_user / ceased | eligible_after_assignment_merge_ci |
-| `models/formats/gguf/work/GGUF-FIXTURE-001` | `c298582935e4abd800f0cd293219e1c0489cd2b1` | contained_in_main | confirmed_by_user / ceased | eligible_after_assignment_merge_ci |
-| `models/formats/gguf/work/GGUF-FIXTURE-SUMMARY-001` | `26e41fef60a0ea87cbeb655794bf7dfa6bcc0da3` | contained_in_main | confirmed_by_user / ceased | eligible_after_assignment_merge_ci |
-| `models/formats/gguf/work/GGUF-INDEX-001` | `469f5b4807059199ed855fafbeabb8e8e4654c49` | contained_in_main | confirmed_by_user / ceased | eligible_after_assignment_merge_ci |
-| `models/formats/gguf/work/GGUF-KBLOCK-001` | `61f00a4b347d229aaa64a77c9bd93fc6600af45d` | contained_in_main | confirmed_by_user / ceased | eligible_after_assignment_merge_ci |
-| `models/formats/gguf/work/GGUF-META-001` | `a7e663fd3789ff25495d6be42f8f28115e8f9b37` | contained_in_main | confirmed_by_user / ceased | eligible_after_assignment_merge_ci |
-| `models/formats/gguf/work/GGUF-MULTITENSOR-FIXTURE-001` | `477e12b225593f8370241b8b45c5816c9b9846d0` | contained_in_main | confirmed_by_user / ceased | eligible_after_assignment_merge_ci |
-| `models/formats/gguf/work/GGUF-STRUCT-STABILITY-001` | `0e3e8e4fe714ec57978c83921fb294c971728429` | contained_in_main | confirmed_by_user / ceased | eligible_after_assignment_merge_ci |
-| `models/formats/gguf/work/GGUF-STRUCT-SUMMARY-001` | `f6052d99c51c3f2c17b745babf741bc68d256c0d` | contained_in_main | confirmed_by_user / ceased | eligible_after_assignment_merge_ci |
-| `models/formats/main` | `f4218833623a45ad5574cf17ef993a455265141d` | contained_in_main | confirmed_by_user / ceased | eligible_after_assignment_merge_ci |
-| `models/formats/work/GGUF-FIXTURE-001` | `3d6a49b96a70a9258820e4878e7c6cbd8787eec0` | contained_in_main | confirmed_by_user / ceased | eligible_after_assignment_merge_ci |
-| `models/formats/work/GGUF-FIXTURE-SUMMARY-001` | `294361d0968d853c167ef8dbc222d82fa7a32438` | contained_in_main | confirmed_by_user / ceased | eligible_after_assignment_merge_ci |
-| `models/formats/work/GGUF-MULTITENSOR-FIXTURE-001` | `da9eba7392395ed05e81296aa4c595dc61d7b35e` | contained_in_main | confirmed_by_user / ceased | eligible_after_assignment_merge_ci |
-| `models/formats/work/GGUF-STRUCT-STABILITY-001` | `01a0e11e4cae56f87a0738b97d95282d88ed371b` | contained_in_main | confirmed_by_user / ceased | eligible_after_assignment_merge_ci |
-| `models/formats/work/GGUF-STRUCT-SUMMARY-001` | `77bbf827dc1f92ead4257126ad4dc3750a575d24` | contained_in_main | confirmed_by_user / ceased | eligible_after_assignment_merge_ci |
-| `models/main` | `d3a2826522654806ae60e9caae71382d9ab74ed2` | contained_in_main | confirmed_by_user / ceased | eligible_after_assignment_merge_ci |
-| `models/work/GGUF-FIXTURE-001` | `96b561245ddd1dec6bccd24175c1fdfc2b2612e6` | contained_in_main | confirmed_by_user / ceased | eligible_after_assignment_merge_ci |
-| `models/work/GGUF-FIXTURE-SUMMARY-001` | `388564de883873f6a583b93f17b5863b88fecba7` | contained_in_main | confirmed_by_user / ceased | eligible_after_assignment_merge_ci |
-| `models/work/GGUF-MULTITENSOR-FIXTURE-001` | `f4218833623a45ad5574cf17ef993a455265141d` | contained_in_main | confirmed_by_user / ceased | eligible_after_assignment_merge_ci |
-| `models/work/GGUF-STRUCT-STABILITY-001` | `f280fb9528c78f2cf750bc5e4cf14305cf13bd8e` | contained_in_main | confirmed_by_user / ceased | eligible_after_assignment_merge_ci |
-| `models/work/GGUF-STRUCT-SUMMARY-001` | `53bcf601a13cc3f4d5c624d69229358aa5fc57ae` | contained_in_main | confirmed_by_user / ceased | eligible_after_assignment_merge_ci |
-| `runtime/work/MAIN-FLOW-001` | `f624b09b53e4fd80d075a29bd45a2834773672df` | contained_in_main | confirmed_by_user / ceased | eligible_after_assignment_merge_ci |
-| `work/CONT-001-R2-ORCH-001` | `2afbfee834e2c11d4a71c6f8edffd938357a4212` | contained_in_main | confirmed_by_user / ceased | eligible_after_assignment_merge_ci |
-| `work/CONT-001-R2-close` | `ff3f0fb131e0e575dd7b527c93d709bd949a323e` | contained_in_main | confirmed_by_user / ceased | eligible_after_assignment_merge_ci |
-| `work/GGUF-FIXTURE-001` | `97b44491c7502d1123a3e856b57c85f30401ae58` | contained_in_main | confirmed_by_user / ceased | eligible_after_assignment_merge_ci |
-| `work/GGUF-FIXTURE-SUMMARY-001` | `0266a44aea496205dd55f648faf56b693656416d` | contained_in_main | confirmed_by_user / ceased | eligible_after_assignment_merge_ci |
-| `work/GGUF-MULTITENSOR-FIXTURE-001` | `d3a2826522654806ae60e9caae71382d9ab74ed2` | contained_in_main | confirmed_by_user / ceased | eligible_after_assignment_merge_ci |
-| `work/GGUF-STRUCT-STABILITY-001` | `b62e6fabaa2ffbb9bea06da6c976426321d8deb8` | contained_in_main | confirmed_by_user / ceased | eligible_after_assignment_merge_ci |
-| `work/GGUF-STRUCT-SUMMARY-001` | `c36957af18eac4d96ee77f937eb61a3930594af1` | contained_in_main | confirmed_by_user / ceased | eligible_after_assignment_merge_ci |
-| `work/MIG-016-delegated-close` | `a5f10c5ebf3824ed48beb3e3c249bc59d1d59204` | contained_in_main | confirmed_by_user / ceased | eligible_after_assignment_merge_ci |
-| `work/ORCH-SUCCESSION-BRANCH-LIFECYCLE` | `8b39fb478d7b6f63fa7c271b059098a1a0b514f4` | contained_in_main | confirmed_by_user / ceased | eligible_after_assignment_merge_ci |
 
-Il ramo documentale aggiuntivo e' nominato nell'incarico sopra e nel manifest;
-la coppia SHA esatta e' fissata nel corpo della PR e nel prompt, dal suo head.sha.
-Main resta escluso. Inventario verificato 99/0: main, 87 tip contenuti e
-11 non contenuti; 91 tip distinti confrontati. Zero PR/issue aperte alla base.
-Le due cancellazioni BRANCH-DELETE-001 restano deleted_verified, non sono
-incluse di nuovo nel manifest. Gli stati correnti dei rami rilasciati sono
-ancora present, awaiting_execution: nessuna cancellazione nuova attestata.
+## Risultati individuali BRANCH-DELETE-002
+
+| Branch originario eliminato | SHA atteso e riconfermato | attempted | prechecks | Esito esecutore | Ref osservato da B |
+| --- | --- | --- | --- | --- | --- |
+| `ci/python-isolation` | `7d1c668bf68a62829946ab787613801305249a6f` | true | passed | deleted_verified | absent |
+| `docs/CAT-001-final-checkpoint` | `bbc6de5bbcf40f9b9052685b814f0f545a7d0ada` | true | passed | deleted_verified | absent |
+| `docs/CAT-MANUAL-001-complete` | `863cf14cdf999c22e2cf1375cc161cb2acb1413c` | true | passed | deleted_verified | absent |
+| `docs/DEP-001-final-checkpoint` | `3e1e023fcbc1087930d0b6b823d1dcc795d24dde` | true | passed | deleted_verified | absent |
+| `docs/DIAG-001-final` | `5343b4e01d0a99badc3f79fd03861a4b5c9b064a` | true | passed | deleted_verified | absent |
+| `docs/DIAG-MANUAL-001-complete` | `515bea063dba65436354fee3bf125b01d6ffb2cb` | true | passed | deleted_verified | absent |
+| `docs/GGUF-001-final-checkpoint` | `b3e27ed715931c015af8a38470b4ea8beee84996` | true | passed | deleted_verified | absent |
+| `docs/GGUF-BLOCK-001-final-checkpoint` | `091515bd20dea3de8e1e8e2f381cd588625dc2fc` | true | passed | deleted_verified | absent |
+| `docs/GGUF-BLOCK-MANUAL-001-complete` | `774de775be7c1498fb000aecd8b2fff843a41d06` | true | passed | deleted_verified | absent |
+| `docs/GGUF-FIXTURE-001-integrated` | `fe973443ac8bc89d2d9d0521e2f0bde3aeaf067f` | true | passed | deleted_verified | absent |
+| `docs/GGUF-FIXTURE-MANUAL-001-closure` | `503bf0e42d473625a955bd4583e25e740b5672b4` | true | passed | deleted_verified | absent |
+| `docs/GGUF-INDEX-001-final-checkpoint` | `751b2ed90dff7aafa0d502e6203ac81e0ca71883` | true | passed | deleted_verified | absent |
+| `docs/GGUF-INDEX-MANUAL-001-complete` | `97e0710ac348cf047ff39ddfbdd23bb1dfeb893e` | true | passed | deleted_verified | absent |
+| `docs/GGUF-KBLOCK-001-final-checkpoint` | `0e85f312e1853f245c99a69ec4db2d9c9f87b0f4` | true | passed | deleted_verified | absent |
+| `docs/GGUF-KBLOCK-MANUAL-001-and-MIG-FLOW-002-r2` | `4b12f5f81afdc60d30e2e0427cb31ac61c6fd482` | true | passed | deleted_verified | absent |
+| `docs/GGUF-MANUAL-001-complete` | `045a170a859a63e187fa5f291c46731e46a04a06` | true | passed | deleted_verified | absent |
+| `docs/GGUF-META-001-final-checkpoint` | `e381a91df19dcf94120c0f8b4a7ae629677797ff` | true | passed | deleted_verified | absent |
+| `docs/GGUF-META-MANUAL-001-complete` | `88bca19509cbae97dab9833f1f6776f2e72c2ae3` | true | passed | deleted_verified | absent |
+| `docs/GGUF-STRUCT-STABILITY-001-integrated` | `fe56de41cef7193354a0edac7463f7f29e5ede36` | true | passed | deleted_verified | absent |
+| `docs/GGUF-STRUCT-SUMMARY-001-integrated` | `5c1b2fb259d4496b04af2309d1e2c8889eda71d5` | true | passed | deleted_verified | absent |
+| `docs/GGUF-STRUCT-SUMMARY-MANUAL-001-closure` | `cc7403486a24d669865cbcdb108605a3b6a84e06` | true | passed | deleted_verified | absent |
+| `docs/GPU-001-final-checkpoint` | `25fe46f59be1a3f0d8f3ea3c52ad77ce6daa1083` | true | passed | deleted_verified | absent |
+| `docs/GPU-MANUAL-001-complete` | `31384aed606ba620b0b428037590f2765f8cd797` | true | passed | deleted_verified | absent |
+| `docs/HW-001-final-checkpoint` | `1779f7db5f1bdd525796a744c09255b865021d5c` | true | passed | deleted_verified | absent |
+| `docs/HW-MANUAL-001-complete` | `33f6e75cf16595718328d357873e2d67fef443c9` | true | passed | deleted_verified | absent |
+| `docs/MAIN-FLOW-001-final` | `dcc0908f7fa89d753da80c0d37c858dd8c98903a` | true | passed | deleted_verified | absent |
+| `docs/MAIN-MANUAL-001-complete` | `0282c78bf3de8bf55d4c0344b75aea712a20f143` | true | passed | deleted_verified | absent |
+| `docs/MIG-012-checkpoint-header` | `198ddc38c4b8771051660fe5283899dae5414d05` | true | passed | deleted_verified | absent |
+| `docs/MIG-014-manual-closure` | `624efbe451d31ee84a8ef09284b64fe0591f5e0a` | true | passed | deleted_verified | absent |
+| `docs/MIG-015-integrated` | `53a888e06c98eac2925c7e35b9d8667cf09110d5` | true | passed | deleted_verified | absent |
+| `docs/MIG-015-manual-closure` | `48c45fb4e198e2d4ba4ae0ef6726a80e450c9cad` | true | passed | deleted_verified | absent |
+| `docs/MIG-016-integrated` | `8db9dfae31fa19c795ddd24a5bfcf8adafa49e97` | true | passed | deleted_verified | absent |
+| `docs/PY-001-final-checkpoint` | `9a9235c9f0ea8a0c2168fe0261175f23c1ac48ee` | true | passed | deleted_verified | absent |
+| `docs/PY-MANUAL-001-confirmed` | `72f133aad595dcec9e92ff82e90622f6f8f80a48` | true | passed | deleted_verified | absent |
+| `docs/PY-MANUAL-001-positive-run` | `b16b3843b323587b516aff77740ae4440826e809` | true | passed | deleted_verified | absent |
+| `docs/REMOTE-001` | `a4e342f60c48af794cf9dfc179c8d27fda7a3517` | true | passed | deleted_verified | absent |
+| `docs/SYNC-001-pre-resume-gate` | `1eb0c5101d0017739cff3b06666579b7531a7f04` | true | passed | deleted_verified | absent |
+| `docs/SYNC-001` | `667dafbdc9862598ab5dca298667c50e96627a82` | true | passed | deleted_verified | absent |
+| `environment/dependencies/main` | `b2bc0095407edf766c2563bbedc2e69889b074ce` | true | passed | deleted_verified | absent |
+| `environment/dependencies/work/DEP-001` | `ea708c7471584e5972863a657b4b402d5339d0fe` | true | passed | deleted_verified | absent |
+| `environment/diagnostics/main` | `3e8d1c19e35914ee69b287eb1a01d15677212543` | true | passed | deleted_verified | absent |
+| `environment/diagnostics/work/DIAG-001` | `17a1cb65c98be40d8508b16f8ae69f0aa7fef3a3` | true | passed | deleted_verified | absent |
+| `environment/main` | `3e8d1c19e35914ee69b287eb1a01d15677212543` | true | passed | deleted_verified | absent |
+| `environment/python/main` | `b80520ad903ff18f93398725ea95cd91f51da5d8` | true | passed | deleted_verified | absent |
+| `environment/python/work/entrypoint` | `b80520ad903ff18f93398725ea95cd91f51da5d8` | true | passed | deleted_verified | absent |
+| `environment/python/work/inspect-venv` | `80218739327666b0250c3715ba9cfb6fe1f114d5` | true | passed | deleted_verified | absent |
+| `environment/work/DEP-001-promotion` | `26a287f03bc83e4b025d94c548eaf3b086cd0012` | true | passed | deleted_verified | absent |
+| `environment/work/PY-001-entrypoint` | `5fc816407f5c8873fd2ed39baa9d5293a9810c73` | true | passed | deleted_verified | absent |
+| `feat/gemma3-flash-kv-policy` | `dc6039be1f17e09c6ff407dbee1ee6783eecb853` | true | passed | deleted_verified | absent |
+| `feat/gemma3-kv-matrix-18` | `d0ffdea9711bebd18da9b1e7866d3f9cd8c2f09a` | true | passed | deleted_verified | absent |
+| `feat/gemma3-kv-precision-plans` | `5080cf0c74ed1b92c0cb4530895c9911e3e189b7` | true | passed | deleted_verified | absent |
+| `feat/gemma3-native-context-probes` | `9ed7b187126dce38a3609c1e9e62bd6a17b786bd` | true | passed | deleted_verified | absent |
+| `feat/gemma3-phase27-numeric-benchmark` | `c09432b09f5f65e8f8428835d4347311d86ae6af` | true | passed | deleted_verified | absent |
+| `feat/gemma3-phase28-context-dispatch` | `4ceea508025650ed64b33190834d0b5c85f69db2` | true | passed | deleted_verified | absent |
+| `feature/minimal-chat` | `954f408ece2d7595bcb67447fa277acb9eaffc73` | true | passed | deleted_verified | absent |
+| `hardware/cpu/main` | `ae492a1be3b12c0ffd6f9987d0d959aceb4a9ad4` | true | passed | deleted_verified | absent |
+| `hardware/cpu/work/HW-001` | `6959fbd39a4d71665efd39110310b4df9927bd7c` | true | passed | deleted_verified | absent |
+| `hardware/gpu/main` | `60e137a422403efa7d8d4005240abf317ce87e24` | true | passed | deleted_verified | absent |
+| `hardware/gpu/nvidia/main` | `60e137a422403efa7d8d4005240abf317ce87e24` | true | passed | deleted_verified | absent |
+| `hardware/gpu/nvidia/work/GPU-001` | `b355ed53bd182d8ebb2b981911885bc58719e2e6` | true | passed | deleted_verified | absent |
+| `hardware/main` | `60e137a422403efa7d8d4005240abf317ce87e24` | true | passed | deleted_verified | absent |
+| `model-profiling` | `52b67662dff9409864dfd5da62059a1dfd4532cb` | true | passed | deleted_verified | absent |
+| `models/catalog/main` | `90e57f106fb664b0257775260044125ea85228e2` | true | passed | deleted_verified | absent |
+| `models/catalog/work/CAT-001` | `1d3f4cb1a25c706d3097a1a4455cd59150c47847` | true | passed | deleted_verified | absent |
+| `models/formats/gguf/main` | `da9eba7392395ed05e81296aa4c595dc61d7b35e` | true | passed | deleted_verified | absent |
+| `models/formats/gguf/work/GGUF-001` | `088cb7c4ac4d335d5b58d1beb47cd03218bdde7a` | true | passed | deleted_verified | absent |
+| `models/formats/gguf/work/GGUF-BLOCK-001` | `a4913c38d96aba8b879c70ee4db383abc8037d23` | true | passed | deleted_verified | absent |
+| `models/formats/gguf/work/GGUF-FIXTURE-001` | `c298582935e4abd800f0cd293219e1c0489cd2b1` | true | passed | deleted_verified | absent |
+| `models/formats/gguf/work/GGUF-FIXTURE-SUMMARY-001` | `26e41fef60a0ea87cbeb655794bf7dfa6bcc0da3` | true | passed | deleted_verified | absent |
+| `models/formats/gguf/work/GGUF-INDEX-001` | `469f5b4807059199ed855fafbeabb8e8e4654c49` | true | passed | deleted_verified | absent |
+| `models/formats/gguf/work/GGUF-KBLOCK-001` | `61f00a4b347d229aaa64a77c9bd93fc6600af45d` | true | passed | deleted_verified | absent |
+| `models/formats/gguf/work/GGUF-META-001` | `a7e663fd3789ff25495d6be42f8f28115e8f9b37` | true | passed | deleted_verified | absent |
+| `models/formats/gguf/work/GGUF-MULTITENSOR-FIXTURE-001` | `477e12b225593f8370241b8b45c5816c9b9846d0` | true | passed | deleted_verified | absent |
+| `models/formats/gguf/work/GGUF-STRUCT-STABILITY-001` | `0e3e8e4fe714ec57978c83921fb294c971728429` | true | passed | deleted_verified | absent |
+| `models/formats/gguf/work/GGUF-STRUCT-SUMMARY-001` | `f6052d99c51c3f2c17b745babf741bc68d256c0d` | true | passed | deleted_verified | absent |
+| `models/formats/main` | `f4218833623a45ad5574cf17ef993a455265141d` | true | passed | deleted_verified | absent |
+| `models/formats/work/GGUF-FIXTURE-001` | `3d6a49b96a70a9258820e4878e7c6cbd8787eec0` | true | passed | deleted_verified | absent |
+| `models/formats/work/GGUF-FIXTURE-SUMMARY-001` | `294361d0968d853c167ef8dbc222d82fa7a32438` | true | passed | deleted_verified | absent |
+| `models/formats/work/GGUF-MULTITENSOR-FIXTURE-001` | `da9eba7392395ed05e81296aa4c595dc61d7b35e` | true | passed | deleted_verified | absent |
+| `models/formats/work/GGUF-STRUCT-STABILITY-001` | `01a0e11e4cae56f87a0738b97d95282d88ed371b` | true | passed | deleted_verified | absent |
+| `models/formats/work/GGUF-STRUCT-SUMMARY-001` | `77bbf827dc1f92ead4257126ad4dc3750a575d24` | true | passed | deleted_verified | absent |
+| `models/main` | `d3a2826522654806ae60e9caae71382d9ab74ed2` | true | passed | deleted_verified | absent |
+| `models/work/GGUF-FIXTURE-001` | `96b561245ddd1dec6bccd24175c1fdfc2b2612e6` | true | passed | deleted_verified | absent |
+| `models/work/GGUF-FIXTURE-SUMMARY-001` | `388564de883873f6a583b93f17b5863b88fecba7` | true | passed | deleted_verified | absent |
+| `models/work/GGUF-MULTITENSOR-FIXTURE-001` | `f4218833623a45ad5574cf17ef993a455265141d` | true | passed | deleted_verified | absent |
+| `models/work/GGUF-STRUCT-STABILITY-001` | `f280fb9528c78f2cf750bc5e4cf14305cf13bd8e` | true | passed | deleted_verified | absent |
+| `models/work/GGUF-STRUCT-SUMMARY-001` | `53bcf601a13cc3f4d5c624d69229358aa5fc57ae` | true | passed | deleted_verified | absent |
+| `runtime/work/MAIN-FLOW-001` | `f624b09b53e4fd80d075a29bd45a2834773672df` | true | passed | deleted_verified | absent |
+| `work/CONT-001-R2-ORCH-001` | `2afbfee834e2c11d4a71c6f8edffd938357a4212` | true | passed | deleted_verified | absent |
+| `work/CONT-001-R2-close` | `ff3f0fb131e0e575dd7b527c93d709bd949a323e` | true | passed | deleted_verified | absent |
+| `work/GGUF-FIXTURE-001` | `97b44491c7502d1123a3e856b57c85f30401ae58` | true | passed | deleted_verified | absent |
+| `work/GGUF-FIXTURE-SUMMARY-001` | `0266a44aea496205dd55f648faf56b693656416d` | true | passed | deleted_verified | absent |
+| `work/GGUF-MULTITENSOR-FIXTURE-001` | `d3a2826522654806ae60e9caae71382d9ab74ed2` | true | passed | deleted_verified | absent |
+| `work/GGUF-STRUCT-STABILITY-001` | `b62e6fabaa2ffbb9bea06da6c976426321d8deb8` | true | passed | deleted_verified | absent |
+| `work/GGUF-STRUCT-SUMMARY-001` | `c36957af18eac4d96ee77f937eb61a3930594af1` | true | passed | deleted_verified | absent |
+| `work/MIG-016-delegated-close` | `a5f10c5ebf3824ed48beb3e3c249bc59d1d59204` | true | passed | deleted_verified | absent |
+| `work/ORCH-SUCCESSION-BRANCH-LIFECYCLE` | `8b39fb478d7b6f63fa7c271b059098a1a0b514f4` | true | passed | deleted_verified | absent |
+| `work/BRANCH-ARCHIVE-001-record` | `debbeee35b586615d296d16e3ade1d4c9a1cb8e5` | true | passed | deleted_verified | absent |
+
+## Snapshot remoto verificato prima della registrazione
+
+| Ref presente | SHA |
+| --- | --- |
+| refs/heads/main | e7efb79a86e28209528ebcf4d85ca41f526b9b39 |
+
+Il ramo finale della presente registrazione e' gestito separatamente da
+BRANCH-DELETE-003. Non si dichiarano presenti ref gia' eliminati.
+Le 100 cancellazioni cumulative precedenti sono 2 di BRANCH-DELETE-001
+piu' 98 di BRANCH-DELETE-002. Il manifest originale e il rilascio della
+PR #109 restano nella relativa revisione immutabile:
+[BRANCH_DELETE_002.json assegnato](https://github.com/yannericetchart-dev/ruth/blob/e7efb79a86e28209528ebcf4d85ca41f526b9b39/BRANCH_DELETE_002.json).
+Non rieseguire le assegnazioni consumate.
 
 ## Rilascio precedente consumato e cronologia
 
