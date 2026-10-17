@@ -22,6 +22,7 @@ Ambito verifica: GGUF-001: CI success runs 38935705385, 38935861881, 38935943414
 6. `FORMAT-FIXTURE-001` [complete] MIG-012: GGUF-FIXTURE-001 implemented, CI passed and integrated via PR #71-#74; personal 12-stage Ruth plus 4 synthetic tests OK on a3ced17b0e4bccaf8fe8e10db9c1f5b5c508bda3, accepted under MIG-FLOW-002-R2. No real GGUF tested; next scope requires approval.
 7. `FORMAT-SUMMARY-001` [complete] MIG-013: GGUF structural summary and 13th Ruth stage CI verified and integrated via PR #78-#81; personal test on main 49d3c451b0da86acc99ce33ec6c395f0c27e1ec7 passed (13 phases, 11 synthetic tests OK) per MIG-FLOW-002-R2. No real GGUF checked; MIG-014 requires separate approval.
 8. `FORMAT-STABILITY-001` [complete] MIG-014: GGUF SUMMARY stability guard implemented, CI verified and integrated via PR #84-#87; manual Ruth 13-stage + 9 synthetic tests OK on b1662aab99cbc97b6203dc41e7355521e702a2cd; accepted by MIG-FLOW-002-R2. No real GGUF/payload validated; new scope needs approval.
+9. `FORMAT-FIXTURE-SUMMARY-001` [active] MIG-015 authorized: extend disposable GGUF fixture pipeline to SUMMARY with three structural_checked verdicts and synthetic negative tests; 13-stage Ruth unchanged; implementation candidate, CI and integration pending.
 
 ## Componenti (ordine locale, ID stabili)
 
