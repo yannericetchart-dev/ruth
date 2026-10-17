@@ -90,6 +90,17 @@ Ogni sostituzione deve collegare entrambe le decisioni e aggiornare le mappe.
   zero PR/issue aperte e zero tag. Pulizia bloccata da strumenti mancanti
   e autenticazione CLI non valida. BRANCH_AUDIT.md e BRANCH_ARCHIVE.md.
 
+## BRANCH-LIFECYCLE-001: attuazione archivi (17 ottobre 2026)
+
+- Nessuna nuova decisione funzionale: attuazione della pulizia gia' approvata.
+- PR #106 ha assegnato BRANCH-ARCHIVE-001 e riallineato MODEL-001 complete.
+- Undici tag annotati creati dall'esecutore e verificati autonomamente da B;
+  registro BRANCH_ARCHIVE.md e fonti operative MIGRATION.md aggiornati.
+- Nessuna cancellazione ancora tentata. Conferme utilizzatori restano distinte
+  da archivio, MODEL-001 e PR chiuse. Elenco limitato a due rami documentali
+  rilasciati dal loro responsabile B in BRANCH_AUDIT.md, dopo merge/CI.
+- Stato iniziale sopra e disposizioni sostituite restano cronologia.
+
 ## Disposizione precedente: permanenza dei branch storici (storica)
 
 - Stato: superseded da BRANCH-LIFECYCLE-001.

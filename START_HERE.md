@@ -38,8 +38,10 @@ scritture dell'uscente e claim esplicito del successore dopo nuove verifiche.
 Solo main e' permanente. Le approvazioni valide restano valide; nessun
 nuovo scope e' autorizzato dal cambio chat.
 Vedere ORCHESTRATOR_HANDOFF.md, SUCCESSOR_MESSAGE.md, BRANCH_AUDIT.md
-e BRANCH_ARCHIVE.md. La pulizia attuale e' bloccata per mutazioni
-autenticate mancanti: nessun ramo eliminato e nessun tag creato.
+e BRANCH_ARCHIVE.md. Gli 11 tag annotati sono creati e verificati;
+BRANCH-ARCHIVE-001 complete. Nessun ramo eliminato; delete-ref non tentata.
+BRANCH_AUDIT.md rilascia soltanto due rami documentali di B dopo merge/CI
+della pubblicazione corrente. Gli altri rami richiedono conferme utilizzatori.
 
 ## Letture di ripresa
 
@@ -63,7 +65,9 @@ revisioni e stato di integrazione di ciascuna porzione. Un'implementazione
 nel branch di lavoro non deve essere considerata gia disponibile in main.
 La storia dei rami storici va conservata tramite tag d'archivio verificati
 prima della loro eventuale rimozione (BRANCH-LIFECYCLE-001).
-main e' l'unico branch permanente; gli archivi pianificati non sono ancora creati.
+main e' l'unico branch permanente; gli 11 archivi sono verificati e immutabili.
+Le fonti operative usano tag e SHA; i rami originari restano presenti fino
+a rilascio individuale e cancellazione verificata.
 
 Kaggle e' un'integrazione futura inattiva. Log, misure, modelli e dati di
 macchina rimangono locali secondo DATA-001. Non sono fonti pubbliche di stato.

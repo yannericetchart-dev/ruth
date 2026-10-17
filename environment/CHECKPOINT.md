@@ -1,5 +1,18 @@
 # Environment: checkpoint DEP-001
 
+## Fonte operativa archiviata (17 ottobre 2026)
+
+Fonte PY-001/DEP-001: tag annotato remoto verificato
+`archive/2026-10-17/feat/gemma3-phase28-context-dispatch`, commit
+`4ceea508025650ed64b33190834d0b5c85f69db2`; branch originario
+`feat/gemma3-phase28-context-dispatch`. Prova del ref e oggetto tag in
+BRANCH_ARCHIVE.md; stessa provenienza, nessun codice nuovo importato.
+Il ramo storico Python `environment/python/main` resta presente al tip
+`b80520ad903ff18f93398725ea95cd91f51da5d8`, ora preservato anche da
+`archive/2026-10-17/environment/python/main`. Nessun ramo eliminato;
+users_release resta unconfirmed. Le promozioni e prove sotto sono storiche.
+
+
 - PY-001: integrata e accettata personalmente dall'utente
   sul commit `ef4654af8ab106ef194af254d9f3884e5cabb6b0`.
 - DEP-SCOPE-001: approvato il 16 ottobre 2026;

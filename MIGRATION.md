@@ -10,16 +10,27 @@ macchina non sono candidati alla migrazione secondo DATA-001.
 
 ## Riferimenti storici e archiviazione
 
-BRANCH_ARCHIVE.md mappa gli undici rami non contenuti verso tip verificati
-e nomi di tag proposti. Nessun tag e' ancora stato creato per mancanza di
-mutazioni autenticate: i branch originali restano necessari alla conservazione.
-La fonte PY-001 resta il commit 4ceea508025650ed64b33190834d0b5c85f69db2;
-il tag archive/2026-10-17/feat/gemma3-phase28-context-dispatch e' soltanto
-pianificato. La fonte conversazione e' identificata nel registro con il suo
-SHA. Aggiornare qui e nei checkpoint interessati i riferimenti al tag
-solo dopo verifica remota. Non importare codice storico in main per
-ottenere artificialmente ahead_by=0. Le note datate seguenti conservano
-la cronologia e non impongono la permanenza dei ref originali.
+BRANCH_ARCHIVE.md registra gli undici tag annotati remoti creati da
+BRANCH-ARCHIVE-001 e verificati autonomamente da B alla base 38f066ff81cec8430e4399f2c0144c07c2d2c22d.
+Fonti operative, con nome originario conservato:
+
+- PY-001 e DEP-001: `archive/2026-10-17/feat/gemma3-phase28-context-dispatch`,
+  commit `4ceea508025650ed64b33190834d0b5c85f69db2`, origine
+  `feat/gemma3-phase28-context-dispatch`, file `ruth_runtime/venv_packages.py`.
+- Conversazione/terminale futuri: `archive/2026-10-17/feature/minimal-chat`,
+  commit `954f408ece2d7595bcb67447fa277acb9eaffc73`, origine
+  `feature/minimal-chat`. Non autorizza una nuova migrazione.
+- Ogni altra fonte dei rami archiviati: tag, SHA tip e oggetto annotato
+  esatti nella tabella corrente di BRANCH_ARCHIVE.md.
+
+I branch originali sono ancora presenti, ma la storia e' ora raggiungibile
+anche tramite i tag duraturi. Gli 11 rami storici restano bloccati su
+users_release unconfirmed: archivio verificato non equivale a ramo libero.
+Nessun codice storico importato in main e nessuna storia riscritta.
+La precedente indicazione di tag soltanto pianificati, registrata alla
+PR #106 e conservata nella cronologia di BRANCH_ARCHIVE.md, e' sostituita.
+Le note datate sotto conservano le integrazioni e accettazioni storiche;
+non richiedono la permanenza dei ref heads originari.
 
 ## Prima porzione prevista: MIG-001 / PY-001
 
@@ -27,7 +38,8 @@ Revisione funzionale: [PY-SCOPE-001](environment/python/MIGRATION_SCOPE.md),
 approvata dall'utente il 16 ottobre 2026. Completare la
 porzione fino a main senza ulteriori conferme intermedie (MIG-FLOW-001).
 
-- Fonte: `feat/gemma3-phase28-context-dispatch`, commit
+- Fonte operativa: tag `archive/2026-10-17/feat/gemma3-phase28-context-dispatch`
+  (branch originario `feat/gemma3-phase28-context-dispatch`), commit
   `4ceea508025650ed64b33190834d0b5c85f69db2`,
   `ruth_runtime/venv_packages.py`, logica di verifica del virtualenv.
 - Destinazione: `environment/python/runtime`; contratto pubblico del padre
