@@ -1,9 +1,9 @@
 # Ruth: checkpoint di progetto
 
-Revisione documentale: 36 (indice main); CONT-001 revisione 1.
+Revisione documentale: 38 (indice main); CONT-001 revisione 1.
 Fase 3: migrazione incrementale per componente.
-Stato: **GGUF-KBLOCK-001 implementata, verificata in CI, integrata in main
-e collaudata personalmente (GGUF-KBLOCK-MANUAL-001 complete)**.
+Stato: **MIG-012 GGUF-FIXTURE-001 implementata, verificata in CI e integrata in main (PR #71-#74); GGUF-FIXTURE-MANUAL-001 pending**.
+GGUF-KBLOCK-MANUAL-001 e MIG-011 restano complete.
 GGUF-BLOCK-MANUAL-001 resta complete.
 GGUF-INDEX-MANUAL-001 rimane complete.
 GGUF-MANUAL-001 e CAT-MANUAL-001 restano complete.
