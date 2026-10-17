@@ -9,7 +9,7 @@ from environment.runtime.contracts import DependencyPlan, PythonEnvironment
 from hardware import detect as detect_hardware
 from hardware.gpu import detect as detect_gpu
 from models.catalog import catalog as load_model_catalog
-from models.formats.gguf import inspect_headers, inspect_all_metadata, inspect_all_tensor_indexes, inspect_all_block_layouts, inspect_all_kblock_layouts
+from models.formats.gguf import inspect_headers, inspect_all_metadata, inspect_all_tensor_indexes, inspect_all_block_layouts, inspect_all_kblock_layouts, run_fixture_pipeline
 from runtime import inspect_environment
 
 # Initial smoke check only. Ruth's full dependency set has not been approved.
@@ -206,8 +206,21 @@ def _check_gguf_kblocks(root: Path) -> int:
     return 1 if report.status in ("partial", "invalid") else 0
 
 
+def _check_fixture() -> int:
+    """Twelfth check: catalog-bound synthetic GGUF tests in disposable storage."""
+    print("Ruth: avvio collaudo integrato GGUF sintetico.")
+    report = run_fixture_pipeline()
+    print(f"Ruth: fixture sintetiche GGUF: {report.status}; {report.fixtures} file; " +
+          ", ".join(report.stages) + ".")
+    if report.status != "passed":
+        print(f"Ruth: problema fixture: {report.reason}.")
+        return 1
+    print("Ruth: nessun modello reale o peso verificato.")
+    return 0
+
+
 def main(argv: Sequence[str] = ()) -> int:
-    """Run PY -> DEP -> DIAG -> HW -> NVIDIA -> CAT -> GGUF -> META -> INDEX -> BLOCKS -> KBLOCKS."""
+    """Run PY -> DEP -> DIAG -> HW -> NVIDIA -> CAT -> GGUF -> META -> INDEX -> BLOCKS -> KBLOCKS -> FIXTURE."""
     args = list(argv)
     root = Path(__file__).resolve().parent
     if not args:
@@ -224,6 +237,7 @@ def main(argv: Sequence[str] = ()) -> int:
             _check_gguf_index(root)
             _check_gguf_blocks(root)
             _check_gguf_kblocks(root)
+            _check_fixture()
             print("Ruth: sequenza controlli terminata con problemi.")
             return 1
         print("Ruth: dipendenze minime da controllare: pip (non elenco completo di Ruth).")
@@ -237,7 +251,8 @@ def main(argv: Sequence[str] = ()) -> int:
         index_code = _check_gguf_index(root)
         block_code = _check_gguf_blocks(root)
         kblock_code = _check_gguf_kblocks(root)
-        final_code = max(code, catalog_code, gguf_code, metadata_code, index_code, block_code, kblock_code)
+        fixture_code = _check_fixture()
+        final_code = max(code, catalog_code, gguf_code, metadata_code, index_code, block_code, kblock_code, fixture_code)
         if final_code == 0:
             print("Ruth: sequenza controlli completata; compatibilita' runtime non verificata.")
         else:
@@ -256,9 +271,11 @@ def main(argv: Sequence[str] = ()) -> int:
         return _check_gguf_blocks(root)
     if args == ["gguf-kblocks"]:
         return _check_gguf_kblocks(root)
+    if args == ["gguf-fixture"]:
+        return _check_fixture()
 
     if args[0] != "dependencies" or len(args) < 2:
-        print("Ruth: uso: python main.py [catalog | gguf | gguf-metadata | gguf-index | gguf-blocks | gguf-kblocks | dependencies PACCHETTO [PACCHETTO==VERSIONE ...]]")
+        print("Ruth: uso: python main.py [catalog | gguf | gguf-metadata | gguf-index | gguf-blocks | gguf-kblocks | gguf-fixture | dependencies PACCHETTO [PACCHETTO==VERSIONE ...]]")
         return 2
     return _check_dependencies(args[1:], root)[0]
 

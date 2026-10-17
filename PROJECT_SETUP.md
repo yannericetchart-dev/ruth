@@ -130,10 +130,15 @@ rebase, cambi branch automatici o force-push per nascondere lavoro locale.
 In caso di blocco, non cancellare ne' pubblicare automaticamente i file
 esistenti: servira' una procedura conservativa specifica, separata.
 
-Dopo la sincronizzazione effettuare il collaudo personale MIG-FLOW-002.
-Solo la conferma esplicita dell'utente del suo esito positivo sblocca la
-migrazione successiva. Non riportare log, percorsi personali o dati host
-in Git; conservare ogni evidenza reale esclusivamente in .local/.
+Dopo la sincronizzazione effettuare il collaudo personale MIG-FLOW-002
+(revisione 2). L'utente puo' incollare direttamente gli esiti:
+se il commit coincide con main e il flusso completo con i test mirati
+prescritti risulta positivo, l'output e' gia' accettazione personale.
+Non richiedere un secondo "si"; chiudere via GitHub con PR/CI/merge e
+proporre la prossima migrazione, il cui scope richiede comunque nuovo verde
+(MIG-FLOW-001). Se la prova e' ambigua/fallita, non chiudere.
+Non riportare log, percorsi personali o dati host in Git; conservare
+ogni evidenza reale esclusivamente in .local/.
 
 Le modifiche ai documenti GitHub non cambiano automaticamente le istruzioni
 della UI del Progetto ChatGPT: se il protocollo persistente e' stato
