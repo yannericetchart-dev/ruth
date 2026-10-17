@@ -433,3 +433,29 @@ GPU-MANUAL-001 richiesta solo dopo main, secondo MIG-FLOW-002.
   Nessun catalogo = skip valido.
 - GGUF-BLOCK-MANUAL-001 attiva/pending prima del
   prossimo scope. Notazioni candidate precedenti storiche.
+
+## Chiusura MIG-010 / GGUF-BLOCK-MANUAL-001 (17 ottobre 2026)
+
+- L'utente ha eseguito personalmente il flusso di dieci controlli
+  di `.venv/bin/python main.py` sulla revisione `2f42a9d7a631e8779613784b58f8ce1b92afff9c`,
+  coincidente con il main pubblicato; ha confermato esplicitamente
+  positivo il collaudo GGUF-BLOCK-MANUAL-001 il 17 ottobre 2026.
+- Tutte le fasi PY -> DEP -> DIAG -> HW -> NVIDIA -> CAT -> GGUF ->
+  META -> INDEX -> BLOCKS sono state completate in ordine.
+  Il catalogo opzionale assente e' risultato `not_configured`
+  e GGUF/META/INDEX/BLOCKS sono skip validi e non bloccanti.
+- Non e' stato collaudato personalmente alcun file GGUF reale:
+  l'esito non certifica pesi, integrita', dequantizzazione,
+  CUDA, backend, runtime o inferenza.
+- I risultati di CI e la verifica con fixture sintetiche dei cinque
+  tipi Q4_0/Q4_1/Q5_0/Q5_1/Q8_0 restano distinti
+  dall'accettazione manuale senza catalogo.
+- DATA-001 e REMOTE-001 rispettati: non vengono versionati
+  inventari dell'host, percorsi reali, log, manifest, modelli,
+  benchmark o credenziali. Nessuna nuova migrazione approvata.
+- GGUF-BLOCK-001: implementazione complete, verifica sintetica CI
+  passed, integrazione in main (PR #62), accettazione personale
+  complete. La fase BLOCKS resta read-only e catalog-bound;
+  nessuna estensione del supporto ai tipi non previsti.
+- I riferimenti precedenti a manual pending sono storici.
+  Nessuna migrazione ulteriore autorizzata implicitamente.
