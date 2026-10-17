@@ -12,24 +12,20 @@ publication_sha: leggere il merge_commit_sha della PR indicata, non il blob SHA
 common_documents_writer_after_release: ORCH-20261017-B
 writes_frozen_after_publication_merge: true
 
-## Stato corrente dopo PR #107 e BRANCH-DELETE-001
+## Stato corrente: rilascio utilizzatori e BRANCH-DELETE-002
 
-Claim B effettivo: PR #105 merged a 5b77b08693a808c359b294bf1ab40f4fba8f5137.
-Il branch del claim e' ora archived/absent; la titolarita di B resta valida.
-A resta released. I due rami documentali #105/#106 sono deleted_verified;
-la storia e' contenuta in main e le PR conservano il riferimento ai commit.
-BRANCH-DELETE-001 complete: esecuzione delegata con updateRefs condizionata
-allo SHA, successiva riconciliazione read-only; controlli indipendenti B
-sull'assenza dei ref e preservazione degli 11 archivi e branch storici.
-Main durante le cancellazioni invariato a
-66f126c41165a012453acb1a2fd2add812d67105; inventario 101 -> 99.
-Dettagli attribuiti e SHA in BRANCH_AUDIT.md e CHECKPOINT.md.
-BRANCH-CLEANUP-001 resta aperto e bloccato sugli altri utilizzatori.
-work/BRANCH-ARCHIVE-001-record e' riutilizzato per la registrazione, poi
-pending_cleanup; nessun nuovo rilascio. MODEL-001 e BRANCH-ARCHIVE-001
-restano complete; MIG-016 chiusa; MIG-017 non autorizzata.
-Le sezioni successive sono cronologia: il nome del claim branch o gli
-stati presenti/pending precedenti non ne attestano l'esistenza attuale.
+B resta unico titolare; A released. BRANCH-DELETE-001 complete dalla PR #108,
+main letto 7988da89891e03ce364b73ffb692db429b242bb4. L'utente conferma il rilascio
+delle vecchie chat/processi al quesito esplicito: i 97 rami storici congelati
+sono users_release confirmed_by_user. B rilascia il proprio ramo documentale
+al merge della pubblicazione. Incarico BRANCH-DELETE-002, tabella e gate in
+ORCHESTRATION.md, BRANCH_AUDIT.md e BRANCH_DELETE_002.json.
+Nessun ramo nuovo creato; 98 target diversi da main, inclusi 11 archiviati.
+B cessa nuove scritture GitHub durante l'esecuzione, fino al resoconto.
+Tutti i branch rilasciati sono ancora presenti alla verifica; non dichiarare
+BRANCH-CLEANUP-001 completa prima delle prove e degli aggiornamenti effettivi.
+Main protetto e 11 tag immutabili. MIG-016 chiusa; MIG-017 non autorizzata.
+Le sezioni seguenti sono cronologia della consegna, non nuovi incarichi.
 
 Questa consegna e' preparata dall'orchestratore uscente su autorizzazione
 dell'utente. Il rilascio diventa effettivo soltanto quando la PR e' merged

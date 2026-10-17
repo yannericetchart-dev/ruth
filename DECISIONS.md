@@ -115,6 +115,20 @@ Ogni sostituzione deve collegare entrambe le decisioni e aggiornare le mappe.
   non acquisite. Nessuna ulteriore cancellazione assegnata. MIG-016 chiusa,
   MIG-017 non autorizzata. Le precedenti attestazioni zero delete sono storiche.
 
+## BRANCH-LIFECYCLE-001: rilascio utilizzatori e incarico BRANCH-DELETE-002
+
+- Conferma esplicita dell'utente il 17 ottobre 2026, in risposta alla domanda
+  sul rilascio delle vecchie chat/processi, lavori/integrazioni pendenti e ref:
+  "si ti confermo che nessun processo e attivo". Rilascio applicato ai 97
+  branch preesistenti elencati individualmente in BRANCH_DELETE_002.json.
+- B rilascia il proprio ramo documentale dopo merge della pubblicazione;
+  SHA esatto nel corpo della PR e nel prompt. Totale 98 target, main escluso.
+- Nessun nuovo perimetro funzionale: attuazione della pulizia gia' approvata.
+  Le conferme prima mancanti sono acquisite; restano obbligatorie verifiche
+  immediate, conservazione archivi e mutazioni condizionate allo SHA.
+- BRANCH-CLEANUP-001 resta aperto fino a esiti e stati effettivi registrati.
+  BRANCH-DELETE-001 resta complete; MIG-016 chiusa, MIG-017 non autorizzata.
+
 ## Disposizione precedente: permanenza dei branch storici (storica)
 
 - Stato: superseded da BRANCH-LIFECYCLE-001.

@@ -3,16 +3,16 @@
 ## Stato corrente verificato — 17 ottobre 2026
 
 Responsabile: ORCH-20261017-B. Base riconfermata:
-66f126c41165a012453acb1a2fd2add812d67105 (PR #107 merged; CI success).
-BRANCH-ARCHIVE-001 resta complete. Tutti gli 11 ref tags, oggetti annotati
-e commit sotto sono stati riletti indipendentemente da B, insieme agli
-11 branch originari: nessuna differenza rispetto alla PR #107.
-BRANCH-DELETE-001 complete: 2 rami documentali di B eliminati dall'esecutore
-con mutazione condizionata allo SHA; assenza remota verificata da B.
-Capacita create-tag e delete-ref provate dall'esecutore; B non ha eseguito
-queste mutazioni. Inventario alla verifica: 99 branch, zero PR/issue aperte,
-11 tag. Le due cancellazioni non coinvolgono alcuna riga di questo registro.
-Dettagli e riconciliazione della seconda lettura in BRANCH_AUDIT.md.
+7988da89891e03ce364b73ffb692db429b242bb4, PR #108 merged e CI success.
+Gli 11 heads, ref tags e oggetti annotati sotto sono stati nuovamente
+verificati da B: SHA oggetto e commit coincidono col registro.
+Conferma utente del 17 ottobre 2026: rilascio delle vecchie chat/processi.
+Per ciascuno degli 11 rami: users_release confirmed_by_user e scritture
+cessate; nessuna integrazione pendente confermata. BRANCH-DELETE-002 assegna
+la rimozione condizionata ai tip esatti, soltanto dopo PR/CI/merge.
+Gli archivi restano immutabili; tutti gli 11 branch originari sono ancora
+presenti. Cancellazioni cumulative gia' verificate: 2, soltanto documentali
+BRANCH-DELETE-001. BRANCH-CLEANUP-001 resta aperto fino a prove complete.
 
 Decisione vigente: BRANCH-LIFECYCLE-001. Gli 11 tag sotto sono ora fonti
 remote esistenti, durature e immutabili. I branch originali sono ancora
@@ -42,24 +42,15 @@ La fonte PY-001/DEP-001 e' il tag
 MIGRATION.md e checkpoint/scopi Python e DEP sono aggiornati a queste
 fonti verificate. Nessun codice storico o dato host importato in main.
 
-users_release resta unconfirmed per 97 branch diversi da main:
-gli 11 storici non contenuti e 86 candidati contenuti. Per ciascuno
-BRANCH_AUDIT.md registra SHA, utilizzatori/scritture non confermati,
-incarichi concorrenti non individuati e integrazioni non attestate come libere.
-Nessuna PR aperta e MODEL-001 complete non sono un rilascio degli utilizzatori.
-Servono conferme attribuite ai precedenti responsabili/utilizzatori, con
-cessazione delle scritture e assenza di dipendenze dal ref per ogni ramo.
-Non e' richiesto un nuovo verde funzionale; non inventare conferme assenti.
-Il produttore di questa conferma e' il precedente responsabile/utilizzatore,
-con messaggio inoltrato dall'utente; B ne registra l'esito. Non dipende
-dalla cancellazione: nessuna attesa circolare. Esecutore locale conferma
-solo le proprie attivita, non quelle di altre chat.
-
 Per tutti gli 11 rami di questa tabella: archive verified;
 operational_references verified_since_pr_107;
-users_release unconfirmed; writes_ceased unconfirmed;
-other_assignments none_published_found; integrations_release unconfirmed;
-deletion blocked_users_confirmation. Non sono nell'elenco eliminabile.
+users_release confirmed_by_user; writes_ceased confirmed_by_user;
+other_assignments none_published_found; integrations_release confirmed_by_user;
+deletion eligible_after_branch_delete_002_assignment_merge_and_ci.
+L'elenco esatto e i controlli immediati sono in BRANCH_DELETE_002.json e
+ORCHESTRATION.md. Non dichiarare un ramo eliminato prima della prova remota.
+Il precedente stato unconfirmed era valido prima della conferma utente;
+la sua cronologia e' conservata alla PR #108 e nelle sezioni storiche sotto.
 
 ## Cronologia: registro e prerequisiti alla PR #106
 

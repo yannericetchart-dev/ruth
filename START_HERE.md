@@ -41,8 +41,10 @@ Vedere ORCHESTRATOR_HANDOFF.md, SUCCESSOR_MESSAGE.md, BRANCH_AUDIT.md
 e BRANCH_ARCHIVE.md. Gli 11 tag annotati sono creati e verificati;
 BRANCH-ARCHIVE-001 complete. BRANCH-DELETE-001 complete: due rami documentali
 eliminati con condizione SHA e assenza remota verificata; capacita delete-ref
-provata dall'esecutore. BRANCH-CLEANUP-001 resta aperto: gli altri branch
-richiedono rilascio individuale. Nessun nuovo elenco eliminabile assegnato.
+provata dall'esecutore. L'utente ha confermato il rilascio delle vecchie
+chat/processi: BRANCH-DELETE-002 assegna i 97 rami congelati nel manifest
+BRANCH_DELETE_002.json piu' il ramo documentale esatto della PR, dopo merge/CI.
+BRANCH-CLEANUP-001 resta aperto fino a cancellazioni e aggiornamenti verificati.
 
 ## Letture di ripresa
 
