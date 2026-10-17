@@ -12,30 +12,24 @@ publication_sha: leggere il merge_commit_sha della PR indicata, non il blob SHA
 common_documents_writer_after_release: ORCH-20261017-B
 writes_frozen_after_publication_merge: true
 
-## Stato corrente dopo PR #105 e #106
+## Stato corrente dopo PR #107 e BRANCH-DELETE-001
 
 Claim B effettivo: PR #105 merged a 5b77b08693a808c359b294bf1ab40f4fba8f5137.
-B riprende su istruzione esplicita dell'utente nella chat Work Cloud designata;
-resta un solo titolare. A resta released, senza nuove scritture comuni.
-BRANCH-ARCHIVE-001: complete. L'esecutore locale assegnato dalla PR #106
-ha creato 11 tag annotati e si e' fermato prima delle cancellazioni.
-B ha verificato autonomamente tutti gli 11 ref heads e tags, gli oggetti
-tag annotati e la dereferenziazione al commit atteso: nessuna differenza.
-Capacita create-tag autenticata: provata dall'esecutore; delete-ref:
-NON TENTATA. B dispone della connessione per documenti/PR/merge, non
-attribuisce a se' le mutazioni o le verifiche locali dell'esecutore.
-Inventario live: 100 branch (pagine 100/0), main piu' 88 contenuti e
-11 non contenuti; zero PR/issue aperte, 11 tag. Branch eliminati: 0.
-HEAD locale riferita dall'esecutore: 5b77b08693a808c359b294bf1ab40f4fba8f5137,
-working tree pulito e invariato; nessuna sync o esecuzione applicativa.
-
-Incarico BRANCH-ARCHIVE-001 complete; MODEL-001 complete dalla PR #106.
-Gli 11 archivi e le fonti operative sono in BRANCH_ARCHIVE.md/MIGRATION.md.
-BRANCH_AUDIT.md rilascia solo due branch documentali di B con conferma
-nominativa del responsabile e gate di merge/CI. Tutti gli altri restano
-bloccati su users_release; nessuna cancellazione attestata.
-Le sezioni successive conservano la consegna e i controlli storici;
-le indicazioni pending del claim e tag non creati non sono stato attuale.
+Il branch del claim e' ora archived/absent; la titolarita di B resta valida.
+A resta released. I due rami documentali #105/#106 sono deleted_verified;
+la storia e' contenuta in main e le PR conservano il riferimento ai commit.
+BRANCH-DELETE-001 complete: esecuzione delegata con updateRefs condizionata
+allo SHA, successiva riconciliazione read-only; controlli indipendenti B
+sull'assenza dei ref e preservazione degli 11 archivi e branch storici.
+Main durante le cancellazioni invariato a
+66f126c41165a012453acb1a2fd2add812d67105; inventario 101 -> 99.
+Dettagli attribuiti e SHA in BRANCH_AUDIT.md e CHECKPOINT.md.
+BRANCH-CLEANUP-001 resta aperto e bloccato sugli altri utilizzatori.
+work/BRANCH-ARCHIVE-001-record e' riutilizzato per la registrazione, poi
+pending_cleanup; nessun nuovo rilascio. MODEL-001 e BRANCH-ARCHIVE-001
+restano complete; MIG-016 chiusa; MIG-017 non autorizzata.
+Le sezioni successive sono cronologia: il nome del claim branch o gli
+stati presenti/pending precedenti non ne attestano l'esistenza attuale.
 
 Questa consegna e' preparata dall'orchestratore uscente su autorizzazione
 dell'utente. Il rilascio diventa effettivo soltanto quando la PR e' merged

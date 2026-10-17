@@ -90,7 +90,7 @@ Ogni sostituzione deve collegare entrambe le decisioni e aggiornare le mappe.
   zero PR/issue aperte e zero tag. Pulizia bloccata da strumenti mancanti
   e autenticazione CLI non valida. BRANCH_AUDIT.md e BRANCH_ARCHIVE.md.
 
-## BRANCH-LIFECYCLE-001: attuazione archivi (17 ottobre 2026)
+## BRANCH-LIFECYCLE-001: attuazione archivi alla PR #107 (storica, 17 ottobre 2026)
 
 - Nessuna nuova decisione funzionale: attuazione della pulizia gia' approvata.
 - PR #106 ha assegnato BRANCH-ARCHIVE-001 e riallineato MODEL-001 complete.
@@ -100,6 +100,20 @@ Ogni sostituzione deve collegare entrambe le decisioni e aggiornare le mappe.
   da archivio, MODEL-001 e PR chiuse. Elenco limitato a due rami documentali
   rilasciati dal loro responsabile B in BRANCH_AUDIT.md, dopo merge/CI.
 - Stato iniziale sopra e disposizioni sostituite restano cronologia.
+
+## BRANCH-LIFECYCLE-001: esiti BRANCH-DELETE-001 (17 ottobre 2026)
+
+- Registrazione di attuazione, nessun nuovo perimetro: chiuso soltanto
+  BRANCH-DELETE-001 assegnato dalla PR #107.
+- Due ref documentali #105/#106 eliminati dall'esecutore con updateRefs
+  condizionata allo SHA atteso; B ne ha verificato indipendentemente
+  l'assenza e la preservazione di main, degli 11 tag e degli 11 rami storici.
+- Seconda lettura immediata ambigua, poi riconciliata esclusivamente in
+  lettura dall'esecutore; nessuna mutazione ripetuta. Dettagli e attribuzione
+  in BRANCH_AUDIT.md e CHECKPOINT.md, prova BRANCH-DELETE-001-result-001.
+- BRANCH-CLEANUP-001 resta aperto: conferme individuali per gli altri rami
+  non acquisite. Nessuna ulteriore cancellazione assegnata. MIG-016 chiusa,
+  MIG-017 non autorizzata. Le precedenti attestazioni zero delete sono storiche.
 
 ## Disposizione precedente: permanenza dei branch storici (storica)
 

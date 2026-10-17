@@ -262,84 +262,71 @@ usare create_branch/update_ref come strumenti per tag o cancellazioni
 e non trattare GET come una mutazione. Non dichiarare completa la pulizia.
 BRANCH_AUDIT.md contiene uno snapshot di audit, da riconfermare live.
 
-## BRANCH-CLEANUP-001: archivi verificati e rilascio limitato (17 ottobre 2026)
+## BRANCH-DELETE-001: chiusura verificata (17 ottobre 2026)
 
-Responsabile unico: ORCH-20261017-B, ripresa esplicitamente richiesta dall'utente.
-Chat organizzative: "Ruth - Work Cloud Orchestrator" e
-"Ruth - Work Local Orchestrator"; il nome non trasferisce titolarita.
-Base verificata: 38f066ff81cec8430e4399f2c0144c07c2d2c22d. PR #106 merged con CI main
-39055668218 success. MIG-016 resta chiusa; MIG-017 non autorizzata.
-BRANCH-ARCHIVE-001: complete. L'esecutore locale assegnato dalla PR #106
-ha creato 11 tag annotati e si e' fermato prima delle cancellazioni.
-B ha verificato autonomamente tutti gli 11 ref heads e tags, gli oggetti
-tag annotati e la dereferenziazione al commit atteso: nessuna differenza.
-Capacita create-tag autenticata: provata dall'esecutore; delete-ref:
-NON TENTATA. B dispone della connessione per documenti/PR/merge, non
-attribuisce a se' le mutazioni o le verifiche locali dell'esecutore.
-Inventario live: 100 branch (pagine 100/0), main piu' 88 contenuti e
-11 non contenuti; zero PR/issue aperte, 11 tag. Branch eliminati: 0.
-HEAD locale riferita dall'esecutore: 5b77b08693a808c359b294bf1ab40f4fba8f5137,
-working tree pulito e invariato; nessuna sync o esecuzione applicativa.
+Responsabile comune e integrazioni: ORCH-20261017-B.
+Assegnazione: PR #107 merged a 66f126c41165a012453acb1a2fd2add812d67105;
+CI PR 39056771775 e CI main 39056855340 success.
+Esecutore: chat locale 01a14a37-aa01-70a2-b9cf-6702224b121f,
+"Ruth - Work Local Orchestrator"; resoconto inoltrato dall'utente.
+Evidenza portabile: BRANCH-DELETE-001-result-001.
+Stato dell'incarico: complete; risultato: passed; esecuzione delegata.
 
-Registri: BRANCH_ARCHIVE.md contiene la prova per tag; BRANCH_AUDIT.md
-l'inventario e i gate individuali, con elenco esatto di due rami rilasciati.
-users_release resta unconfirmed per 97 branch diversi da main:
-gli 11 storici non contenuti e 86 candidati contenuti. Per ciascuno
-BRANCH_AUDIT.md registra SHA, utilizzatori/scritture non confermati,
-incarichi concorrenti non individuati e integrazioni non attestate come libere.
-Nessuna PR aperta e MODEL-001 complete non sono un rilascio degli utilizzatori.
-Servono conferme attribuite ai precedenti responsabili/utilizzatori, con
-cessazione delle scritture e assenza di dipendenze dal ref per ogni ramo.
-Non e' richiesto un nuovo verde funzionale; non inventare conferme assenti.
-Il produttore di questa conferma e' il precedente responsabile/utilizzatore,
-con messaggio inoltrato dall'utente; B ne registra l'esito. Non dipende
-dalla cancellazione: nessuna attesa circolare. Esecutore locale conferma
-solo le proprie attivita, non quelle di altre chat.
+| Branch originario | SHA riconfermato prima della mutazione | Stato del ref remoto | Esito |
+| --- | --- | --- | --- |
+| `work/BRANCH-ARCHIVE-001-prerequisites` | `0b1ca5c3785e70eb24f503ac53ef3e3af9298e72` | archived / absent | deleted_verified |
+| `work/ORCH-20261017-B-claim` | `1149ed1556e2961034a5b3d0d23ea464ac1f436e` | archived / absent | deleted_verified |
 
-### BRANCH-DELETE-001: rilascio limitato a due rami documentali
+### Resoconto attribuito all'esecutore
 
-Esecutore: chat Codex locale 01a14a37-aa01-70a2-b9cf-6702224b121f,
-"Ruth - Work Local Orchestrator"; solo ref remoti assegnati, nessun
-branch applicativo o documento comune assegnato. Padre main;
-responsabile integrazioni e documenti: B. Nessun parallelismo.
+Prima di ciascuna mutazione: rilascio e incarico confermati, integrazioni
+concluse, tip atteso contenuto in main, PR aperte paginate senza
+corrispondenze head/base e nessuna nuova issue.
+Strumento effettivo riferito: GitHub GraphQL updateRefs, una richiesta per
+ramo; beforeOid uguale allo SHA della riga, afterOid pari a
+0000000000000000000000000000000000000000, force=false.
+Entrambe le richieste sono state accettate. Per la seconda, la lettura
+immediata era ambigua: l'esecutore si e' fermato e ha riconciliato soltanto
+in lettura. REST e GraphQL hanno poi confermato entrambi i ref assenti.
+Nessuna cancellazione ripetuta. L'ambiguita iniziale resta nella cronologia;
+non viene omessa o registrata come seconda mutazione.
+Cancellazioni effettive verificate: 2. Main prima/dopo invariato:
+66f126c41165a012453acb1a2fd2add812d67105. Inventario riferito:
+101 (50/50/1/0) -> 99 (50/49/0). Nessuna modifica a checkout o metadati
+locali, documenti, configurazioni o ambienti; nessuna sync o esecuzione Ruth.
+Capacita di cancellazione autenticata e condizionata allo SHA: provata
+dall'esecutore con queste due operazioni, non una capacita mutativa di B.
 
-| Branch rilasciato | SHA atteso | Evidenza integrazione |
-| --- | --- | --- |
-| `work/BRANCH-ARCHIVE-001-prerequisites` | `0b1ca5c3785e70eb24f503ac53ef3e3af9298e72` | PR #106 merged |
-| `work/ORCH-20261017-B-claim` | `1149ed1556e2961034a5b3d0d23ea464ac1f436e` | PR #105 merged |
+### Verifica indipendente dell'orchestratore
 
-B e' il responsabile dei due rami e ne attesta individualmente il rilascio:
-users_release confirmed_by_owner; nuove scritture cessate; nessun altro
-utilizzatore assegnato a questi ref; integrazioni #105 e #106 concluse;
-incarichi correnti e letture di audit usano commit/main/PR, non questi ref.
-Gli SHA sono contenuti nella storia di main, verificati con ahead_by=0.
-La prova del tag non e' necessaria per questi due rami gia' contenuti.
-Il rilascio non e' dedotto soltanto dall'assenza di PR.
+B ha risolto nuovamente object.sha di main e verificato PR #107 merged
+con le CI sopra. Inventario GitHub paginato 99/0: entrambi i nomi assenti;
+matching-refs individuale per ciascun nome: lista vuota. Nessuna PR o issue
+aperta. Tutti gli 11 ref heads storici, ref tags e oggetti annotati riletti:
+SHA oggetto e commit dereferenziato coincidono col registro BRANCH_ARCHIVE.md.
+work/BRANCH-ARCHIVE-001-record presente al tip
+12e2087f5040209c01a969248121ddd052f88dec prima della presente pubblicazione.
+B verifica lo stato remoto via REST; i controlli pre-mutazione e la
+riconciliazione GraphQL restano attribuiti all'esecutore. B non ripete
+mutazioni e non attribuisce a se' accesso o verifiche locali dell'esecutore.
 
-Gate di esecuzione: merge della presente pubblicazione, CI PR e main
-positive, lettura del merge_commit_sha reale della PR e risoluzione di
-heads/main. Prima di OGNI delete riconfermare SHA esatto, main, PR
-aperte head/base, incarico B e assenza di nuovi utilizzatori/integrazioni.
-Se main o l'incarico cambiano, fermarsi per riesame; non adottare un nuovo
-SHA in silenzio. Se il tip del ramo cambia, fermarsi senza cancellarlo.
-Mutazione solo con condizione sullo SHA atteso, anche in caso di racing
-writer; mai force generico o DELETE senza condizione. Se la capacita
-manca o il lease fallisce, lasciare il ramo e riportare il blocco.
-Protezione assoluta refs/heads/main e refs/tags/*; nessun altro ramo
-incluso per prefisso o classificazione. Verificare poi ref assente, main
-invariato e tutti gli 11 archivi intatti. Fermarsi sul primo errore.
-Un ref gia' assente e' absent_before_attempt, non una cancellazione eseguita.
+### Perimetro residuo
 
-Nessuna modifica/sync di checkout, nuova copia, installazione, ambiente,
-esecuzione Ruth o test applicativo. Nessuna modifica documentale da parte
-dell'esecutore. Resoconto portabile con controlli per ramo, SHA, condizione
-usata, esito effettivo, main prima/dopo e verifica archivi; log restano locali.
-B registra gli esiti e aggiorna gli stati effettivi solo dopo prova remota.
-Il nuovo ramo work/BRANCH-ARCHIVE-001-record e' utilizzato da B fino al merge,
-poi pending_cleanup: NON e' incluso nell'elenco di questo incarico.
+Si chiude solo BRANCH-DELETE-001. BRANCH-ARCHIVE-001 resta complete;
+BRANCH-CLEANUP-001 resta aperto e blocked_users_confirmation.
+Per 97 rami preesistenti diversi da main users_release e cessazione delle
+scritture restano unconfirmed: 86 contenuti e 11 storici archiviati.
+MODEL-001 complete e zero PR non ne dimostrano il rilascio.
+Il ramo documentale work/BRANCH-ARCHIVE-001-record e' riutilizzato da B
+per questa registrazione: nessun nuovo branch creato; dopo merge resta
+pending_cleanup, senza nuovo elenco di cancellazione o incarico locale.
+Main e' l'unico permanente. Nessuna nuova cancellazione assegnata.
+MIG-016 resta chiusa; MIG-017 e altre funzioni non autorizzate.
 
-Le successive registrazioni della successione e dei prerequisiti PR #106
-sono storiche; prevale questa sezione per lo stato operativo corrente.
+L'incarico originale e il rilascio esatto restano consultabili alla PR #107,
+commit 66f126c41165a012453acb1a2fd2add812d67105, sezione BRANCH-DELETE-001.
+L'elenco e' consumato: non autorizza ripetizioni o ulteriori rami.
+Le sezioni seguenti sono la cronologia dei prerequisiti PR #106.
 
 ## Cronologia: incarico archivi e gate alla PR #106 (17 ottobre 2026)
 
