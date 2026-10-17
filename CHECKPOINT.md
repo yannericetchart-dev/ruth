@@ -538,3 +538,10 @@ e DIAG-SCOPE-001. SYNC-001 resta storica/superseded.
 - Scope: tre file GGUF sintetici in directory temporanea, verifica CAT/GGUF/META/INDEX/BLOCKS/KBLOCKS, dodicesimo passaggio Ruth FIXTURE.
 - Stati: implementation candidate, verification pending, integration pending, personal acceptance pending.
 - Nessun dato di host o modello reale pubblicato; solo fixture generate a runtime. Prossima verifica: CI, mappe, PR e promozione; poi collaudo personale GGUF-FIXTURE-MANUAL-001.
+
+## MIG-012 integrazione tecnica verificata (17 ottobre 2026)
+
+- PR #71 (GGUF), #72 (Formats), #73 (Models) e #74 (main) integrate, commit applicativo main `b057957b5d96b3c09ecde0b6c28ffc0e977c6942`.
+- CI per tutte e quattro le promozioni success, inclusi test sintetici, punto d'ingresso e mappe. Dodicesima fase Ruth FIXTURE, dopo KBLOCKS, e comando mirato `gguf-fixture`.
+- Stato: implementation complete, verification passed (fixture e CI), integration merged. **GGUF-FIXTURE-MANUAL-001 pending**: richiede collaudo personale del default Ruth e test mirati dopo aggiornamento del checkout personale.
+- Non sono stati testati modelli reali o letti pesi. Nessun download, rete, CUDA, backend o inferenza. Nuovo perimetro bloccato fino a collaudo personale e nuova approvazione (MIG-FLOW-001/002). DATA-001 e REMOTE-001 invariati.
